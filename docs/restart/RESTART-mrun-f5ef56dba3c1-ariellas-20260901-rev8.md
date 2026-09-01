@@ -163,4 +163,45 @@ Host **ARIELLAS**, actor `ariellas`. `I:` = `\\192.168.0.108\GAVRI_D`.
 **RESTART IS SAFE.** Nothing is stranded on a local branch, in a shell, or in this transcript.
 In the glpnet tab type **`resume marathon`**.
 
-— `ariellas` · `glpnet` · `mrun-f5ef56dba3c1` · 2026-09-01T17:40Z
+
+## 9B · 🔁 REBOOT RELAUNCH — RE-MEASURED AND VERIFIED THIS SESSION, 15/15
+
+```
+Task BK-OnRestart : Ready · AtLogOn ARIELLASriel · delay PT45S · RunLevel Limited
+Shell             : C:\Program Files\PowerShell\pwsh.exe      <-- pwsh 7, NOT powershell 5.1
+Script            : D:\BSTDEV	ools\mstack\scriptsleet\post-reboot-restart.ps1
+Args              : -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -WaitForMounts -Layout Tabs
+Per-tab command   : claude --continue --autocompact 1000000
+LastTaskResult    : 0   (last run 2026-08-31 23:16:43)
+Dry run 2026-09-01T18:02Z : all repo paths present · all network shares present · Will launch 15
+```
+
+| lane | path | sess | resume |
+|---|---|---:|---|
+| ospark | `D:stdev\db\ospark` | 20 | yes |
+| tefl | `D:\BSTDEV\LANG	efl` | 24 | yes |
+| hatzinor (ulpanit) | `D:\BSTDEV\LANG\hatzinor` | 22 | yes |
+| olamnit | `D:\BSTDEVesearch\olamnit` | 24 | yes |
+| buildkit | `D:\BSTDEVesearchuildkit` | 26 | yes |
+| qhstate | `D:\BSTDEVesearch\qhstate` | 22 | yes |
+| crucible | `D:stdevesearch\crucible` | 29 | yes |
+| **glpnet** | `D:stdevesearch\glp\glpnet` | 32 | yes |
+| lejepa | `D:stdevesearch\lejepa` | 30 | yes |
+| mstack | `D:stdev	ools\mstack` | 30 | yes |
+| yngwin | `D:\YNGENIOS\yngenios-windows` | 38 | yes |
+| yngcor | `D:\YNGENIOS\yngenios` | 6 | yes |
+| ynglin | `D:\YNGENIOS\yngenios-linux` | 5 | yes |
+| yngapp | `D:\YNGENIOS\yngenios-app` | 5 | yes |
+| yngraw | `D:stdevesearch\yngenios` | 29 | yes |
+
+🔴 **A TRAP I FELL INTO AND CORRECTED — the launcher REQUIRES pwsh 7.**
+Running `scripts/onrestart-launch.ps1` under Windows PowerShell **5.1** produces three parser
+errors (`'<' operator is reserved`, missing terminator, missing `}`) and looks exactly like a
+corrupt file. **`[Parser]::ParseFile` under pwsh 7 returns 0 errors — the file is fine.**
+The scheduled task already uses `pwsh.exe`, so the reboot path is sound. **Never conclude a
+launcher is broken from a 5.1 parse failure; check which shell the task actually invokes.**
+
+**REBOOT IS SAFE.** After reboot the 15 tabs relaunch themselves; in the glpnet tab type
+**`resume marathon`**.
+
+— `ariellas` · `glpnet` · `mrun-f5ef56dba3c1` · 2026-09-01T18:05Z
