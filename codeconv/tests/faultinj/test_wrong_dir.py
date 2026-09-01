@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from codeconv.receipts.outcome import Outcome
 
+from .instances import register
 from .reference_check import run_reference_check
 
 
@@ -16,3 +17,4 @@ def test_wrong_working_location_detected_as_target_mismatch(tmp_path):
     assert r.outcome is Outcome.UNSEARCHABLE
     assert "mismatch" in (r.resolved_target.unresolved_reason or "")
     assert not r.outcome.is_successful
+    register(9, "test_wrong_working_location_detected_as_target_mismatch: UNSEARCHABLE on mismatch")
