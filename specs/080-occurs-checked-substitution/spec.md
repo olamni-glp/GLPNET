@@ -8,7 +8,7 @@ SPDX-License-Identifier: MIT
 
 **Feature Branch**: `080-occurs-checked-substitution`
 **Created**: 2026-08-14
-**Status**: Draft — 🔴 BLOCKED on a §1.14 language-authority decision by Udi (see Clarifications / FR-002)
+**Status**: Draft — ✅ **UNBLOCKED 2026-09-01**. The §1.14 language-authority decision is RULED: **option (a) `UnifyFail`** (engineer ruling `Q-glpnetshiras-09`, recorded in `.specify/decisions/Q-glpnetshiras-20260901T1030Z.json`). FR-002 is now unconditional; `/bk-plan` may proceed.
 **Input**: User description: "Occurs-checked substitution pipeline (compiler bind-time occurs-check) … the core question (UnifyFail vs CompileError when the occurs-check fires) is Udi's express decision to make. The spec MUST present both options as an OPEN clarification for Udi and MUST NOT decide the semantics."
 
 ## Context
@@ -34,7 +34,7 @@ it does NOT decide it, and no implementation proceeds until Udi rules.**
 
 ## Clarifications
 
-### 🔴 Session 2026-08-14 — OPEN, awaiting Udi (§1.14)
+### ✅ Session 2026-08-14 — RESOLVED 2026-09-01 by engineer ruling `Q-glpnetshiras-09` (§1.14)
 
 - Q (**LANGUAGE-AUTHORITY, Udi's to decide**): When the bind-time occurs-check detects that binding a
   variable `X` to a term containing `X` would create a cycle, what is GLP's defined behaviour?
@@ -46,9 +46,15 @@ it does NOT decide it, and no implementation proceeds until Udi rules.**
   → **Option (b) `CompileError`** — a hard, catchable compile-time rejection (consistent with 077's
     FR-004 cyclic-term diagnostic). The program does not compile. This treats a cycle-forming bind as a
     static defect rather than a runtime failure.
-  → **This spec records BOTH and selects NEITHER.** FR-002 is written conditionally on the outcome. The
-    remaining requirements (where the check runs, coverage, no false positives, regression proof) are
-    invariant to the choice and are specified now.
+  → **RULED 2026-09-01: option (a) `UnifyFail`.** Engineer ruling `Q-glpnetshiras-09` (BK-STD-2,
+    `.specify/decisions/Q-glpnetshiras-20260901T1030Z.json`). Rationale recorded with the ruling:
+    `UnifyFail` is the sound-unification answer; it is strictly the more permissive of the two, so it
+    can be tightened to `CompileError` later whereas `CompileError` cannot be loosened without breaking
+    programs that came to depend on rejection; and it composes with GLP's existing three-valued guard
+    semantics (Success | Suspend | Fail) instead of introducing a fourth outcome. `CompileError`'s only
+    advantage — a source location — is already delivered by 077's FR-004 walker diagnostic.
+  → The remaining requirements (where the check runs, coverage, no false positives, regression proof)
+    were always invariant to the choice and were specified up front.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -129,11 +135,11 @@ behaviour.
 - **FR-001**: The compiler MUST perform an occurs-check at each unification/substitution **bind site**
   in the consolidated producer module, detecting when binding a variable to a term would place that
   variable within its own binding (directly or through resolution of the current substitution).
-- **FR-002** (🔴 **§1.14 — conditional on Udi's ruling; NOT decided here**): On a detected
-  cycle-forming bind, GLP MUST produce the outcome Udi selects — **either** (a) a clean `UnifyFail`
-  under the existing three-valued unification rules, **or** (b) a hard catchable `CompileError`. The
-  implementation MUST NOT be written until this is ruled; the two options have different acceptance
-  tests (a failing-reduction test vs. a compile-rejection test).
+- **FR-002** (✅ **§1.14 RULED 2026-09-01 — `Q-glpnetshiras-09`, option (a)**): On a detected
+  cycle-forming bind, GLP MUST produce a clean **`UnifyFail`** under the existing three-valued
+  unification rules (Success | Suspend | Fail). The enclosing guard/clause fails cleanly; the program
+  is **not** rejected at compile time. The acceptance test is therefore a **failing-reduction** test,
+  not a compile-rejection test. Option (b) `CompileError` is **not** adopted.
 - **FR-003**: The occurs-check MUST be implemented **once**, on the shared consolidated module
   (`term_traversal.cs`), and consulted by **both** the partial-evaluator-origin and analyzer-origin
   bind paths — never re-duplicated.
@@ -147,8 +153,10 @@ behaviour.
   the F-069-1 class.
 - **FR-007**: The feature MUST be proven by a regression corpus: every F-069-1 / cyclic-`=` program
   reaches the FR-002 outcome at the bind site, and the acyclic corpus + full REPL suite remain green.
-- **FR-008** (process): No code implementing FR-002's semantics may land before Udi's §1.14 approval is
-  recorded. The spec, plan, and clarification are the propose-first artifacts; `/bk-implement` is gated.
+- **FR-008** (process): ✅ **DISCHARGED 2026-09-01.** The §1.14 approval is recorded
+  (`Q-glpnetshiras-09`, option (a) `UnifyFail`), so the `/bk-implement` gate this FR imposed is lifted.
+  The propose-first obligation was met: spec + clarification were produced and ruled on before any
+  implementation. Implementation MUST match FR-002 as ruled and MUST NOT re-open the semantics.
 
 ### Key Entities
 
@@ -182,5 +190,6 @@ behaviour.
   §1.14 discussion).
 - Testing follows 077's adaptation: the C# compiler is exercised via the REPL suite + a console probe
   (no xUnit harness for `out/csharp`), since a cycle-forming AST can only be built programmatically.
-- The §1.14 decision (FR-002) is Udi's; this spec deliberately leaves it open and blocks implementation
-  on it. Producing spec + plan is the propose-first deliverable §1.14 requires.
+- The §1.14 decision (FR-002) was Udi's; this spec deliberately left it open and blocked implementation
+  on it. Producing spec + plan was the propose-first deliverable §1.14 requires. **Ruled 2026-09-01 as
+  option (a) `UnifyFail` (`Q-glpnetshiras-09`); the block is lifted and FR-002 is now unconditional.**

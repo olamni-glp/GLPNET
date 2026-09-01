@@ -11,8 +11,12 @@
     * Build-gating therefore scopes to files the codegen has accepted, not
       to whatever stubs happen to live alongside them.
 
-  Target framework: net10.0 (consistent with the 019 codegen contract +
-  the dotnet 10 preview on PATH).
+  Target framework: net11.0 — engineer mandate 2026-09-01 (".net 8, 9 and 10 are
+  obsolete; migrate all code to .net 11"). This comment previously read net10.0
+  while the element below already said net11.0; the stale half is corrected here
+  because at least one peer lane vendors this file and reads this header.
+  Package versions come from the repo-root Directory.Packages.props (CPM,
+  engineer ruling Q-shiras-36) — never add a Version= attribute here.
 -->
 <Project Sdk="Microsoft.NET.Sdk">
 
