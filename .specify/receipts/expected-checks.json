@@ -1,0 +1,15 @@
+{
+  "_comment": "The TEMPLATE per-run expected-check set for the glpnet unified suite (feature 078, FR-023, task T049). FR-023 requires a run to declare IN ADVANCE the set of checks it expects to contain: a run with no declared set is not a run in which nothing was expected, it is an UNVERIFIABLE run, and it MUST refuse rather than report. This file is the checked-in source; a run copies it to <receipts-root>/<run-id>/expected.json with its own run_id substituted, which is what codeconv.receipts.manifest.load_expected reads.",
+  "_why_a_template_and_not_the_live_file": "load_expected refuses a declaration whose run_id does not equal the run being read (another run's declaration is not this run's). So the live file is necessarily per-run and cannot be checked in. What IS checked in is the expected SET, so that a check silently ceasing to exist is detectable against a version-controlled baseline rather than against whatever the last run happened to produce - a ratchet that only ever loosens was the rejected alternative (spec block 25).",
+  "run_id": "<substituted per run>",
+  "expected_checks": [
+    "faultinj.sc001-instance-coverage",
+    "receipts.conformance-fixture",
+    "harness.receipts-parity"
+  ],
+  "_per_check": {
+    "faultinj.sc001-instance-coverage": "area test-harness - the case-keyed coverage of the thirteen witnessed instances (SC-001, T029b). Emitted by codeconv/tests/faultinj/conftest.py at session end. Expected outcome from glpnet ALONE is UNREAD at 6/13; PASS requires buildkit to file receipts for the seven it owns.",
+    "receipts.conformance-fixture": "area reference - the seven-case conformance fixture (contract F1-F4, T029). Emitted by codeconv/tests/faultinj/conformance.py.",
+    "harness.receipts-parity": "area test-harness - the bash emitter's 7/7 parity run against the Python emitter (T044, FR-024). Emitted by test/receipts/assert.sh when CODECONV_RECEIPTS_ROOT and CODECONV_RECEIPTS_RUN_ID are set."
+  }
+}

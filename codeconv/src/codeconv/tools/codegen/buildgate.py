@@ -12,6 +12,28 @@ Build failure is NOT raised as an exception — it is a recorded
 ``build_status='fail'`` feedback fact (contract dbos_codegen_stage.md §
 Invariants). Only an environment failure (no SDK, timeout) is surfaced
 as a distinct ``not_built`` status with a reason.
+
+🔴 INSTANCE 6 AND WHY ``pass`` IS NOT ``PASS`` (task T054, feature 078).
+Inventory CD-03: *"a build gate is compile-only, so a behaviourally-wrong
+generated file can be promoted."* ``run_build`` returning ``pass`` is a true
+statement about ONE dimension — it compiles — and it was being read as a
+statement about promotability, which has two: **compiles** and **behaves**.
+
+So ``BuildResult`` now records WHICH dimensions it examined, and
+:func:`emit_gate_receipt` maps that onto a 078 receipt where the counts carry the
+distinction the status word cannot:
+
+    run_build  clean   -> examined 1 / total 2 -> UNREAD  (compile only)
+    run_test   clean, tests ran  -> 2 / 2      -> PASS
+    run_test   clean, ZERO tests -> 1 / 2      -> UNREAD  (nothing behavioural
+                                                  was examined; a vacuous green
+                                                  is instance 12)
+    fail                          -> 2 / 2 + problems -> FAIL
+    not_built                     -> unresolved target -> UNSEARCHABLE
+
+The ``status`` field is UNCHANGED and still means exactly what it always meant —
+callers scoring candidates keep working. What is new is that the gate can now
+state, in a receipt, what it did *not* look at.
 """
 
 from __future__ import annotations
@@ -36,6 +58,12 @@ BUILD_PASS = "pass"
 BUILD_FAIL = "fail"
 NOT_BUILT = "not_built"
 
+#: The dimensions a build gate can examine. Promotability requires BOTH; a gate
+#: that examines only ``compiles`` has examined half the criteria (instance 6).
+DIM_COMPILES = "compiles"
+DIM_BEHAVES = "behaves"
+GATE_DIMENSIONS = (DIM_COMPILES, DIM_BEHAVES)
+
 
 @dataclass(frozen=True)
 class BuildResult:
@@ -53,6 +81,10 @@ class BuildResult:
     test_pass_rate: Optional[float] = None
     reason: Optional[str] = None  # populated for not_built (env failure)
     raw: str = field(default="", repr=False)
+    #: Which of :data:`GATE_DIMENSIONS` this invocation ACTUALLY examined. Empty
+    #: means none were (an environment failure). Never inferred from ``status``:
+    #: a green status is exactly what cannot tell you what was looked at.
+    dimensions_examined: tuple[str, ...] = ()
 
     @property
     def passed(self) -> bool:
@@ -134,9 +166,12 @@ def run_build(
         )
     output = (cp.stdout or "") + "\n" + (cp.stderr or "")
     errors = parse_build_errors(output)
+    # COMPILE ONLY. Nothing behavioural was examined, whatever the status says.
+    dims = (DIM_COMPILES,)
     if cp.returncode == 0 and not errors:
-        return BuildResult(status=BUILD_PASS, raw=output)
-    return BuildResult(status=BUILD_FAIL, errors=tuple(errors), raw=output)
+        return BuildResult(status=BUILD_PASS, raw=output, dimensions_examined=dims)
+    return BuildResult(status=BUILD_FAIL, errors=tuple(errors), raw=output,
+                       dimensions_examined=dims)
 
 
 def run_test(
@@ -179,10 +214,16 @@ def run_test(
     output = (cp.stdout or "") + "\n" + (cp.stderr or "")
     errors = parse_build_errors(output)
     rate = parse_test_pass_rate(output)
+    # The BEHAVES dimension counts as examined only if tests actually RAN. rate is
+    # None when the project reported no counts at all, and zero tests is not
+    # evidence of behaviour -- it is the absence of it (instance 12).
+    dims = (DIM_COMPILES, DIM_BEHAVES) if rate is not None else (DIM_COMPILES,)
     if cp.returncode == 0 and not errors:
-        return BuildResult(status=BUILD_PASS, test_pass_rate=rate, raw=output)
+        return BuildResult(status=BUILD_PASS, test_pass_rate=rate, raw=output,
+                           dimensions_examined=dims)
     return BuildResult(
-        status=BUILD_FAIL, errors=tuple(errors), test_pass_rate=rate, raw=output
+        status=BUILD_FAIL, errors=tuple(errors), test_pass_rate=rate, raw=output,
+        dimensions_examined=dims
     )
 
 
@@ -196,4 +237,78 @@ __all__ = [
     "parse_test_pass_rate",
     "run_build",
     "run_test",
+]
+
+
+# ---- 078 receipt emission (task T054, instance 6) ---------------------------
+
+def gate_counts(result: "BuildResult") -> tuple[int, int]:
+    """``(examined, total)`` over :data:`GATE_DIMENSIONS` for one gate run.
+
+    The total is the number of dimensions that MUST be examined for a promotion
+    decision, not the number this run happened to look at. That asymmetry is the
+    whole point: a compile-only run is 1 of 2, and 1 of 2 is UNREAD.
+    """
+    return len(result.dimensions_examined), len(GATE_DIMENSIONS)
+
+
+def emit_gate_receipt(
+    result: "BuildResult",
+    *,
+    project,
+    run_id: str,
+    root,
+    check_id: str = "codegen.build-gate",
+    area: str = "build-gate",
+    write: bool = True,
+):
+    """Emit the 078 receipt for a build-gate run (FR-001/003/006, instance 6).
+
+    The outcome is DERIVED from what was resolved and examined, never from
+    ``result.status``:
+
+    * ``not_built`` -> the target could not be resolved (no SDK, timeout), so the
+      receipt is UNSEARCHABLE and carries the environment reason. It is emphatically
+      not a pass, and equally not a code FAIL -- conflating the two is how an
+      environment outage gets recorded as a clean gate.
+    * ``fail`` -> both dimensions are treated as examined (the compiler looked and
+      reported), the diagnostics are the problems, so the outcome is FAIL.
+    * ``pass`` -> examined = the dimensions actually looked at. Compile-only gives
+      1 of 2 and classifies UNREAD; a test run that really executed tests gives
+      2 of 2 and classifies PASS.
+
+    Returns the :class:`codeconv.receipts.Receipt`.
+    """
+    from codeconv.receipts import Target, emit  # local: keep the gate importable standalone
+
+    proj = str(project)
+    if result.status == NOT_BUILT:
+        return emit(
+            check_id=check_id, area=area,
+            target=Target(kind="path", identity=proj, resolved=False,
+                          unresolved_reason=result.reason or "build not attempted"),
+            examined_count=0, total_count=None,
+            run_id=run_id, root=root, write=write,
+        )
+
+    examined_dims = (
+        GATE_DIMENSIONS if result.status == BUILD_FAIL else result.dimensions_examined
+    )
+    examined, total = len(examined_dims), len(GATE_DIMENSIONS)
+    return emit(
+        check_id=check_id, area=area,
+        target=Target(kind="path", identity=proj, resolved=True),
+        examined_count=examined, total_count=total,
+        examined=list(examined_dims),
+        problems=list(result.errors),
+        run_id=run_id, root=root, write=write,
+    )
+
+
+__all__ += [
+    "DIM_BEHAVES",
+    "DIM_COMPILES",
+    "GATE_DIMENSIONS",
+    "emit_gate_receipt",
+    "gate_counts",
 ]

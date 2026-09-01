@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from codeconv.receipts.outcome import Outcome
 
+from .instances import register
 from .reference_check import run_reference_check
 
 
@@ -17,3 +18,6 @@ def test_suppressed_output_block_is_unread_not_zero(tmp_path):
     assert r.outcome is Outcome.UNREAD          # never read as "0 findings"
     assert r.total_count == 3 and r.examined_count == 0
     assert not r.outcome.is_successful
+    # SC-001: registration is the ONLY way this instance contributes to coverage,
+    # and it happens here, after the assertions, so importing the module proves nothing.
+    register(2, "test_suppressed_output_block_is_unread_not_zero: UNREAD at 0/3")

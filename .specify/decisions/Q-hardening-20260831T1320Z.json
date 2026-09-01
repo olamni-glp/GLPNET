@@ -11,7 +11,11 @@
       "kind": "ruling",
       "header": "Owner",
       "question": "HOST-INTERCONNECTIVITY-HARDENING is now grounded (RC-01..RC-10, FR-01..FR-11) and ready to leave Draft. It is fleet-wide and host-symmetric, and its fix composes buildkit-scheduler + bk-flow verbs whose home is the buildkit lane. But the grounding, census and 3rtask were done on glpnet (olamnit + shiras). Which lane OWNS the feature (drives specify->ship)?",
-      "blocks": ["feature promotion off Draft", "who runs /bk-specify", "REQUIREMENTS.crdt.md open Q-C"],
+      "blocks": [
+        "feature promotion off Draft",
+        "who runs /bk-specify",
+        "REQUIREMENTS.crdt.md open Q-C"
+      ],
       "escalate_after_hours": 24,
       "multi_select": false,
       "options": [
@@ -31,14 +35,25 @@
           "means": "shiras owns (only Linux host, ran the census, and branch 096-host-interconnectivity already exists).",
           "cost": "shiras is mid-rebase under gavriella's held-branch escalation; owning a fleet feature on top of that risks stalling both."
         }
-      ]
+      ],
+      "decision": {
+        "label": "buildkit lane owns",
+        "decided_by": "engineer",
+        "date": "2026-08-31",
+        "rationale": "Recorded ruling; written back from engineer-decisions.jsonl (answer='buildkit lane owns').",
+        "source": "engineer-decisions.jsonl"
+      }
     },
     {
       "id": "Q-hardening-02",
       "kind": "ruling",
       "header": "FR-03/r13",
       "question": "FR-03 (close the SCHED-R7 binding gap: a writer binds ready WPs to onboarded capability-fit actors) targets the SAME onboard!=allocate defect (RC-02/RC-07) as roadmap rank-13 'coordination-feature-stream-durable-superset-fix'. Is FR-03 the same deliverable, or a companion?",
-      "blocks": ["merge FR-03 into rank-13 or keep separate", "roadmap dedup", "REQUIREMENTS.crdt.md open Q-B"],
+      "blocks": [
+        "merge FR-03 into rank-13 or keep separate",
+        "roadmap dedup",
+        "REQUIREMENTS.crdt.md open Q-B"
+      ],
       "escalate_after_hours": 24,
       "multi_select": false,
       "options": [
@@ -53,14 +68,25 @@
           "means": "Keep FR-03 as a distinct membership/binding requirement under the hardening feature, with rank-13 as the durable-superset engine change.",
           "cost": "Two branches touch the same bind-writer path; risk of divergent partial fixes and merge coordination between them."
         }
-      ]
+      ],
+      "decision": {
+        "label": "Same - merge into rank-13",
+        "decided_by": "engineer",
+        "date": "2026-08-31",
+        "rationale": "Recorded ruling; written back from engineer-decisions.jsonl (answer='Same - merge into rank-13').",
+        "source": "engineer-decisions.jsonl"
+      }
     },
     {
       "id": "Q-hardening-03",
       "kind": "ruling",
       "header": "Release bar",
       "question": "I cut release v2026.08.31.1 this session per your directive (develop 43 ahead, carrying the codex-CONVERGED bkquestion patch, cycle-7 clean). gavriella-glpnet at 10:50Z assessed 'nothing qualifies for /bk-release here'. That is a real difference in the release bar. Which bar governs future /bk-release on glpnet?",
-      "blocks": ["future release cadence", "whether accumulated develop auto-qualifies", "cross-lane release consistency"],
+      "blocks": [
+        "future release cadence",
+        "whether accumulated develop auto-qualifies",
+        "cross-lane release consistency"
+      ],
       "escalate_after_hours": 48,
       "multi_select": false,
       "options": [
@@ -75,14 +101,31 @@
           "means": "Only a fully-implemented + codex-reviewed FEATURE qualifies (gavriella's bar). Fewer, more meaningful releases.",
           "cost": "develop drifts far ahead of main (it was 43 ahead) and reviewed hotfixes wait for a feature to ride out with them."
         }
-      ]
+      ],
+      "decision": {
+        "label": "Patch-level qualifies",
+        "decided_by": "engineer",
+        "date": "2026-08-31",
+        "rationale": "Recorded ruling; written back from engineer-decisions.jsonl (answer='Patch-level qualifies').",
+        "source": "engineer-decisions.jsonl"
+      },
+      "superseded_by": {
+        "set_id": "Q-GLPNETO16-20260901T0730Z",
+        "qid": "Q-GLPNETO16-01",
+        "date": "2026-09-01",
+        "reason": "Superseded by ruling Q-GLPNETO16-01 'Content bar, directive overrides', which resolves the three-way same-subject collision of 2026-08-31 and establishes fleet precedence. Cite this row; do not re-apply its bar."
+      }
     },
     {
       "id": "Q-hardening-04",
       "kind": "ruling",
       "header": "Next",
       "question": "The tidy-up namesake is done + released; the 3rtask is done; PR #251 (rootcause ledger) is open but its merge is classifier-blocked (needs your !-run). What should this marathon (mrun-76da6e46bd44, 24 items) do next?",
-      "blocks": ["marathon next action", "PR #251 merge", "M01/P03/D02/D03 sequencing"],
+      "blocks": [
+        "marathon next action",
+        "PR #251 merge",
+        "M01/P03/D02/D03 sequencing"
+      ],
       "escalate_after_hours": 24,
       "multi_select": false,
       "options": [
@@ -102,7 +145,14 @@
           "means": "Pause new work until you !-merge #251 and the 096 branch escalation resolves.",
           "cost": "Idles the lane on a classifier/other-lane dependency I cannot clear myself."
         }
-      ]
+      ],
+      "decision": {
+        "label": "Drive hardening to specify",
+        "decided_by": "engineer",
+        "date": "2026-08-31",
+        "rationale": "Recorded ruling; written back from engineer-decisions.jsonl (answer='Drive hardening to specify').",
+        "source": "engineer-decisions.jsonl"
+      }
     }
   ]
 }

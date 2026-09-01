@@ -11,7 +11,11 @@
       "kind": "ruling",
       "header": "078 gate",
       "question": "The 078 discharge gate refuses on 6 checklist items. I measured each: 2 are satisfied (codexreview run 20260828T004446Z is on disk, exit 0, 752s, and 078's finding arc converged 10 to 4 to 1 to 1; release v2026.08.28.1 is tagged on merge c9d32d90 with main and develop reconciled). 3 genuinely fail: implement is 4 of 66 tasks; there is no 078 retrospective among the 21 in .specify/retrospective; and SC-001 demands 13 named witnessed instances fault-injected, but the harness has 11 modules naming only instances 2 and 9 -- coverage is an anonymous tally, so faultinj 51/51 green does not demonstrate 13 of 13. 1 is satisfied at repo level only: a ship happened, but it shipped the repo while 078 stood at 4 of 66. How much of this gate do you want waived?",
-      "blocks": ["078 discharge", "078 era close", "the run's next stage transition"],
+      "blocks": [
+        "078 discharge",
+        "078 era close",
+        "the run's next stage transition"
+      ],
       "escalate_after_hours": 4,
       "multi_select": false,
       "options": [
@@ -31,14 +35,25 @@
           "means": "Leave the gate fully intact. Next session's first code task is the case-keyed 13-instance registry, mirroring what faultinj/conformance.py already does right with _CASES self-registration. Re-attempt discharge only once SC-001 is genuinely demonstrable.",
           "cost": "The two genuinely-satisfied items keep generating a refusal that is now known to be spurious, which trains the lane to read the gate's output as noise -- the same reflex-to-override defect flagged against the secret scanner."
         }
-      ]
+      ],
+      "decision": {
+        "label": "Waive 2+3, run close, hold 1+5+6",
+        "decided_by": "engineer",
+        "date": "2026-08-31",
+        "rationale": "Recorded ruling; written back from engineer-decisions.jsonl (answer='Waive 2+3, close, hold 1+5+6', an abbreviation of this label — sole match).",
+        "source": "engineer-decisions.jsonl"
+      }
     },
     {
       "id": "Q-GLPNETS12-02",
       "kind": "ruling",
       "header": "Two repos",
       "question": "55 of 078's 66 tasks carry a bk: prefix, meaning they belong to the buildkit repository, not glpnet. glpnet holds the spec, the contracts and a working reference implementation under codeconv/src/codeconv/receipts; buildkit is where the shipped receipts package is supposed to live and where 3rtask and codexreview run. Consequently manifest.py narrows FR-017's six declared areas to the five that are glpnet's, declaring 3rtask and codexreview buildkit-side. Two of Q-01's six checklist items reduce entirely to this. Where does 078 actually get finished?",
-      "blocks": ["Q-GLPNETS12-01 items 1 and 6", "078 implement", "FR-017 six-area adoption"],
+      "blocks": [
+        "Q-GLPNETS12-01 items 1 and 6",
+        "078 implement",
+        "FR-017 six-area adoption"
+      ],
       "escalate_after_hours": 8,
       "multi_select": false,
       "options": [
@@ -58,14 +73,24 @@
           "means": "Close 078 in glpnet as spec-only, transfer the entire feature to the buildkit lane, and consume the result here once shipped.",
           "cost": "Discards the working codeconv reference implementation and the four rounds of adversarial review already invested in it, and puts this lane's most-advanced feature on another lane's schedule."
         }
-      ]
+      ],
+      "decision": {
+        "label": "Split 11 / 55",
+        "decided_by": "engineer",
+        "date": "2026-08-31",
+        "rationale": "Recorded ruling; written back from engineer-decisions.jsonl (answer='Split 11 / 55').",
+        "source": "engineer-decisions.jsonl"
+      }
     },
     {
       "id": "Q-GLPNETS12-03",
       "kind": "ruling",
       "header": "Unbound ids",
       "question": "Ruling Q-GLPNETS11-02 said to link the 6 unbound pipeline feature ids. It cannot be executed as written: link and link --auto both return 'no new spec directories matched a promoted feature'. All six spec directories exist but no roadmap feature matches by slug or by basename -- 031-gleam-port-spike, 036-glp-gleam-baseline-program, 039-m2-0-verify-erlang-monitor-atomvm, 049-wave1-guard-link-acceptance, 050-full-gleam-combined, 060-wave3-full-gleam-chain. Five are gleam-related and the only gleam roadmap feature already holds one spec_path; 050 is under archive ruling Q-GLPNETS1-04 and must not be linked at all. Separately, 73 of 122 features carry no spec_path and can never bind by basename. reconcile therefore reports NOT-in-sync every round. What should happen to the six?",
-      "blocks": ["roadmap reconcile reaching in-sync", "Q-GLPNETS11-02 discharge"],
+      "blocks": [
+        "roadmap reconcile reaching in-sync",
+        "Q-GLPNETS11-02 discharge"
+      ],
       "escalate_after_hours": 24,
       "multi_select": false,
       "options": [
@@ -85,14 +110,24 @@
           "means": "Change nothing; keep the warning loud and revisit once the gleam workstream has an owner.",
           "cost": "Every reconcile round for the next fortnight ends NOT-in-sync, and each session spends effort re-establishing that this is known."
         }
-      ]
+      ],
+      "decision": {
+        "label": "Create five, archive 050",
+        "decided_by": "engineer",
+        "date": "2026-08-31",
+        "rationale": "Recorded ruling; written back from engineer-decisions.jsonl (answer='Create five, archive 050').",
+        "source": "engineer-decisions.jsonl"
+      }
     },
     {
       "id": "Q-GLPNETS12-04",
       "kind": "risk-acceptance",
       "header": "Held work",
       "question": "Ruling Q-GLPNETS11-01 was 'hold; peers rebase' for two peer branches: 095-shiras (21 commits) and 096-host-interconnectivity (4 commits). They were held deliberately because 096 carries rollForward latestFeature against Q-GLPNETS10-01, which set latestPatch fleet-wide, and both add the Directory.Build.props that Q-GLPNETS10-03 deprecates in favour of the root .targets. The ruling set an 8-hour escalation window. That window expired roughly three days ago and 25 commits of peer work remain stranded. Do you accept continuing to hold?",
-      "blocks": ["095-shiras merge", "096-host-interconnectivity merge"],
+      "blocks": [
+        "095-shiras merge",
+        "096-host-interconnectivity merge"
+      ],
       "expires_after_days": 7,
       "escalate_after_hours": 8,
       "multi_select": false,
@@ -113,7 +148,14 @@
           "means": "Merge both branches unmodified and let the fleet rulings be reconciled later.",
           "cost": "Knowingly lands two violations of standing fleet rulings Q-GLPNETS10-01 and Q-GLPNETS10-03, after which every host inherits a rollForward setting the fleet has already ruled against."
         }
-      ]
+      ],
+      "decision": {
+        "label": "Escalate, keep holding",
+        "decided_by": "engineer",
+        "date": "2026-08-31",
+        "rationale": "Recorded ruling; written back from engineer-decisions.jsonl (answer='Escalate, keep holding').",
+        "source": "engineer-decisions.jsonl"
+      }
     }
   ]
 }
