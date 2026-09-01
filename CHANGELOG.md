@@ -1,5 +1,36 @@
 ## [Unreleased]
 
+## [v2026.09.01.5] - 2026-09-01
+
+### Added
+- publish YX-YPM-1 DRAFT design requirements for the Yngenios Package Manager, evidenced by /bk-3rtask run 20260901T115008Z-3b05 (3 blind builders over pairwise-disjoint corpora, 115 cited claims, codex cross-provider Critic: 60 CONFIRM / 42 ESCALATE / 13 REFUTE, independence audit clean). GOVERNING FINDING: the 42 escalations share ONE root cause - ecosystem-specific BEHAVIOURS were being generalised into universal REQUIREMENTS - so /yx-ypm needs a SMALL universal core plus per-ecosystem selectable adapter policy, and .NET is the first ADAPTER not the template. Captured, scored (WSJF 2.46 / RICE 512) and promoted on the roadmap; implementation belongs in buildkit. Carries the round-62 roadmap export; the 20MB .import-refused.json delta is deliberately NOT carried - it is a regenerable refusal ledger and it was failing the push at HTTP 408
+- publish BK-CPM-1 DRAFT cross-ecosystem CPM CRDT schema (10 ecosystems) to the coop channel for ACK convergence, per engineer directive following ruling Q-shiras-36. Adds the BK-TAKT-1 cross-repo/cross-host era takt board over DuckLake, which surfaced 3 REAL lake defects: parquet type drift on repo across hosts (JSON vs VARCHAR, one file aborts a whole-kind scan), repo identity written as an absolute host path so GLPNET is 3 identities and cross-host comparison was impossible, and the token/tokens kind split. Fixes a stale net10.0 header comment in the generated runtime csproj that a peer lane vendors and reads
+- ENGINEER RULING Q-shiras-36 - adopt Central Package Management fleet-wide. Directory.Packages.props is now the single place a version exists; Version= stripped from 19 csproj (16 refs). Resolves 3 measured drifts (xunit 2.9.2/2.9.3, Test.Sdk 17.11.1/17.14.1, runner.visualstudio 2.8.2/3.1.4) to the higher version, bans floating versions, and sets CentralPackageVersionOverrideEnabled=false so a stray Version= is an ERROR not a silent override. Preconditions verified: 0 open PRs, 0 floating versions. Build evidence: 31/31 green. Also unblocks spec 080 per ruling Q-glpnetshiras-09 (UnifyFail) and adds the BK-TAKT-1 cross-repo/cross-host takt board
+- author 7 BK-STD-2 conformant engineer questions Q-GLPNETA16 from measured session blocks
+
+### Fixed
+- pin erlzmq to an immutable commit SHA - a branch ref floats and PASSES the version-string scan (ruling Q-GLPNETO19-02, amending Q-shiras-36)
+- two defects in my own board found by reading its output - section 3 grouped by the RAW repo path while displaying the NORMALISED name, so one repo appeared twice (yngenios 29+16 was really 47); and the section 7 token query was a plain string so its repo-normalisation placeholder was never interpolated and the query failed outright. Also records a FIFTH lake defect now visible: 106 token rows on shiras carry an EMPTY repo (30.9M tokens unattributable to any repo)
+- a malformed decision no longer hides an unanswered question - plus non-object entry, sentence-shape and legacy-format fixes, 17 regression tests
+- correct Q-GLPNETA16-04 - premise refuted mid-session, v2026.09.01.1 was cut and carries both the onrestart fix and this lane's roadmap commit
+
+### Changed
+- Merge PR #268 from olamni-glp/099-session14-postreboot-sweep: engineer question round (14 rulings), BK-STD-2 hardening + tests, board famine broken, .NET 11 fleet broadcast + correction
+- 4 further engineer rulings - engineer-applies skills patch, declare-then-allocate, two-tier release rule, ratify scores
+- requirements corpus for the 3 dimensions no prior 3rtask covered - 56 cited requirements, 48 CONFIRM / 6 engineer escalations / 2 REFUTE (run 20260901T130939Z-0f7a)
+- Merge PR #267 from olamni-glp/100-cpm-central-package-management: YX-YPM-1 design-requirements draft evidenced by 3rtask run 20260901T115008Z-3b05
+- manifest for the narrow /yx-ypm run - 3 slices over the uncovered dimensions (operator experience+diagnostics, governance+policy, performance+scale), all 25 sources of gavriella's prior run explicitly out of scope (ruling Q-GLPNETO19-01)
+- Merge remote-tracking branch 'origin/develop' into 099-session14-postreboot-sweep
+- CPM fixes one ecosystem's column - drift, unlocked transitives and floating git refs span all six (cn-20260901T122739-8568ab41); consolidated into buildkit roadmap feature yx-ypm-cross-ecosystem-package-manager (WSJF 2.62, RICE 1615, promoted)
+- ACK REVIEW + measured contribution to /yx-ypm v0.1 and CPM-CRDT v0.2-v0.4 - answers Q-YPM-1 (GLP) and Q-YPM-2 (AtomVM), the two rows addressed to this lane
+- Merge remote-tracking branch 'origin/develop' into develop
+- record engineer ruling Q-shiras-36 (adopt CPM fleet-wide after open PRs land; floating versions banned) + 3rtask manifest for the /yx-ypm requirements corpus
+- Merge PR #264 from olamni-glp/100-cpm-central-package-management: CPM adoption (ruling Q-shiras-36) + BK-CPM-1 CRDT draft + BK-TAKT-1 era takt board + spec 080 unblocked
+- Merge pull request #266 from olamni-glp/main
+- 8 engineer rulings recorded - keep-24h declaration, spec-path historical, bk-flow pilot, phase-closure-first, read-only on buildkit
+- record 2 engineer rulings Q-GLPNETA16-01/02 - declare ingest_ready_default, release-mine-and-broadcast
+- Merge remote-tracking branch 'origin/develop' into 099-session14-postreboot-sweep
+
 ## [v2026.09.01.4] - 2026-09-01
 
 ### Added
