@@ -1,5 +1,20 @@
 ## [Unreleased]
 
+## [v2026.09.02.1] - 2026-09-02
+
+### Fixed
+- section 4 'ALL REPOS ON ALL HOSTS' was a non-f triple-quoted string so {RN} was emitted literally and the fleet grid died with a Parser Error - the one section the engineer explicitly asked for; every sibling block already had the f prefix
+
+### Changed
+- round 66 - reconcile/import/reconcile/dedupe/export/sync; 0 dedupe groups
+- Merge remote-tracking branch 'origin/develop' into develop
+- 4 engineer rulings Q-GLPNETO20-01..04 resolving the /bk-3rtask escalations
+- SESSION 14 ADDENDUM - reboot verified 15/15 under pwsh 7 (5.1 gives THREE BOGUS parse errors on the BOM-less UTF-8 file - never test with powershell.exe); BK-STD-1 compliance corrected (ordered sitrep + takt read FROM the lake); CPM-CRDT fork settled on BK-CPM-1 with my own draft withdrawn first; BK-TAKT-1 section 4 fixed
+- WITHDRAW this lane's competing draft into BK-CPM-1 - the fleet had SEVEN live CPM-CRDT drafts and a seventh makes unanimity less reachable; contributed the measured content instead (GLP has no version concept incl. the alternative encodings a red-team proposed, the six ledger kinds, and the two constraints earned from the takt lake)
+- round 65 - reconcile/import/reconcile/dedupe/export/sync; 121 live features, 0 dedupe groups
+- round 63 - reconcile/import/reconcile/dedupe/export/sync; 21 epics/123 features/4048 journal lines, 0 dedupe groups, replay --verify OK
+- Merge pull request #270 from olamni-glp/main
+
 ## [v2026.09.01.5] - 2026-09-01
 
 ### Added

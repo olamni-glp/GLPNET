@@ -1,0 +1,188 @@
+[
+  {
+    "qid": "Q-GLPNETO20-01",
+    "header": "Policy risk",
+    "block": "The fleet's package-policy risk posture is undecided in two coupled places, and the /bk-3rtask Critic refused to choose because the choice is yours.",
+    "origin": "missing-requirement",
+    "severity": "critical",
+    "background": [
+      "ESCALATE 1 of 2: must 'no policy is bound to this scope' ever DENY, or only under an explicit deny-by-default opt-in? Kubernetes KEP-2579 retired PodSecurityPolicy citing that it 'fails closed in the absence of policy' and therefore 'can never be enabled by default'.",
+      "ESCALATE 2 of 2: when the policy service is UNREACHABLE, does /yx-ypm fail open, fail closed, or evaluate against the last cryptographically verified bundle and report its age? OPA's own degraded mode is last-known-good-and-say-so, and it refuses to activate a bundle failing signature verification.",
+      "These are one posture, not two: both answer 'what happens when the governance layer cannot speak'. Answering them apart is how a fleet ends up failing open in one path and closed in the other.",
+      "Measured relevance here: GLPNET is CPM-compliant (31/31 csproj, 0 carrying a Version=) but has ZERO packages.lock.json, so transitive resolution still floats - the governance layer is exactly where that gap would be caught.",
+      "The corpus gives the mechanism for every option but explicitly refuses to pick: it is a risk posture, not an evidence question."
+    ],
+    "impact_if_unanswered": "The /yx-ypm design cannot specify its degraded behaviour, and each lane will implement a different default - which is the PodSecurityPolicy failure repeated.",
+    "options": [
+      {
+        "key": "lastgood-and-declare",
+        "label": "Unbound never denies; unreachable uses last verified bundle and declares its age",
+        "consequence": "An unbound scope is reported as ungoverned but not blocked, and an unreachable policy service falls back to the last cryptographically verified bundle with its revision and age on every decision. Follows OPA's shipped degraded mode and avoids the PSP trap. Requires a coverage report so 'ungoverned' is visible rather than silent.",
+        "size": "mini",
+        "reversibility": "reversible"
+      },
+      {
+        "key": "fail-closed",
+        "label": "Fail closed on both: unbound denies, unreachable denies",
+        "consequence": "Nothing proceeds without live, bound policy. Maximum safety and the simplest rule to state. Forecloses working offline or air-gapped at all, and reproduces exactly the property that made PodSecurityPolicy impossible to enable by default across a heterogeneous estate.",
+        "size": "micro",
+        "reversibility": "one-way"
+      },
+      {
+        "key": "split-posture",
+        "label": "Unbound never denies; unreachable fails closed",
+        "consequence": "Absence of policy is treated as not-yet-governed, but loss of a policy service is treated as a fault and blocks. Defensible and stricter than the recommendation, at the cost that a mirror outage stops all dependency work even where a verified bundle is on disk.",
+        "size": "mini",
+        "reversibility": "reversible"
+      }
+    ],
+    "recommendation": {
+      "option": "lastgood-and-declare",
+      "because": "It is the only option that keeps the fleet working through an outage while never pretending policy was evaluated when it was not, and it is the posture the reference engine actually ships; failing closed on unreachable would halt every lane on a single mirror outage despite a verified bundle being present on disk."
+    },
+    "decision": {
+      "option": "lastgood-and-declare",
+      "date": "2026-09-01",
+      "rationale": "Keeps the fleet working through an outage while never pretending policy was evaluated; the posture the reference engine ships; avoids the PSP trap."
+    }
+  },
+  {
+    "qid": "Q-GLPNETO20-02",
+    "header": "Waiver scope",
+    "block": "The default scope of a package-policy waiver is undecided, and the width of that default decides whether waivers are surgical or silently disable whole rule families.",
+    "origin": "missing-requirement",
+    "severity": "high",
+    "background": [
+      "Sonatype IQ exposes waiver scopes Root Organization / Organization / Application and its own guidance is 'as a best practice, default to waiving just single components'.",
+      "Conftest documents the footgun directly: an exception listing an empty string matches 'all rules named deny or violation' - one blank field disables a rule family.",
+      "Snyk records reason and expires on each ignore, so the narrow form is expressible in shipped tools; nothing forces it to be the default.",
+      "The Critic refused this row because default scope and who may widen it are governance posture, not evidence admissibility."
+    ],
+    "impact_if_unanswered": "Waiver scope gets decided implicitly by whoever writes the first waiver, and a single wide exception can silently suppress a whole rule class fleet-wide.",
+    "options": [
+      {
+        "key": "narrow-default",
+        "label": "Narrowest by default: one package identity x one named rule; widening separately authorised",
+        "consequence": "A waiver covers exactly the package and rule that fired; widening to a rule class or an organisation scope is a distinct, separately authorised action. Narrow waivers multiply, which raises waiver count and review load - and that is the correct place to feel the cost.",
+        "size": "mini",
+        "reversibility": "reversible"
+      },
+      {
+        "key": "repo-default",
+        "label": "Repository-scoped by default",
+        "consequence": "One waiver covers a package across a whole repo, matching how most teams actually think about a dependency decision. Fewer records to manage, at the cost that a rule suppressed for one justified reason stays suppressed for every future occurrence in that repo.",
+        "size": "micro",
+        "reversibility": "reversible"
+      },
+      {
+        "key": "author-chooses",
+        "label": "No default; the author must state a scope explicitly every time",
+        "consequence": "Forces a conscious scope decision on every waiver with no silent width. Maximum deliberation, and it forecloses any quick waiver at the moment an operator is already blocked - which is precisely when people disable the check entirely instead.",
+        "size": "micro",
+        "reversibility": "reversible"
+      }
+    ],
+    "recommendation": {
+      "option": "narrow-default",
+      "because": "Both shipped governance products that were measured converge on narrowest-by-default, and the documented failure mode is width rather than volume; the extra review load it creates is a visible cost, whereas an over-wide waiver is an invisible one."
+    },
+    "decision": {
+      "option": "narrow-default",
+      "date": "2026-09-01",
+      "rationale": "Both measured products converge on narrowest-by-default; documented failure mode is width, not volume; review load is a visible cost, an over-wide waiver an invisible one."
+    }
+  },
+  {
+    "qid": "Q-GLPNETO20-03",
+    "header": "Unknown lic",
+    "block": "A dependency whose licence the tool cannot resolve currently has no verdict that a policy can act on, and choosing one is a governance decision the Critic refused to make.",
+    "origin": "contradiction",
+    "severity": "high",
+    "background": [
+      "GitHub's dependency-review-action cannot block an unresolvable licence at all: issue #732 records 'There's no way to block an unknown license', allow-licenses and deny-licenses cannot be combined, and it was closed as not planned.",
+      "Issue #612 shows the loss is an artefact of the uniform layer, not the package: the Dependency Graph API returns a null source_repository_url, so no Licences API call is made and the licence reads Unknown even though the upstream repository carries a valid one.",
+      "This is the sharpest measured instance of a cross-ecosystem abstraction losing native metadata and, lacking a third verdict, silently converting the loss into an ALLOW.",
+      "Google's own regime treats an unlisted licence as requiring approval 'for each usage', explicitly refusing to let one approval generalise.",
+      "The tool half is settled and uncontroversial: emit 'undetermined' as a distinct verdict. What is NOT settled is what policy may then do with it."
+    ],
+    "impact_if_unanswered": "The uniform layer keeps admitting packages whose licence it never actually resolved, and reports them as compliant.",
+    "options": [
+      {
+        "key": "deny-waiverable",
+        "label": "Undetermined is deniable, and the denial is waiverable per usage",
+        "consequence": "Policy may deny on undetermined, and an operator clears it with a scoped, expiring, per-usage waiver carrying a reason. Closes the silent-allow hole while keeping a path forward. Will block legitimate packages whose metadata the abstraction merely failed to carry, so waiver friction lands on the tool's own gaps.",
+        "size": "mini",
+        "reversibility": "reversible"
+      },
+      {
+        "key": "warn-only",
+        "label": "Undetermined warns and is reported, but never blocks",
+        "consequence": "The gap becomes visible in every report and on a coverage dashboard without stopping any work. No false blocks, and it forecloses ever enforcing a licence policy with confidence, since the unresolvable set is exactly where a prohibited licence would hide.",
+        "size": "micro",
+        "reversibility": "reversible"
+      },
+      {
+        "key": "deny-hard",
+        "label": "Undetermined always denies, no waiver",
+        "consequence": "Nothing enters the estate with an unknown licence, full stop. Strongest guarantee, and it forecloses any path forward for a team hit by the tool's OWN metadata-resolution defect: the dependency-review-action #612 case, where a valid upstream licence reads Unknown purely because the API returned a null source_repository_url, would be unresolvable by the affected team and would block them indefinitely.",
+        "size": "micro",
+        "reversibility": "one-way"
+      }
+    ],
+    "recommendation": {
+      "option": "deny-waiverable",
+      "because": "It removes the silent allow that the measured evidence shows is the real defect, while keeping the escape hatch bounded and attributable; a hard deny would punish teams for the abstraction's own resolution failures, and warn-only leaves the exact blind spot a licence policy exists to cover."
+    },
+    "decision": {
+      "option": "deny-waiverable",
+      "date": "2026-09-01",
+      "rationale": "Removes the silent allow that is the real measured defect while keeping the hatch bounded and attributable."
+    }
+  },
+  {
+    "qid": "Q-GLPNETO20-04",
+    "header": "Deprecate",
+    "block": "Whether a deprecated internal library may keep serving its existing dependents while refusing new ones is a policy posture the Critic escalated rather than adopt from practice.",
+    "origin": "assumption-weakness",
+    "severity": "medium",
+    "background": [
+      "Software Engineering at Google Ch.15 records that advisory deprecation without enforcement rarely drives migration ('Hope is not a strategy'), and that visibility whitelists preventing FRESH dependencies are what stop deprecation becoming 'whack-a-mole'.",
+      "The same chapter records the precondition: 'Without explicit owners, a deprecation process is unlikely to make meaningful progress'.",
+      "The asymmetric rule needs an accurate existing-dependents set, which the tool must COMPUTE rather than assume - and in a cross-ecosystem estate that set spans six manifest formats in this repo alone.",
+      "The alternative postures are a hard cutover (existing dependents break) or advisory-only (the documented failure)."
+    ],
+    "impact_if_unanswered": "Deprecation stays advisory by default, the dependent set keeps growing while a library is nominally being retired, and no lane can cite a rule when refusing a new dependency.",
+    "options": [
+      {
+        "key": "asymmetric",
+        "label": "Refuse new dependents, let existing ones keep building, owner attributed",
+        "consequence": "New uptake stops immediately while nothing in flight breaks, and every deprecation names a responsible owner. Requires the tool to compute an accurate existing-dependents set across all ecosystems, and a wrong set either breaks a build or leaks a new dependency.",
+        "size": "midi",
+        "reversibility": "reversible"
+      },
+      {
+        "key": "advisory",
+        "label": "Warn on every use, refuse nothing",
+        "consequence": "Zero breakage risk and no dependent-set computation needed. This is precisely the posture the cited chapter records as rarely driving migration, so deprecations would accumulate without completing.",
+        "size": "nano",
+        "reversibility": "reversible"
+      },
+      {
+        "key": "hard-cutover",
+        "label": "Refuse all uses after a stated date",
+        "consequence": "A deprecation genuinely completes on a known date and the dependent set stops mattering. Forecloses any migration tail: every existing dependent must be migrated before the date or its build stops, and the cited evidence is that migration tails are long and owner-dependent.",
+        "size": "mini",
+        "reversibility": "one-way"
+      }
+    ],
+    "recommendation": {
+      "option": "asymmetric",
+      "because": "It is the only option that both stops new uptake and avoids breaking work in flight, and the cited practice attributes deprecation failure specifically to the absence of that enforcement; its cost is an accurate dependent set, which a package manager must be able to compute anyway."
+    },
+    "decision": {
+      "option": "asymmetric",
+      "date": "2026-09-01",
+      "rationale": "Only option that stops new uptake without breaking work in flight; cited practice attributes deprecation failure to the absence of that enforcement."
+    }
+  }
+]
