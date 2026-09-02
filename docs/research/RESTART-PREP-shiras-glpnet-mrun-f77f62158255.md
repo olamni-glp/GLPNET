@@ -17,6 +17,113 @@
 
 ---
 
+## 0 · ENGINEER DIRECTIVE 2026-09-02 (post-reboot) — NEXT ERA AFTER S1
+
+> Verbatim intent: run `/yx-bootmig` inside `/bk-marathon` **to full completion** in the
+> next era; **fully replicate OLAMNIT assistant capability, fully tested headful AND
+> headless, without corrupting the YNGENIOS multilayer (L0/L1/L2...) separation.**
+> Marked by the engineer as mandatory/critical/urgent.
+
+**Measured on SHIRAS 2026-09-02T18:1xZ (this host's vantage — the programme had only
+GAVRIELLA's until now):**
+
+| root | skill says | measured HERE |
+|---|---|---|
+| yngenios (target+L0) | D:/BSTDEV/research/yngenios | GIT, 2884 tracked |
+| qhstate (source) | 3,983 tracked | GIT, 4314 |
+| olamnit (source) | 2,970 tracked | GIT, 3212 |
+| buildkit (source) | 5,736 tracked | GIT, 6159 |
+| glpnet (source) | `D:/BSTDEV/research/GLP/glpnet` | **THAT PATH IS ABSENT HERE**; real root `research/crucible/glp/GLPNET`, 8114 tracked |
+| yngenios-windows | "absent — lane slug, not a root" | **GIT, 5149 tracked — PRESENT** |
+| yngenios-linux | "absent — lane slug, not a root" | **GIT, 1010 tracked — PRESENT** |
+| yngenios-app | "absent — lane slug, not a root" | **GIT, 1686 tracked — PRESENT** |
+| olamnit-assistant | git repo, 0 tracked (decoy) | ABSENT here |
+
+So **SKILL PRECONDITION 3 IS FALSE ON THIS HOST.** All four targets are real git repos on
+SHIRAS. That precondition was a one-vantage GAVRIELLA measurement and the skill's own
+"Honest limits" section says SHIRAS was unmeasured. It is measured now.
+
+**SKILL PRECONDITION 1 (P0, L3/L4 undefined) IS ALSO STALE.** `yngenios/docs/architecture/
+LATTICE.md` Amendment 1.1 (feature 018, 2026-08-03) publishes a TOTAL legacy map:
+L0→L0, "L1 workstation/server"→L1a **and** L1b, L2→L2, L3→L3, and **"L4" is NOT A RING**
+(legacy packaging shorthand, covered by DEC-PUBLISH-1). `specs/008-yx-bootmig-base/tasks.md`
+states plainly: *"P0 is discharged and P2 has landed."*
+
+🔴 **The engineer's own constraint has a normative form — use it, do not paraphrase it.**
+LATTICE.md hard invariant: **L1a and L1b are SIBLINGS and MUST NOT share; anything they both
+need belongs in L0.** Plus: L0 is byte-exact verbatim source (consumers hash-verify against
+`L0/MANIFEST.sha256`); L0 is algorithmic core ONLY, zero platform actions; L3 is never
+referenced upward. "Without corrupting the multilayer separation" = these invariants.
+
+### THREE RECORDED RULINGS STAND BETWEEN THIS LANE AND "FULL COMPLETION"
+
+1. **`Q-ERAOWN-01` — the owning lane is `olamnit` @ OLAMNIT**, not glpnet/shiras
+   (`yngenios/specs/008-yx-bootmig-base/spec.md:10`).
+2. **`Q-SCOPE-05` (2026-09-01) — "decompose to tasks, implement none in this lane."**
+3. **`Q-ERASTAGE-03` — "fix the sidecar before tagging eras… do not tag an era that cannot
+   record its own stages."** Escalated to the buildkit lane.
+4. **FR-2 / P3 gate — `scope-manifest.json` is `"complete": false`**; its
+   `layer_2_content_predicate` is *NOT COMPUTABLE*. **No P3 manifest ⇒ no P4 migration.**
+   P4 is where the actual olamnit→target copying lives.
+
+### WHY THIS LANE'S S1 WORK IS THE UNBLOCK, NOT A DETOUR
+
+`Q-ERASTAGE-03` blocks yx-bootmig eras on a defect this lane has now PROVEN end to end
+(see §7). Fixing stage recording is the gate to any taggable yx-bootmig era, so S1 and the
+engineer's directive are the same critical path — S1 first is not a delay, it is the
+precondition.
+
+**The capability the directive names is locatable**: the olamnit repo (roadmap id
+`olamnit-assistant`) carries `specs/005-headless-claude-code-shell-host`,
+`specs/019-headless-agent-terminal`, `specs/061-wasm-shell-console-agent-poc` and
+`docs/headless-agent-terminal.md` — headful/headless is already specified there.
+
+**OPEN — needs the engineer, once:** whether to override `Q-ERAOWN-01` and run the P4 eras
+from glpnet/shiras, or to file this host's vantage evidence + the stage-recording fix to the
+owning olamnit lane and let it drive P4.
+
+---
+
+## 7 · S1 / Q-19 ROOT CAUSES — PROVED 2026-09-02, DO NOT RE-DERIVE
+
+**Q-19 "why do era stages never persist?" — they were never written.**
+
+- The era ladder (`marathon/takt.py:current_era_actuals`) is built from marathon run STEPS.
+- `step_start`/`checkpoint` require a step that ALREADY EXISTS —
+  `_require_step` (`marathon/checkpoint.py:29-34`).
+- The only minting path is `expand --item <id> --steps "a,b,c"` (`marathon/intake.py:67`).
+- All nine stage command templates exist (2,513 lines total) and **not one mentions
+  `marathon`**: specify 442, clarify 297, plan 228, tasks 269, analyze 307, implement 263,
+  buildkit-codexreview 308, buildkit-ship 234, buildkit-close 165 — `marathon` count = 0 in
+  every one. Only `buildkit-marathon.md` and `constitution.md` mention expand/step-start.
+- **DIRECT PROOF**: `buildkit-marathon step-start --step specify` on this run returned
+  `{"error": "no step 'specify' in run mrun-f77f62158255", "exit_code": 1}`.
+  Not lost in transit — never minted.
+
+**S1 "scheduler dispatch leaks at all three transitions" — all three omit `phase`.**
+`board_phase_seconds` (`marathon/takt.py`) documents it skips them: *"Ops with no phase are
+skipped, not attributed."*
+
+| # | transition | writer | phase |
+|---|---|---|---|
+| 1 | backlog→ready | `scheduler/engine/daemon/readiness.py:126-136` (`confirm_op`) | absent |
+| 2 | →claimed | `scheduler/engine/daemon/onboard.py:285-292` | absent |
+| 3 | claimed→in-progress | `flow/__main__.py:866-870` | absent |
+
+Transition 3 is the sharpest: `flow/__main__.py:890` DOES pass `phase="implement"` — but to
+`_takt_emit` (the takt lake), a DIFFERENT sink. The ops-log record written 20 lines earlier
+carries no phase. The only writer that sets `record["phase"]` is `allocate_writer.py:472`.
+
+**Q-24 measured live:** the first `step-start` failed *while holding `bk-heavy-lock`'s
+registry lock*, because PID 34816 (`buildkit-codexreview`, another lane) ran WITHOUT the
+wrapper. An advisory wrapper only serialises the lanes that use it.
+
+**Q-22 DISCHARGED**: host rebooted 17:17:29; env is canonical; 32 orphan takt files rsynced
+(`--ignore-existing`, 0 overwritten) into `/mnt/biwin/D_DRIVE/_takt-lake`, 1047→1079,
+0 orphans remaining.
+
+---
+
 ## 1 · What "resume marathon" must do first
 
 ```bash
