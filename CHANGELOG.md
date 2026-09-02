@@ -1,5 +1,30 @@
 ## [Unreleased]
 
+## [v2026.09.02.2] - 2026-09-02
+
+### Added
+- BK-STD-4 two-tier release bar per Q-GLPNETA16-04; roadmap round 63 import+reconcile+dedupe+export+sync
+
+### Fixed
+- repair script for P0 co #964 - 3 host=ariellas era parquet files type size as JSON and break the strict fleet union read; roadmap round 64
+- name the TRUE failure cause, not an advisory stderr line. Several buildkit CLIs write their real error to STDOUT as JSON while stderr carries only chatter, so a registry-contention failure rendered as 'engine resolution degraded: pin mirror absent' when stdout actually said 'the machine registry is busy, pgdb/.lock held by PID N'. Same defect class this file's own header records for the engine-override banner: the generator naming a symptom it saw rather than the cause the child reported. Structured stdout error is now preferred over stderr
+
+### Changed
+- Merge pull request #276 from olamni-glp/099-session14-postreboot-sweep
+- Merge remote-tracking branch 'origin/develop' into develop
+- rulings Q-GLPNETO21-01..02 - cut under BK-STD-4 directive override with receipt; cache telemetry default-on with --quiet/non-TTY suppression
+- rev9 - co #964 repair blocked on engineer, 17 rulings, next three single-feature eras decided, takt magnitudes withdrawn
+- Merge pull request #275 from olamni-glp/099-session14-postreboot-sweep
+- 3 further rulings Q-GLPNETA16-10/11/12 - no yx-ypm pen, file takt write-path upstream, first three single-feature eras are the implemented trio
+- Merge PR #274 from olamni-glp/100-cpm-central-package-management: bk-report-v1 names the TRUE failure cause, not an advisory stderr line
+- Merge pull request #273 from olamni-glp/099-session14-postreboot-sweep
+- Merge pull request #272 from olamni-glp/main
+- Merge remote-tracking branch 'origin/develop' into 099-session14-postreboot-sweep
+- rev8 9B - reboot relaunch re-measured 15/15 via pwsh 7; record the 5.1-parse-failure trap
+- rev8 - 14 rulings taken, board famine broken, BK-STD-4 authored, 150 ACKs; three ruled-but-unexecuted items declared
+- Merge remote-tracking branch 'origin/develop' into 099-session14-postreboot-sweep
+- untrack .import-refused.json - a regenerable projection, per peer ruling Q-REFUSEREG-01; .gitignore:86 was inert because the file was tracked
+
 ## [v2026.09.02.1] - 2026-09-02
 
 ### Fixed
