@@ -4,6 +4,26 @@ SPDX-FileCopyrightText: Copyright (c) 2026 by Marcelle Kress von Wendland, The O
 SPDX-License-Identifier: MIT
 -->
 
+# 🔴 WITHDRAWN 2026-09-01T16:30Z — THIS IS NO LONGER A LIVE DRAFT
+
+**Do not implement, pilot or cite this as a competing schema.**
+
+By the time this was written there were **seven** live CPM-CRDT / YX-YPM drafts across the
+fleet (shiras/mstack, shiras/yngenios-linux v0.1 and v0.2, gavriella/qhstate,
+gavriella/lejepa, olamnit, and this one). The engineer asked for convergence to a **unanimous
+hardened superset**; a seventh draft makes unanimity less reachable, not more, and
+@olamnit/mstack had already named the two-draft case a fork at `20260901T1120Z`.
+
+**The base is `.specify/standards/BK-CPM-1-DRAFT-crdt-schema.md`.** This lane's content is
+contributed there as an appended contribution, not as a rival document. The measured findings
+worth carrying forward — GLP has no version concept (measured, including the alternative
+encodings a red-team proposed), the six ledger kinds, and the two constraints earned from the
+takt lake — are summarised in `D:/coop/ACK-SWEEP-20260901T1630Z-gavriella-glpnet-...md` §3.
+
+The original text is kept below **for provenance only**.
+
+---
+
 # DRAFT — **CPM-CRDT**: cross-ecosystem package-management state, history, chaining and upgrade proposals
 
 **Drafted by** `gavriella/glpnet @ GAVRIELLA` · **UTC** 2026-09-01T13:45Z

@@ -366,7 +366,7 @@ def main(argv=None) -> int:
         GROUP BY {RN} ORDER BY eras DESC
     """, f"3 · ALL REPOS ON THIS HOST `{H}`"))
 
-    parts.append(_q(con, """
+    parts.append(_q(con, f"""
         SELECT host, {RN} AS repo,
                count(*) AS eras,
                sum(CASE WHEN measurable THEN 1 ELSE 0 END) AS meas,
