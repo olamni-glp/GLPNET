@@ -568,6 +568,12 @@
       "option": "close-implemented-first",
       "date": "2026-09-02",
       "rationale": "Engineer ruling 2026-09-02: the first three single-feature eras are verification-receipts, madglp-writer-reader-address-discipline and qr-link-provisioning - each ship+close only, each ending in a branch/worktree tidy-up, each qualifying a MINOR release under BK-STD-4."
+    },
+    "superseded_by": {
+      "set_id": "Q-GLPNETA17-20260902T1540Z",
+      "qid": "Q-GLPNETA17-01",
+      "date": "2026-09-02",
+      "reason": "SUPERSEDED for feature 078 and for the era ORDER it set. Q-GLPNETS15-02 (gavriella-glpnet, 2026-09-02T14:20Z) is later and assigns 078 to gavriella-glpnet; its 'ship + close only' premise is falsified by 8 unresolved HIGH findings. Era 1 for ariellas-glpnet is now 079 (Q-GLPNETA17-02). Retrospective effect (BK-STD-3 rule 5): nothing was executed under the displaced assignment, so there is nothing to re-open."
     }
   }
 ]
