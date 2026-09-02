@@ -430,44 +430,144 @@
   {
     "qid": "Q-GLPNETA16-10",
     "header": "Takt schema",
-    "block": "The cross-repo cross-host takt board you asked for cannot be built yet, because no schema exists for it and the three candidate stores disagree on partitioning, writers and freshness",
+    "block": "The cross-repo cross-host takt board cannot start here, and the reason has changed from 'no schema exists' to 'three lanes now own the pieces while the substrate is measurably broken'",
     "origin": "missing-requirement",
     "severity": "high",
     "background": [
-      "You directed a takt board comparing this repo across hosts, all repos on this host, and all repos on all hosts, built from DuckLake queries, over a NEW cross-repo cross-host CRDT-designed schema agreed before piloting and then consolidated via bk-codify into one buildkit roadmap feature.",
-      "Three stores exist today and none spans that scope: the fleet takt lake at I:/coop/_takt-lake (753 records for this host, 13 of 135 steps measurable), each repo's local co-lake (this repo holds 1202 parquet files, 1200 observations, ZERO rows matching takt), and the per-repo marathon mirror.",
-      "Two partitioning defects are already on the fleet record: gavriella published that the takt lake write and read halves used DIFFERENT partitions so every emit-tokens row was invisible, and separately corrected a false zero to four writers after first reporting two.",
-      "This host has just declared a 24h working day under Q-GLPNETA16-09 while peers are re-declaring real working days under Q-CAPACITY-01, so a naive cross-host comparison would read ariellas as three times faster than a peer doing identical work.",
-      "The roadmap already carries takt-and-token-persistence-to-ducklake, promoted and scored this session at WSJF 4.8 RICE 2800, whose whole subject is making takt lake-sourced — so a second artefact risks duplicating a feature that exists.",
-      "The engineer's own standing rule is that the schema is AGREED cross-repo cross-host BEFORE piloting, which means at least one peer lane must accept it before any writer emits a row."
+      "REVISED 2026-09-02T06:05Z: the original premise (no schema exists) is refuted — the roadmap already carries cross-repo-cross-host-era-takt-crdt-hardened, PROMOTED, WSJF 3.00 RICE 3600, in the Fleet-interconnectivity epic, captured by a peer.",
+      "gavriella/glpnet ruled at 2026-09-02T06:20Z that BK-CPM-1 IS THE BASE and all other CPM-CRDT drafts WITHDRAW and APPEND, so no new schema may be minted here.",
+      "gavriella/yngraw ruled Q-YPMPEN-19: nominate ONE pen for the yx-ypm tool track, which makes a fourth lane picking up a pen the duplication that ruling exists to stop.",
+      "The substrate is broken in two independent, separately-discovered ways: P0 co #964 (3 host=ariellas parquet files type `size` as JSON and break the strict union read) and ospark's finding that takt_lake.query() returns the whole lake for a feature filter and silently drops 36 percent of rows.",
+      "Both defects produce a confident wrong number rather than an error, which is the failure class this fleet has now hit three times in three days.",
+      "This host has separately declared a 24h working day under Q-GLPNETA16-09 while peers declare real working days, so any cross-host comparison without a mandatory capacity-declaration field reads ariellas as roughly three times faster than a peer doing identical work."
     ],
-    "impact_if_unanswered": "Either a fourth incompatible takt schema is minted on top of three that already disagree, or the comparative board is built from the existing partitions and silently compares a 24-hour host against 8-hour hosts as though the numbers meant the same thing.",
+    "impact_if_unanswered": "Either a fourth lane picks up a pen that Q-YPMPEN-19 asked to be held by one, or a comparative board is built on a substrate with two proven read-path defects and no capacity declaration.",
     "options": [
       {
-        "key": "design-then-agree",
-        "label": "Author the schema here, circulate for peer agreement, pilot only after an ACK",
-        "consequence": "This lane writes the CRDT schema and layout plan as a design document, publishes it for cross-host agreement with the capacity-declaration field made mandatory so a 24h host can never be silently compared against an 8h one, and emits no row until at least one peer ACKs; the comparative board you asked for does not exist until that ACK arrives, which is asynchronous.",
-        "size": "midi",
-        "reversibility": "reversible"
-      },
-      {
-        "key": "fold-into-existing",
-        "label": "Fold it into the existing promoted takt feature rather than minting a new one",
-        "consequence": "The cross-repo cross-host scope is added to takt-and-token-persistence-to-ducklake, which is already promoted and scored, so the fleet gets one feature instead of two and the duplicate-detection problem never arises; it widens an already-midi feature and delays the part of it that is purely local persistence.",
+        "key": "fix-substrate-contribute-no-pen",
+        "label": "Fix the substrate first, contribute, do not pen",
+        "consequence": "This lane lands the co #964 repair, appends its cross-host requirements — chiefly a mandatory capacity-declaration field so a 24h host is never silently compared against an 8h host — to the peer-owned roadmap feature and to BK-CPM-1, and does not bid for the pen; the comparative board arrives later and is owned by whoever holds the pen.",
         "size": "mini",
         "reversibility": "reversible"
       },
       {
-        "key": "pilot-first",
-        "label": "Pilot a board from the existing lake now, agree the schema after",
-        "consequence": "A comparative board is produced this session from the 753 existing records so you can see something concrete immediately; this forecloses the agree-before-pilot rule you set in the same instruction and forecloses an honest comparison, because the existing partitions carry no capacity declaration and this host's 24h day would be compared directly against peer working days.",
+        "key": "take-the-pen",
+        "label": "This lane takes the pen for the takt board",
+        "consequence": "ariellas/glpnet owns the cross-host takt CRDT feature end to end, concentrating the work in the lane that found co #964 and holds the 24h edge case; it contradicts Q-YPMPEN-19 unless you nominate this lane explicitly.",
+        "size": "midi",
+        "reversibility": "reversible"
+      },
+      {
+        "key": "pilot-now",
+        "label": "Build the comparative board now from the existing lake",
+        "consequence": "A cross-host board is produced this session from the 912 era files so figures exist immediately; this forecloses the agree-before-pilot rule set in the same instruction and forecloses an honest comparison, because the lake carries two proven read-path defects and no capacity-declaration field.",
         "size": "micro",
         "reversibility": "one-way"
       }
     ],
     "recommendation": {
-      "option": "design-then-agree",
-      "because": "You explicitly required agreement before piloting, and the one measured hazard that would make the board actively misleading — this board's just-declared 24h day against peers' real working days — is only fixed by a mandatory schema field, which is exactly what a design pass produces and what piloting from the existing lake would skip."
+      "option": "fix-substrate-contribute-no-pen",
+      "because": "Two proven read-path defects mean any board built today reports confident wrong numbers, and a fourth lane picking up a pen after Q-YPMPEN-19 explicitly asked for one is exactly the duplication that ruling exists to prevent."
+    },
+    "decision": {
+      "option": "fix-substrate-contribute-no-pen",
+      "date": "2026-09-02",
+      "rationale": "Engineer ruling 2026-09-02: land the co #964 repair, append cross-host requirements (mandatory capacity-declaration field) to the peer-owned roadmap feature and to BK-CPM-1, and do NOT bid for the yx-ypm pen per Q-YPMPEN-19."
+    }
+  },
+  {
+    "qid": "Q-GLPNETA16-11",
+    "header": "Takt writer",
+    "block": "The takt lake has a second write path that does not enforce the phase vocabulary, and no lane can close it because the fix is buildkit code",
+    "origin": "measurement",
+    "severity": "high",
+    "background": [
+      "Measured 2026-09-02: buildkit-scheduler takt-tokens REFUSES a free-text phase at the CLI, accepting only specify, clarify, plan, tasks, analyze, implement, codexreview, ship, close and other.",
+      "Yet the lake carries 2,906 rows reported as (unphased) plus dozens of free-text phases including 3rtask, ack-sweep, coop-broadcast, era-ladder and board-root-pin — none of which this verb would have accepted.",
+      "Therefore a second writer exists that does not enforce the vocabulary; the rows are evidence of the writer, not of the taxonomy.",
+      "shiras ruled S51 to extend the canonical takt phase vocabulary, citing 2974 of 4088 rows, which treats the same evidence as a taxonomy gap.",
+      "This lane is READ-ONLY on buildkit by ruling Q-GLPNETA15-02, so it cannot close the writer itself."
+    ],
+    "impact_if_unanswered": "The fleet extends a vocabulary to legalise rows whose writer is still unenforced, and every later takt reader keeps inheriting phases that no CLI would accept.",
+    "options": [
+      {
+        "key": "file-upstream",
+        "label": "File it upstream as a write-path defect, citing S51",
+        "consequence": "This lane files a buildkit defect carrying the reproduction — the CLI refuses free text, the lake contains free text, therefore a second writer exists — and frames S51's vocabulary extension as necessary but not sufficient; it stays inside the read-only ruling and the fix waits on the buildkit lane's queue.",
+        "size": "nano",
+        "reversibility": "reversible"
+      },
+      {
+        "key": "scoped-write",
+        "label": "Scoped write grant to close the second writer",
+        "consequence": "This lane gets a named-branch write into buildkit to locate and gate the second write path, which is the fastest route to an actually-enforced vocabulary; it reopens the buildkit-writer question just closed as read-only and adds a concurrent writer to a repo whose develop is currently RED.",
+        "size": "midi",
+        "reversibility": "reversible"
+      },
+      {
+        "key": "adopt-s51",
+        "label": "Adopt the vocabulary extension and move on",
+        "consequence": "The free-text phases are treated as legitimate and the canonical list is extended to cover them, which unblocks reporting immediately; this forecloses ever knowing which writer produced a row, because every phase string becomes legal by definition.",
+        "size": "micro",
+        "reversibility": "one-way"
+      }
+    ],
+    "recommendation": {
+      "option": "file-upstream",
+      "because": "The diagnosis is the valuable part and it is cheap to publish, whereas extending a vocabulary without closing the writer leaves the fleet believing a taxonomy fix closed an enforcement hole."
+    },
+    "decision": {
+      "option": "file-upstream",
+      "date": "2026-09-02",
+      "rationale": "Engineer ruling 2026-09-02: file the second-write-path defect to buildkit with the reproduction, citing S51 as necessary-but-not-sufficient. This lane stays READ-ONLY per Q-GLPNETA15-02."
+    }
+  },
+  {
+    "qid": "Q-GLPNETA16-12",
+    "header": "Era pick",
+    "block": "Single-feature eras cannot begin, because the selection rule is unstated and the three available orderings each nominate a different feature",
+    "origin": "missing-requirement",
+    "severity": "high",
+    "background": [
+      "Engineer directive 2026-09-01: all future eras are SINGLE-FEATURE eras burning down the roadmap one at a time, each ending in ship, close and a branch/worktree tidy-up.",
+      "Measured on the current signed fold: 28 open, 94 closed, 122 features total.",
+      "Ordering (a) — BK-REPORT-v1's own derived recommendation nominates front-end-goal-term-acceptance-completeness at rank 21, WSJF 3.60.",
+      "Ordering (b) — the highest WSJF among open features is bk-onrestart-per-host-configurable at 7.00 and RICE 5400, already specified and largely delivered this week, but it overlaps a promoted duplicate that dedupe's id-stem and title strategies did not catch.",
+      "Ordering (c) — three features are already in state implemented and need only ship and close: verification-receipts WSJF 7.80, madglp-writer-reader 5.33, qr-link-provisioning 4.00.",
+      "Under BK-STD-4 shipping an implemented feature is the only thing that qualifies a MINOR release, and the marathon's own next step W11 is Udi-blocked so it cannot be the era."
+    ],
+    "impact_if_unanswered": "The first single-feature era cannot be opened at all, and three features that are already implemented stay unshipped while new work starts ahead of them.",
+    "options": [
+      {
+        "key": "close-implemented-first",
+        "label": "Close out the three implemented features first",
+        "consequence": "Three short single-feature eras run over verification-receipts, madglp-writer-reader and qr-link-provisioning, each needing only ship and close, each ending in a tidy-up and each producing a MINOR-qualifying release; it defers all new build work by three eras.",
+        "size": "mini",
+        "reversibility": "reversible"
+      },
+      {
+        "key": "follow-report",
+        "label": "Follow BK-REPORT-v1's derived recommendation",
+        "consequence": "front-end-goal-term-acceptance-completeness becomes the next era using the tool's own derivation rather than a hand-picked order, which is defensible and automatic; it starts a specify-to-close era from scratch while three nearly-done features stay unshipped.",
+        "size": "midi",
+        "reversibility": "reversible"
+      },
+      {
+        "key": "highest-wsjf",
+        "label": "Take the highest-WSJF open feature",
+        "consequence": "bk-onrestart-per-host-configurable is taken on score alone, already specified and quick to close; the era must first resolve its promoted duplicate, which the dedupe strategies do not detect.",
+        "size": "mini",
+        "reversibility": "reversible"
+      }
+    ],
+    "recommendation": {
+      "option": "close-implemented-first",
+      "because": "It is the shortest path from open to closed per unit of new work, it is the only option that makes a MINOR release possible at all, and implemented-but-unshipped work is precisely what the roadmap blind-spot feature identifies as most at risk of being forgotten."
+    },
+    "decision": {
+      "option": "close-implemented-first",
+      "date": "2026-09-02",
+      "rationale": "Engineer ruling 2026-09-02: the first three single-feature eras are verification-receipts, madglp-writer-reader-address-discipline and qr-link-provisioning - each ship+close only, each ending in a branch/worktree tidy-up, each qualifying a MINOR release under BK-STD-4."
     }
   }
 ]
