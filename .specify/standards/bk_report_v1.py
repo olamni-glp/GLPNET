@@ -99,8 +99,32 @@ def _run(args, timeout: float = 300.0):
     except BaseException as exc:                              # noqa: BLE001
         return False, "", f"{type(exc).__name__}: {exc}"
     if p.returncode != 0:
-        return False, p.stdout or "", _diagnostic_line(p.stderr, p.returncode)
+        return False, p.stdout or "", _failure_cause(p.stdout, p.stderr, p.returncode)
     return True, p.stdout, ""
+
+
+def _failure_cause(stdout: str, stderr: str, returncode: int) -> str:
+    """Prefer the CLI's OWN structured error over anything on stderr.
+
+    MEASURED DEFECT (shiras/glpnet, 2026-09-02). Several buildkit CLIs write their real
+    error to STDOUT as JSON (``{"error": "..."}``) and put only advisory chatter on
+    stderr. `_diagnostic_line` then reported the advisory line as the cause, so a
+    registry-contention failure was rendered as::
+
+        2. PROGRESS REVIEW: UNAVAILABLE — engine resolution degraded: pin mirror absent...
+
+    when the actual stdout said ``the machine registry ... is busy ... pgdb/.lock held by
+    PID 291...``. That is the same class of defect this file's header already records for
+    the engine-override banner — the generator naming a symptom it happened to see rather
+    than the cause the child reported. Structured error first, stderr second.
+    """
+    try:
+        obj = json.loads((stdout or "").strip() or "null")
+        if isinstance(obj, dict) and obj.get("error"):
+            return str(obj["error"])
+    except BaseException:                                     # noqa: BLE001
+        pass
+    return _diagnostic_line(stderr, returncode)
 
 
 # Advisory chatter this toolchain writes to stderr on almost every invocation. None of

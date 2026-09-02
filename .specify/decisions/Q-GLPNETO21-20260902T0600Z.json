@@ -1,0 +1,95 @@
+[
+  {
+    "qid": "Q-GLPNETO21-01",
+    "header": "Release bar",
+    "block": "The release you asked for cannot be cut compliantly, because BK-STD-4's PATCH bar requires a passed codexreview and the shipped reviewer cannot review this delta at all.",
+    "origin": "contradiction",
+    "severity": "critical",
+    "background": [
+      "BK-STD-4 (fleet-wide, ruling Q-GLPNETA16-04, and it supersedes my own Q-GLPNETO16-01) makes a PATCH cut conditional on 'the code delta has passed a /bk-codexreview with no unresolved HIGH'.",
+      "The content half IS met: 2 feat/fix on develop since v2026.09.02.1 - fix(bk-report-v1) naming the true failure cause, and feat(standards) BK-STD-4 itself.",
+      "The review CANNOT RUN on the diff scope: run 20260902T055126Z returned exit=3 with findings_block_present=false and '(codex produced no stdout)'; its 26MB stderr ends 'Invalid input[2].content[0].text: string too long. Expected max 10485760, got 25975219'. The diff is 14,407,540 bytes because it is dominated by roadmap-sync JSON (.import-refused.json alone is -273,053 lines) while the real code delta is about 26 lines.",
+      "The review ALSO cannot be re-scoped to the code: '.specify/standards/bk_report_v1.py' is tracked, yet preflight --scope refuses it with 'matched no tracked, reviewable content'. A non-dot path (scripts) passes the same check, so the scope walker excludes dot-directories - and .specify/standards/ is exactly where the fleet's shipped standards code lives.",
+      "So the standard that requires a review before release is itself stored where the reviewer cannot look. Both defects are filed; the second is filed in this report because marathon capture hit lock contention."
+    ],
+    "impact_if_unanswered": "No release is cut, or one is cut on a bar it does not meet - and a caller reading findings_count=0 from that failed run would have recorded a clean review that never happened.",
+    "options": [
+      {
+        "key": "hold-and-fix",
+        "label": "Hold the cut; fix the reviewer first",
+        "consequence": "No tag today. The two defects (dot-directory scope exclusion, oversized-diff false-clean) go to the buildkit lane, and the next cut is the first one genuinely to satisfy BK-STD-4. The two feat/fix commits stay on develop, unreleased, until then.",
+        "size": "mini",
+        "reversibility": "reversible"
+      },
+      {
+        "key": "directive-override",
+        "label": "Cut it now under your directive override, with the receipt naming why",
+        "consequence": "BK-STD-4 section 2 lets an engineer directive override the bar for a named cut, and section 5 requires the receipt to say so. The tag is cut and its receipt records tier=PATCH, content bar met, review=NOT RUN with the size and scope causes named verbatim. Honest and traceable, and it sets a precedent that the review condition can be waived on tooling failure.",
+        "size": "micro",
+        "reversibility": "reversible"
+      },
+      {
+        "key": "review-by-hand",
+        "label": "Review the 26-line code delta by inspection, record it as a manual review, then cut",
+        "consequence": "I read bk_report_v1.py's 26 changed lines directly and record a manual review verdict in the receipt. The delta is small enough to review honestly this way. It forecloses the cross-provider independence the codex reviewer exists to provide, since the reviewer and the releaser would be the same agent.",
+        "size": "micro",
+        "reversibility": "reversible"
+      }
+    ],
+    "recommendation": {
+      "option": "directive-override",
+      "because": "The content bar is genuinely met and the only thing missing is a review the shipped tool is currently incapable of performing on this delta, so holding punishes the repo for a buildkit defect; the override clause exists for exactly this and the receipt makes the gap auditable rather than hidden - whereas reviewing it myself would quietly substitute me for the independent reviewer."
+    },
+    "decision": {
+      "option": "directive-override",
+      "date": "2026-09-02",
+      "rationale": "Content bar genuinely met; the only gap is a buildkit defect the repo cannot fix. Override clause exists for this; receipt makes the gap auditable."
+    }
+  },
+  {
+    "qid": "Q-GLPNETO21-02",
+    "header": "Cache tel",
+    "block": "The last unanswered /bk-3rtask escalation is whether cache hit and miss counts belong in the default output, and the Critic refused it as a product decision rather than an evidence one.",
+    "origin": "missing-requirement",
+    "severity": "medium",
+    "background": [
+      "Builder-3 derived the requirement from Bazel, which puts cache-hit rate in the ORDINARY run summary rather than behind a profiler ('Checking your cache hit rate', Debugging Remote Cache Hits).",
+      "The Critic escalated it: telemetry is admissible, but requiring it in the DEFAULT summary rather than an opt-in view is an operator-experience product decision that is not the Critic's to take.",
+      "Supporting evidence from the same slice: cache-hit rate is the primary leading indicator of a performance regression, and buchgr/bazel-remote #478 shows process-lifetime counters are a poor signal - it must be a monotonic counter consumed as a rate, not a gauge.",
+      "Cost is a slightly noisier default summary line on every single invocation, including scripted CI runs where nobody reads it."
+    ],
+    "impact_if_unanswered": "The requirement stays escalated and unresolved in the published corpus, and /yx-ypm ships without a decision on its primary performance signal.",
+    "options": [
+      {
+        "key": "default-on",
+        "label": "Hit/miss counts in the default summary",
+        "consequence": "Every invocation prints its cache hit and miss counts, so a regression is visible without anyone opting in - matching Bazel's shipped choice. Adds one line of noise to every run, including CI logs where it is never read.",
+        "size": "nano",
+        "reversibility": "reversible"
+      },
+      {
+        "key": "default-on-quiet-suppress",
+        "label": "Default on, suppressed by --quiet and in non-TTY output",
+        "consequence": "Interactive operators see it always; scripts and CI get it only when asked. Keeps the leading indicator in front of humans without polluting machine logs, at the cost of a second output path that can drift from the first.",
+        "size": "micro",
+        "reversibility": "reversible"
+      },
+      {
+        "key": "opt-in",
+        "label": "Opt-in behind a flag or the structured output only",
+        "consequence": "Cleanest default output, and the counts remain available to anyone who asks. Forecloses the leading-indicator property entirely: a degrading cache-hit rate is then invisible until somebody already suspects a problem and goes looking.",
+        "size": "nano",
+        "reversibility": "one-way"
+      }
+    ],
+    "recommendation": {
+      "option": "default-on-quiet-suppress",
+      "because": "It keeps the one signal that gives early warning in front of the person who can act on it while respecting machine consumers, and the corpus is explicit that the value of hit rate is as a LEADING indicator - which an opt-in view cannot be, because nobody opts in before they suspect a problem."
+    },
+    "decision": {
+      "option": "default-on-quiet-suppress",
+      "date": "2026-09-02",
+      "rationale": "Keeps the leading indicator in front of the human who can act while respecting machine consumers; an opt-in view cannot be a leading indicator."
+    }
+  }
+]
