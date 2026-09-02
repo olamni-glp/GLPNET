@@ -1,0 +1,191 @@
+[
+  {
+    "qid": "Q-glpnetshiras-17",
+    "header": "Lclock gap",
+    "block": "Ruling Q-GS02-01 names SHIRAS as a step-2 writer but this host has no lclock code at all, so the fleet rollout has a gap no lane has owned",
+    "origin": "missing-requirement",
+    "severity": "high",
+    "background": [
+      "gavriella's ruling Q-GS02-01 sequences a lamport-clock rollout: step 1 read tolerantly (already true), step 2 WRITERS STAMP (required from ARIELLAS, SHIRAS, OLAMNIT), step 3 switch the comparator — and states that step 3 before step 2 is 'the one way to make this worse than it was'.",
+      "Measured here 2026-09-02: grep -rln lclock over this host's installed buildkit_cli returns NO MATCHES. There is no next_lclock and no append_op change anywhere in the install.",
+      "SHIRAS consumes buildkit as an installed package under bkvenv/site-packages and does not hold the buildkit source, so 'take #832' is not an action this lane can perform — it arrives only when a buildkit RELEASE carrying it reaches this install.",
+      "This host also reports 'engine resolution degraded: pin mirror absent and the machine registry is unreachable; continuing on the ambient engine 2026·8·24·5' — an ambient August engine cannot contain a 2026-09-01 change.",
+      "ariellas independently reported its own step 2 BLOCKED at 16:30Z, so at least two of the three named writers cannot comply, and every board op these hosts write meanwhile defaults lclock to 0 and sorts before gavriella's stamped ops."
+    ],
+    "impact_if_unanswered": "Two of three named writers stay un-upgraded while gavriella has already taken step 3 as a pilot, so readers on the two orderings disagree about one board on a grow-only substrate where a discarded write can never be withdrawn — and nobody is accountable for closing the gap because the ask was addressed to lanes that cannot act on it.",
+    "options": [
+      {
+        "key": "A",
+        "label": "Re-address step 2 to the buildkit lane as a release obligation",
+        "consequence": "The ask moves from consumer lanes to the lane that owns the code: buildkit ships a release containing the stamping change, and consumer hosts comply by upgrading. SHIRAS records step 2 as BLOCKED-ON-RELEASE until then, and step 3 stays frozen fleet-wide.",
+        "size": "nano",
+        "reversibility": "reversible"
+      },
+      {
+        "key": "B",
+        "label": "Fix this host's engine pin first, then re-measure",
+        "consequence": "Treat the degraded pin as the root cause: repair the pin mirror and machine registry on SHIRAS, re-run the measurement, and only escalate if lclock is still absent on a correctly-pinned install. Costs a diagnostic cycle and may resolve without anyone shipping anything.",
+        "size": "mini",
+        "reversibility": "reversible"
+      },
+      {
+        "key": "C",
+        "label": "Vendor the stamping change into this host",
+        "consequence": "Copy the next_lclock and append_op change into this host's install so SHIRAS stamps immediately. This forecloses the single-implementation property, because it forks a shipped fleet artefact on one host — the same move that produced three divergent bk-onrestart implementations and that ruling Q-glpnetshiras-08 rejected.",
+        "size": "mini",
+        "reversibility": "one-way"
+      }
+    ],
+    "recommendation": {
+      "option": "A",
+      "because": "The ask as written cannot be discharged by its addressees: consumer lanes do not hold buildkit's source, so no amount of effort here produces a stamped op. Re-addressing it to the owning lane is the only option that makes the rollout completable, and it costs nothing but a correction. B is worth doing anyway as diagnosis but is not a substitute — a correct pin still cannot contain code that has not been released. C would get SHIRAS stamping fastest and is exactly the fork you already ruled against."
+    },
+    "decision": {
+      "option": "A",
+      "date": "2026-09-02",
+      "rationale": "Engineer ruled: re-address step 2 to the buildkit lane as a release obligation; SHIRAS records BLOCKED-ON-RELEASE and step 3 stays frozen fleet-wide."
+    }
+  },
+  {
+    "qid": "Q-glpnetshiras-18",
+    "header": "Lock wait",
+    "block": "The registry lock wait is hard-coded at 30 seconds with no override, so on this multi-lane host the fleet standard report cannot reliably be produced at all",
+    "origin": "contradiction",
+    "severity": "high",
+    "background": [
+      "buildkit_cli/deploy/session.py sets _LOCK_WAIT_SECONDS = 30·0 as a module constant, read at line 230 as the deadline. There is no flag and no environment override anywhere in the package.",
+      "The error the CLI prints on contention advises 'Wait for it to finish, or re-run with a longer wait' — naming an option the CLI provides no way to exercise.",
+      "Measured this session: 20 consecutive attempts of the full BK-REPORT over roughly 10 minutes, plus 6 direct probes over 3 minutes, never found a clear 30-second window; the holding PID changed each time, so this is sustained contention from live peers rather than one stuck process.",
+      "The sections affected are marathon-backed: PROGRESS, STATUS, SITREP and WHAT'S NEXT — four of the six mandatory sections of the fleet standard report.",
+      "They DO succeed when run individually, so the failure is a function of how many registry round-trips one invocation makes, not of the data being unavailable."
+    ],
+    "impact_if_unanswered": "On any host busy enough to matter, the standard report silently degrades to two of six sections, and the operator is told to do something impossible; worse, a lane under time pressure may start reporting hand-written figures again, which is precisely the non-compliance you have just corrected me for.",
+    "options": [
+      {
+        "key": "A",
+        "label": "Make the wait configurable, owned by the buildkit lane",
+        "consequence": "An env override such as BUILDKIT_LOCK_WAIT_SECONDS plus a CLI flag, defaulting to the current 30s so nothing changes for anyone who does not set it. Busy hosts raise it; the error message becomes actionable. Requires the buildkit lane to ship it.",
+        "size": "nano",
+        "reversibility": "reversible"
+      },
+      {
+        "key": "B",
+        "label": "Make the report retry per section",
+        "consequence": "BK-REPORT retries each section independently with backoff instead of failing the section on first contention, exploiting the measured fact that sections succeed individually. Fixes the report without touching the lock, but leaves every other CLI equally unable to wait.",
+        "size": "mini",
+        "reversibility": "reversible"
+      },
+      {
+        "key": "C",
+        "label": "Accept degraded reports and record coverage",
+        "consequence": "Change nothing; the report prints UNAVAILABLE with the true cause and the operator re-runs later. Costs nothing and stays honest, but leaves the standard report unreliable on exactly the hosts that are busiest and therefore most in need of it.",
+        "size": "nano",
+        "reversibility": "reversible"
+      }
+    ],
+    "recommendation": {
+      "option": "A",
+      "because": "It is the smallest change that makes the CLI's own advice true, and it fixes every command that touches the registry rather than only the report. B is a genuine improvement and worth doing as well, but on its own it papers over a lock that every other tool still cannot wait on. C is honest but leaves a fleet standard that degrades worst under the conditions it exists to report on."
+    },
+    "decision": {
+      "option": "A",
+      "date": "2026-09-02",
+      "rationale": "Engineer ruled: make the registry lock wait configurable (env + CLI flag, default 30s), owned by the buildkit lane."
+    }
+  },
+  {
+    "qid": "Q-glpnetshiras-19",
+    "header": "Era zero",
+    "block": "Not one era in this repo has ever been measurable on any host, so the takt programme has no data and the CPM/PERT scheduler has no durations to plan with",
+    "origin": "measurement",
+    "severity": "critical",
+    "background": [
+      "Read from the takt DuckLake after CRDT dedup: glpnet has 38 eras across four hosts and ZERO measurable — gavriella 16/0, ariellas 11/0, shiras 8/0, olamnit 3/0.",
+      "Fleet-wide the same query returns 843 era rows with only 13 measurable, which is 1·5 percent; the dominant reasons are 447 rows with no reason recorded and 133 missing ALL NINE era stages.",
+      "The current era reports every one of specify, clarify, plan, tasks, analyze, implement, codexreview, ship and close as MISSING, and the run itself shows steps 0/0 after 110 recorded sequence numbers.",
+      "Ruling Q-glpnetshiras-08 already escalated one cause — pipeline.schema declares nine ERA_STAGES while sidecar and controller validate against six CANONICAL_STAGES, so codexreview, ship and close can never be recorded — and that ruling was to escalate rather than patch.",
+      "But nine-versus-six cannot explain specify, clarify, plan, tasks, analyze and implement also being MISSING, so at least one further cause is unidentified and nobody is measuring it.",
+      "Per-phase token coverage from the same lake is 368 of 4001 rows, 9 percent, so cost data is as thin as duration data."
+    ],
+    "impact_if_unanswered": "Every takt figure this fleet reports is computed over 1·5 percent of its eras; the CPM/PERT allocation you asked for has no ELAPSED column to build durations from; and the standing instruction to deliver era and takt metrics into the marathon and then into bk-flow cannot be met on any host.",
+    "options": [
+      {
+        "key": "A",
+        "label": "Make stage recording a tracked feature with an owner",
+        "consequence": "Capture era-stage recording as a scored roadmap feature covering BOTH the known nine-versus-six defect and the unidentified cause of the other six stages, with an owning lane and an acceptance test that one era records end to end. Nothing is measurable until it lands, but the gap stops being ambient.",
+        "size": "midi",
+        "reversibility": "reversible"
+      },
+      {
+        "key": "B",
+        "label": "Instrument this lane's next era by hand and diagnose",
+        "consequence": "Run the next single-feature era on this host stamping every stage explicitly, and report exactly which stages fail to persist and why. Produces the missing root cause from evidence rather than inference, and costs one era's overhead.",
+        "size": "mini",
+        "reversibility": "reversible"
+      },
+      {
+        "key": "C",
+        "label": "Suspend takt reporting until it can be measured",
+        "consequence": "Stop publishing takt sections while coverage is 1·5 percent, on the grounds that a number computed over 13 of 843 eras misleads more than it informs. This forecloses trend data for the period, because eras not measured now can never be measured retrospectively.",
+        "size": "nano",
+        "reversibility": "one-way"
+      }
+    ],
+    "recommendation": {
+      "option": "B",
+      "because": "The known defect is already escalated and owned, so the binding unknown is why the other six stages do not persist — and that cannot be answered by capturing a feature, only by instrumenting a real era and watching where the write goes missing. B is the cheapest path to the fact that A would otherwise have to guess at, and it produces the acceptance test A needs. Do A immediately after B, with B's evidence attached. C throws away the only period we can still instrument."
+    },
+    "decision": {
+      "option": "B",
+      "date": "2026-09-02",
+      "rationale": "Engineer ruled: instrument the next single-feature era by hand, stamping every stage, to find why the six non-Q08 stages do not persist; capture the roadmap feature straight after with that evidence attached."
+    }
+  },
+  {
+    "qid": "Q-glpnetshiras-20",
+    "header": "Refused log",
+    "block": "The import refusal ledger has grown to twenty megabytes and now fails the push, so I have twice dropped it from a commit and need that judgement confirmed or overturned",
+    "origin": "assumption-weakness",
+    "severity": "medium",
+    "background": [
+      "specify/roadmap-sync/·import-refused·json is git-tracked and is now 20MB; one import round added 567812 lines to it, recording 488 correctly-refused foreign entities.",
+      "Pushing that commit failed twice with RPC HTTP 408 and a sideband disconnect, including with http·postBuffer raised to 500MB; the same branch pushed fine once the file's delta was dropped.",
+      "I therefore excluded my delta to it from both round 62 and round 63, on the judgement that it is a regenerable ledger — every import rebuilds it — and that a blocked push is worse than a stale refusal log.",
+      "That judgement is mine, not yours, and it is the kind of quiet omission that becomes a defect if the ledger is in fact load-bearing for convergence or audit.",
+      "A peer lane's round-62 commit already carries a version of the file, so the tracked copy is not empty, merely behind this lane's latest import."
+    ],
+    "impact_if_unanswered": "Either the ledger keeps growing until it blocks every push from every lane, or my omission silently persists and a later audit finds the refusal record incomplete without knowing a lane chose to drop it.",
+    "options": [
+      {
+        "key": "A",
+        "label": "Gitignore it; it is a regenerable cache",
+        "consequence": "Stop tracking the refusal ledger, on the grounds that every import rebuilds it and its content is derivable from the inbox plus the trust store. Pushes stop failing permanently, and the file stops appearing in diffs. Historical copies remain in git history.",
+        "size": "nano",
+        "reversibility": "reversible"
+      },
+      {
+        "key": "B",
+        "label": "Keep tracking it but prune to refusals still live",
+        "consequence": "Keep the file in git but have the importer write only currently-unresolved refusals rather than appending every refusal ever seen, so it stays small and stays meaningful. Requires a change in the importer, owned by the buildkit lane.",
+        "size": "mini",
+        "reversibility": "reversible"
+      },
+      {
+        "key": "C",
+        "label": "Keep it as-is; I resume carrying the delta",
+        "consequence": "The ledger is treated as an audit record that must be preserved verbatim, and lanes work around the push size. My two omissions would then need to be back-filled, and pushes on this host stay unreliable.",
+        "size": "micro",
+        "reversibility": "reversible"
+      }
+    ],
+    "recommendation": {
+      "option": "A",
+      "because": "The file fails the two tests that justify tracking something: it is fully regenerable from the inbox and trust store, and no reader has been shown to consult it. It is already breaking pushes at 20MB and it grows every round, so C is a schedule for the problem to recur on every host. B is the better end state if the ledger genuinely has an audit consumer — but nobody has yet named one, and A is reversible the moment somebody does."
+    },
+    "decision": {
+      "option": "A",
+      "date": "2026-09-02",
+      "rationale": "Engineer ruled: gitignore .import-refused.json as a regenerable cache; confirms the two omissions in rounds 62 and 63 were correct."
+    }
+  }
+]
