@@ -1829,3 +1829,150 @@ is UNMEASURED, not clear**; and **1 of 32 packets resolves to a feature**.
 **READY FOR RESTART — type `resume marathon` in the glpnet tab.**
 
 — `gavriella` · `glpnet` · `mrun-20d9230f767b` · 2026-09-01T13:50:00Z
+
+---
+
+# 🟢 SESSION 14 ADDENDUM — 2026-09-02T06:15Z · **REBOOT-READY (15/15 DRY-RUN) · BK-STD-1 COMPLIANCE CORRECTED · CPM-CRDT FORK SETTLED · 17 RULINGS**
+
+🔴 **THIS ADDENDUM SUPERSEDES THE SESSION 14 CLOSE SECTION ABOVE IT.** Same run
+`mrun-20d9230f767b`, lane `gavriella`, host `GAVRIELLA`, repo `GLPNET`.
+
+## Resume in one line
+
+```
+resume marathon
+```
+= `buildkit-marathon resume --feature 078-verification-receipts` (`--feature` mandatory).
+
+## 🔴 I WAS BK-STD-1 NON-COMPLIANT AND THE ENGINEER WAS RIGHT TO CALL IT
+
+Two specific failures, both corrected this session:
+
+1. **I reported a free-form prose summary instead of the ordered sitrep.** The order is
+   **ROADMAP → PROGRESS → STATUS → SITREP → TAKT → NEXT** and it is not optional. The roadmap
+   section must be the TABULAR not-closed table from `scripts/roadmap_open_table.py`.
+2. **I reported takt from live commands instead of from the lake.** Takt and per-phase token
+   use must be **WRITTEN TO and READ FROM** the TAKT DuckLake.
+
+**Now done properly:** 5 per-phase token rows written via `buildkit-scheduler takt-tokens` and
+synced to the fleet root (13 files copied), then read back with DuckDB for the TAKT section.
+`plan` = **175,939 metered** (the summed subagent counts the harness reported); `codexreview`,
+`implement`, `ship`, `close` = **UNMEASURED** with `--method unavailable`. **Never invent a
+token total** — an unmeasured phase reads unmeasured, never zero.
+
+## ⭐ THE STANDARD TAKT BOARD EXISTS NOW — USE IT, DO NOT WRITE YOUR OWN
+
+`.specify/standards/bk_takt_board.py` (**BK-TAKT-1**, ruling `Q-glpnetshiras-16`) arrived from a
+peer. It is the standard; do not author another.
+
+🔴 **I FOUND AND FIXED A DEFECT IN IT (`408edb1f`): §4 "ALL REPOS ON ALL HOSTS" — the exact
+comparison the engineer asked for — was a NON-f triple-quoted string**, so `{RN}` was emitted
+literally and the section died with `Parser Error`. Every sibling block had the `f` prefix. One
+character. The board was silently answering three of four questions.
+
+## 🔴 THE TYPE DRIFT IS WIDER THAN REPORTED — THREE COLUMNS, AND CASTS CANNOT HELP
+
+`reason`, `total_tokens` AND `repo` are each JSON in some parquet files and VARCHAR in others.
+The failure is at **parquet schema unification — BEFORE any cast in the query runs**. Practical
+consequence: **`kind=tokens` cannot be read across hosts at all today**; restrict to your own
+partition. `union_by_name` reconciles names, never types. BK-TAKT-1 §8 reports 1 unreadable
+file from the same cause; the class is wider than one file.
+
+## ⚖️ THE CPM-CRDT FORK IS SETTLED — `BK-CPM-1` IS THE BASE
+
+`Q-GLPNETS14E-01`. **Seven** live CPM-CRDT/YX-YPM drafts existed simultaneously (shiras/mstack,
+shiras/yngenios-linux v0.1 **and** v0.2, gavriella/qhstate, gavriella/lejepa, olamnit, mine),
+and **two each claimed to supersede the other**. Ruling: **BK-CPM-1 is THE base; every other
+draft WITHDRAWS and APPENDS.** No lane pilots until unanimous.
+
+**I withdrew my own first** (`e65971df`) — `docs/features/cpm-crdt/DRAFT-cpm-crdt-schema.md` is
+marked WITHDRAWN with its text preserved for provenance, and its measured content is appended
+into `.specify/standards/BK-CPM-1-DRAFT-crdt-schema.md`. **@shiras/yngenios-linux still owes an
+answer** on whether v0.2 stands down.
+
+## ⚖️ `/yx-ypm` — DO NOT DUPLICATE; THE METHOD IS THE REVIEW INSTRUMENT
+
+`Q-GLPNETS14E-02`. Peers already published a corpus (olamnit: 56 cited requirements, 48
+CONFIRM, 6 escalations) and `YX-YPM-1-DRAFT`. Running my 3 blind builders would add an **eighth**
+artefact to a fleet already forked seven ways. So the frozen 3rtask method becomes the **review
+instrument applied to their corpus**, not a rival corpus.
+
+**The method is FROZEN** — `method-20260901T114658Z-701f`, 16 elements, **THREE blind
+cross-provider red-team rounds**: `2C/11R` → `5C/9R/2E` → **`11C/4R/1E`**. 28 predicate ids.
+Engineer override recorded for the 4 residual refutes + 1 escalate. The 4 survivors are the
+irreducible limits of any research method (bookkeeping ≠ semantic completeness), not defects.
+
+⭐ **Two red-team objections REFUTED BY MEASUREMENT, not argument:**
+- *"absence of a `-version` directive doesn't exclude version identity encoded elsewhere"* — I
+  tested exactly that: only **3** module names contain a digit, the one example (`play12`) is an
+  **ordinal**, **0** `vN` patterns, **0** version-like path segments.
+- The critic's premise that GLP might carry versions after all: **it does not.**
+
+## 🔴 THE REBOOT IS VERIFIED SAFE — 15/15, AND THE 5.1-vs-7 TRAP
+
+`pwsh -File scripts/onrestart-launch.ps1 -DryRun -WaitForMounts` →
+**Requested 15 · Will launch 15 · Refused 0 · Layout TwoWindows.** Every lane has a session
+store; `claude --continue --autocompact 1000000` (never summarising).
+
+🔴 **A TRAP THAT COST ME A FALSE CRITICAL FINDING.** I first ran the launcher under **Windows
+PowerShell 5.1** and it threw three parse errors — *"The '<' operator is reserved for future
+use"*, *"string is missing the terminator"*. I was about to report the reboot as broken.
+**It is not.** The file is UTF-8 **without BOM** and contains 45 non-ASCII bytes (em-dashes);
+5.1 reads a BOM-less file as ANSI and mis-pairs the quotes. **The scheduled task correctly
+invokes `C:\Program Files\PowerShell\7\pwsh.exe`.** Under pwsh 7 it parses and dry-runs clean.
+**Never test this script with `powershell.exe`.**
+
+⚠️ `I:\coop` is absent (GAVRI's drive unmapped). The launcher says this is NORMAL and launches
+anyway. Remap when gavriella is back:
+`net use I: \\192.168.0.108\GAVRI_D /persistent:yes`
+
+## THE 15 LANES, AS CONFIGURED — exact match to the engineer's layout
+
+`~/.bk-onrestart/config.json`, `layoutByHost.GAVRIELLA = TwoWindows`, all 15 paths exist.
+
+| window | lanes |
+|---|---|
+| **1** | ospark · tefl · hatzinor · olamnit · buildkit · qhstate · crucible |
+| **2** | glpnet · lejepa · mstack · yngraw · yngwin · ynglin · yngapp · yngcor |
+
+## State at close
+
+| item | result |
+|---|---|
+| **working tree** | clean · develop **0 ahead / 0 behind** origin |
+| **open PRs** | **ZERO** |
+| **release** | 🔴 **HELD — 0 `feat:`/`fix:` since `v2026.09.01.5`, measured.** `v2026.09.01.4` was cut by this lane earlier today |
+| **REPL gate** | 🟢 **561 / 559 / 2 / 0** — zero regression, measured TWICE (pre- and post-CPM) |
+| **.NET 11** | **31/31 tracked projects**, 0 non-compliant |
+| **CPM** | adopted · 13 packages · **0 floating** · 31/31 build clean |
+| **roadmap** | 21 epics · 121 features · **29 not-closed** · dedupe 0 groups · round **65** |
+| **ledger** | **116 rows**, 0 open |
+| **COOP** | consolidated ACK by class → **18 channels**, both fulfilments stated |
+
+## 🔴 WHAT'S NEXT — IN THIS ORDER
+
+| # | step | state |
+|---:|:---|:---|
+| 1 | **First SINGLE-FEATURE era** (`Q-GLPNETS14D-01`). Roadmap recommends `front-end-goal-term-acceptance-completeness` (rank 21) | ruled, unblocked |
+| 2 | Apply the frozen method as a **review instrument** to olamnit's 56-requirement corpus and `YX-YPM-1-DRAFT` | ruled, unblocked |
+| 3 | Chase **@shiras/yngenios-linux** — does v0.2 stand down in favour of BK-CPM-1? | waiting on peer |
+| 4 | 083 → codexreview → ship (owns the one remaining codeconv failure: a stale golden) | unblocked |
+| 5 | 059 as its own era (`Q-GLPNETS13C-03`) | unblocked |
+| 6 | @buildkit: the 3-column type drift makes the lake unreadable across hosts | filed, waiting |
+
+**Do NOT start:** `/bk-clarify 082` (evicts 078 from the active slot).
+
+## STANDING CONSTRAINTS — ADDITIONS THIS ROUND
+
+- 🔴 **NEVER test `onrestart-launch.ps1` with `powershell.exe` (5.1)** — BOM-less UTF-8 + 45
+  non-ASCII bytes = three bogus parse errors. The task uses **pwsh 7**. Test with pwsh 7.
+- 🔴 **The sitrep order is ROADMAP → PROGRESS → STATUS → SITREP → TAKT → NEXT**, the roadmap
+  section is the TABULAR table, and **takt is read FROM the lake**, never recomputed live.
+- 🔴 **`bk_takt_board.py` is the standard board.** Do not write another.
+- 🔴 **The takt lake cannot be read across hosts** — 3 columns drift JSON/VARCHAR and the
+  failure precedes any cast. Restrict to your own partition.
+- 🔴 **`BK-CPM-1` is the CPM-CRDT base.** Withdraw and append; never add a rival draft.
+
+**READY FOR RESTART AND FOR REBOOT — type `resume marathon` in the glpnet tab.**
+
+— `gavriella` · `glpnet` · `mrun-20d9230f767b` · 2026-09-02T06:15:00Z
