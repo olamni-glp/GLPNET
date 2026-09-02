@@ -1,0 +1,49 @@
+[
+  {
+    "qid": "Q-GLPNETO22-01",
+    "header": "Wedged lock",
+    "block": "The mandated sitrep cannot be produced by any lane on this host, because another lane's wedged process has held the machine-global registry lock for 83 minutes and only you can authorise interfering with it.",
+    "origin": "measurement",
+    "severity": "critical",
+    "background": [
+      "MEASURED: .lock.meta = {\"pid\": 42228, \"phase\": \"supervisor-acquiring\"}; PID 42228 is ALIVE, python, started 07:01:26, cmdline `python -m buildkit_cli.marathon takt --feature 037-yx-winbuilder`. The lock file mtime has not moved since 07:01.",
+      "Its own bridge is DEAD: .server.log records BRIDGE_READY pid=23544, but 23544 no longer exists and nothing listens on port 28093. So the supervisor is holding a lock for a bridge that is gone.",
+      "The registry is machine-global. Measured impact on this host: marathon status/backlog/capture/resolve all return UNAVAILABLE, and BK-REPORT-v1 sections 2 PROGRESS, 3 STATUS and 4 SITREP cannot be produced by ANY lane. roadmap, 3rtask and scheduler are unaffected.",
+      "037-yx-winbuilder is NOT a glpnet feature - it belongs to the yngenios/yngwin lane. I have broadcast the incident to all three coop legs with the evidence and the remedy.",
+      "The tool's own advice is 'remove pgdb/.lock manually if no other session is running' - which does NOT apply, because a session IS running. I have therefore neither killed the process nor removed the lock."
+    ],
+    "impact_if_unanswered": "Every lane on OLAMNIT keeps reporting PROGRESS, STATUS and SITREP as UNAVAILABLE for as long as that process lives, which could be indefinitely since it has no timeout.",
+    "options": [
+      {
+        "key": "wait-for-owner",
+        "label": "Leave it; the owning lane clears its own process",
+        "consequence": "No cross-lane interference and no risk to the peer's run state. The broadcast is already published with the evidence and the exact remedy. Marathon and the mandated sitrep stay unavailable on this host until that lane acts, and it has no timeout of its own.",
+        "size": "nano",
+        "reversibility": "reversible"
+      },
+      {
+        "key": "kill-it",
+        "label": "Authorise me to terminate PID 42228 now",
+        "consequence": "The lock clears immediately and marathon returns for all 15 lanes. It is a READ command (takt) whose bridge is already dead, so the corruption risk is low - but it is still another lane's process, and killing it forecloses whatever partial state that run held and may make their takt report incomplete without their knowledge.",
+        "size": "nano",
+        "reversibility": "one-way"
+      },
+      {
+        "key": "escalate-and-wait-bounded",
+        "label": "Escalate directly to the owning lane and wait a bounded window, then kill",
+        "consequence": "I post an ACK-requested escalation naming the lane and a deadline; if the lock is still held at the deadline I terminate it. Balances lane autonomy against a fleet-wide outage, at the cost that the outage continues for the length of the window.",
+        "size": "micro",
+        "reversibility": "reversible"
+      }
+    ],
+    "recommendation": {
+      "option": "kill-it",
+      "because": "It is a read-only takt command whose bridge is already dead, so nothing is mid-write and the recoverable loss is at most one takt report the owning lane can simply re-run; against that, every lane on the host is currently unable to produce the sitrep you have made mandatory, with no timeout that would ever end it on its own."
+    },
+    "decision": {
+      "option": "kill-it",
+      "date": "2026-09-02",
+      "rationale": "Read-only takt whose bridge was already dead; nothing mid-write. Every lane on the host was unable to produce the mandated sitrep, with no timeout that would end it."
+    }
+  }
+]
