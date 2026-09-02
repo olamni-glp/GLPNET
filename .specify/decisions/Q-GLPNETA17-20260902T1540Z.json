@@ -46,6 +46,11 @@
       "recommendation": {
         "option": "concede-to-gavriella",
         "because": "BK-STD-3 rule 1 already decides it on decided_at, gavriella has the review context and the two failing tests in hand, and the runner-up asks two lanes to coordinate an edit to one test suite mid-incident - which is the exact fork ruling 03 was written to stop."
+      },
+      "decision": {
+        "option": "concede-to-gavriella",
+        "date": "2026-09-02",
+        "rationale": "BK-STD-3 rule 1 decides it on decided_at: Q-GLPNETS15-02 (2026-09-02T14:20Z) is later than Q-GLPNETA16-12 (2026-09-01). gavriella holds the review context and the two failing tests. This lane records the supersession and touches nothing under specs/078-verification-receipts."
       }
     },
     {
@@ -96,6 +101,11 @@
       "recommendation": {
         "option": "079-next",
         "because": "It is the highest-WSJF candidate with no ownership dispute and no recorded blocker, and opening it with a review as the first stage gets the same evidence 'verify-all-three-first' buys without spending a whole session before any work starts."
+      },
+      "decision": {
+        "option": "079-next",
+        "date": "2026-09-02",
+        "rationale": "079 madglp-writer-reader-address-discipline is the highest-WSJF implemented feature with no ownership dispute and no recorded blocker. The era opens with a codexreview so the ship-and-close premise is measured rather than inherited from Q-GLPNETA16-12, which has now been falsified once."
       }
     },
     {
@@ -139,6 +149,11 @@
       "recommendation": {
         "option": "unavailable-plus-flag",
         "because": "It is the only option that neither fabricates a measurement nor destroys the phase-ran signal, and metering locally would put a second writer into the same lake whose writer defects are already assigned to another owner."
+      },
+      "decision": {
+        "option": "unavailable-plus-flag",
+        "date": "2026-09-02",
+        "rationale": "Neither fabricates a measurement nor destroys the phase-ran signal. Every takt figure this lane publishes must now carry an explicit measured/total coverage ratio. Metering locally was rejected because it would put a second writer into a lake whose writer defects are already assigned to @buildkit by Q-GLPNETS15-01."
       }
     },
     {
@@ -182,6 +197,11 @@
       "recommendation": {
         "option": "detached-at-session-start",
         "because": "It removes the whole latency from the critical path without touching a file this lane is forbidden to author, and unlike the partial-report option it still yields exactly one artefact in the mandated order."
+      },
+      "decision": {
+        "option": "exception-to-ruling-03",
+        "date": "2026-09-02",
+        "rationale": "ENGINEER RULING, taken AGAINST this lane's recommendation. Grants ariellas-glpnet a NARROW exception to Q-GLPNETS15-03 (gavriella-glpnet, 2026-09-02T14:20Z) for line-buffered output in bk_report_v1.py only. Scope is this one change; the single-author rule otherwise stands and shiras remains the publisher. Must be cited, broadcast fleet-wide, and carried forward by any future adoption of shiras's file alongside a14f10f8."
       }
     }
   ]

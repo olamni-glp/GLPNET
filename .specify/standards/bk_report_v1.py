@@ -450,12 +450,39 @@ def main(argv=None) -> int:
     ap.add_argument("--feature")
     a = ap.parse_args(argv)
     wanted = SECTION_ORDER if a.section == "all" else (a.section,)
-    out = header("FULL" if a.section == "all" else a.section.upper())
+
+    # ENGINEER RULING Q-GLPNETA17-04 (2026-09-02T15:52Z, ariellas/glpnet), taken AGAINST
+    # this lane's own recommendation. It grants a NARROW exception to Q-GLPNETS15-03
+    # (gavriella/glpnet, 2026-09-02T14:39Z, "shiras publishes, glpnet authors nothing")
+    # for LINE-BUFFERED OUTPUT ONLY. The single-author rule otherwise stands and shiras
+    # remains the publisher; any adoption of shiras's file must carry this forward
+    # alongside a14f10f8, or it silently re-opens the defect below.
+    #
+    # MEASURED DEFECT (ARIELLAS, 2026-09-02): the report accumulated every section into
+    # one list and printed it once at exit, so a run that reached 1372s of CPU across
+    # 85+ minutes had written ZERO bytes. Python buffers redirected stdout, so an empty
+    # artefact and a hung process are INDISTINGUISHABLE for the whole run — the operator
+    # cannot tell a slow takt-lake scan from a wedged one, and the standing fleet advice
+    # is not to reap on absence of output. Sections are now flushed as they complete.
+    #
+    # The emitted bytes are UNCHANGED: this reproduces `print(chr(10).join(out))`
+    # exactly, one chunk at a time, including the single trailing newline.
+    first = True
+
+    def emit(lines):
+        nonlocal first
+        text = chr(10).join(lines)
+        sys.stdout.write(text if first else chr(10) + text)
+        first = False
+        sys.stdout.flush()
+
+    emit(header("FULL" if a.section == "all" else a.section.upper()))
     for i, name in enumerate(wanted):
         if i:
-            out += ["", "=" * 78, ""]
-        out += _SECTIONS[name](a.feature)
-    print(chr(10).join(out))
+            emit(["", "=" * 78, ""])
+        emit(_SECTIONS[name](a.feature))
+    sys.stdout.write(chr(10))
+    sys.stdout.flush()
     return 0
 
 
