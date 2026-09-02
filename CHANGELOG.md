@@ -1,5 +1,16 @@
 ## [Unreleased]
 
+## [v2026.09.02.3] - 2026-09-02
+
+### Fixed
+- the seed a re-imaged host boots from had the wrong window layout
+- the EPIC column was FABRICATED for 12 of 29 rows - parse() carries a stateful epic forward from status TEXT, so 11 features with NO epic_id and 1 pointing at a tombstoned epic inherited whichever epic header preceded them; the catalog and the signed export AGREE and both disagreed with the table. Epic is now sourced from the fold, which is exactly what renderers-read-export-fold-not-status was raised for
+
+### Changed
+- Merge remote-tracking branch 'origin/develop' into develop
+- round 64 - reconcile/import/reconcile/dedupe/export/sync; 21 epics/123 features/4048 journal lines, 0 dedupe groups, replay --verify OK
+- Merge pull request #278 from olamni-glp/main
+
 ## [v2026.09.02.2] - 2026-09-02
 
 ### Added

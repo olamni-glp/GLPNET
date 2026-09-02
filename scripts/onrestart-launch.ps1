@@ -165,26 +165,51 @@ $SeedConfig = [ordered]@{
         'GAVRIELLA' = 'TwoWindows'; 'GAVRI' = 'TwoWindows'
         'OLAMNIT'   = 'Tabs'; 'ARIELLAS' = 'Tabs'; 'SHIRAS' = 'Tabs'
     }
+    # WINDOW ALLOCATION AND TAB ORDER ARE BOTH LOAD-BEARING (engineer, gavriella).
+    # group 1 -> terminal window 1, group 2 -> window 2, and within each window the
+    # tab order is THIS array's order: the launcher filters with Where-Object, which
+    # preserves it. Do not sort, dedupe or re-group this table.
+    #
+    # This seed is written ONLY when ~/.bk-onrestart/config.json is absent, so it is
+    # the roster a re-imaged or freshly-cloned host comes up with. It had drifted from
+    # the live config in two ways a fresh host would have inherited silently:
+    #
+    # 1. 2026-08-31 ENGINEER RULING: crucible is window 1, yngraw is window 2. This
+    #    seed still carried the pre-ruling allocation with the two INVERTED, so a
+    #    re-imaged host would have opened both lanes in the wrong window.
+    # 2. 'yngcor' and 'ynglin', NOT 'yngorg'/'ynlin'. Lane names ARE config keys, and
+    #    the 2026-08-28 ruling settled on the yngcor/ynglin spellings because OLAMNIT
+    #    keys them that way. A divergent name means cross-host tooling cannot match
+    #    the lane at all -- the same class of fault as omitting it entirely.
+    #
+    # TRAP: yngcor is the CORE yngenios repo (D:\YNGENIOS\yngenios); yngraw is the
+    # RESEARCH one (D:\BSTDEV\research\yngenios). Two repos, similar names --
+    # verify by PATH, never by lane label.
     lanes = @(
-        [ordered]@{ name='ospark';     group=1; path='D:\bstdev\db\ospark' }
-        [ordered]@{ name='tefl';       group=1; path='D:\BSTDEV\LANG\tefl' }
-        [ordered]@{ name='hatzinor';   group=1; path='D:\BSTDEV\LANG\hatzinor' }
-        [ordered]@{ name='olamnit';    group=1; path='D:\BSTDEV\research\olamnit' }
-        [ordered]@{ name='buildkit';   group=1; path='D:\BSTDEV\research\buildkit' }
-        [ordered]@{ name='qhstate';    group=1; path='D:\BSTDEV\research\qhstate' }
-        [ordered]@{ name='yngraw';     group=1; path='D:\bstdev\research\yngenios' }
-        [ordered]@{ name='crucible';   group=2; path='D:\bstdev\research\crucible' }
-        [ordered]@{ name='glpnet';     group=2; path='D:\bstdev\research\glp\glpnet' }
-        [ordered]@{ name='lejepa';     group=2; path='D:\bstdev\research\lejepa' }
-        [ordered]@{ name='mstack';     group=2; path='D:\bstdev\tools\mstack' }
-        [ordered]@{ name='yngwin';     group=2; path='D:\YNGENIOS\yngenios-windows' }
+        # --- window 1: research (7) ---
+        [ordered]@{ name='ospark';      group=1; path='D:\bstdev\db\ospark' }
+        [ordered]@{ name='tefl';        group=1; path='D:\BSTDEV\LANG\tefl' }
+        [ordered]@{ name='hatzinor';    group=1; path='D:\BSTDEV\LANG\hatzinor' }  # a.k.a. ulpnit
+        [ordered]@{ name='olamnit';     group=1; path='D:\BSTDEV\research\olamnit' }
+        [ordered]@{ name='buildkit';    group=1; path='D:\BSTDEV\research\buildkit' }
+        [ordered]@{ name='qhstate';     group=1; path='D:\BSTDEV\research\qhstate' }
+        [ordered]@{ name='crucible';    group=1; path='D:\bstdev\research\crucible' }
+        # --- window 2: tooling + the yngenios estate (8) ---
+        [ordered]@{ name='glpnet';      group=2; path='D:\bstdev\research\glp\glpnet' }
+        [ordered]@{ name='lejepa';      group=2; path='D:\bstdev\research\lejepa' }
+        [ordered]@{ name='mstack';      group=2; path='D:\bstdev\tools\mstack' }
+        [ordered]@{ name='yngraw';      group=2; path='D:\bstdev\research\yngenios' }  # research yngenios, NOT yngcor
+        [ordered]@{ name='yngwin';      group=2; path='D:\YNGENIOS\yngenios-windows' }
         # The yngenios PRODUCT estate joins yngwin in window 2 (added 2026-08-27).
         # All three carry real Claude session stores and were silently absent from
         # every host's seed, so a fresh host relaunched 12 of 15 lanes and reported
-        # success -- the lanes it never opened were not named anywhere.
-        [ordered]@{ name='yngapp';     group=2; path='D:\YNGENIOS\yngenios-app' }
-        [ordered]@{ name='yngorg';     group=2; path='D:\YNGENIOS\yngenios' }
-        [ordered]@{ name='ynlin';      group=2; path='D:\YNGENIOS\yngenios-linux' }
+        # success -- the lanes it never opened were not named anywhere. Renamed
+        # 2026-09-02 from ynlin/yngorg to the settled ynglin/yngcor spellings: a
+        # lane listed under the WRONG NAME is as unreachable to cross-host tooling
+        # as one never listed at all, so this was that same fault a second time.
+        [ordered]@{ name='ynglin';      group=2; path='D:\YNGENIOS\yngenios-linux' }
+        [ordered]@{ name='yngapp';      group=2; path='D:\YNGENIOS\yngenios-app' }
+        [ordered]@{ name='yngcor';      group=2; path='D:\YNGENIOS\yngenios' }  # yngenios CORE
     )
 }
 

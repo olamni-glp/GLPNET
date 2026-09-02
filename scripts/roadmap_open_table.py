@@ -106,6 +106,49 @@ def parse(text):
     return rows
 
 
+def correct_epics_from_export(rows, root):
+    """OVERWRITE each row's epic from the signed-export fold (BK-STD-1 integrity).
+
+    `parse()` reads `roadmap status` TEXT and carries a STATEFUL `epic` variable
+    forward across rows, so a feature with a NULL `epic_id` — or one pointing at a
+    different epic — silently inherits whichever epic header preceded it. Measured
+    2026-09-02 on glpnet: 11 of 29 not-closed features have NO epic at all and 1
+    points at a tombstoned epic, yet all 12 rendered under a real epic's name.
+
+    The fold is authoritative and agrees with the catalog. A feature the fold does
+    not carry keeps its parsed value and is flagged `(unfolded)` rather than being
+    silently trusted — an absent row is reported, never assumed correct.
+    """
+    fold = {}
+    host = socket.gethostname().lower()
+    exdir = root / ".specify" / "roadmap-sync" / "exports"
+    exports = sorted(exdir.glob("%s__%s__*.json" % (host, root.name.lower())))
+    if not exports:
+        return rows  # no export from THIS lane -> never correct from a peer's
+    try:
+        with open(exports[-1], encoding="utf-8") as fh:
+            doc = json.load(fh)
+        if True:
+            for h in doc.get("heads") or []:
+                if h.get("entity_kind") != "feature":
+                    continue
+                slot = h.get("resolved_slot") or h.get("claimed_slot") or h.get("name")
+                if slot:
+                    fold[slot] = h.get("epic_id") or "(standalone)"
+    except Exception:
+        return rows  # fold unreadable -> leave rows untouched, never invent
+
+    if not fold:
+        return rows
+    for r in rows:
+        fid = r.get("feature")
+        if fid in fold:
+            r["epic"] = fold[fid]
+        else:
+            r["epic"] = "%s (unfolded)" % r.get("epic", "(none)")
+    return rows
+
+
 def backfill_from_export(rows, root):
     """Add not-closed features that `roadmap status` omits (BK-STD-1 defect, 2026-08-27).
 
@@ -285,8 +328,9 @@ def main(argv=None):
     cmd = [a.roadmap_cmd] if a.roadmap_cmd else [sys.executable, "-m", "buildkit_cli.roadmap"]
     lane = a.lane or ("%s-%s" % (socket.gethostname().lower(), root.name))
 
-    rows = sort_rows(backfill_from_export(parse(run_roadmap(cmd, root, ["status"])), root),
-                     load_owners(root, a.owner, a.owners_file))
+    rows = correct_epics_from_export(
+        backfill_from_export(parse(run_roadmap(cmd, root, ["status"])), root), root)
+    rows = sort_rows(rows, load_owners(root, a.owner, a.owners_file))
     print(render(rows, a.format, header(root, lane, a.round, a.run),
                  footer(rows, a.dedupe_groups, a.dedupe_run, a.reconcile_note)))
 
