@@ -2083,30 +2083,38 @@ This is **not** the wave-22 situation ("cannot review"), nor the session-12 one 
 release"). It is: **there is something to release and the standard says it does not qualify.**
 No directive override was sought. **Question `Q-GLPNETS15-04` is open on it.**
 
-## 🔴 FOUR ENGINEER QUESTIONS PUT — BK-STD-2 CONFORMANT, VALIDATOR-CHECKED
+## 🔴 FOUR ENGINEER RULINGS TAKEN — ALL FOUR DECIDED 2026-09-02T14:40Z. **CITE THEM, NEVER RE-ASK THEM.**
 
-`.specify/decisions/Q-GLPNETS15-20260902T1420Z.json`, committed on `6ca0f64d`.
-`python .specify/standards/bk_question.py validate --file ...` → **"BK-STD-2 conformant: 4
-question(s)"**, exit 0.
+`.specify/decisions/Q-GLPNETS15-20260902T1420Z.json` — validator: **"BK-STD-2 conformant: 4
+question(s)"**, exit 0, with all four `decision` objects written back onto their qids by
+`bk_question.py decide`, plus four `kind=ruling` rows in `.specify/decisions/engineer-decisions.jsonl`.
+Published as `D:\coop\glpnet\RULING-20260902T1440Z-gavriella-glpnet-Q-GLPNETS15-01to04-…-ACK-MANDATORY.md`
+(mirrored to `D:\coop\`).
 
-| qid | header | severity | recommendation |
-|---|---|---|---|
-| `Q-GLPNETS15-01` | Takt repair | critical | `reclassify-both-copy` — buildkit runs one re-runnable COPY filter over `kind=stage` + all of `kind=token` into `kind=tokens`, on every host's LOCAL root as well as the fleet root |
-| `Q-GLPNETS15-02` | 078 gate | high | `tests-first` — the two TEST findings before the other eight; a fix validated by a test that cannot fail is not evidence |
-| `Q-GLPNETS15-03` | Report fork | high | `adopt-verbatim` — shiras publishes, glpnet adopts byte-for-byte; a second author on the same fix is the measured cause of the existing fork |
-| `Q-GLPNETS15-04` | Release bar | medium | `hold` — the delta delivers nothing a consumer would notice, which is the case BK-STD-4 §6 says the tier rule exists to catch |
+| qid | header | sev | **RULED** | owner / state |
+|---|---|---|---|---|
+| `Q-GLPNETS15-01` | Takt repair | critical | **`reclassify-both-copy`** — one RE-RUNNABLE COPY filter over `kind=stage` (rows with `tokens_total` from `tool=size verb=tokens-record`) + **ALL** of `kind=token`, into `kind=tokens`, originals left in place, run against each host's **LOCAL** root as well as the fleet root | **@buildkit** — ACK mandatory, not started. 🔴 **No lane may start it speculatively** — two lanes copying concurrently would double rows |
+| `Q-GLPNETS15-02` | 078 gate | high | **`tests-first`** — the two TEST findings, then re-review, only then the other eight | **this lane** — next session, item 3 below |
+| `Q-GLPNETS15-03` | Report fork | high | **`adopt-verbatim`** — shiras publishes to `D:\coop\_standards\`, glpnet adopts BYTE-FOR-BYTE | **@shiras** — blocked on peer. 🔴 **glpnet is under ruling NOT to port it locally** |
+| `Q-GLPNETS15-04` | Release bar | medium | **`hold`** — no cut until a `feat`/`fix` lands and passes review; no directive override | **EXECUTED** — no tag cut |
 
-🔴 **A decided question must be CITED, never re-asked.** Record answers with
-`bk_question.py decide` onto the qid before acting on them.
+**Rejected options, recorded so they are not re-proposed:** `union-in-reader` (encodes a writer
+defect into every reader as permanent policy); `fix-writer-only` (ONE-WAY — forecloses ~25.7M
+historical tokens); `all-ten-then-review` (the eight would be certified by tests proven unable to
+fail); `park-078` (the two broken tests are repo-wide, parking 078 does not park the doubt);
+`port-locally` (a second author on one fix is the measured cause of the existing fork);
+`vendor-into-buildkit` (ONE-WAY — forecloses mid-incident lane fixes, which found all three of this
+week's report defects); `amend-std4` (ONE-WAY — re-opens a one-day-old standard settled from three
+colliding rulings).
 
 ## 🔴 WHAT'S NEXT — START HERE, IN THIS ORDER
 
 | # | item | state |
 |---:|---|---|
-| 1 | Read the four `Q-GLPNETS15-*` answers if given; `decide` them onto the qids **before** acting | blocked on engineer |
-| 2 | `resume marathon` → `continue pipeline-clarify-plan-tasks-analyze` (item `mitem-01a01997-808b-76b5-a5df-e9d6b5de6444`) | unblocked |
-| 3 | 078: fix the **two TEST findings first** (conformance fixture skips its BOUNDED case; mutation test stays GREEN under a no-op validator) | unblocked, but see Q-02 |
-| 4 | Adopt shiras's patched `bk_report_v1.py` from `D:\coop\_standards\` when published; do **not** author a second variant | waiting on shiras |
+| 1 | `resume marathon` → `continue pipeline-clarify-plan-tasks-analyze` (item `mitem-01a01997-808b-76b5-a5df-e9d6b5de6444`) | unblocked |
+| 2 | **RULING 02**: 078 — fix the **two TEST findings FIRST** (conformance fixture skips its declared BOUNDED case; mutation test stays GREEN under a no-op validator), re-review, **then** the other eight | **ruled, unblocked — this is the work** |
+| 3 | **RULING 03**: adopt shiras's patched `bk_report_v1.py` from `D:\coop\_standards\` the moment it appears. 🔴 **Do NOT author a variant** — that is the ruling, not a preference. Do not sync `roadmap_open_table.py` backwards from deploy-home; `develop`'s copy is ahead (`cd5e76ea`) | blocked on shiras |
+| 4 | **RULING 01**: chase @buildkit's ACK + ownership acceptance. 🔴 **Do NOT start the reclassification here** | filed, waiting |
 | 5 | Chase **ACK on §1 and §3** of the 14:15Z coop message | filed, waiting |
 | 6 | The 6 unbound pipeline ids + 74/123 features with no `spec_path` — `buildkit-roadmap link` or reject | unblocked, unowned |
 

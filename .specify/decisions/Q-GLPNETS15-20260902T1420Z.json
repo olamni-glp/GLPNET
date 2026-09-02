@@ -1,173 +1,187 @@
-{
-  "set_id": "Q-GLPNETS15-20260902T1420Z",
-  "lane": "gavriella-glpnet",
-  "repo": "GLPNET",
-  "host": "GAVRIELLA",
-  "questions": [
-    {
-      "qid": "Q-GLPNETS15-01",
-      "header": "Takt repair",
-      "block": "The takt DuckLake writes token facts into three different partitions and no repair can start until the engineer rules which one is canonical and who executes it.",
-      "origin": "measurement",
-      "severity": "critical",
-      "background": [
-        "MEASURED 2026-09-02T14:05Z on GAVRIELLA: the lake has FIVE kind= partitions, not four. kind=tokens (1036 files fleet / 464 local), kind=stage (4241 / 2228), kind=token SINGULAR (17 / 28), plus kind=era and kind=era_step.",
-        "shiras-ospark 11:50Z named the second: buildkit_cli/sizing/__main__.py:358 calls emit_stage, so `size tokens record` writes kind=stage. Their census of 316 stranded files / 25,749,465 tokens is corroborated for gavriella (112, exact match) but their own host has grown from 128 to 140 in 2h15m, so the writer is still running and the population is not a fixed list.",
-        "NEW and unreported by any lane: kind=token (singular) holds per-phase rows named gavriella-token-clarify/analyze/implement/codexreview/ship/report/resume, written 2026-08-24 to 08-27 — exactly the per-phase token data the engineer standing order mandates, in a partition no reader reads. I have NOT identified its writer and will not guess.",
-        "The fleet mirror also drops rows in that partition: kind=token host=gavriella is 28 files locally and 15 at the fleet root, so 13 of this host's own rows never replicated. Every fleet-root count in this thread, mine included, is a lower bound and not a census.",
-        "Consequence measured in BK-REPORT-v1 section 5 this session: TOTALS 482,732,740 tokens over 1282/5423 rows carrying a measurement (coverage 24%); 4141 rows carry no token measurement; the (unphased) bucket is 3069 rows at 0/3069 measured."
-      ],
-      "impact_if_unanswered": "Every takt and per-phase-token figure this fleet reports stays at 24% coverage with an unknown denominator, and the stranded set keeps growing on at least one host. The mandated per-phase token reporting cannot be satisfied from the lake as it stands.",
-      "options": [
-        {
-          "key": "reclassify-both-copy",
-          "label": "Reclassify both orphans into kind=tokens, by copy, buildkit owns it",
-          "consequence": "buildkit runs one re-runnable filter over kind=stage (predicate: rows carrying tokens_total from tool=size verb=tokens-record) and over all of kind=token, COPYING into kind=tokens and leaving the originals in place. Readers gain ~25.7M tokens plus the per-phase rows immediately. Must be re-run until sizing/__main__.py is fixed, and must run against each host's LOCAL root as well as the fleet root or it silently misses the 13 unreplicated gavriella rows.",
-          "size": "midi",
-          "reversibility": "reversible"
-        },
-        {
-          "key": "union-in-reader",
-          "label": "Leave the lake alone; make every reader union the three partitions",
-          "consequence": "No data is moved. buildkit_cli.marathon.takt_lake, takt_lake_report.py and BK-REPORT section 5 each learn to read kind=tokens + the token-bearing subset of kind=stage + kind=token. Cheaper to reverse but pushes the discrimination logic into every reader forever, and a fourth misfiled partition would need a fourth reader change.",
-          "size": "mini",
-          "reversibility": "reversible"
-        },
-        {
-          "key": "fix-writer-only",
-          "label": "Fix sizing/__main__.py only; strand the historical rows permanently",
-          "consequence": "One-line change, new rows land correctly from the next release. FORECLOSES the 25.7M historical tokens and the 2026-08-24 per-phase rows: they stay unreadable, and every takt trend built on this lake is permanently discontinuous at the fix date with no way to recover the earlier side.",
-          "size": "nano",
-          "reversibility": "one-way"
-        }
-      ],
-      "recommendation": {
-        "option": "reclassify-both-copy",
-        "because": "It beats union-in-reader because the misfiling is a writer defect and encoding it into every reader makes the defect permanent policy; it beats fix-writer-only because copy-reclassification is reversible and recovers 25.7M measured tokens that fix-writer-only forecloses. The copy (not move) form means a wrong predicate costs a re-run, not data."
+[
+  {
+    "qid": "Q-GLPNETS15-01",
+    "header": "Takt repair",
+    "block": "The takt DuckLake writes token facts into three different partitions and no repair can start until the engineer rules which one is canonical and who executes it.",
+    "origin": "measurement",
+    "severity": "critical",
+    "background": [
+      "MEASURED 2026-09-02T14:05Z on GAVRIELLA: the lake has FIVE kind= partitions, not four. kind=tokens (1036 files fleet / 464 local), kind=stage (4241 / 2228), kind=token SINGULAR (17 / 28), plus kind=era and kind=era_step.",
+      "shiras-ospark 11:50Z named the second: buildkit_cli/sizing/__main__.py:358 calls emit_stage, so `size tokens record` writes kind=stage. Their census of 316 stranded files / 25,749,465 tokens is corroborated for gavriella (112, exact match) but their own host has grown from 128 to 140 in 2h15m, so the writer is still running and the population is not a fixed list.",
+      "NEW and unreported by any lane: kind=token (singular) holds per-phase rows named gavriella-token-clarify/analyze/implement/codexreview/ship/report/resume, written 2026-08-24 to 08-27 — exactly the per-phase token data the engineer standing order mandates, in a partition no reader reads. I have NOT identified its writer and will not guess.",
+      "The fleet mirror also drops rows in that partition: kind=token host=gavriella is 28 files locally and 15 at the fleet root, so 13 of this host's own rows never replicated. Every fleet-root count in this thread, mine included, is a lower bound and not a census.",
+      "Consequence measured in BK-REPORT-v1 section 5 this session: TOTALS 482,732,740 tokens over 1282/5423 rows carrying a measurement (coverage 24%); 4141 rows carry no token measurement; the (unphased) bucket is 3069 rows at 0/3069 measured."
+    ],
+    "impact_if_unanswered": "Every takt and per-phase-token figure this fleet reports stays at 24% coverage with an unknown denominator, and the stranded set keeps growing on at least one host. The mandated per-phase token reporting cannot be satisfied from the lake as it stands.",
+    "options": [
+      {
+        "key": "reclassify-both-copy",
+        "label": "Reclassify both orphans into kind=tokens, by copy, buildkit owns it",
+        "consequence": "buildkit runs one re-runnable filter over kind=stage (predicate: rows carrying tokens_total from tool=size verb=tokens-record) and over all of kind=token, COPYING into kind=tokens and leaving the originals in place. Readers gain ~25.7M tokens plus the per-phase rows immediately. Must be re-run until sizing/__main__.py is fixed, and must run against each host's LOCAL root as well as the fleet root or it silently misses the 13 unreplicated gavriella rows.",
+        "size": "midi",
+        "reversibility": "reversible"
+      },
+      {
+        "key": "union-in-reader",
+        "label": "Leave the lake alone; make every reader union the three partitions",
+        "consequence": "No data is moved. buildkit_cli.marathon.takt_lake, takt_lake_report.py and BK-REPORT section 5 each learn to read kind=tokens + the token-bearing subset of kind=stage + kind=token. Cheaper to reverse but pushes the discrimination logic into every reader forever, and a fourth misfiled partition would need a fourth reader change.",
+        "size": "mini",
+        "reversibility": "reversible"
+      },
+      {
+        "key": "fix-writer-only",
+        "label": "Fix sizing/__main__.py only; strand the historical rows permanently",
+        "consequence": "One-line change, new rows land correctly from the next release. FORECLOSES the 25.7M historical tokens and the 2026-08-24 per-phase rows: they stay unreadable, and every takt trend built on this lake is permanently discontinuous at the fix date with no way to recover the earlier side.",
+        "size": "nano",
+        "reversibility": "one-way"
       }
+    ],
+    "recommendation": {
+      "option": "reclassify-both-copy",
+      "because": "It beats union-in-reader because the misfiling is a writer defect and encoding it into every reader makes the defect permanent policy; it beats fix-writer-only because copy-reclassification is reversible and recovers 25.7M measured tokens that fix-writer-only forecloses. The copy (not move) form means a wrong predicate costs a re-run, not data."
     },
-    {
-      "qid": "Q-GLPNETS15-02",
-      "header": "078 gate",
-      "block": "Feature 078-verification-receipts is the rank-1 roadmap item at state implemented but carries a codexreview NO-GO, and nothing can ship it until the engineer rules how that review is discharged.",
-      "origin": "contradiction",
-      "severity": "high",
-      "background": [
-        "Codexreview run 20260824T165651Z returned NO-GO on 078 with 10 findings, 8 HIGH — every one an instance of 078's own thesis failing inside 078 (accepts a PASS receipt from another check/run, no PASS branch in validation, examined+skipped not enforced, empty/mismatched expected.json accepted, reconciliation trusts a filename).",
-        "TWO of the ten are TEST findings: the conformance fixture reaches passed == len(_CASES) without exercising its declared BOUNDED case, and the guard-weakening mutation test stays GREEN under a no-op validator. While those stand, every green run this repo produces is uninterpretable, including the runs that would certify the other eight fixes.",
-        "The finding count is flagged findings_count_status: unconfirmed with prose_fallback_findings: 10 — codex returned prose, so 10 is a parse fallback and the individual findings, not the count, are the evidence.",
-        "078 is roadmap rank 1 at WSJF 7.80 / RICE 1173 and BK-REPORT section 5 shows its era as UNMEASURABLE: analyze is MISSING from the run and eight of nine era steps are not finished."
-      ],
-      "impact_if_unanswered": "078 stays at implemented indefinitely as the highest-WSJF item on the board, and the repo continues to produce green test runs that cannot be interpreted because two of its own tests are proven unable to fail.",
-      "options": [
-        {
-          "key": "tests-first",
-          "label": "Fix the two TEST findings first, then re-run the review",
-          "consequence": "One focused change makes the conformance fixture exercise its BOUNDED case and makes the mutation test fail under a no-op validator. Only after that goes green does anyone attempt the remaining eight. Slowest to a green board, but it is the only order in which the eight fixes can be certified by evidence rather than assertion.",
-          "size": "midi",
-          "reversibility": "reversible"
-        },
-        {
-          "key": "all-ten-then-review",
-          "label": "Fix all ten findings in one pass, then one review",
-          "consequence": "Fewer review cycles and one merge. But the eight non-test fixes would be validated by the same two tests that are proven unable to fail, so a green result would carry no information — the exact failure 078 exists to prevent.",
-          "size": "maxi",
-          "reversibility": "reversible"
-        },
-        {
-          "key": "park-078",
-          "label": "Park 078 and promote the next feature off the board",
-          "consequence": "Frees the single active pipeline slot for front-end-goal-term-acceptance (the section 6 recommendation) or 083. FORECLOSES nothing permanently, but leaves the two uninterpretable tests live in the repo, so every other feature's green run inherits the same doubt while 078 is parked.",
-          "size": "nano",
-          "reversibility": "reversible"
-        }
-      ],
-      "recommendation": {
-        "option": "tests-first",
-        "because": "It beats all-ten-then-review because a fix validated by a test that cannot fail is not evidence, and beats park-078 because the two broken tests are not 078-local — they sit in this repo's suite and taint every other feature's green run for as long as 078 is parked."
-      }
-    },
-    {
-      "qid": "Q-GLPNETS15-03",
-      "header": "Report fork",
-      "block": "shiras has patched bk_report_v1.py on their host and glpnet's copy lacks the patch, so the next lane to touch it decides whether this file forks a third time.",
-      "origin": "contradiction",
-      "severity": "high",
-      "background": [
-        "shiras-yngenios-windows 12:39Z fixed bk_report_v1.py to resolve the interpreter ($BUILDKIT_PYTHON, then this process, then the shebang of the installed buildkit-roadmap) and stamp cli_python in the header, so a wrong-interpreter failure can never again be read as a busy registry.",
-        "MEASURED here: grep -nE 'BUILDKIT_PYTHON|cli_python|shebang' .specify/standards/bk_report_v1.py returns no matches. glpnet runs the pre-fix file.",
-        "This file class has already forked once: two roadmap_open_table.py both citing the 2026-08-23 ruling (develop 9798 B 'BK-STD-1 section 2, ariellas-tefl' vs olamnit 11295 B 'FLEET STANDARD'), flagged on 2026-08-24 and never adjudicated.",
-        "glpnet's own copy is nonetheless AHEAD in one respect: scripts/roadmap_open_table.py here carries today's cd5e76ea fix (the EPIC column was fabricated for 12 of 29 rows) that deploy-home 2026.08.31.1 does not have."
-      ],
-      "impact_if_unanswered": "glpnet keeps emitting reports in which a tooling failure and a busy registry are indistinguishable, and whoever fixes it next writes a third variant of a file that already has two.",
-      "options": [
-        {
-          "key": "adopt-verbatim",
-          "label": "shiras publishes to D:\\coop\\_standards\\ and glpnet adopts verbatim",
-          "consequence": "One authored copy, adopted byte-for-byte by every lane that wants it. Requires shiras to publish and glpnet to wait for it, and glpnet must then re-apply its own local ahead-of-fleet roadmap_open_table.py fix on top rather than losing it.",
-          "size": "mini",
-          "reversibility": "reversible"
-        },
-        {
-          "key": "port-locally",
-          "label": "glpnet ports the fix now from shiras's description",
-          "consequence": "Unblocks this repo immediately with no waiting. Produces a SECOND independently-authored implementation of the same header stamp, which is exactly how the roadmap_open_table.py fork started and would leave two files claiming the same standard.",
-          "size": "mini",
-          "reversibility": "reversible"
-        },
-        {
-          "key": "vendor-into-buildkit",
-          "label": "Make buildkit the single owner; lanes stop carrying repo copies",
-          "consequence": "The report generator ships from the deploy-home version tree only and .specify/standards/bk_report_v1.py becomes a pointer. FORECLOSES a lane's ability to fix its own reporting during an incident without a buildkit release, which is how three of this week's report defects were actually found.",
-          "size": "midi",
-          "reversibility": "one-way"
-        }
-      ],
-      "recommendation": {
-        "option": "adopt-verbatim",
-        "because": "It beats port-locally because a second author on the same fix is the measured cause of the existing standards fork, and beats vendor-into-buildkit because every report defect found this week was found by a lane editing its own copy mid-incident — removing that would have hidden all three."
-      }
-    },
-    {
-      "qid": "Q-GLPNETS15-04",
-      "header": "Release bar",
-      "block": "glpnet's develop qualifies for no release tier under BK-STD-4, so no release can be cut today without an engineer directive that must be named in the receipt.",
-      "origin": "assumption-weakness",
-      "severity": "medium",
-      "background": [
-        "MEASURED after pulling: origin/main..origin/develop is exactly 2 commits — 07d8b402 chore(roadmap): round 65 and 911ea64f a merge commit.",
-        "BK-STD-4 section 2, ACTIVE fleet-wide under ruling Q-GLPNETA16-04: 'Neither tier may be met by docs/chore/merge commits alone. A develop carrying only docs:, chore: and merge commits qualifies for NO tier.'",
-        "The PATCH tier additionally requires the delta to have passed a /bk-codexreview with no unresolved HIGH; the only recent review on this repo is 078's, which returned NO-GO with 8 HIGH.",
-        "olamnit already cut v2026.09.02.2 today under an explicit BK-STD-4 directive override with review NOT RUN, recorded in their 06:33Z release receipt — so the override path is live and in use on this repo."
-      ],
-      "impact_if_unanswered": "No tag is cut from glpnet today. Nothing is lost — the two commits stay on develop and roll into the next qualifying cut — but any lane expecting a daily tag from this repo will not get one.",
-      "options": [
-        {
-          "key": "hold",
-          "label": "Hold — no cut until a feat/fix lands and passes review",
-          "consequence": "glpnet's release history stays strictly conformant to BK-STD-4 with no overrides on record. The two chore/merge commits wait, which costs nothing because they deliver nothing a consumer would notice.",
-          "size": "nano",
-          "reversibility": "reversible"
-        },
-        {
-          "key": "directive-override",
-          "label": "Cut a PATCH under an engineer directive override with a stated receipt",
-          "consequence": "A tag exists today. Requires the receipt to name tier=PATCH, the directive verbatim, and review=NOT RUN, per BK-STD-4 section 5. Adds a second same-day override on this repo, which weakens the bar as a measurement of anything if it becomes routine.",
-          "size": "nano",
-          "reversibility": "reversible"
-        },
-        {
-          "key": "amend-std4",
-          "label": "Raise a BK-STD-3 rule-2 collision and amend BK-STD-4",
-          "consequence": "Argues that a roadmap round is a content change and should qualify. FORECLOSES the current clean reading that chore commits never qualify, and re-opens a bar that took three colliding rulings and a day of fleet time to settle on 2026-09-01.",
-          "size": "mini",
-          "reversibility": "one-way"
-        }
-      ],
-      "recommendation": {
-        "option": "hold",
-        "because": "It beats directive-override because the two commits deliver nothing a consumer would notice, which is the exact case BK-STD-4 section 6 says the tier rule exists to catch; and it beats amend-std4 because the standard is one day old and was settled from three colliding rulings, so re-opening it costs more fleet time than a missing tag."
-      }
+    "decision": {
+      "option": "reclassify-both-copy",
+      "date": "2026-09-02",
+      "rationale": "Engineer ruling 2026-09-02: the misfiling is a writer defect, so encoding it into every reader would make it permanent policy; copy-reclassification is reversible where fix-writer-only forecloses 25.7M measured tokens plus the 2026-08-24 per-phase rows. Must be a re-runnable filter (shiras 128->140 in 2h15m) and must run against each host LOCAL root as well as the fleet root (13 gavriella rows never replicated)."
     }
-  ]
-}
+  },
+  {
+    "qid": "Q-GLPNETS15-02",
+    "header": "078 gate",
+    "block": "Feature 078-verification-receipts is the rank-1 roadmap item at state implemented but carries a codexreview NO-GO, and nothing can ship it until the engineer rules how that review is discharged.",
+    "origin": "contradiction",
+    "severity": "high",
+    "background": [
+      "Codexreview run 20260824T165651Z returned NO-GO on 078 with 10 findings, 8 HIGH — every one an instance of 078's own thesis failing inside 078 (accepts a PASS receipt from another check/run, no PASS branch in validation, examined+skipped not enforced, empty/mismatched expected.json accepted, reconciliation trusts a filename).",
+      "TWO of the ten are TEST findings: the conformance fixture reaches passed == len(_CASES) without exercising its declared BOUNDED case, and the guard-weakening mutation test stays GREEN under a no-op validator. While those stand, every green run this repo produces is uninterpretable, including the runs that would certify the other eight fixes.",
+      "The finding count is flagged findings_count_status: unconfirmed with prose_fallback_findings: 10 — codex returned prose, so 10 is a parse fallback and the individual findings, not the count, are the evidence.",
+      "078 is roadmap rank 1 at WSJF 7.80 / RICE 1173 and BK-REPORT section 5 shows its era as UNMEASURABLE: analyze is MISSING from the run and eight of nine era steps are not finished."
+    ],
+    "impact_if_unanswered": "078 stays at implemented indefinitely as the highest-WSJF item on the board, and the repo continues to produce green test runs that cannot be interpreted because two of its own tests are proven unable to fail.",
+    "options": [
+      {
+        "key": "tests-first",
+        "label": "Fix the two TEST findings first, then re-run the review",
+        "consequence": "One focused change makes the conformance fixture exercise its BOUNDED case and makes the mutation test fail under a no-op validator. Only after that goes green does anyone attempt the remaining eight. Slowest to a green board, but it is the only order in which the eight fixes can be certified by evidence rather than assertion.",
+        "size": "midi",
+        "reversibility": "reversible"
+      },
+      {
+        "key": "all-ten-then-review",
+        "label": "Fix all ten findings in one pass, then one review",
+        "consequence": "Fewer review cycles and one merge. But the eight non-test fixes would be validated by the same two tests that are proven unable to fail, so a green result would carry no information — the exact failure 078 exists to prevent.",
+        "size": "maxi",
+        "reversibility": "reversible"
+      },
+      {
+        "key": "park-078",
+        "label": "Park 078 and promote the next feature off the board",
+        "consequence": "Frees the single active pipeline slot for front-end-goal-term-acceptance (the section 6 recommendation) or 083. FORECLOSES nothing permanently, but leaves the two uninterpretable tests live in the repo, so every other feature's green run inherits the same doubt while 078 is parked.",
+        "size": "nano",
+        "reversibility": "reversible"
+      }
+    ],
+    "recommendation": {
+      "option": "tests-first",
+      "because": "It beats all-ten-then-review because a fix validated by a test that cannot fail is not evidence, and beats park-078 because the two broken tests are not 078-local — they sit in this repo's suite and taint every other feature's green run for as long as 078 is parked."
+    },
+    "decision": {
+      "option": "tests-first",
+      "date": "2026-09-02",
+      "rationale": "Engineer ruling 2026-09-02: a fix validated by a test proven unable to fail is not evidence. The conformance fixture skipping its BOUNDED case and the mutation test staying GREEN under a no-op validator are fixed and re-reviewed BEFORE the other eight findings are touched."
+    }
+  },
+  {
+    "qid": "Q-GLPNETS15-03",
+    "header": "Report fork",
+    "block": "shiras has patched bk_report_v1.py on their host and glpnet's copy lacks the patch, so the next lane to touch it decides whether this file forks a third time.",
+    "origin": "contradiction",
+    "severity": "high",
+    "background": [
+      "shiras-yngenios-windows 12:39Z fixed bk_report_v1.py to resolve the interpreter ($BUILDKIT_PYTHON, then this process, then the shebang of the installed buildkit-roadmap) and stamp cli_python in the header, so a wrong-interpreter failure can never again be read as a busy registry.",
+      "MEASURED here: grep -nE 'BUILDKIT_PYTHON|cli_python|shebang' .specify/standards/bk_report_v1.py returns no matches. glpnet runs the pre-fix file.",
+      "This file class has already forked once: two roadmap_open_table.py both citing the 2026-08-23 ruling (develop 9798 B 'BK-STD-1 section 2, ariellas-tefl' vs olamnit 11295 B 'FLEET STANDARD'), flagged on 2026-08-24 and never adjudicated.",
+      "glpnet's own copy is nonetheless AHEAD in one respect: scripts/roadmap_open_table.py here carries today's cd5e76ea fix (the EPIC column was fabricated for 12 of 29 rows) that deploy-home 2026.08.31.1 does not have."
+    ],
+    "impact_if_unanswered": "glpnet keeps emitting reports in which a tooling failure and a busy registry are indistinguishable, and whoever fixes it next writes a third variant of a file that already has two.",
+    "options": [
+      {
+        "key": "adopt-verbatim",
+        "label": "shiras publishes to D:\\coop\\_standards\\ and glpnet adopts verbatim",
+        "consequence": "One authored copy, adopted byte-for-byte by every lane that wants it. Requires shiras to publish and glpnet to wait for it, and glpnet must then re-apply its own local ahead-of-fleet roadmap_open_table.py fix on top rather than losing it.",
+        "size": "mini",
+        "reversibility": "reversible"
+      },
+      {
+        "key": "port-locally",
+        "label": "glpnet ports the fix now from shiras's description",
+        "consequence": "Unblocks this repo immediately with no waiting. Produces a SECOND independently-authored implementation of the same header stamp, which is exactly how the roadmap_open_table.py fork started and would leave two files claiming the same standard.",
+        "size": "mini",
+        "reversibility": "reversible"
+      },
+      {
+        "key": "vendor-into-buildkit",
+        "label": "Make buildkit the single owner; lanes stop carrying repo copies",
+        "consequence": "The report generator ships from the deploy-home version tree only and .specify/standards/bk_report_v1.py becomes a pointer. FORECLOSES a lane's ability to fix its own reporting during an incident without a buildkit release, which is how three of this week's report defects were actually found.",
+        "size": "midi",
+        "reversibility": "one-way"
+      }
+    ],
+    "recommendation": {
+      "option": "adopt-verbatim",
+      "because": "It beats port-locally because a second author on the same fix is the measured cause of the existing standards fork, and beats vendor-into-buildkit because every report defect found this week was found by a lane editing its own copy mid-incident — removing that would have hidden all three."
+    },
+    "decision": {
+      "option": "adopt-verbatim",
+      "date": "2026-09-02",
+      "rationale": "Engineer ruling 2026-09-02: a second author on the same fix is the measured cause of the existing roadmap_open_table.py fork. glpnet waits for shiras to publish to D:/coop/_standards/ and adopts byte-for-byte, then re-applies its own ahead-of-fleet cd5e76ea epic fix on top."
+    }
+  },
+  {
+    "qid": "Q-GLPNETS15-04",
+    "header": "Release bar",
+    "block": "glpnet's develop qualifies for no release tier under BK-STD-4, so no release can be cut today without an engineer directive that must be named in the receipt.",
+    "origin": "assumption-weakness",
+    "severity": "medium",
+    "background": [
+      "MEASURED after pulling: origin/main..origin/develop is exactly 2 commits — 07d8b402 chore(roadmap): round 65 and 911ea64f a merge commit.",
+      "BK-STD-4 section 2, ACTIVE fleet-wide under ruling Q-GLPNETA16-04: 'Neither tier may be met by docs/chore/merge commits alone. A develop carrying only docs:, chore: and merge commits qualifies for NO tier.'",
+      "The PATCH tier additionally requires the delta to have passed a /bk-codexreview with no unresolved HIGH; the only recent review on this repo is 078's, which returned NO-GO with 8 HIGH.",
+      "olamnit already cut v2026.09.02.2 today under an explicit BK-STD-4 directive override with review NOT RUN, recorded in their 06:33Z release receipt — so the override path is live and in use on this repo."
+    ],
+    "impact_if_unanswered": "No tag is cut from glpnet today. Nothing is lost — the two commits stay on develop and roll into the next qualifying cut — but any lane expecting a daily tag from this repo will not get one.",
+    "options": [
+      {
+        "key": "hold",
+        "label": "Hold — no cut until a feat/fix lands and passes review",
+        "consequence": "glpnet's release history stays strictly conformant to BK-STD-4 with no overrides on record. The two chore/merge commits wait, which costs nothing because they deliver nothing a consumer would notice.",
+        "size": "nano",
+        "reversibility": "reversible"
+      },
+      {
+        "key": "directive-override",
+        "label": "Cut a PATCH under an engineer directive override with a stated receipt",
+        "consequence": "A tag exists today. Requires the receipt to name tier=PATCH, the directive verbatim, and review=NOT RUN, per BK-STD-4 section 5. Adds a second same-day override on this repo, which weakens the bar as a measurement of anything if it becomes routine.",
+        "size": "nano",
+        "reversibility": "reversible"
+      },
+      {
+        "key": "amend-std4",
+        "label": "Raise a BK-STD-3 rule-2 collision and amend BK-STD-4",
+        "consequence": "Argues that a roadmap round is a content change and should qualify. FORECLOSES the current clean reading that chore commits never qualify, and re-opens a bar that took three colliding rulings and a day of fleet time to settle on 2026-09-01.",
+        "size": "mini",
+        "reversibility": "one-way"
+      }
+    ],
+    "recommendation": {
+      "option": "hold",
+      "because": "It beats directive-override because the two commits deliver nothing a consumer would notice, which is the exact case BK-STD-4 section 6 says the tier rule exists to catch; and it beats amend-std4 because the standard is one day old and was settled from three colliding rulings, so re-opening it costs more fleet time than a missing tag."
+    },
+    "decision": {
+      "option": "hold",
+      "date": "2026-09-02",
+      "rationale": "Engineer ruling 2026-09-02: the 7-commit delta is 2 chore + 1 docs + 4 merges with feat|fix count 0 and delivers nothing a consumer would notice - the exact case BK-STD-4 section 6 says the tier rule exists to catch. No directive override. No cut until a feat/fix lands and passes review."
+    }
+  }
+]
