@@ -152,6 +152,19 @@ claiming any tier.** Do not infer the outcome from this document.
 9. ⚠️ **HEAVY HOST CONTENTION IS THE NORM** — 20+ concurrent python processes across lanes.
    Use `BUILDKIT_LOCK_WAIT_SECONDS=600`. **Never run `bk_report_v1.py all` and a roadmap
    round at the same time** — they serialise on the catalog and each looks hung to the other.
+10. 🔴 **§5 TAKT WAS NOT MEASURED THIS SESSION.** Two attempts (the full report, and `sec_takt`
+   alone) were both still running — 2308s and 990s of CPU, climbing — when the session ended,
+   and were killed without ever writing a byte. **Treat §5 for 2026-09-02 as `unmeasured`,
+   never as zero.** One takt row WAS written (`phase=other`, `method=unavailable`).
+   **Operational sequencing for the next session** — this lane's note, not a ruling; the
+   engineer chose the exception in `A17-04` over this, and the two compose:
+   **run `bk_report_v1.py all` detached as the FIRST action of the session**, before the
+   roadmap round, and let it stream (it now does, per `54219ce8`). Started late it cannot
+   finish, and started alongside the round it stalls on the catalog. Both happened today.
+11. ⚠️ **DO NOT REAP THE OTHER LANES' `bk_report_v1` PROCESSES.** At session end three were
+   live on this host at 1455s–2375s CPU and **none were this lane's** — ours exited cleanly
+   when their tasks were stopped. A `bk_report_v1` process is not evidence of a stuck glpnet
+   run; check the PID against your own before concluding anything (F2 in the 15:20Z sweep).
 
 ## 7A · 🔴 REBOOT READINESS — VERIFY THE **WIRED** SCRIPT, NOT THE REPO'S
 
