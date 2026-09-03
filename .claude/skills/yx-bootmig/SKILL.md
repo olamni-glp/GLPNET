@@ -54,8 +54,29 @@ outcome; defaulting is the defect this programme exists to remove.
         every unreadable root is NAMED, never skipped
 
     P2  BUILD THE CROSS-REPO RELATION
-        extend the callgraph node key beyond {repo}:{rel} so edges cross repos
-        this is the substrate a content-based scope predicate needs and lacks today
+        [SUPERSEDED] "extend the callgraph node key beyond {repo}:{rel} so edges
+        cross repos" -- that instruction is INVERTED. DO NOT FOLLOW IT.
+        ⛔ The node key is artifact_id_for(repo_id, rel_path): ALREADY repo-qualified
+           and CORRECT. Repo-qualification is exactly what makes identity unambiguous
+           across N sources. Widening it DAMAGES a correct key, still yields zero
+           cross-repo edges, and exits 0 reporting success.
+        ROOT CAUSE IS ONE LAYER ABOVE, AT INGEST: index/stem_index are built per
+           repo_id over ONE repo, so a token naming another repo matches nothing and
+           is dropped at parse time (survey/parse.py resolve_references); resolution
+           then looks every reference up under the SOURCE artifact's own repo. So
+           artifacts.referenced NEVER held a cross-repo token, and `yx callgraph
+           compute` cannot distinguish "no cross-repo edges exist" from "every
+           cross-repo edge was discarded" -- same exit code, same silence, no
+           denominator.
+        ⛔ AND THE OBVIOUS EXTRACTOR FIX MINTS FALSE EDGES: stem_index is keyed on a
+           lowercase path stem, so widening it across repos binds every same-named
+           module in N repos to every other. That is the FR-8 same-identity/
+           different-semantics case, which must ESCALATE with both provenances --
+           never resolve to the nearest match.
+        MEASURED OUTCOME (olamnit lane, P2 landed 2026-09-01, all five sources):
+           bound = 0 cross-repo edges. A measurement, not an absence of measurement.
+        Source: olamnit 20260831T1605Z URGENT · qhstate 20260831T1810Z §2 ·
+                FEED SWEEP gavriella-yngcor 20260903T0130Z (ACK requested of @glpnet)
 
     P3  SCOPE DELINEATION, PER SOURCE    [GATED · rulings R-A3.1 + R-A3.2]
         PROPOSE boundaries as RULES or SUBTREES — never file lists (FR-5)
