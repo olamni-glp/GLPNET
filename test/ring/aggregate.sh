@@ -1,0 +1,96 @@
+#!/usr/bin/env bash
+# test/ring/aggregate.sh — the C4-R cross-ring aggregate (feature 101, T015/T021).
+#
+# Folds every ring's conformance report into one verdict, and REFUSES when any required
+# ring is missing or red.
+#
+# C4-R is the rule this implements, and it exists because of a specific, likely failure:
+# the BEAM ring builds and passes, the AtomVM ring is never built, and the aggregate
+# reports green because it only ever saw one ring. That green is indistinguishable from a
+# real one. So a missing ring is a REFUSAL — not a warning, not "1 of 2 rings passed".
+# An unbuilt ring never reads as a pass.
+#
+# Usage:
+#   aggregate.sh --reports <dir> [--require "beam atomvm"]
+#
+# Reads <dir>/<ring>.report, validating each through parse_report.sh (C4).
+#
+# Exit: 0 all required rings present and green · 1 refused · 2 unusable input.
+
+set -u
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PARSER="$SCRIPT_DIR/parse_report.sh"
+
+REPORTS=""; REQUIRE="beam atomvm"
+while [ $# -gt 0 ]; do
+    case "$1" in
+        --reports) REPORTS="${2:-}"; shift 2 ;;
+        --require) REQUIRE="${2:-}"; shift 2 ;;
+        *) echo "aggregate: unknown argument '$1'" >&2; exit 2 ;;
+    esac
+done
+
+[ -n "$REPORTS" ] || { echo "aggregate: --reports <dir> is required" >&2; exit 2; }
+[ -d "$REPORTS" ] || { echo "aggregate: no such reports directory: $REPORTS" >&2; exit 2; }
+[ -f "$PARSER" ]  || { echo "aggregate: missing $PARSER" >&2; exit 2; }
+
+echo "cross-ring aggregate"
+echo "  reports dir:    $REPORTS"
+echo "  required rings: $REQUIRE"
+echo ""
+
+MISSING=""; MALFORMED=""; RED=""; OK=""
+TOT_ATT=0; TOT_AGR=0; TOT_DIV=0; TOT_EXC=0
+
+for ring in $REQUIRE; do
+    f="$REPORTS/$ring.report"
+    if [ ! -f "$f" ]; then
+        MISSING="$MISSING $ring"
+        echo "  $ring: NOT BUILT (no $ring.report)"
+        continue
+    fi
+
+    out="$( bash "$PARSER" "$f" 2>&1 )"; rc=$?
+    if [ "$rc" -ne 0 ]; then
+        MALFORMED="$MALFORMED $ring"
+        echo "  $ring: MALFORMED REPORT"
+        printf '%s\n' "$out" | sed 's/^/      /'
+        continue
+    fi
+
+    get() { sed -n "s/^$1:[[:space:]]*//p" "$f" | tr -d '\r' | tail -1; }
+    att="$(get attempted)"; agr="$(get agreed)"; div="$(get diverged)"; exc="$(get excused)"
+    TOT_ATT=$((TOT_ATT + att)); TOT_AGR=$((TOT_AGR + agr))
+    TOT_DIV=$((TOT_DIV + div)); TOT_EXC=$((TOT_EXC + exc))
+
+    if [ "$div" -gt 0 ]; then
+        RED="$RED $ring"
+        echo "  $ring: RED — $div divergence(s) of $att attempted"
+    else
+        OK="$OK $ring"
+        echo "  $ring: green — $agr/$att agreed, $exc excused"
+    fi
+done
+
+echo ""
+echo "  totals: attempted=$TOT_ATT agreed=$TOT_AGR diverged=$TOT_DIV excused=$TOT_EXC"
+echo ""
+
+if [ -n "$MISSING" ] || [ -n "$MALFORMED" ]; then
+    echo "REFUSED — the aggregate cannot be reported."
+    [ -n "$MISSING" ]   && echo "  unbuilt ring(s):$MISSING"
+    [ -n "$MALFORMED" ] && echo "  malformed report(s):$MALFORMED"
+    echo ""
+    echo "  An unbuilt ring never reads as a pass (C4-R / SC-006). Reporting the rings that"
+    echo "  DID build as the whole result is the failure mode this refusal exists to prevent:"
+    echo "  that green would be indistinguishable from a complete one."
+    exit 1
+fi
+
+if [ -n "$RED" ]; then
+    echo "REFUSED — ring(s) with divergences:$RED"
+    exit 1
+fi
+
+echo "GREEN — all required rings present and in agreement:$OK"
+exit 0

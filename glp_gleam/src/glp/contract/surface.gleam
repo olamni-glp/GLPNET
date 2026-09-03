@@ -19,6 +19,32 @@
 //// test/ring/test_contract_purity.sh — it introduces a runtime dependency here and asserts
 //// the build FAILS (SC-004). A purity rule with no failing case is not a rule.
 ////
-//// Empty-but-building at T002 by intent: the runtime-free surface is *measured* into this
-//// package by T012/T013, not assumed. `gleam build` flags "empty module" — expected for an
-//// intentional skeleton, as with the feature-033 placeholders.
+//// ## The measured surface (T012/T013, 2026-09-03)
+////
+//// Which modules are runtime-free was **measured**, not assumed — by
+//// `test/ring/analyze_imports.py`, taking the transitive closure over `gleam/erlang`
+//// imports and `@external(erlang, ...)` FFI declarations. Transitivity is the whole
+//// point: a clean-looking module that imports a tainted one still drags the runtime in
+//// at build time, and a direct-only scan would have called ~87 of 100 modules pure and
+//// been wrong about most of them.
+////
+////   denominator  100 modules scanned
+////   runtime-free  71  (69 of them constitute the contract surface)
+////   tainted       29  — 16 directly, 13 transitively
+////   not read       0
+////
+//// The taint is confined to exactly where it should be: the FFI/IO boundary (`repl/`,
+//// `engine/kernels`, `be/server`, `fe/client`, `glp_embed`) and the process-based link
+//// primitives and transports. Everything else — the parser, the whole type checker, the
+//// compiler and bytecode, the term/heap/unify core, the codecs and the link reliability
+//// layer — is runtime-free today.
+////
+//// The surface is enumerated in `test/ring/contract-surface.list` and enforced by
+//// `test/ring/check_contract_purity.sh` (C1-R). Per Principle IV-b the extraction is
+//// **additive**: those modules stay exactly where they are; the manifest declares which
+//// of them constitute L0. Nothing is moved, and nothing is copied.
+////
+//// This module carries no public definitions by design — the contract is a *boundary*,
+//// declared by the manifest and enforced by the gate, not a facade to route calls
+//// through. `gleam build` flags "empty module"; that is expected here, as with the
+//// feature-033 placeholders.

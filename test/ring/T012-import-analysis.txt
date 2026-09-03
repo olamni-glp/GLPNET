@@ -1,0 +1,136 @@
+== T012 · runtime-freedom of glp_gleam/src, measured ==
+  source tree:  D:\BSTDEV\research\GLP\GLPNET\glp_gleam\src
+  denominator:  100 modules scanned
+  runtime-free: 71
+  tainted:      29  (16 directly, 13 transitively)
+  not read:     0
+
+  -- directly tainted (the taint sources) --
+    atomvm_gated_probe
+        declares @external(erlang, ...) FFI
+    glp/be/server
+        imports gleam/erlang/charlist
+        declares @external(erlang, ...) FFI
+    glp/engine
+        imports gleam/erlang/charlist
+        declares @external(erlang, ...) FFI
+    glp/engine/kernels
+        declares @external(erlang, ...) FFI
+    glp/fe/client
+        imports gleam/erlang/charlist
+        declares @external(erlang, ...) FFI
+    glp/link/primitives/link_kernels
+        imports gleam/erlang/process
+    glp/link/primitives/link_loop
+        imports gleam/erlang/process
+    glp/link/primitives/link_runtime
+        imports gleam/erlang/process
+    glp/link/seam/endpoint
+        imports gleam/erlang/process
+    glp/link/transports/loopback
+        imports gleam/erlang/process
+    glp/link/transports/multi_accept
+        imports gleam/erlang/process
+        declares @external(erlang, ...) FFI
+    glp/link/transports/tcp
+        imports gleam/erlang/process
+        declares @external(erlang, ...) FFI
+    glp/link/transports/zmq
+        imports gleam/erlang/process
+        declares @external(erlang, ...) FFI
+    glp/repl/commands
+        declares @external(erlang, ...) FFI
+    glp/repl/repl
+        declares @external(erlang, ...) FFI
+    glp_embed
+        declares @external(erlang, ...) FFI
+
+  -- transitively tainted (13) --
+    glp/engine/runner  <- glp/engine/runner -> glp/engine/kernels
+    glp/engine/scheduler  <- glp/engine/scheduler -> glp/engine/kernels
+    glp/link/primitives/link_egress  <- glp/link/primitives/link_egress -> glp/link/primitives/link_handle -> glp/link/seam/endpoint
+    glp/link/primitives/link_establish  <- glp/link/primitives/link_establish -> glp/link/primitives/link_handle -> glp/link/seam/endpoint
+    glp/link/primitives/link_handle  <- glp/link/primitives/link_handle -> glp/link/seam/endpoint
+    glp/link/primitives/link_pump  <- glp/link/primitives/link_pump -> glp/link/primitives/link_handle -> glp/link/seam/endpoint
+    glp/link/primitives/link_registry  <- glp/link/primitives/link_registry -> glp/link/primitives/link_handle -> glp/link/seam/endpoint
+    glp/link/primitives/transport_registry  <- glp/link/primitives/transport_registry -> glp/link/seam/transport -> glp/link/seam/endpoint
+    glp/link/seam/transport  <- glp/link/seam/transport -> glp/link/seam/endpoint
+    glp/link/transports/bridge_client  <- glp/link/transports/bridge_client -> glp/link/seam/endpoint
+    glp/mad/boot_loader  <- glp/mad/boot_loader -> glp/engine/scheduler -> glp/engine/kernels
+    glp/mad/mad_engine  <- glp/mad/mad_engine -> glp/engine/scheduler -> glp/engine/kernels
+    glp_gleam  <- glp_gleam -> glp/repl/repl
+
+  -- runtime-free surface (71) --
+    glp/analysis
+    glp/analysis/prelude
+    glp/analysis/srsw
+    glp/analysis/type_ast
+    glp/analysis/type_checker/clause_validation
+    glp/analysis/type_checker/mode
+    glp/analysis/type_checker/moded_head
+    glp/analysis/type_checker/moded_term
+    glp/analysis/type_checker/param_expansion
+    glp/analysis/type_checker/program_dfa
+    glp/analysis/type_checker/subtyping
+    glp/analysis/type_checker/type_checker
+    glp/analysis/type_checker/type_environment_builder
+    glp/analysis/type_checker/well_typed_clause
+    glp/analysis/type_checker/well_typed_term
+    glp/analysis/type_conversion
+    glp/bytecode
+    glp/bytecode/guard_defs
+    glp/bytecode/lint
+    glp/bytecode/opcodes
+    glp/bytecode/program
+    glp/codec/result_envelope
+    glp/codec/result_envelope_builder
+    glp/codec/term_codec
+    glp/compiler
+    glp/compiler/codegen
+    glp/compiler/loader
+    glp/compiler/partial_eval
+    glp/compiler/project_linker
+    glp/contract/surface
+    glp/diagnostics
+    glp/engine/arith
+    glp/engine/goal_boot
+    glp/engine/goal_format
+    glp/engine/output_capture
+    glp/engine/types
+    glp/link
+    glp/link/primitives/capability_gate
+    glp/link/primitives/link_faults
+    glp/link/primitives/link_terms
+    glp/link/primitives/payload_codec
+    glp/link/reliability/crc32
+    glp/link/reliability/frame_codec
+    glp/link/reliability/frame_reassembler
+    glp/link/reliability/inbound_ordering
+    glp/link/reliability/link_sequencer
+    glp/link/reliability/send_window
+    glp/link/seam/link_address
+    glp/link/seam/link_fault
+    glp/link/seam/link_id
+    glp/link/seam/link_options
+    glp/link/seam/link_scheme
+    glp/lint
+    glp/mad/global_name
+    glp/mad/global_writers_table
+    glp/mad/globalize
+    glp/mad/localize
+    glp/mad/mad_kernels
+    glp/mad/message
+    glp/multiagent
+    glp/parser/ast
+    glp/parser/lexer
+    glp/parser/parser
+    glp/repl/results
+    glp/ring/ring
+    glp/runtime
+    glp/runtime/heap
+    glp/runtime/suspension
+    glp/runtime/terms
+    glp/runtime/unify
+    glp/split/wire
+
+  reconciles: 71 free + 29 tainted + 0 not-read == 100 (denominator 100)

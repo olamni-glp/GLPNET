@@ -48,9 +48,9 @@ this feature's own parent task list.
 
 ## Phase 3: US1 — the workstation (BEAM) ring · **P1**
 
-- [ ] **T012** [US1] Import-analyse `glp_gleam/src/glp/**` to determine which modules are runtime-free
+- [x] **T012** [US1] Import-analyse `glp_gleam/src/glp/**` to determine which modules are runtime-free
       **today**. Measured, not assumed — this fixes the contract boundary (research R2).
-- [ ] **T013** [US1] **(FR-001)** Extract the runtime-free surface into `glp/contract/` (C1). Additive: existing
+- [x] **T013** [US1] **(FR-001)** Extract the runtime-free surface into `glp/contract/` (C1). Additive: existing
       modules stay in place (Principle IV-b).
 - [ ] **T014** [US1] **(FR-003)** Implement `glp/ring/beam.gleam` — the L1b realization held to the contract.
 - [ ] **T015** [US1] Wire `test/ring/` to emit the C4 report shape (ring, denominator, attempted/
