@@ -39,7 +39,7 @@ echo "  reports dir:    $REPORTS"
 echo "  required rings: $REQUIRE"
 echo ""
 
-MISSING=""; MALFORMED=""; RED=""; OK=""
+MISSING=""; MALFORMED=""; RED=""; OK=""; UNREAD=""
 TOT_ATT=0; TOT_AGR=0; TOT_DIV=0; TOT_EXC=0
 
 for ring in $REQUIRE; do
@@ -63,7 +63,23 @@ for ring in $REQUIRE; do
     TOT_ATT=$((TOT_ATT + att)); TOT_AGR=$((TOT_AGR + agr))
     TOT_DIV=$((TOT_DIV + div)); TOT_EXC=$((TOT_EXC + exc))
 
-    if [ "$div" -gt 0 ]; then
+    nr="$(get not_run)"
+    # Normalise: the field may carry an explanatory parenthetical after the token, e.g.
+    # "none (whole pinned corpus attempted)". Only the leading token is the claim.
+    nr_token="${nr%% *}"
+
+    # An UNREAD ring is NOT a green one. A report with nothing attempted, or one that
+    # names something it did not run, is honest — and honestly says the evidence is
+    # absent. Counting it as green because `diverged` happens to be 0 would launder a
+    # vacuous report into a pass, which is the same failure C4-R forbids for a MISSING
+    # ring, just with a file present. Zero divergences out of zero cases is not agreement.
+    if [ "$att" -eq 0 ]; then
+        UNREAD="$UNREAD $ring"
+        echo "  $ring: UNREAD — 0 attempted; not_run: $nr"
+    elif [ "$nr_token" != "none" ] && [ -n "$nr_token" ]; then
+        UNREAD="$UNREAD $ring"
+        echo "  $ring: PARTIAL — $agr/$att agreed but not_run: $nr"
+    elif [ "$div" -gt 0 ]; then
         RED="$RED $ring"
         echo "  $ring: RED — $div divergence(s) of $att attempted"
     else
@@ -76,10 +92,11 @@ echo ""
 echo "  totals: attempted=$TOT_ATT agreed=$TOT_AGR diverged=$TOT_DIV excused=$TOT_EXC"
 echo ""
 
-if [ -n "$MISSING" ] || [ -n "$MALFORMED" ]; then
+if [ -n "$MISSING" ] || [ -n "$MALFORMED" ] || [ -n "$UNREAD" ]; then
     echo "REFUSED — the aggregate cannot be reported."
     [ -n "$MISSING" ]   && echo "  unbuilt ring(s):$MISSING"
     [ -n "$MALFORMED" ] && echo "  malformed report(s):$MALFORMED"
+    [ -n "$UNREAD" ]    && echo "  unread / partial ring(s):$UNREAD"
     echo ""
     echo "  An unbuilt ring never reads as a pass (C4-R / SC-006). Reporting the rings that"
     echo "  DID build as the whole result is the failure mode this refusal exists to prevent:"

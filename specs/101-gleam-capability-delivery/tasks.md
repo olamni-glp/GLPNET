@@ -52,10 +52,10 @@ this feature's own parent task list.
       **today**. Measured, not assumed — this fixes the contract boundary (research R2).
 - [x] **T013** [US1] **(FR-001)** Extract the runtime-free surface into `glp/contract/` (C1). Additive: existing
       modules stay in place (Principle IV-b).
-- [ ] **T014** [US1] **(FR-003)** Implement `glp/ring/beam.gleam` — the L1b realization held to the contract.
-- [ ] **T015** [US1] Wire `test/ring/` to emit the C4 report shape (ring, denominator, attempted/
+- [x] **T014** [US1] **(FR-003)** Implement `glp/ring/beam.gleam` — the L1b realization held to the contract.
+- [x] **T015** [US1] Wire `test/ring/` to emit the C4 report shape (ring, denominator, attempted/
       agreed/diverged/excused, `not_run[]`).
-- [ ] **T016** [US1] **(FR-010, SC-001)** — run the pinned corpus with **no Dart toolchain on PATH** and record
+- [x] **T016** [US1] **(FR-010, SC-001)** — run the pinned corpus with **no Dart toolchain on PATH** and record
       the result. Refuter: any case that only passes with Dart present.
 
 ## Phase 4: US2 — the app (AtomVM) ring · **P2**
@@ -65,7 +65,7 @@ this feature's own parent task list.
       for `proc_lib`.
 - [ ] **T018** [US2] Implement `glp/ring/atomvm.gleam` with a **build-time** refusal naming the
       offending construct (C3). A runtime rejection does not satisfy FR-004.
-- [ ] **T019** [US2] Report host-side conformance as **UNREAD with a named reason** — the MAUI Blazor
+- [x] **T019** [US2] Report host-side conformance as **UNREAD with a named reason** — the MAUI Blazor
       Hybrid host is target-side and absent here (`maui` = 0 occurrences in glpnet).
       **Do NOT synthesize a stand-in host to make a suite green.**
 
@@ -77,9 +77,9 @@ this feature's own parent task list.
       task.** It is a negative requirement — nothing fails if it is silently violated, which is
       exactly why it needs an explicit guard rather than trust.
 
-- [ ] **T020** [US3] **(FR-002)** Implement C2 admission: record `subtree → ring` with **measured contract
+- [x] **T020** [US3] **(FR-002)** Implement C2 admission: record `subtree → ring` with **measured contract
       consumption** as evidence, and refuse name-based admission.
-- [ ] **T021** [US3] Emit the source × ring coverage matrix naming **both axes** plus what was not
+- [x] **T021** [US3] Emit the source × ring coverage matrix naming **both axes** plus what was not
       read (FR-006/FR-008).
 
 ## Dependencies
@@ -100,6 +100,35 @@ T022                                             # FR-005 retention guard, indep
 - **The MAUI Blazor Hybrid host itself** — target-side, absent here.
 - **The QHSM-wrapped Dart reference implementation** — engineer-declared future, workstation-only,
   oracle-class work; explicitly out of scope.
+
+## 🔴 T017 / T018 — BLOCKED, needs the engineer (measured 2026-09-03)
+
+**T017 cannot be measured on this host, and must not be guessed.** Two independent absences:
+
+1. **The AtomVM toolchain is not installed on GAVRIELLA.** No `atomvm`, no `packbeam`, no install
+   under the user profile. So the construct enumeration cannot be performed here even in principle
+   — this is a toolchain gap, not merely a task nobody has picked up.
+2. **The MAUI Blazor Hybrid host is target-side**, absent from this repo (`maui` = 0 occurrences in
+   product code, re-verified by `test/ring/report_atomvm_unread.sh`).
+
+`research.md` R3 already records the full construct list as **NOT MEASURED** and rejects
+allow-list-by-trial as untestable. T018's build-time refusal (C3) has to name the construct it
+refuses; with no enumeration there is nothing to name, so implementing T018 now would mean inventing
+the list — the guess R3 forbids.
+
+**What is in place instead**, so the gap is loud rather than silent:
+
+- `test/ring/report_atomvm_unread.sh` (T019) emits the ring as **UNREAD with a named reason**, and
+  re-measures both premises before claiming it — if the toolchain or host ever appears, it exits 2
+  and tells you to revisit rather than continuing to report UNREAD.
+- `test/ring/aggregate.sh` **REFUSES** while atomvm is unread, so the BEAM ring's 206/206 can never
+  be reported as the whole delivery.
+- `test/ring/coverage_matrix.sh` shows 1 of 4 cells measured, the other 3 named as UNREAD.
+
+**Needs from the engineer:** either an AtomVM toolchain on a host this lane can reach, or a ruling
+that the enumeration is sourced from the F1 dossier / upstream AtomVM docs rather than measured.
+The only seed evidence held today is the one already recorded: `gleam_otp` is excluded because its
+`proc_lib` use is outside AtomVM's BEAM/OTP subset.
 
 ## Honest limits carried from planning
 

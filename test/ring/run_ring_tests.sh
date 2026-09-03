@@ -69,5 +69,11 @@ if [ "$PENDING" -gt 0 ]; then
 fi
 
 echo "   RESULT: GREEN"
+echo ""
+echo "   This means THE GUARDS HOLD. It does not mean the capability is delivered."
+echo "   Those are different claims and this line exists so they are not conflated:"
+echo "   the delivery verdict is test/ring/aggregate.sh, which REFUSES while any"
+echo "   required ring is unbuilt or unread. Run it:"
+echo "     bash test/ring/aggregate.sh --reports test/ring/reports --require \"beam atomvm\""
 echo "=========================================="
 exit 0

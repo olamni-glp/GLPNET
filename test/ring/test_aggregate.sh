@@ -125,9 +125,44 @@ EOF
     fi
 }
 
+# ---------------------------------------------------------------------------
+# The subtler sibling of T009, and the one that nearly slipped through. A ring can be
+# PRESENT, well-formed, and honest — reporting UNREAD with a named reason (T019/R4) —
+# and still have `diverged: 0`. An aggregate that greens on "no divergences" would
+# launder that vacuous report into a pass: zero divergences out of ZERO CASES is not
+# agreement. Same failure as a missing ring, just with a file present.
+# ---------------------------------------------------------------------------
+test_unread_ring_is_not_laundered() {
+    local name="test_unread_ring_is_not_laundered"
+    if _agg_missing; then
+        pending "$name" "aggregate (test/ring/aggregate.sh) lands at T015/T021"
+        return 0
+    fi
+    local d="$TMP/one-unread"
+    write_report "$d" beam
+    mkdir -p "$d"
+    cat > "$d/atomvm.report" <<'EOF'
+ring: atomvm
+denominator: 206
+attempted: 0
+agreed: 0
+diverged: 0
+excused: 0
+not_run: atomvm-conformance (toolchain absent; host is target-side)
+EOF
+    local out rc
+    out="$( bash "$AGG" --reports "$d" --require "$RINGS_REQUIRED" 2>&1 )"; rc=$?
+    if [ "$rc" -eq 0 ]; then
+        fail "$name" "aggregate returned SUCCESS with the atomvm ring UNREAD (0 attempted) — 0 divergences out of 0 cases was read as agreement"
+        return 0
+    fi
+    assert_contains "$name" "$out" "atomvm"
+}
+
 test_unbuilt_ring_never_reads_as_pass
 test_complete_aggregate_is_accepted
 test_failing_ring_is_not_laundered
+test_unread_ring_is_not_laundered
 
 ring_summary
 exit $?
