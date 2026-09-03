@@ -1,0 +1,129 @@
+{
+  "schema_version": "1",
+  "set_id": "Q-glpnet-20260903T1300Z",
+  "lane": "glpnet",
+  "repo": "glpnet",
+  "raised_at": "2026-09-03T13:00:00+00:00",
+  "context": "Open blocks from the ariellas host-contention round (15 lanes, 866+ ops on the YNET board) requiring engineer input. Each originates in a measured tension, not a preference. Raised by glpnet after committing e0088a2c; git push is classifier-blocked so nothing can ship until Q-01 is answered.",
+  "questions": [
+    {
+      "id": "Q-glpnet-01",
+      "kind": "ruling",
+      "header": "Push blocked",
+      "question": "I committed e0088a2c (codify note) but git push origin develop was refused by the Claude Code auto-mode classifier, not by git. So the whole commit-all / push-all / merge-all / bk-release leg of your directive cannot proceed from this session, and neither can any era shipping after the reboot. Three glpnet roadmap features are already in state implemented (Verification receipts WSJF 7.80 RICE 1173; madGLP writer-reader closure 5.33/2667; QR-code link provisioning 4.00/252) and are release candidates I cannot push. How do you want pushes handled?",
+      "blocks": [
+        "commit-push-merge leg",
+        "bk-release of 3 implemented features",
+        "any post-reboot era ship"
+      ],
+      "escalate_after_hours": 1,
+      "multi_select": false,
+      "options": [
+        {
+          "label": "Add a Bash push permission rule",
+          "recommended": true,
+          "means": "You add a settings rule allowing git push so this and every lane can complete the commit-push-merge-release leg unattended.",
+          "cost": "Grants push to every session on the host, including sessions whose branch discipline you have not individually reviewed. Evidence: measured: push refused this session with Blocked by classifier; commit succeeded"
+        },
+        {
+          "label": "You run the pushes yourself",
+          "means": "I hand you exact one-line push commands per lane; you run them with the bang prefix so output lands in-session.",
+          "cost": "15 lanes times N branches is many manual steps, and it is the step that gets skipped under time pressure. Evidence: CLAUDE.md session guidance: bang-prefix runs a command in-session"
+        },
+        {
+          "label": "Defer all pushes past the reboot",
+          "means": "Nothing pushes now; work stays local and committed; the post-reboot session ships with permissions settled.",
+          "cost": "Local-only commits across 15 lanes through a reboot is exactly the state a crash makes unrecoverable, and it defers 3 ready releases. Evidence: measured: glpnet is ahead=1 behind=0 on develop"
+        }
+      ]
+    },
+    {
+      "id": "Q-glpnet-02",
+      "kind": "ruling",
+      "header": "Unowned pump",
+      "question": "You required one exclusive era per lane approved by 4 peers. I surveyed every era claim on the YNET board and nobody has claimed the PUMP: the resident, no-authority data-plane process that actually moves frames between a lane and the YNGENIOS app. mstack has the slot provisioner and stopped there by name; qhstate the engine and resume seed; olamnit durability; yngcor the control-plane CLI; ulpanit sandbox; tefl and ospark admission; yngapp the render surface; glpnet the carrier. My era hardens the pump carrier, so if the pump is never built I am hardening a component with no consumer. YNGCOR notes it carries the most demanding non-functional requirements on the board: resident so its footprint multiplies by M frames, realtime so the 1.5ms wake budget binds it, and on the critical path for every keystroke. How should the pump be allocated?",
+      "blocks": [
+        "glpnet era value",
+        "working prototype end-to-end",
+        "era allocation closure"
+      ],
+      "escalate_after_hours": 4,
+      "multi_select": false,
+      "options": [
+        {
+          "label": "Allocate to a 16th era (lejepa)",
+          "recommended": true,
+          "means": "lejepa is the one lane with no live session and no era claim; give it the pump, which arrives well-specified rather than blank: raise its own timer resolution, batch the bulk path, never carry realtime on the grow-only CRDT, size buffers from measured wake granularity.",
+          "cost": "lejepa did not participate in this round, so it starts without the shared context the other 14 built. Evidence: measured: 14 live lanes on ListAgents, lejepa store last active 2026-09-02T16:58, no lejepa mailbox on the board"
+        },
+        {
+          "label": "Fold the pump into glpnet era",
+          "means": "I take carrier AND pump as one era, since the carrier is meaningless without it.",
+          "cost": "Violates the one-feature rule you set and doubles a scope that peers already approved on its current boundary, so approvals must be re-sought. Evidence: crucible ruling: a change of approved scope re-opens approval"
+        },
+        {
+          "label": "Split across mstack and yngapp",
+          "means": "mstack owns the spawn and lifecycle half, yngapp the render-attach half, with the frame path as a shared contract.",
+          "cost": "A resident realtime component with two owners and a contract between them is the seam most likely to be built twice or not at all. Evidence: YNGCOR mapping: pool, carrier, spawn seam, spine and control plane are all claimed; only the continuous middle is not"
+        }
+      ]
+    },
+    {
+      "id": "Q-glpnet-03",
+      "kind": "risk-acceptance",
+      "header": "Identity res",
+      "question": "Six lanes will lose accumulated reputation at the next reboot and it is my fault. My round-opening broadcast told every lane that agent_id equals host dot lane dot sessionref, contradicting the spec rule that salt6 is minted ONCE per agent. BK-OnRestart mints a new session ref per lane per reboot, so glpnet, mstack, tefl, ulpanit, ynglin and yngraw each get a NEW mailbox filename and their ops stop aggregating. The eight lanes that followed the spec are unaffected. YNGLIN already holds two identities (551ea5 with 21 ops, d6129e with 17), which is the mechanism proving itself. Fixing after the reboot is archaeology. Fix before you reboot?",
+      "blocks": [
+        "reputation seed integrity",
+        "reboot readiness"
+      ],
+      "expires_after_days": 1,
+      "escalate_after_hours": 2,
+      "multi_select": false,
+      "options": [
+        {
+          "label": "Fix before reboot",
+          "recommended": true,
+          "means": "Adopt ospark write-side fix now: glob host dot lane dot star dot id and REFUSE to mint if any match exists, plus olamnit read-side aggregation by lane component as the default rather than an exception report.",
+          "cost": "One more change on a saturated host before a reboot you want soon, and it touches the identity path every lane now depends on. Evidence: measured: 6 of 14 salts equal their ListAgents session ref; YNGLIN already split across two mailboxes"
+        },
+        {
+          "label": "Accept the reset, re-seed after",
+          "means": "Let the six fragment; recompute the reputation seed from witnessed pre-reboot counts, which two independent witnesses have recorded (glpnet 866 ops across 16 files, YNGCOR 849).",
+          "cost": "Post-reboot contributions accumulate under new identities, so maintained-on-future-contributions restarts from zero for those six lanes. Evidence: measured: WITNESS r1 from two observers, 0 decreases across 8 comparable lanes"
+        }
+      ]
+    },
+    {
+      "id": "Q-glpnet-04",
+      "kind": "ruling",
+      "header": "Pool vs RAM",
+      "question": "The round has treated the elastic lane pool and the second DIMM as competing remediations. They are not, and neither is sufficient alone. Host commit is 33,950MB on 15,450MB physical, 2.20x oversubscribed, and that ratio is the CAUSE of the trim-and-refault storm (80-102k transition faults per second, 57 percent privileged time). The elastic pool at 6 hot lanes takes it to 24,728MB, 1.60x, still oversubscribed, so trimming is reduced not ended. 32GB alone with all 15 lanes hot is 1.04x, still marginally over. BOTH is 0.75x, the only combination under 1.0 where the memory manager stops trimming at all. mstack measured one empty DIMM slot: 1x16GB fitted, 2 slots, max 32GB, single-channel with a Vega iGPU sharing that one channel. What do you commit to?",
+      "blocks": [
+        "remediation success criteria",
+        "mstack era success criteria",
+        "whether 15 hot lanes is achievable"
+      ],
+      "escalate_after_hours": 8,
+      "multi_select": false,
+      "options": [
+        {
+          "label": "Both, DIMM as era dependency",
+          "recommended": true,
+          "means": "Ship the elastic pool AND fit the second 16GB stick; record the DIMM in mstack era success criteria as a dependency rather than a footnote, so the era cannot be called complete while the host is still oversubscribed.",
+          "cost": "Hardware purchase and downtime beyond the planned reboot; dual-channel also relieves the iGPU contending for the single channel, which is bandwidth the fault-servicing path needs. Evidence: measured: 33950/15450=2.20x, 24728/15450=1.60x at 6 hot, 24728/32768=0.75x"
+        },
+        {
+          "label": "Pool only, accept 1.60x",
+          "means": "Software-only remediation; the fault storm gets materially quieter and the host stays oversubscribed.",
+          "cost": "Trimming continues, so responsiveness improves but the endemic cause remains and resurfaces as lane count or context grows. Evidence: measured: 1.60x residual at 6 hot lanes"
+        },
+        {
+          "label": "DIMM only, keep 15 hot",
+          "means": "Buy the RAM, drop the elastic-pool work, keep all 15 lanes resident.",
+          "cost": "1.04x is still over 1.0 so trimming does not stop, and it discards the coordinator work this round produced. Evidence: measured: 33950/32768=1.04x"
+        }
+      ]
+    }
+  ]
+}
