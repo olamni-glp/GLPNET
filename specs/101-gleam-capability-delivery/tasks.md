@@ -13,36 +13,36 @@ this feature's own parent task list.
 
 ## Phase 1: Setup
 
-- [ ] **T001** Fix the stale self-description in `glp_gleam/gleam.toml`. It reads *"port skeleton …
+- [x] **T001** Fix the stale self-description in `glp_gleam/gleam.toml`. It reads *"port skeleton …
       8 placeholder modules … No ported runtime semantics yet"* at v0.1.0; the tree carries ~83
       modules under `src/glp` and passes **206/206** parity. Measured 2026-09-02. A reader trusting
       it under-estimates the tree by an order of magnitude.
-- [ ] **T002** [P] Create `glp_gleam/src/glp/contract/` and `glp_gleam/src/glp/ring/` package
+- [x] **T002** [P] Create `glp_gleam/src/glp/contract/` and `glp_gleam/src/glp/ring/` package
       skeletons that compile empty-but-green, so later tasks land in a building tree.
-- [ ] **T003** [P] Create `test/ring/` for per-ring conformance output, alongside (never replacing)
+- [x] **T003** [P] Create `test/ring/` for per-ring conformance output, alongside (never replacing)
       the existing `test/parity/`.
 
 ## Phase 2: Guard tests — written FIRST, and each must be able to FAIL
 
-- [ ] **T004** [P] [US3] `test/ring/test_contract_purity.sh::test_runtime_dep_in_contract_fails_build`
+- [x] **T004** [P] [US3] `test/ring/test_contract_purity.sh::test_runtime_dep_in_contract_fails_build`
       — **positive control (SC-004)**: introduce a third-party runtime dependency into the contract
       and assert the build FAILS. Must fail before C1-R exists.
-- [ ] **T005** [P] [US3] `...::test_admission_by_name_is_refused` — **(SC-005)** offer `glp_gleam` to
+- [x] **T005** [P] [US3] `...::test_admission_by_name_is_refused` — **(SC-005)** offer `glp_gleam` to
       L0 on the strength of the word "Gleam"; assert refusal **with the name quoted**. Real case: it
       is not the polyglot-L0 `kv`/`mailbox`/`network` service set.
-- [ ] **T006** [P] [US1] `test/ring/test_report_shape.sh::test_report_without_denominator_is_rejected`
+- [x] **T006** [P] [US1] `test/ring/test_report_shape.sh::test_report_without_denominator_is_rejected`
       — **(SC-002)** a report lacking a denominator is unparseable, not merely ugly.
-- [ ] **T007** [P] [US1] `...::test_counts_reconcile` — **(SC-007)** `attempted = agreed + diverged +
+- [x] **T007** [P] [US1] `...::test_counts_reconcile` — **(SC-007)** `attempted = agreed + diverged +
       excused` exactly; a mismatch fails.
-- [ ] **T008** [P] [US1] `...::test_excused_case_without_reason_is_rejected` — **(FR-007)** a
+- [x] **T008** [P] [US1] `...::test_excused_case_without_reason_is_rejected` — **(FR-007)** a
       reasonless exclusion is indistinguishable from a case nobody ran.
-- [ ] **T009** [P] [US2] `test/ring/test_aggregate.sh::test_unbuilt_ring_never_reads_as_pass` —
+- [x] **T009** [P] [US2] `test/ring/test_aggregate.sh::test_unbuilt_ring_never_reads_as_pass` —
       **positive control (SC-006)**: build ONE ring, assert the aggregate REFUSES. This is the single
       most likely way this feature could ship a lie.
-- [ ] **T010** [P] [US1] `test/ring/test_mutation.sh::test_weakened_guard_turns_suite_red` —
+- [x] **T010** [P] [US1] `test/ring/test_mutation.sh::test_weakened_guard_turns_suite_red` —
       **(SC-003)** replace a ring-placement guard with a no-op; the acceptance suite must go **RED**.
       A mutation test that stays green under a no-op is the inverse of the evidence required.
-- [ ] **T011** [P] [US3] `test/ring/test_platform_conditional.sh::test_vacuous_premise_is_skipped_by_name`
+- [x] **T011** [P] [US3] `test/ring/test_platform_conditional.sh::test_vacuous_premise_is_skipped_by_name`
       — **(FR-009)** a test whose premise does not hold on this platform must **skip with a named
       reason**, never silently pass. Regression-guards the parent feature's `T005` defect.
 
@@ -71,7 +71,7 @@ this feature's own parent task list.
 
 ## Phase 5: US3 — placement evidence
 
-- [ ] **T022** [P] [US3] **(FR-005)** `test/ring/test_retention.sh::test_no_dart_or_corpus_leaves_glpnet`
+- [x] **T022** [P] [US3] **(FR-005)** `test/ring/test_retention.sh::test_no_dart_or_corpus_leaves_glpnet`
       — assert the delivery set contains **no** file from `glp_runtime/`, `glp_multiagent/` or
       `programs/`. **Found by the 2026-09-03 analyze pass: FR-005 was the one requirement with no
       task.** It is a negative requirement — nothing fails if it is silently violated, which is
