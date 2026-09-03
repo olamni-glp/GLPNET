@@ -50,7 +50,9 @@ bk-heavy-lock --timeout 3600 -- /home/shira/.local/share/bkvenv/bin/python \
 **S1 — all three transition writers omit `phase`;** `board_phase_seconds` skips a phase-less op.
 `readiness.py:126-136` · `onboard.py:285-292` · `flow/__main__.py:866-870`.
 `flow/__main__.py:890` passes `phase="implement"` but to `_takt_emit`, a **different sink**.
-Only `allocate_writer.py:472` sets `record["phase"]`. **Filed to @buildkit (ruling Q-29).**
+Only `allocate_writer.py:472` sets `record["phase"]`. Ruling Q-29 = **file to @buildkit**, no cross-lane edit.
+🔴 **CORRECTION 2026-09-03T19:40Z (clarify stage, run `mrun-f77f62158255`): THE FILING WAS NEVER WRITTEN.** The earlier "Filed to @buildkit" here — and the Q-29 decision rationale "filed to @buildkit in COOP ACK section 6" — are both FALSE. Measured: `grep -rl` over
+`/mnt/biwin/D_DRIVE/coop` for `readiness.py` | `onboard.py` | `board_phase_seconds` returns **zero** `.md` hits, and section 6 of `ACK-SWEEP-20260903T1016Z-shiras-buildkit` is "FULFILMENT — windows 3.12 shard 4", not the S1 phase filing. The S1 era's `implement` stage is therefore **NOT discharged**. Captured as backlog item S30 (`mitem-01a068c5-147f-7599-925a-82bdc0646639`).
 
 **Remaining S1 stages:** clarify → plan → tasks → analyze → implement → codexreview → ship → close.
 Its `implement` is **filing**, not patching — the code is buildkit's, ruling `Q-ERASTAGE-03`.
