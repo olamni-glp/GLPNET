@@ -1,0 +1,194 @@
+[
+ {
+  "qid": "Q-glpnetshiras-27",
+  "header": "P4 owner",
+  "block": "yx-bootmig P4 is owned by the olamnit lane, but only SHIRAS has all four target repos on disk, so the owning lane can never discharge a P4 era.",
+  "origin": "contradiction",
+  "severity": "critical",
+  "background": [
+   "Ruling Q-ERAOWN-01 (yngenios/specs/008-yx-bootmig-base/spec.md:10) assigns the era to lane olamnit @ OLAMNIT.",
+   "SKILL.md precondition 3 refuses because three of four targets are 'lane slugs, not repo roots', making migration into them NOT-DISCHARGEABLE-HERE.",
+   "Measured on SHIRAS 2026-09-03 with git rev-parse + git ls-files: yngenios-windows 5149 tracked, yngenios-linux 1010, yngenios-app 1686, yngenios 3418 - ALL FOUR are real git repos here.",
+   "The skill's own Honest limits section records SHIRAS as UNMEASURED; M3 was a GAVRIELLA-vantage measurement.",
+   "gavriella's SOURCE-HANDOFF 20260902T1845Z is addressed to @yngwin/@ynglin/@yngapp as target owners, and carries ruling Q-YXBOOTMIG-P3-01 (RESYNTHESIS against L0)."
+  ],
+  "impact_if_unanswered": "P4 cannot start anywhere: the lane holding the ruling cannot write to three of four targets, and the host that can write to them holds no mandate. The engineer's replicate-olamnit-capability directive stalls indefinitely while appearing merely blocked on P3.",
+  "options": [
+   {
+    "key": "split-rule-execute",
+    "label": "Split: olamnit rules, SHIRAS discharges",
+    "consequence": "Q-ERAOWN-01 stands for delineation and rulings; SHIRAS is named execution host for P4 eras. Costs a cross-host handoff per era and manifest agreement before each era opens.",
+    "size": "mini",
+    "reversibility": "reversible"
+   },
+   {
+    "key": "override-to-glpnet",
+    "label": "Override Q-ERAOWN-01 to glpnet/shiras",
+    "consequence": "Fastest start, but overrides a recorded ruling, risks duplicating olamnit's in-flight work against Q-MARATHON-02, and requires re-pointing three target lanes.",
+    "size": "mini",
+    "reversibility": "reversible"
+   },
+   {
+    "key": "evidence-only",
+    "label": "Leave with olamnit; file evidence only",
+    "consequence": "Zero duplication risk, but defers rather than resolves; P4 stays blocked until target disks or a handoff exist anyway.",
+    "size": "nano",
+    "reversibility": "reversible"
+   },
+   {
+    "key": "fleet-topology",
+    "label": "Re-examine fleet target topology",
+    "consequence": "Treats reachability as the real defect; largest scope and blocks P4 longest.",
+    "size": "saga",
+    "reversibility": "reversible"
+   }
+  ],
+  "recommendation": {
+   "option": "split-rule-execute",
+   "because": "It is the only option that preserves the recorded ruling AND removes the physical impossibility; overriding duplicates a peer lane's work and evidence-only leaves the engineer's directive unadvanced."
+  },
+  "decision": {
+   "option": "split-rule-execute",
+   "date": "2026-09-03",
+   "rationale": "Engineer accepted the recommendation: olamnit retains P4 rulings under Q-ERAOWN-01; SHIRAS is the execution host because it is the only measured host holding all four target repos."
+  }
+ },
+ {
+  "qid": "Q-glpnetshiras-28",
+  "header": "Q surface",
+  "block": "The GLPNET repo instruction file bans AskUserQuestion outright while the canonical fleet standard BK-STD-2 names AskUserQuestion as the required interactive surface",
+  "origin": "contradiction",
+  "severity": "high",
+  "background": [
+   "GLPNET CLAUDE.md: 'Never ask closed-form questions (multiple choice, yes/no, pick-from-list, AskUserQuestion). Free-text only when clarification is genuinely needed.'",
+   "ANSWER-20260903T1000Z-gavriella-hatzinor, closing a help request asked twice: 'THE INTERACTIVE QUESTION TEMPLATE IS AskUserQuestion, NOT A FILE.' BK-STD-2 is the content standard and the durable record; there is no template file to find on any host.",
+   "The template was shaped by ariellas 20260824T0635Z, extended by gavriella, hardened by olamnit 20260824T0800Z - four lanes converged on one shape.",
+   "The engineer instructed this lane in-session to present questions interactively using the standard templates."
+  ],
+  "impact_if_unanswered": "Any lane inheriting GLPNET's CLAUDE.md silently fails to present BK-STD-2 questions in canonical form and looks non-compliant while obeying its own repo; the durable record loses cross-host comparability.",
+  "options": [
+   {
+    "key": "bkstd2-wins",
+    "label": "BK-STD-2 wins; amend GLPNET CLAUDE.md",
+    "consequence": "Carve out BK-STD-2 engineer questions from the ban, keeping free-text as the default for ordinary clarification. One-line edit.",
+    "size": "nano",
+    "reversibility": "reversible"
+   },
+   {
+    "key": "claudemd-wins",
+    "label": "CLAUDE.md wins; free-text only here",
+    "consequence": "Preserves the lane preference but this lane's questions render differently from every other lane's, and it contradicts the engineer's in-session instruction.",
+    "size": "nano",
+    "reversibility": "reversible"
+   },
+   {
+    "key": "both",
+    "label": "Interactive picker plus free-text follow-up",
+    "consequence": "Highest fidelity to how the engineer refines designs mid-discussion; costs more turns and the local rule still needs amending to be literally true.",
+    "size": "nano",
+    "reversibility": "reversible"
+   }
+  ],
+  "recommendation": {
+   "option": "bkstd2-wins",
+   "because": "A fleet standard hardened by four lanes beats one repo's local preference, and it is what the engineer just instructed; the carve-out keeps the free-text default intact for everything else."
+  },
+  "decision": {
+   "option": "bkstd2-wins",
+   "date": "2026-09-03",
+   "rationale": "Engineer accepted the recommendation: BK-STD-2 carve-out added to GLPNET CLAUDE.md; free-text remains the default for ordinary clarification."
+  }
+ },
+ {
+  "qid": "Q-glpnetshiras-29",
+  "header": "S1 fix",
+  "block": "S1's three-line phase fix lives in the buildkit repo, a shared checkout this lane does not own, under a do-not-re-fork ruling.",
+  "origin": "measurement",
+  "severity": "high",
+  "background": [
+   "All three transition writers omit phase: readiness.py:126-136, onboard.py:285-292, flow/__main__.py:866-870. board_phase_seconds skips a phase-less op by design.",
+   "flow/__main__.py:890 does pass phase=implement but to _takt_emit, a different sink, 20 lines later.",
+   "Ruling Q-ERASTAGE-03: escalate to the buildkit lane, do not re-fork.",
+   "buildkit is a shared checkout across 5+ lanes and was measured sitting on feat/093-fleet-convergence-protocol, not develop."
+  ],
+  "impact_if_unanswered": "Board-side phase intervals stay unmeasurable fleet-wide, so scheduler_ops contributes 0 phases to every takt report and CPM/PERT duration work has no board-side input.",
+  "options": [
+   {
+    "key": "file-to-buildkit",
+    "label": "File to @buildkit with the patch spelled out",
+    "consequence": "Exact files, lines and the sink-mismatch explanation so the owning lane applies a 3-line change with no re-derivation. This lane's era ends at 'filed', not 'fixed'.",
+    "size": "nano",
+    "reversibility": "reversible"
+   },
+   {
+    "key": "patch-directly",
+    "label": "Patch buildkit directly on a branch",
+    "consequence": "Fastest measurable fix but edits an unowned shared checkout against an explicit ruling; it forecloses the clean lane-separation record, because once this lane has written to buildkit the do-not-re-fork ruling can no longer be shown to have held, and it risks sweeping in a concurrent lane's WIP that cannot be un-swept",
+    "size": "nano",
+    "reversibility": "one-way"
+   },
+   {
+    "key": "roadmap-feature",
+    "label": "Escalate as a roadmap feature",
+    "consequence": "Survives inattention rather than depending on the buildkit lane noticing a COOP message; slower to land.",
+    "size": "nano",
+    "reversibility": "reversible"
+   }
+  ],
+  "recommendation": {
+   "option": "file-to-buildkit",
+   "because": "It honours Q-ERASTAGE-03 and lane separation while removing all re-derivation cost from the owning lane; patching directly trades a 3-line saving for a shared-checkout collision risk."
+  },
+  "decision": {
+   "option": "file-to-buildkit",
+   "date": "2026-09-03",
+   "rationale": "Engineer accepted the recommendation: filed to @buildkit in COOP ACK section 6 with exact files, line numbers and root cause; no cross-lane edit."
+  }
+ },
+ {
+  "qid": "Q-glpnetshiras-30",
+  "header": "Skill fix",
+  "block": "The shipped yx-bootmig skill file hard-refuses on preconditions measured STALE on this host, so a future SHIRAS session refuses wrongly",
+  "origin": "measurement",
+  "severity": "high",
+  "background": [
+   "Precondition 3 claims three targets are absent; all four are present on SHIRAS (5149/1010/1686/3418 tracked).",
+   "The root table gives glpnet as D:/BSTDEV/research/GLP/glpnet, which does not exist on SHIRAS; the real root is research/crucible/glp/GLPNET with 8114 tracked.",
+   "FR-9 already requires roots resolved from config and verified BY CONTENT, never inherited.",
+   "The skill's PROVENANCE says the yngenios spec is the owner and wins any disagreement."
+  ],
+  "impact_if_unanswered": "The next SHIRAS session either refuses wrongly or re-derives the same measurement, which is the rediscovery loop the programme's reporting rules exist to prevent.",
+  "options": [
+   {
+    "key": "measured-note",
+    "label": "Add measured per-host note, keep refusal logic",
+    "consequence": "Records date, method and host beside precondition 3 and the root table without weakening any refusal; makes the skill obey its own FR-9.",
+    "size": "nano",
+    "reversibility": "reversible"
+   },
+   {
+    "key": "correct-outright",
+    "label": "Correct preconditions and root table outright",
+    "consequence": "Cleanest end state but the upstream yngenios spec must change too or the two diverge again.",
+    "size": "mini",
+    "reversibility": "reversible"
+   },
+   {
+    "key": "coop-only",
+    "label": "Leave the skill; record in COOP and marathon only",
+    "consequence": "Zero edit risk but guarantees the next session repeats the work.",
+    "size": "nano",
+    "reversibility": "reversible"
+   }
+  ],
+  "recommendation": {
+   "option": "measured-note",
+   "because": "It stops the wrong refusal at zero risk to the refusal logic that is correct on other hosts, and it is FR-9 applied to the targets rather than a new rule."
+  },
+  "decision": {
+   "option": "measured-note",
+   "date": "2026-09-03",
+   "rationale": "Engineer accepted the recommendation: per-host measured notes added at precondition 3 and the root table; refusal logic left unchanged."
+  }
+ }
+]
