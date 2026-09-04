@@ -10,12 +10,20 @@ SPDX-License-Identifier: MIT
 
 ```
 HOST     ARIELLAS 192.168.0.142   LANE  glpnet   REPO  D:/BSTDEV/research/glp/GLPNET
-BRANCH   develop (pushed, clean) @ d6aaa9b8
+BRANCH   develop (pushed, clean) @ f543fec3
 MARATHON mrun-f5ef56dba3c1  feature glpnet-full-completion-programme
-         seq 382 · steps 50/135 (was 42) · outstanding 167 · next W18 (ESCALATED, but see §3)
+         seq 386 · steps 50/135 (was 42) · outstanding 167 · next W18 (ESCALATED, but see §3)
 ROADMAP  21 epics · 124 features · 30 NOT-CLOSED · export 20260904T153315Z (round 71)
 BOARD    \\192.168.0.108\GAVRI_D\coop\glpnet\sched  — 25 op-logs, ZERO term ops
+         root_id 803713a4-95fb-4527-a9b8-a9b22def7fc5 — NOT PINNED (a wrong board would be
+         accepted silently; set "sched_root_id" in config.local.json)
+SITREP   docs/fleet/SITREP-ariellas-glpnet-20260904T1720Z.md (tables A-D, standardized)
 ```
+
+🔴 **DO NOT read `deploy-home/.../marathon-mrun-f5ef56dba3c1.md` to locate yourself.** That mirror
+is **stale** (mtime 15:33Z, still says *42/135*) and holds **no traces section at all** — a
+confirmed-accepted trace is as absent from it as one whose command was killed. **It is not a valid
+detector for anything.** Use `buildkit-marathon status` / `position`.
 
 🔴 **`--feature` is MANDATORY.** A bare `resume` reads `.specify/feature.json` (→ `specs/085-…`) and
 falsely prints *"no active marathon run"*.
