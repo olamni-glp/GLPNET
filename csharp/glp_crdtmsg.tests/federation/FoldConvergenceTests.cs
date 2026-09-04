@@ -32,6 +32,10 @@ public sealed class FoldConvergenceTests
     /// <summary>A term-space-aware peer — the only kind the merge gate admits (FR-018).</summary>
     private static PeerCapabilities Aware => new(TermSpaceAware: true, LiveEpoch);
 
+    /// <summary>Deliver the peer's capability declaration, without which its pushes are refused.</summary>
+    private static void SayHello(FakeLink link, string fromPeer = "A") =>
+        link.PushInbound(new LinkInbound(fromPeer, HelloProtocol.Encode(Aware), HelloProtocol.Box));
+
     // ---- SC-002: exactly once, under deliberate redelivery -------------------------------------
 
     /// <summary>The same op shipped twice folds ONCE. This is the whole safety property.</summary>
@@ -60,9 +64,11 @@ public sealed class FoldConvergenceTests
         var op = Op("gavriella", 1);
         byte[] bytes = Encoding.UTF8.GetBytes(op.ToCanonicalJson());
 
+        SayHello(link);
         link.PushInbound(new LinkInbound("A", bytes, FederationService.BoardBox));
         link.PushInbound(new LinkInbound("A", bytes, FederationService.BoardBox));
 
+        Assert.False(await svc.ReceiveOneAsync());   // the hello
         Assert.True(await svc.ReceiveOneAsync());    // new
         Assert.False(await svc.ReceiveOneAsync());   // redelivered
 
@@ -304,6 +310,152 @@ public sealed class FoldConvergenceTests
         var svc = new FederationService(EnabledConfig(), new FakeLink("B"), NewFold(), new InMemoryBoardLog());
         Assert.Equal(1, await svc.ReconcileAsync(new[] { Op("gavriella", 1) }, Aware));
         Assert.Equal(1, svc.Fold.Count);
+    }
+
+    // ---- FR-018 on the PUSH path - the codex finding -------------------------------------------
+
+    /// <summary>
+    /// REGRESSION (found by codex, P1). Gating only ReconcileAsync left the PRIMARY delivery path
+    /// open: a non-term-space-aware peer could bypass the gate entirely by pushing, and
+    /// irreversibly merge prohibited terms. Gating the secondary path and not the primary one is
+    /// not a partial fix - it is no fix.
+    /// </summary>
+    [Fact]
+    public async Task APushedBoardOpFromAnUndeclaredPeerIsRefusedAndNotFolded()
+    {
+        var link = new FakeLink("B");
+        var svc = new FederationService(EnabledConfig(), link, NewFold(), new InMemoryBoardLog());
+
+        // No hello - the peer never declared term-space awareness.
+        var op = Op("attacker", 1, new Term("foreign", long.MaxValue, "attacker"));
+        link.PushInbound(new LinkInbound("A", Encoding.UTF8.GetBytes(op.ToCanonicalJson()),
+                                         FederationService.BoardBox));
+
+        await Assert.ThrowsAsync<MergeRefusedException>(() => svc.ReceiveOneAsync());
+        Assert.Equal(0, svc.Fold.Count);          // nothing was folded
+    }
+
+    /// <summary>
+    /// FAIL CLOSED. "We have not heard from this peer" and "this peer is not aware" get the SAME
+    /// conservative answer, because the merge is monotone and cannot be undone.
+    /// </summary>
+    [Fact]
+    public async Task AnUndeclaredPeerIsTreatedExactlyLikeANonAwareOne()
+    {
+        var linkSilent = new FakeLink("B");
+        var svcSilent = new FederationService(EnabledConfig(), linkSilent, NewFold(), new InMemoryBoardLog());
+        linkSilent.PushInbound(new LinkInbound("A", Encoding.UTF8.GetBytes(Op("g", 1).ToCanonicalJson()),
+                                               FederationService.BoardBox));
+
+        var linkNotAware = new FakeLink("B");
+        var svcNotAware = new FederationService(EnabledConfig(), linkNotAware, NewFold(), new InMemoryBoardLog());
+        linkNotAware.PushInbound(new LinkInbound("A",
+            HelloProtocol.Encode(new PeerCapabilities(TermSpaceAware: false, null)), HelloProtocol.Box));
+        linkNotAware.PushInbound(new LinkInbound("A", Encoding.UTF8.GetBytes(Op("g", 1).ToCanonicalJson()),
+                                                 FederationService.BoardBox));
+
+        await Assert.ThrowsAsync<MergeRefusedException>(() => svcSilent.ReceiveOneAsync());
+        await svcNotAware.ReceiveOneAsync();      // the hello
+        await Assert.ThrowsAsync<MergeRefusedException>(() => svcNotAware.ReceiveOneAsync());
+
+        Assert.Equal(0, svcSilent.Fold.Count);
+        Assert.Equal(0, svcNotAware.Fold.Count);
+    }
+
+    /// <summary>Positive control: a peer that DOES declare awareness has its push folded normally.</summary>
+    [Fact]
+    public async Task APushedBoardOpFromADeclaredAwarePeerIsFolded()
+    {
+        var link = new FakeLink("B");
+        var svc = new FederationService(EnabledConfig(), link, NewFold(), new InMemoryBoardLog());
+
+        SayHello(link);
+        var op = Op("gavriella", 1);
+        link.PushInbound(new LinkInbound("A", Encoding.UTF8.GetBytes(op.ToCanonicalJson()),
+                                         FederationService.BoardBox));
+
+        Assert.False(await svc.ReceiveOneAsync());   // hello
+        Assert.True(await svc.ReceiveOneAsync());    // folded
+        Assert.Equal(1, svc.Fold.Count);
+    }
+
+    /// <summary>The pull-RESPONSE path uses the peer's DECLARED caps, never an assumed-true literal.</summary>
+    [Fact]
+    public async Task ThePullResponsePathAlsoUsesDeclaredCapabilities()
+    {
+        var link = new FakeLink("B");
+        var svc = new FederationService(EnabledConfig(), link, NewFold(), new InMemoryBoardLog());
+
+        // No hello: the pull response must be refused just as a push would be.
+        link.PushInbound(new LinkInbound("A", PullProtocol.EncodeResponse(new[] { Op("g", 1) }),
+                                         PullProtocol.ResponseBox));
+
+        await Assert.ThrowsAsync<MergeRefusedException>(() => svc.ReceiveOneAsync());
+        Assert.Equal(0, svc.Fold.Count);
+    }
+
+    // ---- FR-028: the pull leg is actually SCHEDULED and actually travels ------------------------
+
+    /// <summary>
+    /// REGRESSION. PullIntervalSeconds was configured, validated and PRINTED TO THE OPERATOR
+    /// ("pull every 60s") while no timer read it and no frame carried a pull. A configured interval
+    /// nothing reads is FR-028's pull leg existing on paper only.
+    /// </summary>
+    [Fact]
+    public async Task RequestingAPullActuallySendsAFrontierFrame()
+    {
+        var link = new FakeLink("A");
+        var svc = new FederationService(EnabledConfig(), link, NewFold(), new InMemoryBoardLog());
+        await svc.AppendAndPushAsync(Op("gavriella", 1));
+
+        await svc.RequestPullAsync("peer");
+
+        var pull = link.Sent.Single(x => x.Box == PullProtocol.RequestBox);
+        var frontier = PullProtocol.DecodeRequest(pull.Bytes);
+        Assert.True(frontier.Contains(new Dot("gavriella", 1)));   // it carries the real frontier
+    }
+
+    /// <summary>Answering a pull sends ONLY the ops the requester lacks - not the whole log.</summary>
+    [Fact]
+    public async Task AnsweringAPullSendsOnlyTheMissingOps()
+    {
+        var link = new FakeLink("A");
+        var svc = new FederationService(EnabledConfig(), link, NewFold(), new InMemoryBoardLog());
+        await svc.AppendAndPushAsync(Op("gavriella", 1));
+        await svc.AppendAndPushAsync(Op("gavriella", 2));
+
+        // The requester already has op 1.
+        var theirFrontier = new VersionVector().With(new Dot("gavriella", 1));
+        await svc.AnswerPullAsync("peer", theirFrontier);
+
+        var resp = link.Sent.Single(x => x.Box == PullProtocol.ResponseBox);
+        var ops = PullProtocol.DecodeResponse(resp.Bytes);
+        Assert.Single(ops);                                        // NOT two
+        Assert.Equal(new Dot("gavriella", 2), ops[0].OpId);
+    }
+
+    /// <summary>Answering a pull from a fully-caught-up peer sends nothing at all.</summary>
+    [Fact]
+    public async Task AnsweringACaughtUpPeerSendsNothing()
+    {
+        var link = new FakeLink("A");
+        var svc = new FederationService(EnabledConfig(), link, NewFold(), new InMemoryBoardLog());
+        await svc.AppendAndPushAsync(Op("gavriella", 1));
+
+        await svc.AnswerPullAsync("peer", new VersionVector().With(new Dot("gavriella", 1)));
+        Assert.DoesNotContain(link.Sent, x => x.Box == PullProtocol.ResponseBox);
+    }
+
+    /// <summary>The frontier survives the wire round trip byte-for-byte.</summary>
+    [Fact]
+    public void TheFrontierRoundTripsCanonically()
+    {
+        var vv = new VersionVector().With(new Dot("b", 2)).With(new Dot("a", 5));
+        var back = FrontierCodec.Decode(FrontierCodec.Encode(vv));
+
+        Assert.Equal(5, back["a"]);
+        Assert.Equal(2, back["b"]);
+        Assert.Equal(FrontierCodec.Encode(vv), FrontierCodec.Encode(back));
     }
 
     private static FederationConfig EnabledConfig() => new()

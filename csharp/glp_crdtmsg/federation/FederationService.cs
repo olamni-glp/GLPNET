@@ -80,6 +80,7 @@ public sealed class FederationService : IAsyncDisposable
     private readonly PeerSet _peers;
     private readonly IBoardLog _log;
     private readonly HashSet<string> _admitted = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, PeerCapabilities> _peerCaps = new(StringComparer.Ordinal);
     private readonly TimeProvider _clock;
 
     private bool _bound;
@@ -157,6 +158,9 @@ public sealed class FederationService : IAsyncDisposable
             {
                 await _link.ConnectPeerAsync(peerName, ep, ct).ConfigureAwait(false);
                 _admitted.Add(entry.NodeId);
+                // Declare our own capabilities so the peer's gate can admit us. A peer that never
+                // hears this refuses our pushes — which is the correct fail-closed direction.
+                await AnnounceCapabilitiesAsync(peerName, ct).ConfigureAwait(false);
                 _sameMachine = FederationStatusProbe.IsSameMachine(
                     _link.ListenEndPoint?.Address ?? IPAddress.Any, ep.Address) ? Tri.Yes : Tri.No;
                 return AdmissionOutcome.Admitted;
@@ -208,7 +212,57 @@ public sealed class FederationService : IAsyncDisposable
     public async Task<bool> ReceiveOneAsync(CancellationToken ct = default)
     {
         var inbound = await _link.Inbound.ReadAsync(ct).ConfigureAwait(false);
-        if (inbound.Box != BoardBox) return false;
+
+        // Reaching here at all means the transport completed mutual verification against the pin
+        // table — an unpinned party cannot establish a connection. The PASSIVE side learns it has an
+        // admitted peer HERE; without this, a pure listener reported "op received from peer: yes"
+        // beside "peer admitted: no", the surface contradicting itself again.
+        MarkAdmitted(inbound.FromPeer);
+
+        switch (inbound.Box)
+        {
+            case PullProtocol.RequestBox:
+                await AnswerPullAsync(inbound.FromPeer, PullProtocol.DecodeRequest(inbound.Bytes), ct)
+                    .ConfigureAwait(false);
+                return false;
+
+            case PullProtocol.ResponseBox:
+                // Use what the peer ACTUALLY DECLARED, never an assumed-true literal — passing a
+                // hard-coded `true` here would have made the gate unfalsifiable on this path too.
+                await ReconcileAsync(PullProtocol.DecodeResponse(inbound.Bytes),
+                                     _peerCaps.TryGetValue(inbound.FromPeer, out var rc)
+                                         ? rc
+                                         : new PeerCapabilities(TermSpaceAware: false, null), ct)
+                    .ConfigureAwait(false);
+                return false;
+
+            case HelloProtocol.Box:
+                _peerCaps[inbound.FromPeer] = HelloProtocol.Decode(inbound.Bytes);
+                return false;
+
+            case BoardBox:
+                // FR-018 ON THE PUSH PATH — the PRIMARY delivery path.
+                //
+                // Found by codex: gating only ReconcileAsync left this route open, so a
+                // non-term-space-aware peer could bypass the gate entirely by pushing, and
+                // irreversibly merge prohibited terms. Gating the secondary path and not the
+                // primary one is not a partial fix; it is no fix.
+                //
+                // FAIL CLOSED: a peer that has not declared its capabilities is refused. "We have
+                // not heard from them" and "they are not aware" get the same conservative answer,
+                // because the mistake is monotone and cannot be undone.
+                var declared = _peerCaps.TryGetValue(inbound.FromPeer, out var c)
+                    ? c
+                    : new PeerCapabilities(TermSpaceAware: false, null);
+                var pushVerdict = MergeGate.CanMerge(declared, localTermSpaceAware: true);
+                if (!pushVerdict.Allowed)
+                    throw new MergeRefusedException(
+                        $"pushed board op from '{inbound.FromPeer}': {pushVerdict.Reason}");
+                break;
+
+            default:
+                return false;
+        }
 
         var op = FederationOp.FromJson(Encoding.UTF8.GetString(inbound.Bytes));
         bool isNew = _fold.Apply(op);
@@ -219,6 +273,83 @@ public sealed class FederationService : IAsyncDisposable
         // not "no crossing observed" — and never silently No (FR-021/FR-022).
         _sameMachine ??= Tri.Unknown;
         return isNew;
+    }
+
+    /// <summary>This host's own declared capabilities — it IS term-space aware (FR-013..FR-018).</summary>
+    public PeerCapabilities LocalCapabilities => new(TermSpaceAware: true, _config.SpaceId);
+
+    /// <summary>Tell a peer what this host supports, so its gate can admit us.</summary>
+    public async Task AnnounceCapabilitiesAsync(string peerName, CancellationToken ct = default)
+    {
+        try
+        {
+            await _link.SendAsync(peerName, HelloProtocol.Box,
+                HelloProtocol.Encode(LocalCapabilities), ct).ConfigureAwait(false);
+        }
+        catch { /* the peer will refuse our pushes until it hears this; fail-closed is correct */ }
+    }
+
+    /// <summary>What a peer declared, or null if it has not declared anything. For the status surface.</summary>
+    public PeerCapabilities? DeclaredCapabilitiesOf(string peerName) =>
+        _peerCaps.TryGetValue(peerName, out var c) ? c : null;
+
+    /// <summary>Record that a peer completed mutual verification, keyed by NODE ID (FR-007).</summary>
+    private void MarkAdmitted(string peerName)
+    {
+        var entry = _peers.Entries.FirstOrDefault(e => e.Name == peerName || e.NodeId == peerName);
+        if (entry is not null) _admitted.Add(entry.NodeId);
+    }
+
+    /// <summary>
+    /// Send this host's frontier to a peer — the REQUEST half of FR-028's pull leg. Frontier first,
+    /// never the whole log: with N hosts and M ops the latter is O(N·M) every interval, growing
+    /// without bound exactly as the board becomes useful.
+    /// </summary>
+    public async Task RequestPullAsync(string peerName, CancellationToken ct = default)
+    {
+        try
+        {
+            await _link.SendAsync(peerName, PullProtocol.RequestBox,
+                PullProtocol.EncodeRequest(_fold.Frontier), ct).ConfigureAwait(false);
+        }
+        catch
+        {
+            // A pull that cannot be sent is retried at the next interval. That IS the backstop —
+            // it must not throw, or one unreachable peer would stop reconciliation with every peer.
+        }
+    }
+
+    /// <summary>Answer a peer's pull with only the ops it lacks — the RESPONSE half.</summary>
+    public async Task AnswerPullAsync(string peerName, VersionVector peerFrontier, CancellationToken ct = default)
+    {
+        var missing = OpsMissingFrom(peerFrontier);
+        if (missing.Count == 0) return;
+        try
+        {
+            await _link.SendAsync(peerName, PullProtocol.ResponseBox,
+                PullProtocol.EncodeResponse(missing), ct).ConfigureAwait(false);
+        }
+        catch { /* retried at the peer's next interval */ }
+    }
+
+    /// <summary>
+    /// The 60-second reconciliation loop (FR-028). Runs until cancelled. Until this existed the
+    /// interval was configured, validated and PRINTED TO THE OPERATOR while nothing read it.
+    /// </summary>
+    public async Task RunPullLoopAsync(CancellationToken ct)
+    {
+        var period = TimeSpan.FromSeconds(Math.Max(1, _config.PullIntervalSeconds));
+        while (!ct.IsCancellationRequested)
+        {
+            try { await Task.Delay(period, _clock, ct).ConfigureAwait(false); }
+            catch (OperationCanceledException) { return; }
+
+            foreach (var entry in _peers.Entries)
+            {
+                if (!_admitted.Contains(entry.NodeId)) continue;
+                await RequestPullAsync(entry.Name, ct).ConfigureAwait(false);
+            }
+        }
     }
 
     /// <summary>

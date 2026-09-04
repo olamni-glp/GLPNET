@@ -41,6 +41,14 @@ public sealed class StatusSurfaceTests
     private static FederationService Service(FederationConfig cfg, FakeLink link) =>
         new(cfg, link, new FederationFold(new TermSpaceRegistry(LiveEpoch)), new InMemoryBoardLog());
 
+    /// <summary>
+    /// Declare the peer term-space aware. Required before ANY board push is folded — the gate is
+    /// fail-closed (FR-018), so a test that pushes without this is asserting the refusal path.
+    /// </summary>
+    private static void SayHello(FakeLink link, string fromPeer = "A") =>
+        link.PushInbound(new LinkInbound(fromPeer,
+            HelloProtocol.Encode(new PeerCapabilities(TermSpaceAware: true, LiveEpoch)), HelloProtocol.Box));
+
     // ---- SC-007 state 1: stack supported -------------------------------------------------------
 
     /// <summary>
@@ -153,9 +161,11 @@ public sealed class StatusSurfaceTests
         var svc = Service(Config(), link);
         await svc.BindAsync();
 
+        SayHello(link);
         var op = FederationOp.Create(new Dot("gavriella", 1), "gavriella", "board_post", Body);
         link.PushInbound(new LinkInbound("A", Encoding.UTF8.GetBytes(op.ToCanonicalJson()), FederationService.BoardBox));
-        await svc.ReceiveOneAsync();
+        await svc.ReceiveOneAsync();   // hello
+        await svc.ReceiveOneAsync();   // the op
 
         Assert.Equal(Tri.Yes, svc.Status().OpReceivedFromPeer);
     }
@@ -297,9 +307,11 @@ public sealed class StatusSurfaceTests
         var svc = Service(Config(), link);
         await svc.BindAsync();                    // listener only — DialAsync is never called
 
+        SayHello(link);
         var op = FederationOp.Create(new Dot("gavriella", 1), "gavriella", "board_post", Body);
         link.PushInbound(new LinkInbound("A", Encoding.UTF8.GetBytes(op.ToCanonicalJson()), FederationService.BoardBox));
-        await svc.ReceiveOneAsync();
+        await svc.ReceiveOneAsync();   // hello
+        await svc.ReceiveOneAsync();   // the op
 
         var s = svc.Status();
         Assert.Equal(Tri.Yes, s.OpReceivedFromPeer);

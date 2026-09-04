@@ -266,8 +266,29 @@ public static class Program
         Console.WriteLine($"\nserving. push_on_append={cfg.PushOnAppend}, pull every {cfg.PullIntervalSeconds}s. Ctrl-C to stop.");
         using var stop = new CancellationTokenSource();
         Console.CancelKeyPress += (_, e) => { e.Cancel = true; stop.Cancel(); };
-        try { while (!stop.IsCancellationRequested) await svc.ReceiveOneAsync(stop.Token); }
+
+        // The pull loop runs ALONGSIDE the receive loop. Until this line existed the message above
+        // was a false statement to the operator: the interval was configured, validated and printed
+        // while nothing read it (FR-028).
+        var pump = svc.RunPullLoopAsync(stop.Token);
+
+        try
+        {
+            while (!stop.IsCancellationRequested)
+            {
+                try { await svc.ReceiveOneAsync(stop.Token); }
+                catch (MergeRefusedException ex)
+                {
+                    // A refused merge is REPORTED and the loop continues. Refusing one peer must not
+                    // stop serving every other peer, and a silent swallow would hide the STOP ORDER
+                    // doing its job.
+                    Console.Error.WriteLine($"REFUSED: {ex.Message}");
+                }
+            }
+        }
         catch (OperationCanceledException) { }
+
+        try { await pump; } catch (OperationCanceledException) { }
         return 0;
     }
 
