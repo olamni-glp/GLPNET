@@ -89,8 +89,25 @@ public sealed class QuicLinkTransport : IBoxLinkTransport, IAsyncDisposable
     public static string SpkiPin(X509Certificate2 cert) => GlpRuntime.Link.Transports.QuicTransport.SpkiPin(cert);
 
     /// <summary>
+    /// This host's DURABLE federation identity (Q-GLPNETA21-01) — delegated to the shared glp_link
+    /// discipline (REUSE, as <see cref="SpkiPin"/> is). Use this, not <see cref="CreateDevCert"/>,
+    /// for anything whose pin is published to a peer: it load-or-creates a persisted keypair, so the
+    /// pin survives a process restart and a reboot.
+    /// </summary>
+    public static GlpRuntime.Link.Transports.FederationIdentity LoadFederationIdentity(
+        string commonName, string? keystoreDir = null, bool rotate = false) =>
+        GlpRuntime.Link.Transports.FederationIdentity.LoadOrCreate(commonName, keystoreDir, rotate);
+
+    /// <summary>
     /// A self-signed ECDSA P-256 dev cert (server+client EKU), PFX round-tripped so the private key is
     /// in a form MsQuic/SChannel accepts — the dev trust material peer-link.md's pin gate anchors on.
+    /// <para>
+    /// 🔴 <b>EPHEMERAL BY DESIGN — a fresh keypair on EVERY call.</b> Correct for a per-test
+    /// throwaway; wrong as a trust anchor. A pin taken from it is dead at the next process start, and
+    /// a whole-fleet mTLS refusal is indistinguishable from a dead transport (Q-GLPNETA21-01,
+    /// measured: five runs on one unchanged host, five different pins). For a published pin call
+    /// <see cref="LoadFederationIdentity"/>.
+    /// </para>
     /// </summary>
     public static X509Certificate2 CreateDevCert(string commonName)
     {
