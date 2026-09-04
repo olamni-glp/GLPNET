@@ -29,6 +29,9 @@ public sealed class FoldConvergenceTests
 
     private static FederationFold NewFold() => new(new TermSpaceRegistry(LiveEpoch));
 
+    /// <summary>A term-space-aware peer — the only kind the merge gate admits (FR-018).</summary>
+    private static PeerCapabilities Aware => new(TermSpaceAware: true, LiveEpoch);
+
     // ---- SC-002: exactly once, under deliberate redelivery -------------------------------------
 
     /// <summary>The same op shipped twice folds ONCE. This is the whole safety property.</summary>
@@ -154,7 +157,7 @@ public sealed class FoldConvergenceTests
         var missing = svcA.OpsMissingFrom(svcB.Fold.Frontier);
 
         Assert.Single(missing);
-        Assert.Equal(1, await svcB.ReconcileAsync(missing));
+        Assert.Equal(1, await svcB.ReconcileAsync(missing, Aware));
         Assert.True(svcB.Fold.Contains(op.OpId));
     }
 
@@ -185,8 +188,8 @@ public sealed class FoldConvergenceTests
         var svc = new FederationService(EnabledConfig(), new FakeLink("B"), NewFold(), new InMemoryBoardLog());
         var op = Op("gavriella", 1);
 
-        Assert.Equal(1, await svc.ReconcileAsync(new[] { op }));
-        Assert.Equal(0, await svc.ReconcileAsync(new[] { op }));
+        Assert.Equal(1, await svc.ReconcileAsync(new[] { op }, Aware));
+        Assert.Equal(0, await svc.ReconcileAsync(new[] { op }, Aware));
         Assert.Equal(1, svc.Fold.Count);
     }
 
@@ -255,6 +258,52 @@ public sealed class FoldConvergenceTests
     {
         var back = FederationOp.FromJson(Op("gavriella", 1).ToCanonicalJson());
         Assert.Null(back.Term);
+    }
+
+    // ---- FR-018 ENFORCED, not merely declared (found by adversarial self-review) --------------
+
+    /// <summary>
+    /// REGRESSION. MergeGate existed, was unit-tested, and was NEVER CALLED from the merge path —
+    /// so FR-018 was a green test over an ungated ReconcileAsync. A declared-but-unenforced guard
+    /// is worse than no guard: it reads as protection in every review.
+    /// </summary>
+    [Fact]
+    public async Task ReconcileRefusesAPeerThatIsNotTermSpaceAware()
+    {
+        var svc = new FederationService(EnabledConfig(), new FakeLink("B"), NewFold(), new InMemoryBoardLog());
+        var notAware = new PeerCapabilities(TermSpaceAware: false, LiveEpoch);
+
+        await Assert.ThrowsAsync<MergeRefusedException>(
+            () => svc.ReconcileAsync(new[] { Op("gavriella", 1) }, notAware));
+
+        // And NOTHING was merged — a refusal that still folded would be no refusal at all.
+        Assert.Equal(0, svc.Fold.Count);
+    }
+
+    /// <summary>
+    /// The refusal THROWS rather than returning 0, because a silent no-op is indistinguishable from
+    /// "the peer had nothing to send" — and that difference is the entire STOP ORDER.
+    /// </summary>
+    [Fact]
+    public async Task ARefusedMergeIsDistinguishableFromAnEmptyOne()
+    {
+        var svc = new FederationService(EnabledConfig(), new FakeLink("B"), NewFold(), new InMemoryBoardLog());
+
+        int emptyButAllowed = await svc.ReconcileAsync(Array.Empty<FederationOp>(), Aware);
+        Assert.Equal(0, emptyButAllowed);
+
+        await Assert.ThrowsAsync<MergeRefusedException>(
+            () => svc.ReconcileAsync(Array.Empty<FederationOp>(),
+                                     new PeerCapabilities(TermSpaceAware: false, LiveEpoch)));
+    }
+
+    /// <summary>The positive control: an aware peer merges normally, so the gate is not just always-refuse.</summary>
+    [Fact]
+    public async Task ReconcileAdmitsATermSpaceAwarePeer()
+    {
+        var svc = new FederationService(EnabledConfig(), new FakeLink("B"), NewFold(), new InMemoryBoardLog());
+        Assert.Equal(1, await svc.ReconcileAsync(new[] { Op("gavriella", 1) }, Aware));
+        Assert.Equal(1, svc.Fold.Count);
     }
 
     private static FederationConfig EnabledConfig() => new()

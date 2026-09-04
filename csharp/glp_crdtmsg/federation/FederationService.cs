@@ -215,6 +215,9 @@ public sealed class FederationService : IAsyncDisposable
         if (isNew) await _log.AppendAsync(op, ct).ConfigureAwait(false);
 
         _opCrossed = true;
+        // The passive side learns of an op without learning where it came from. That is UNKNOWN,
+        // not "no crossing observed" — and never silently No (FR-021/FR-022).
+        _sameMachine ??= Tri.Unknown;
         return isNew;
     }
 
@@ -222,8 +225,19 @@ public sealed class FederationService : IAsyncDisposable
     /// The reconciliation pull (FR-028). Exchanges the causal frontier FIRST and transfers only the
     /// ops the peer lacks — shipping the whole log every 60 s is a broadcast storm, not a backstop.
     /// </summary>
-    public async Task<int> ReconcileAsync(IReadOnlyCollection<FederationOp> peerOps, CancellationToken ct = default)
+    public async Task<int> ReconcileAsync(IReadOnlyCollection<FederationOp> peerOps,
+                                          PeerCapabilities peer,
+                                          CancellationToken ct = default)
     {
+        // FR-018 ENFORCED HERE, not merely declared. This is the merge, so this is where the gate
+        // has to sit: a gate that only exists in a unit test is a green test over an ungated path.
+        // Merging under the older ordering rule is the irreversible mistake, so a refusal THROWS
+        // rather than returning 0 — a silent no-op would be indistinguishable from "the peer had
+        // nothing to send".
+        var verdict = MergeGate.CanMerge(peer, localTermSpaceAware: true);
+        if (!verdict.Allowed)
+            throw new MergeRefusedException(verdict.Reason);
+
         int added = 0;
         foreach (var op in peerOps)
         {
@@ -233,6 +247,7 @@ public sealed class FederationService : IAsyncDisposable
                 await _log.AppendAsync(op, ct).ConfigureAwait(false);
                 added++;
                 _opCrossed = true;
+                _sameMachine ??= Tri.Unknown;        // an op crossed, but the pull carries no address
             }
         }
         return added;

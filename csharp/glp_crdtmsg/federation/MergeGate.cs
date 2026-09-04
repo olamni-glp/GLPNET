@@ -24,6 +24,16 @@ public readonly record struct MergeVerdict(bool Allowed, string Reason)
     public static MergeVerdict Refuse(string reason) => new(false, reason);
 }
 
+/// <summary>
+/// A merge was refused by the gate. THROWN rather than returned as a count, because a silent no-op
+/// would be indistinguishable from "the peer had nothing to send" — and the difference between
+/// those two is the whole STOP ORDER.
+/// </summary>
+public sealed class MergeRefusedException : InvalidOperationException
+{
+    public MergeRefusedException(string reason) : base("merge refused: " + reason) { }
+}
+
 /// <summary>Decides whether a peer's board may be merged into this host's fold.</summary>
 public static class MergeGate
 {
