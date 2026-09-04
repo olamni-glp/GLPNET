@@ -95,6 +95,48 @@ public sealed class FederationIdentityTests : IDisposable
         Assert.Contains("inconsistent", ex.Message, StringComparison.OrdinalIgnoreCase);
     }
 
+    /// <summary>
+    /// The pfx and its sidecar are each replaced atomically but not as a PAIR, so a rotation killed
+    /// between the two renames leaves a new key beside an old pin. That state must be refused — and
+    /// the refusal must say which of the two it is, because "inconsistent" alone sends an operator
+    /// hunting for corruption that is really an interrupted command.
+    /// </summary>
+    [Fact]
+    public void InterruptedRotation_IsRefusedWithAnActionableDiagnosis()
+    {
+        var original = FederationIdentity.LoadOrCreate("host-a", _dir);
+        var fpPath = Path.Combine(_dir, "host-a.fingerprint");
+        var pfxPath = Path.Combine(_dir, "host-a.pfx");
+
+        // exactly the surviving state of "rotate, then die before the sidecar rename"
+        File.WriteAllText(fpPath, original.Pin);
+        File.SetLastWriteTimeUtc(fpPath, DateTime.UtcNow.AddMinutes(-5));
+        FederationIdentity.LoadOrCreate("host-a", _dir, rotate: true);
+        File.WriteAllText(fpPath, original.Pin);
+        File.SetLastWriteTimeUtc(fpPath, File.GetLastWriteTimeUtc(pfxPath).AddMinutes(-5));
+
+        var ex = Assert.Throws<InvalidOperationException>(
+            () => FederationIdentity.LoadOrCreate("host-a", _dir));
+        Assert.Contains("INTERRUPTED ROTATION", ex.Message, StringComparison.Ordinal);
+        Assert.Contains("rotate: true", ex.Message, StringComparison.Ordinal);
+    }
+
+    /// <summary>The other direction: a pin published for a key this host does not hold must NOT be
+    /// diagnosed as a rotation to finish — completing one would compound the error.</summary>
+    [Fact]
+    public void PinNewerThanKey_IsDiagnosedAsAPublishedPinForAKeyWeLack()
+    {
+        FederationIdentity.LoadOrCreate("host-a", _dir);
+        var fpPath = Path.Combine(_dir, "host-a.fingerprint");
+        File.WriteAllText(fpPath, "SomeOtherHostsPin=");
+        File.SetLastWriteTimeUtc(fpPath, DateTime.UtcNow.AddHours(1));
+
+        var ex = Assert.Throws<InvalidOperationException>(
+            () => FederationIdentity.LoadOrCreate("host-a", _dir));
+        Assert.Contains("does not hold", ex.Message, StringComparison.Ordinal);
+        Assert.DoesNotContain("INTERRUPTED ROTATION", ex.Message, StringComparison.Ordinal);
+    }
+
     /// <summary>An empty sidecar is corruption, not an absent one — fail closed.</summary>
     [Fact]
     public void EmptyFingerprint_IsRefused()

@@ -49,7 +49,9 @@ namespace GlpRuntime.Link.Transports;
 /// <param name="Cert">The identity certificate, private key included (mutual auth presents it).</param>
 /// <param name="Pin">The pinned <c>base64(SHA-256(SPKI))</c> value peers admit this host by.</param>
 /// <param name="PfxPath">Where the PKCS#12 bundle lives on this host.</param>
-/// <param name="Created">True iff this call MINTED the identity (first run); false iff it loaded one.</param>
+/// <param name="Created">True iff this call MINTED a keypair — a first run, or an explicit
+/// rotation. False iff it loaded material that already existed. It is NOT a "first run" flag on
+/// its own: a rotating caller already knows it asked to rotate.</param>
 public sealed record FederationIdentity(
     X509Certificate2 Cert, string Pin, string PfxPath, bool Created)
 {
@@ -142,9 +144,32 @@ public sealed record FederationIdentity(
             throw new InvalidOperationException(
                 $"federation trust material is inconsistent: cert SPKI pin '{computed}' != fingerprint "
                 + $"file '{stored}' ({pfxPath} vs {fingerprintPath}). Refused: publishing one and "
-                + "presenting the other is precisely how a pin table goes silently dead.");
+                + "presenting the other is precisely how a pin table goes silently dead. "
+                + DiagnoseMismatch(pfxPath, fingerprintPath));
 
         return new FederationIdentity(cert, computed, pfxPath, Created: false);
+    }
+
+    /// <summary>
+    /// The two files are each replaced atomically but not as a pair, so a rotation killed between
+    /// the renames leaves a new key beside an old pin. That state is REFUSED either way; this turns
+    /// the refusal into an instruction, because "inconsistent" alone sends an operator hunting for a
+    /// corruption that is really just an interrupted command.
+    /// </summary>
+    private static string DiagnoseMismatch(string pfxPath, string fingerprintPath)
+    {
+        try
+        {
+            return File.GetLastWriteTimeUtc(pfxPath) > File.GetLastWriteTimeUtc(fingerprintPath)
+                ? "The key is NEWER than the pin file, which is what an INTERRUPTED ROTATION looks "
+                  + "like: re-run with rotate: true to complete it, then re-publish the pin."
+                : "The pin file is NEWER than the key, so a pin was published for a key this host "
+                  + "does not hold — restore the matching keystore rather than rotating.";
+        }
+        catch (IOException)
+        {
+            return string.Empty;
+        }
     }
 
     /// <summary>
@@ -192,8 +217,9 @@ public sealed record FederationIdentity(
         }
 
         var cert = X509CertificateLoader.LoadPkcs12(pfxBytes, null, X509KeyStorageFlags.Exportable);
-        WriteSidecar(fpPath, QuicTransport.SpkiPin(cert), replace: true);
-        return new FederationIdentity(cert, QuicTransport.SpkiPin(cert), pfxPath, Created: true);
+        var pin = QuicTransport.SpkiPin(cert);
+        WriteSidecar(fpPath, pin, replace: true);
+        return new FederationIdentity(cert, pin, pfxPath, Created: true);
     }
 
     /// <summary>
@@ -205,7 +231,7 @@ public sealed record FederationIdentity(
     {
         if (!File.Exists(fpPath))
         {
-            var claimed = X509CertificateLoader.LoadPkcs12(
+            using var claimed = X509CertificateLoader.LoadPkcs12(
                 File.ReadAllBytes(pfxPath), null, X509KeyStorageFlags.Exportable);
             WriteSidecar(fpPath, QuicTransport.SpkiPin(claimed), replace: false);
         }
@@ -258,10 +284,14 @@ public sealed record FederationIdentity(
             options.UnixCreateMode = UnixFileMode.UserRead | UnixFileMode.UserWrite;
 
         using (var stream = new FileStream(path, options))
+        {
+            // The DACL goes on while the file is still EMPTY. Writing first and tightening after
+            // would publish the private key under the inherited ACL for the width of the write —
+            // brief, but a race is not made safe by being short.
+            if (OperatingSystem.IsWindows())
+                RestrictToCurrentUser(path);
             stream.Write(bytes, 0, bytes.Length);
-
-        if (OperatingSystem.IsWindows())
-            RestrictToCurrentUser(path);
+        }
     }
 
     /// <summary>Replace the file's DACL with a single full-control ACE for the current user and
@@ -270,8 +300,14 @@ public sealed record FederationIdentity(
     private static void RestrictToCurrentUser(string path)
     {
         using var identity = System.Security.Principal.WindowsIdentity.GetCurrent();
-        var owner = identity.User;
-        if (owner is null) return; // no SID to grant to: leave the inherited ACL rather than an empty one
+        var owner = identity.User
+            // Fail rather than fall back to the inherited ACL: silently storing a private key under
+            // whatever the parent directory permits is exactly the outcome this method exists to
+            // prevent, and a caller cannot see that it happened.
+            ?? throw new InvalidOperationException(
+                "cannot restrict the federation keystore file: the current Windows identity has no "
+                + "user SID to grant it to. Refusing to write private key material under an "
+                + "inherited ACL.");
 
         var security = new System.Security.AccessControl.FileSecurity();
         security.SetAccessRuleProtection(isProtected: true, preserveInheritance: false);
