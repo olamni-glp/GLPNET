@@ -38,6 +38,11 @@
   "recommendation": {
    "option": "test-and-merge",
    "because": "The contradiction is settled by one command, not by reasoning; pull already works, which is direct evidence the classifier's posture changed. Granting permissions is the right durable follow-up but should be informed by what the test actually returns."
+  },
+  "decision": {
+   "option": "test-and-merge",
+   "date": "2026-09-04",
+   "rationale": "Engineer accepted the recommendation: settle the merge-gate contradiction by measurement - test gh pr merge and merge #279 if it succeeds; the refusal or the success is recorded with today's date either way."
   }
  },
  {
@@ -87,6 +92,11 @@
   "recommendation": {
    "option": "p3-completion-era",
    "because": "It is the only option that advances the directive the engineer marked mandatory/critical/urgent, and Q-27 already named SHIRAS the execution host. The duplication risk is real but is removed by one coop agreement with olamnit on manifest scope before the era opens - far cheaper than leaving a critical directive gated indefinitely."
+  },
+  "decision": {
+   "option": "p3-completion-era",
+   "date": "2026-09-04",
+   "rationale": "Engineer accepted the recommendation: next era is a P3-completion era opened on SHIRAS to unblock yx-bootmig P4, per Q-27 (olamnit rules, SHIRAS executes); manifest scope to be agreed with olamnit by coop before the era opens, to remove the Q-MARATHON-02 duplication risk."
   }
  },
  {
@@ -128,47 +138,58 @@
   "recommendation": {
    "option": "park-pending-ack",
    "because": "Discharging risks recording a code defect as resolved when only the filing is; parking keeps the obligation honest and visible while correctly signalling that no action is available to this lane until @buildkit responds."
+  },
+  "decision": {
+   "option": "park-pending-ack",
+   "date": "2026-09-04",
+   "rationale": "Engineer accepted the recommendation: S3 is PARKED pending @buildkit's ACK of FILING-20260903T1954Z - not discharged, because the code defect is still unfixed fleet-wide and discharge would read as resolved."
   }
  },
  {
   "qid": "Q-glpnetshiras-34",
   "header": "Release hold",
-  "block": "This session's instruction to run /bk-release on anything completed and codex-reviewed collides with a standing engineer ruling recorded in the backlog that the release is HELD, not cut.",
+  "block": "This session's instruction to run /bk-release collides with a standing engineer ruling, recorded and still parked in the backlog, that the release is HELD.",
   "origin": "contradiction",
   "severity": "high",
   "background": [
-   "Backlog S6 (mitem-01a037e8-420f, size=nano) records 'release HELD not cut, by engineer ruling' and is still in state `parked`, not discharged.",
-   "S22 records that a peer already carried this lane's codex-reviewed work to main via release v2026.08.31.1, so the lane's work has reached main by another route at least once.",
-   "This session's engineer instruction is explicit: 'commit all push all merge all and do /bk-release any completed fully implemented and codex reviewed features or patches'.",
-   "The only feature the roadmap marks `implemented` is 067 qr-link-provisioning, and item F067 records a CONTRADICTION - the roadmap says implemented but there is NO spec dir on develop."
+   "Backlog S6 (mitem-01a037e8-420f, size=nano) records 'release HELD not cut, by engineer ruling' and is still `parked`, never discharged. The reason for the hold is NOT recorded in the item.",
+   "This session's engineer instruction is explicit and newer: 'do /bk-release any completed fully implemented and codex reviewed features or patches'.",
+   "RE-MEASURED 2026-09-04, and it CORRECTS this lane's own record twice. (a) The old restart-prep said 'nothing qualifies for /bk-release' - FALSE: origin/develop is 17 commits AHEAD of origin/main, so a release is cuttable right now. (b) Backlog item F067 claimed 'roadmap says implemented but there is NO spec dir on develop' - also FALSE: specs/067-qr-link-provisioning is present on develop, on main, and on its own branch.",
+   "Latest tag is v2026.09.02.3, so a cut today would be v2026.09.04.1. S22 records that a peer already carried this lane's codex-reviewed work to main via v2026.08.31.1, so releases of this lane's work have happened without this lane cutting them.",
+   "The current branch's own work is codex-reviewed this session: 5 findings, all 5 remediated and committed at b9929b23, with a confirming second pass in flight."
   ],
-  "impact_if_unanswered": "Either a release is cut against a standing hold the engineer set for a reason that is not recorded in the backlog entry, or a release the engineer has now explicitly asked for is withheld on a stale ruling - and the F067 contradiction means the one release-eligible-looking feature may not be real.",
+  "impact_if_unanswered": "Either a release is cut against a standing hold whose reason was never written down, or 17 commits of merged, codex-reviewed work stay unreleased on develop indefinitely because a nano-sized parked item nobody can explain is treated as binding.",
   "options": [
    {
     "key": "supersede-hold",
-    "label": "This session's instruction supersedes S6; cut a release when green",
-    "consequence": "Takes the newest engineer instruction as authoritative, discharges S6, and lets the lane release once #279 is merged and CI is green. It is one-way because a cut tag and its CHANGELOG entry land on main under CalVer and cannot be withdrawn without a revert release: it FORECLOSES the option of discovering the unrecorded reason behind the S6 hold before acting on it, and if F067 is still contradictory it publishes a release citing a feature with no spec dir - a false claim on main that every downstream host then pulls.",
+    "label": "Newer instruction wins: discharge S6 and cut once green",
+    "consequence": "Treats the engineer's explicit instruction this session as superseding the undocumented S6 hold, discharges S6, and releases 17 commits of merged work. It is one-way because a CalVer tag and its CHANGELOG entry land on main and cannot be withdrawn without a revert release: it FORECLOSES ever learning what the original hold was protecting against, since the item will be closed as superseded rather than explained.",
     "size": "mini",
     "reversibility": "one-way"
    },
    {
     "key": "hold-stands",
-    "label": "S6 stands; release only after explicit per-release approval",
-    "consequence": "Safest against an unrecorded reason for the hold, and costs only a round trip per release. Slows delivery and leaves merged work unreleased.",
+    "label": "S6 stands until its reason is recovered",
+    "consequence": "Safest against an unrecorded hazard, and costs only one engineer sentence to lift. Leaves 17 commits of reviewed work unreleased and keeps this lane dependent on peers cutting its releases, as happened with v2026.08.31.1.",
     "size": "nano",
     "reversibility": "reversible"
    },
    {
-    "key": "resolve-f067-first",
-    "label": "Resolve the F067 contradiction, then decide",
-    "consequence": "Refuses to release on a roadmap state that is measurably wrong, which is the honest sequence. Defers the release by one investigation, but a release citing a feature with no spec dir would be a false record on main.",
+    "key": "release-this-branch-only",
+    "label": "Cut a release scoped to this session's reviewed work only",
+    "consequence": "Releases what is provably codex-reviewed today and leaves the older develop backlog under the hold, narrowing it rather than overriding it. It is one-way because the tag and CHANGELOG land on main irreversibly: it FORECLOSES cutting a single clean release for the whole 17-commit span, because once a partial CalVer tag exists the remaining commits can only ever ship as a second, narrower release whose CHANGELOG reads as a gap rather than a whole. ⚠ DEFECT IN THIS OPTION, found by codex after the engineer decided (2026-09-04): `buildkit release` CANNOT implement it. docs/VERSIONING.md:29-35 runs it from `develop` and cuts from the complete integration tip, so before the branch merges it is excluded and after it merges everything else on develop is included. The option was never executable and should not have been offered. It was NOT selected, so no decision rests on it.",
     "size": "mini",
-    "reversibility": "reversible"
+    "reversibility": "one-way"
    }
   ],
   "recommendation": {
-   "option": "resolve-f067-first",
-   "because": "The instruction says release anything 'completed fully implemented and codex reviewed', and F067 is precisely the case where that predicate is measurably unverifiable. Cutting a release around an unresolved contradiction would put a false claim on main, which is one-way; the investigation is cheap and makes the supersede-hold decision safe rather than hopeful."
+   "option": "supersede-hold",
+   "because": "Both premises that previously justified caution have now been measured FALSE - develop is 17 ahead and the 067 spec dir exists - so the only thing left standing between reviewed work and main is a nano item with no recorded reason, against an explicit and newer instruction from you. If the hold did protect something, that reason should be re-stated now rather than inferred from a one-line backlog entry."
+  },
+  "decision": {
+   "option": "supersede-hold",
+   "date": "2026-09-04",
+   "rationale": "Engineer accepted the recommendation: this session's instruction supersedes the undocumented S6 hold; S6 discharged and a release cut once #279 is merged and CI is green. Both premises for caution were re-measured FALSE - develop is 17 ahead of main, and specs/067-qr-link-provisioning exists on develop and main. POST-DECISION NOTE: codex pass 2 raised two constraints that bind HOW this is executed, not whether - (1) all four required CI checks must pass before gh pr merge is attempted; (2) being 17 commits ahead does NOT prove those 17 are implemented, tested and codex-reviewed, so the release contents must be enumerated and verified before the cut, not inferred from the count."
   }
  }
 ]

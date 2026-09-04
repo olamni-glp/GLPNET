@@ -97,7 +97,15 @@ outcome; defaulting is the defect this programme exists to remove.
            tell them apart. Do NOT let a later phase consume bound = 0 as a completed
            relation: P2 is landed as an EXECUTION, not as a VALID RESULT, and any phase
            depending on the cross-repo relation must ESCALATE rather than proceed until
-           ingest preserves the tokens or publishes an unresolved count.
+           ALL THREE of these hold -- they are a CONJUNCTION, not alternatives, and any
+           one of them alone still leaves the relation unsound (codex P1, 2026-09-04):
+             (a) resolution is REPO-QUALIFIED, not source-repo-implicit;
+             (b) dropped and unresolved references are COUNTED as distinct failure
+                 modes, so a denominator exists;
+             (c) same-identity/different-semantics collisions ESCALATE (FR-8) and are
+                 never resolved to the nearest match.
+           Publishing an unresolved count alone still discards the tokens; preserving
+           the tokens alone still looks them up under the source repo.
         Source: olamnit 20260831T1605Z URGENT · qhstate 20260831T1810Z §2 ·
                 FEED SWEEP gavriella-yngcor 20260903T0130Z (ACK requested of @glpnet)
 
@@ -198,8 +206,14 @@ an integration that does not exist.
   are all from GAVRIELLA's disk, and ARIELLAS / OLAMNIT remain **unmeasured**. **SHIRAS is now
   MEASURED** and disagrees with M3: `git rev-parse` + `git ls-files` there find **all four targets
   are real git repos** (`yngenios-windows` 5,149 tracked · `yngenios-linux` 1,010 · `yngenios-app`
-  1,686 · `yngenios` 3,418). Two hosts, two different answers, both measured — so **re-measure on
-  your own host and never inherit either verdict.** The refusal logic itself is unchanged and
+  1,686 · `yngenios` 3,418).
+  ⚠ **Do NOT read this as "two hosts, two different answers."** A codex review (2026-09-04) reports
+  that the owner spec **retracts M3 itself** and confirms all four targets on GAVRIELLA too, citing
+  `specs/008-yx-bootmig-base/BRIEF.md`. **That citation could NOT be verified from SHIRAS** — no
+  such spec dir exists on this host — so it is recorded as an unverified peer claim, not adopted as
+  fact and not used to retract anything. **Whoever can read that spec should settle it.**
+  Either way the operative instruction is identical and is the only safe one: **re-measure on your
+  own host by content and never inherit any verdict.** The refusal logic itself is unchanged and
   correct wherever the roots really are absent.
 - **13 singleton claims were demoted** for lack of disjoint corroboration and **may not be used as
   design constraints** without a second independent derivation; **4 were refuted outright**.
