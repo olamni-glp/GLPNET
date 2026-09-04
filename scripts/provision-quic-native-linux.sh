@@ -19,13 +19,23 @@
 # Usage:
 #   scripts/provision-quic-native-linux.sh [--stage <publish-dir>] [--check]
 #
-#     --stage <dir>   also copy the libraries into <dir>/runtimes/linux-x64/native/, which .NET
-#                     probes via NATIVE_DLL_SEARCH_DIRECTORIES — no environment variable needed.
-#     --check         probe only; install nothing. Exit 0 iff ngtcp2 is loadable.
+#     --stage <dir>   also copy the libraries into <dir>/runtimes/<rid>/native/ (rid derived from
+#                     uname -m), which QuicNativeLoader probes first — no environment variable needed.
+#     --check         probe only; install nothing. Exit 0 iff ngtcp2 is loadable from ANY location
+#                     the runtime loader searches: $YNET_QUIC_LIBDIR, the --stage dir (if given),
+#                     the system loader (apt install / ldconfig).
 
 set -euo pipefail
 
 LIBDIR="${YNET_QUIC_LIBDIR:-$HOME/.local/lib/ynet-quic}"
+# The RID must match what QuicNativeLoader.RuntimeIdentifier() computes for THIS process, or a
+# staged library is invisible to the service (linux-x64 was hard-coded once; ARM64 hosts got nothing).
+case "$(uname -m)" in
+  x86_64)        RID=linux-x64 ;;
+  aarch64|arm64) RID=linux-arm64 ;;
+  i?86)          RID=linux-x86 ;;
+  *)             RID="linux-$(uname -m)" ;;
+esac
 NGTCP2_PACKAGES=(libngtcp2-16 libngtcp2-crypto-ossl0 libnghttp3-9)
 STAGE_DIR=""
 CHECK_ONLY=0
@@ -44,27 +54,36 @@ probe_ngtcp2() {
   # directory is not on the loader search path. Loading the engine FIRST puts it in the link map,
   # which then satisfies the crypto library's dependency by soname. Probing them in separate
   # processes reports a false "crypto missing" — verified on shiras 2026-09-04.
-  python3 - "$LIBDIR" <<'PYPROBE'
+  # Mirror the runtime's search locations: $LIBDIR, the staged RID dir, then the system loader
+  # ("" = ask ld.so by soname). The first location where BOTH libraries load wins.
+  local locations=("$LIBDIR")
+  [ -n "$STAGE_DIR" ] && locations+=("$STAGE_DIR/runtimes/$RID/native")
+  locations+=("")
+  python3 - "${locations[@]}" <<'PYPROBE'
 import ctypes, os, sys
-d = sys.argv[1]
+ENGINE = ("libngtcp2.so.16", ["ngtcp2_version", "ngtcp2_conn_client_new_versioned",
+                              "ngtcp2_conn_server_new_versioned", "ngtcp2_conn_read_pkt_versioned",
+                              "ngtcp2_conn_writev_stream_versioned"])
+CRYPTO = ("libngtcp2_crypto_ossl.so.0", ["ngtcp2_crypto_ossl_init", "ngtcp2_crypto_ossl_ctx_new",
+                                         "ngtcp2_crypto_ossl_configure_client_session"])
 
-def load(name, syms):
-    path = os.path.join(d, name)
+def load(d, name, syms):
+    path = os.path.join(d, name) if d else name
     try:
         h = ctypes.CDLL(path)
     except OSError as e:
-        print(f"  {name}: LOAD FAILED ({e})"); return False
+        print(f"    {name}: LOAD FAILED ({e})"); return False
     missing = [s for s in syms if not hasattr(h, s)]
     if missing:
-        print(f"  {name}: loaded but MISSING {', '.join(missing)} (ABI mismatch)"); return False
-    print(f"  {name}: OK ({len(syms)} required exports present)"); return True
+        print(f"    {name}: loaded but MISSING {', '.join(missing)} (ABI mismatch)"); return False
+    print(f"    {name}: OK ({len(syms)} required exports present)"); return True
 
-ok  = load("libngtcp2.so.16", ["ngtcp2_version", "ngtcp2_conn_client_new_versioned",
-                               "ngtcp2_conn_server_new_versioned", "ngtcp2_conn_read_pkt_versioned",
-                               "ngtcp2_conn_writev_stream_versioned"])
-ok &= load("libngtcp2_crypto_ossl.so.0", ["ngtcp2_crypto_ossl_init", "ngtcp2_crypto_ossl_ctx_new",
-                                          "ngtcp2_crypto_ossl_configure_client_session"])
-sys.exit(0 if ok else 1)
+for d in sys.argv[1:]:
+    print(f"  location: {d or '(system loader)'}")
+    if load(d, *ENGINE) and load(d, *CRYPTO):
+        sys.exit(0)
+print("  ngtcp2 not loadable from any runtime search location")
+sys.exit(1)
 PYPROBE
 }
 
@@ -117,7 +136,7 @@ echo "installed into $LIBDIR:"
 ls -la "$LIBDIR" | sed 's/^/  /'
 
 if [ -n "$STAGE_DIR" ]; then
-  native="$STAGE_DIR/runtimes/linux-x64/native"
+  native="$STAGE_DIR/runtimes/$RID/native"
   mkdir -p "$native"
   cp -a "$LIBDIR"/lib*.so.* "$native/"
   # msquic, if the host has it, travels the same way so the service needs no env var.

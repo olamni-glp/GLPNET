@@ -41,6 +41,51 @@ internal static class QuicNativeLoader
     {
         var attempts = new List<string>();
 
+        foreach (var (candidate, origin) in Candidates(sonames, overrideEnvVar))
+        {
+            if (!NativeLibrary.TryLoad(candidate, out var handle))
+            {
+                attempts.Add($"{origin}:{candidate} (load failed)");
+                continue;
+            }
+
+            var missing = requiredExports
+                .Where(sym => !NativeLibrary.TryGetExport(handle, sym, out _))
+                .ToList();
+
+            if (missing.Count > 0)
+            {
+                NativeLibrary.Free(handle);
+                attempts.Add($"{origin}:{candidate} (loaded, missing exports: {string.Join(", ", missing)})");
+                continue;
+            }
+
+            found = new Found(handle, candidate, origin);
+            detail = $"{candidate} via {origin}";
+            return true;
+        }
+
+        found = default;
+        detail = attempts.Count == 0
+            ? $"not found; searched sonames [{string.Join(", ", sonames)}] and no candidate path existed"
+            : "not found; tried " + string.Join("; ", attempts);
+        return false;
+    }
+
+    /// <summary>
+    /// Every path worth trying, in order. An override that names a FILE is tried exactly as given,
+    /// first — whatever its basename — so a documented full-path override is never silently reduced
+    /// to a directory search for the hard-coded sonames (codex 20260904 P3).
+    /// </summary>
+    private static IEnumerable<(string Candidate, string Origin)> Candidates(IReadOnlyList<string> sonames, string? overrideEnvVar)
+    {
+        if (overrideEnvVar is not null)
+        {
+            var explicitPath = Environment.GetEnvironmentVariable(overrideEnvVar);
+            if (!string.IsNullOrWhiteSpace(explicitPath) && File.Exists(explicitPath))
+                yield return (explicitPath, overrideEnvVar + ":file");
+        }
+
         foreach (var (dir, origin) in SearchOrigins(overrideEnvVar))
         {
             foreach (var soname in sonames)
@@ -49,35 +94,9 @@ internal static class QuicNativeLoader
 
                 // dir==null means "ask the system loader by soname" (ldconfig cache, DT_RUNPATH, ld.so.conf).
                 if (dir is not null && !File.Exists(candidate)) continue;
-
-                if (!NativeLibrary.TryLoad(candidate, out var handle))
-                {
-                    attempts.Add($"{origin}:{candidate} (load failed)");
-                    continue;
-                }
-
-                var missing = requiredExports
-                    .Where(sym => !NativeLibrary.TryGetExport(handle, sym, out _))
-                    .ToList();
-
-                if (missing.Count > 0)
-                {
-                    NativeLibrary.Free(handle);
-                    attempts.Add($"{origin}:{candidate} (loaded, missing exports: {string.Join(", ", missing)})");
-                    continue;
-                }
-
-                found = new Found(handle, candidate, origin);
-                detail = $"{candidate} via {origin}";
-                return true;
+                yield return (candidate, origin);
             }
         }
-
-        found = default;
-        detail = attempts.Count == 0
-            ? $"not found; searched sonames [{string.Join(", ", sonames)}] and no candidate path existed"
-            : "not found; tried " + string.Join("; ", attempts);
-        return false;
     }
 
     /// <summary>

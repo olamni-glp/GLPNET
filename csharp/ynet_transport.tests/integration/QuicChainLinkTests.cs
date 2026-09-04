@@ -52,11 +52,13 @@ public class QuicChainLinkTests(Xunit.Abstractions.ITestOutputHelper output)
         client.WriteFrame(payload);
 
         using var server = await accept;
-        Assert.Equal(payload, server.ReadFrame());
+        // ReadFrame() blocks on BlockingCollection.Take() with no token, so the 30 s bound must be
+        // applied to the AWAIT, or a stalled receive loop hangs the suite despite the timeout.
+        Assert.Equal(payload, await Task.Run(server.ReadFrame).WaitAsync(cts.Token));
 
         // and the other direction — a bilateral link, not a one-way pipe (FR-004/FR-005)
         var reply = Encoding.UTF8.GetBytes("pong");
         server.WriteFrame(reply);
-        Assert.Equal(reply, client.ReadFrame());
+        Assert.Equal(reply, await Task.Run(client.ReadFrame).WaitAsync(cts.Token));
     }
 }

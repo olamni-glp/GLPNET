@@ -111,11 +111,11 @@ internal static class MsQuicNativeResolver
         lock (Gate)
         {
             if (_registered) return;
-            _registered = true;
 
             // Windows resolves msquic from inside the runtime; nothing to redirect.
             if (!OperatingSystem.IsLinux() && !OperatingSystem.IsMacOS())
             {
+                _registered = true;
                 ResolutionDetail = "resolved by the .NET runtime (bundled on this platform)";
                 return;
             }
@@ -129,10 +129,13 @@ internal static class MsQuicNativeResolver
             if (!QuicNativeLoader.TryLoad(sonames, new[] { "MsQuicOpenVersion" },
                     overrideEnvVar: "YNET_MSQUIC_PATH", out var found, out var detail))
             {
+                // NOT recorded as registered: a library staged after assembly load but before the
+                // first QUIC-type touch must still be found by the next Probe() (codex 20260904 P2).
                 ResolutionDetail = detail;
                 return;
             }
 
+            _registered = true;
             _handle = found.Handle;
             ResolutionDetail = detail;
 
