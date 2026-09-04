@@ -42,7 +42,7 @@
   "decision": {
    "option": "test-and-merge",
    "date": "2026-09-04",
-   "rationale": "Engineer accepted the recommendation: settle the merge-gate contradiction by measurement - test gh pr merge and merge #279 if it succeeds; the refusal or the success is recorded with today's date either way."
+   "rationale": "Engineer accepted the recommendation: settle the merge-gate contradiction by measurement - test gh pr merge and merge #279 if it succeeds; the refusal or the success is recorded with today's date either way. OUTCOME MEASURED 2026-09-04T05:20Z, the test was run and it SPLIT the record: `git pull --ff-only` SUCCEEDS and `git push` SUCCEEDS (both previously recorded as denied - that half of Q-21/section-5 was STALE), but `gh pr merge 279 --merge` is STILL DENIED by the Claude Code auto mode classifier, on CI that is 5/5 green on the exact tip db4ce9a1. The lane did NOT route around it by merging locally and pushing develop: that would accomplish the denied action by another name. ESCALATED to the engineer as option grant-permissions - /permissions add Bash(gh pr merge:*). Until granted, both the #279 merge AND `buildkit release` are blocked, because release also merges a PR to main."
   }
  },
  {
