@@ -1,5 +1,39 @@
 ## [Unreleased]
 
+## [v2026.09.04.1] - 2026-09-04
+
+### Added
+- T017 second half - AtomVM 0.6.6 obtained and RUNNING via WSL2; the dossier's build name does not exist as a release asset
+- T017 T018 complete per ruling Q-GLPNETS17-01 - AtomVM subset gate refuses by name at build time; analyze A1-A3 remediated, incl. a single-source guard for a list my own doc claimed was not duplicated
+- T014 T016 T019 T021 T022 - BEAM ring green 206/206 with Dart absent from PATH, AtomVM recorded UNREAD, aggregate refuses; all 6 guard suites green, T017/T018 blocked on absent toolchain
+- T012 T013 T015 T020 - measured the contract boundary (71/100 runtime-free) and built the C1-R gate, C4 parser, cross-ring aggregate and C2 admission; 5 of 6 guard suites now green
+- T002-T011+T022 - ring delivery guards, written first and each able to fail; the suite caught a token-matching defect in its own C1-R detector on run one
+- specify+plan+tasks+analyze for Gleam capability delivery, and T001 - gleam.toml understated the tree by 10x
+
+### Fixed
+- remediate codex review 20260904T055230Z - 6 false-green holes closed, each with a positive control reproducing the attack
+- codexreview 20260902T160854Z P2 - a ledger row alone does not discharge rule 3; a consumer reading the ORIGINAL question file still sees a live ruling. Q-GLPNETS15-03 and Q-GLPNETA16-12 now carry superseded_by objects naming the superseding qid, date, reason and retrospective effect. Both sets re-validate BK-STD-2 conformant (4 and 12 questions)
+
+### Changed
+- Merge pull request #282 from olamni-glp/101-gleam-capability-delivery
+- WSL toolchain setup script for the AtomVM measurement, plus the pending roadmap export from session 16
+- rev11 - host-contention round, 4 engineer rulings, era claim re-anchored, 7 traps incl. two GLPNET trees, security open items
+- decisions(Q-glpnet-20260903T1300Z): 4 engineer rulings - push permission, pump to lejepa as 16th era, identity fix before reboot, pool+DIMM both
+- codify(cross-lane): host-contention round win note - 881MB heap floor null result, transport verdict, five self-retractions
+- rev10 - record that TAKT section 5 was NOT measured this session (both attempts killed still-running at 2308s and 990s CPU, zero bytes written) so the next session reads unmeasured rather than zero; add the sequencing note - run the report detached FIRST, before the roadmap round, since started late it cannot finish and started alongside the round it stalls on the catalog; and warn that the bk_report_v1 processes left on this host belong to OTHER lanes and must not be reaped
+- rev10 - rev9's era-1 plan is SUPERSEDED (078 conceded to gavriella-glpnet under Q-GLPNETA17-01; era 1 is now 079, codexreview first); the at-logon task fires the MSTACK script not this repo's, so dry-running our copy proves nothing about the reboot - both dry-run green, 15/15 lanes, 0 refused, Tabs; the engine is ambient 2026.8.18.2 off a stale chore branch with the registry unreachable; bk_question.py decide silently drops the set wrapper; coop writes need the UNC form because the drive-letter path is classifier-blocked
+- fix(bk-report-v1)+decisions: engineer ruling Q-GLPNETA17-04 grants a NARROW exception to Q-GLPNETS15-03 for line-buffered output ONLY - the report accumulated all six sections and printed once at exit, so a run at 1372s CPU over 85+ minutes had written zero bytes and a slow takt-lake scan was indistinguishable from a wedged process; emitted bytes unchanged. Plus Q-GLPNETA17-01..04 decided (078 conceded to gavriella-glpnet, era opens on 079, takt keeps method=unavailable with a mandatory coverage ratio) and 6 ledger rows incl. two BK-STD-3 supersession records
+- questions(BK-STD-2): Q-GLPNETA17-01..04 - the 078 ownership collision raised not resolved per BK-STD-3 rule 6, the next-era choice now that A16-12's ship-and-close premise is falsified, whether an unmetered takt row satisfies the per-phase token standing order, and the 70-minute unobservable SITREP generator this lane is under ruling not to patch; validator conformant, 4 questions
+- round 67 - reconcile/import/reconcile/dedupe/export/sync; 21 epics/123 features/4048 journal lines, 0 dedupe groups, coop mirror published explicitly to I:/coop; reconcile still reports 9 unbound pipeline ids and 74/123 features with no spec_path
+- rulings Q-GLPNETS15-01..04 taken - takt repair is reclassify-both-copy owned by @buildkit (re-runnable filter over kind=stage AND all of kind=token, into kind=tokens, local root as well as fleet root, COPY never move); 078 is tests-first because a fix validated by a test proven unable to fail is not evidence; bk_report_v1.py is shiras's to publish and nobody else's to author; release HOLDS at tier=NONE with feat|fix count 0 over 7 commits
+- Merge branch 'develop' of https://github.com/olamni-glp/GLPNET into develop
+- session 15 close - a THIRD orphaned takt partition kind=token (singular, 17 fleet/28 local) holds the per-phase token rows the standing order mandates and no reader reads them; the fleet mirror also drops 13 of this host's own rows so every fleet-root count in that thread is a lower bound not a census; shiras's stranded count has grown 128 to 140 so the repair must be a re-runnable filter; the 0-byte pgdb/.lock is proven NON-discriminating - two live rotating holders here; roadmap round 66 clean but 6 pipeline ids still bind nothing; release NO-GO on BK-STD-4 tiering not on a tool failure; 4 BK-STD-2 questions put
+- Merge remote-tracking branch 'origin/develop' into develop
+- ruling Q-GLPNETO22-01 (terminate the wedged lock holder) + honest outcome - process is a zombie, stale lock persists, reboot is the remedy
+- round 66 - reconcile/import/reconcile/dedupe/export/sync; 21 epics/123 features/4048 journal lines, 0 dedupe groups, replay --verify OK; plus BK-STD-2 question set Q-GLPNETS15 (4 questions, validator conformant)
+- round 65 - reconcile/import/reconcile/dedupe/export/sync; replay --verify OK
+- Merge pull request #281 from olamni-glp/main
+
 ## [v2026.09.02.3] - 2026-09-02
 
 ### Fixed

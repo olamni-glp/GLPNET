@@ -16,7 +16,7 @@ four fields do not match your session, this is not your document.
 | **host** | `GAVRIELLA` |
 | **repo** | `GLPNET` (`D:\BSTDEV\research\GLP\GLPNET`) |
 | feature | `078-verification-receipts` |
-| written at | **2026-08-27T02:20Z — SESSION 9 CLOSE** (the SESSION-9 ADDENDUM at the foot supersedes every table above it) |
+| written at | **2026-09-02T14:30Z — SESSION 15 CLOSE** (the SESSION-15 ADDENDUM at the foot supersedes every section above it) |
 
 ## Resume in one line
 
@@ -1976,3 +1976,178 @@ anyway. Remap when gavriella is back:
 **READY FOR RESTART AND FOR REBOOT — type `resume marathon` in the glpnet tab.**
 
 — `gavriella` · `glpnet` · `mrun-20d9230f767b` · 2026-09-02T06:15:00Z
+
+---
+
+# 🟢 SESSION 15 CLOSE — 2026-09-02T14:30Z · **ROADMAP ROUND 66 · A THIRD ORPHANED TOKEN PARTITION FOUND · RELEASE NO-GO ON THE STANDARD, NOT ON A TOOL FAILURE · 4 QUESTIONS PUT TO THE ENGINEER**
+
+🔴 **THIS ADDENDUM SUPERSEDES THE SESSION 14 ADDENDUM ABOVE IT.** Same run
+`mrun-20d9230f767b`, same feature `078-verification-receipts`, same lane `gavriella` / `glpnet`.
+**Resume with `resume marathon`.**
+
+## Objective position at close — read from durable state, not from this prose
+
+```
+buildkit-marathon status --feature 078-verification-receipts
+  run mrun-20d9230f767b [open]  feature=078-verification-receipts  seq=392
+  next: continue pipeline-clarify-plan-tasks-analyze (from item mitem-01a01997-808b-76b5-a5df-e9d6b5de6444)
+  steps: 28/111 complete; outstanding items: 214
+```
+
+Branch `develop` @ `6ca0f64d`, pushed, clean tree. `origin/main..origin/develop` = **3 commits**.
+
+## ⭐ THE HEADLINE — **THE TOKEN SPLIT IS THREE-WAY, AND NO LANE HAD SEEN THE THIRD PARTITION**
+
+`shiras-ospark` filed the P1 at 11:50Z: `buildkit_cli/sizing/__main__.py:358` calls `emit_stage`,
+so `size tokens record` writes **`kind=stage`** while every reader reads **`kind=tokens`** —
+25,749,465 tokens across 316 files stranded on four hosts. **Corroborated exactly here** (their
+`host=gavriella 112` matched my independent count to the file).
+
+**Two things they did not have, both measured on GAVRIELLA at 14:05Z:**
+
+1. 🔴 **A THIRD PARTITION: `kind=token`, SINGULAR.** 17 files at the fleet root (15 gavriella,
+   2 olamnit), 28 at the local root. Nine are named
+   `gavriella-token-{clarify,analyze,implement,codexreview,ship,report,resume}-<ts>.parquet` —
+   **the per-phase token rows the 2026-08-24 engineer standing order mandates**, written on the
+   day of the order, into a partition one character away from the one every reader reads.
+   **I have NOT identified its writer and did not guess at one.**
+2. 🔴 **The fleet mirror drops rows in that partition.** `kind=token host=gavriella` is **28
+   local / 15 fleet** — 13 of this host's own rows never replicated. **Every fleet-root count in
+   that thread, mine included, is a lower bound and not a census.**
+
+Also: shiras's own host has grown **128 → 140** in 2h15m, so the writer is still running and the
+repair must be a **re-runnable filter**, never a list of 316 files.
+
+Consequence, from BK-REPORT §5 this session:
+`TOTALS 482,732,740 tokens over 1282/5423 rows carrying a measurement (coverage 24%)`;
+`4141 rows carry NO token measurement`; `(unphased) 3069 rows at 0/3069 measured`.
+
+Published as `D:\coop\glpnet\ACK-SWEEP-20260902T1415Z-gavriella-glpnet-A-THIRD-TOKEN-PARTITION-kind-token-SINGULAR-IS-ORPHANED-TOO-plus-shiras-IS-140-NOT-128-plus-OLAMNIT-P1-IS-LIVE-CONTENTION-ACK-REQUESTED.md`.
+**ACK requested on §1 and §3 — not yet received.**
+
+## ⭐ THE REPORT RAN. IT WAS SLOW, NOT BROKEN — AND ONLY ONE SECTION WAS LOST
+
+`.specify/standards/bk_report_v1.py all --feature 078-verification-receipts` took **~10.5 minutes**
+and rendered **five of six sections**. Only §3 STATUS came back UNAVAILABLE, with the tool's own
+honest reason: *"holders seen across 59 attempts: 19612, 28824, 38704, 6948 — the lock is changing
+hands, so the registry is genuinely busy."*
+
+🔴 **Correction to the fleet's working assumption, in shiras's favour:** the degradation was **1 of
+6**, not 4 and not 6. **"How many sections a busy host loses" is not a stable signature either**,
+which strengthens their argument that the header stamp is the only fix. Load at that moment,
+measured with `Get-CimInstance Win32_Process`: **25 live `python.exe` on this host**, at least ten
+of them peer report processes from other lanes racing one machine-global lock.
+
+🔴 **`grep -nE 'BUILDKIT_PYTHON|cli_python|shebang' .specify/standards/bk_report_v1.py` → no
+matches.** shiras's interpreter-resolution fix is **NOT in glpnet's copy**. Asked them to publish
+to `D:\coop\_standards\` for verbatim adoption rather than authoring a second variant — this file
+class already forked once. **Question `Q-GLPNETS15-03` is open on it.**
+
+## ⭐ THE olamnit P1 LOCK SHAPE IS **LIVE CONTENTION HERE** — DISCRIMINATED, NOT CORROBORATED
+
+`.lock` is **0 bytes** and `.lock.meta` named **PID 41044 then PID 40816 within 90 seconds** —
+**and both were alive**, `-m buildkit_cli.marathon position` under
+`deploy-home\versions\2026.08.24.4\.venv`. So:
+
+* **A 0-byte `.lock` does not discriminate** stale from healthy-contended.
+* **`.lock.meta` naming a PID does not discriminate either** — it names the current claimant of a
+  lock that changes hands several times a minute.
+* **The only discriminator is the process table**: `Get-CimInstance Win32_Process -Filter
+  "ProcessId=<pid>"`. **NEVER Git-Bash `ps -p` on Windows.**
+* 🔴 **A repair that reaps on the strength of a 0-byte lock will kill live work on a busy host.**
+
+## ⭐ ROADMAP ROUND 66 — CLEAN, AND IT MOVED NOTHING
+
+`reconcile → import --rebuild-manifest → reconcile → dedupe --dry-run → export → sync --round 66 →
+replay --verify`. Result: **21 epics / 123 features / 4048 journal lines**, `import` applied 8 new
+files / 0 new lines, **0 dedupe groups** over 122 live features (strategies: id-stem, title),
+`replay --verify: HEAD matches the journal projection ✓`, coop mirror OK.
+
+🔴 **`reconcile` says the roadmap is NOT in sync and this is unchanged from round 65:**
+**6 of 21 pipeline feature ids bind nothing** — `031-gleam-port-spike`,
+`036-glp-gleam-baseline-program`, `039-m2-0-verify-erlang-monitor-atomvm`,
+`049-wave1-guard-link-acceptance`, `050-full-gleam-combined`, `060-wave3-full-gleam-chain` — and
+**74 of 123 roadmap features carry no `spec_path` and can never bind by basename.** Those six
+pipeline records **cannot move a roadmap state**. This is a standing defect, not a round-66 event.
+
+**Open table after the round: 29 not-closed = 2 analyzed · 3 implemented · 19 promoted · 5
+specified, across 8 epics.** `SPEC=NONE: 19/29`.
+
+## ⭐ RELEASE — **NO-GO, AND FOR A GOOD REASON THIS TIME**
+
+`origin/main..origin/develop` was **2 commits at session start**: `chore(roadmap): round 65` and a
+merge. **BK-STD-4 §2: "Neither tier may be met by docs/chore/merge commits alone."** → **NO tier.**
+My own round-66 commit is also `chore:`, so the delta is now 3 commits and **still no tier**.
+
+This is **not** the wave-22 situation ("cannot review"), nor the session-12 one ("nothing to
+release"). It is: **there is something to release and the standard says it does not qualify.**
+No directive override was sought. **Question `Q-GLPNETS15-04` is open on it.**
+
+## 🔴 FOUR ENGINEER RULINGS TAKEN — ALL FOUR DECIDED 2026-09-02T14:40Z. **CITE THEM, NEVER RE-ASK THEM.**
+
+`.specify/decisions/Q-GLPNETS15-20260902T1420Z.json` — validator: **"BK-STD-2 conformant: 4
+question(s)"**, exit 0, with all four `decision` objects written back onto their qids by
+`bk_question.py decide`, plus four `kind=ruling` rows in `.specify/decisions/engineer-decisions.jsonl`.
+Published as `D:\coop\glpnet\RULING-20260902T1440Z-gavriella-glpnet-Q-GLPNETS15-01to04-…-ACK-MANDATORY.md`
+(mirrored to `D:\coop\`).
+
+| qid | header | sev | **RULED** | owner / state |
+|---|---|---|---|---|
+| `Q-GLPNETS15-01` | Takt repair | critical | **`reclassify-both-copy`** — one RE-RUNNABLE COPY filter over `kind=stage` (rows with `tokens_total` from `tool=size verb=tokens-record`) + **ALL** of `kind=token`, into `kind=tokens`, originals left in place, run against each host's **LOCAL** root as well as the fleet root | **@buildkit** — ACK mandatory, not started. 🔴 **No lane may start it speculatively** — two lanes copying concurrently would double rows |
+| `Q-GLPNETS15-02` | 078 gate | high | **`tests-first`** — the two TEST findings, then re-review, only then the other eight | **this lane** — next session, item 3 below |
+| `Q-GLPNETS15-03` | Report fork | high | **`adopt-verbatim`** — shiras publishes to `D:\coop\_standards\`, glpnet adopts BYTE-FOR-BYTE | **@shiras** — blocked on peer. 🔴 **glpnet is under ruling NOT to port it locally** |
+| `Q-GLPNETS15-04` | Release bar | medium | **`hold`** — no cut until a `feat`/`fix` lands and passes review; no directive override | **EXECUTED** — no tag cut |
+
+**Rejected options, recorded so they are not re-proposed:** `union-in-reader` (encodes a writer
+defect into every reader as permanent policy); `fix-writer-only` (ONE-WAY — forecloses ~25.7M
+historical tokens); `all-ten-then-review` (the eight would be certified by tests proven unable to
+fail); `park-078` (the two broken tests are repo-wide, parking 078 does not park the doubt);
+`port-locally` (a second author on one fix is the measured cause of the existing fork);
+`vendor-into-buildkit` (ONE-WAY — forecloses mid-incident lane fixes, which found all three of this
+week's report defects); `amend-std4` (ONE-WAY — re-opens a one-day-old standard settled from three
+colliding rulings).
+
+## 🔴 WHAT'S NEXT — START HERE, IN THIS ORDER
+
+| # | item | state |
+|---:|---|---|
+| 1 | `resume marathon` → `continue pipeline-clarify-plan-tasks-analyze` (item `mitem-01a01997-808b-76b5-a5df-e9d6b5de6444`) | unblocked |
+| 2 | **RULING 02**: 078 — fix the **two TEST findings FIRST** (conformance fixture skips its declared BOUNDED case; mutation test stays GREEN under a no-op validator), re-review, **then** the other eight | **ruled, unblocked — this is the work** |
+| 3 | **RULING 03**: adopt shiras's patched `bk_report_v1.py` from `D:\coop\_standards\` the moment it appears. 🔴 **Do NOT author a variant** — that is the ruling, not a preference. Do not sync `roadmap_open_table.py` backwards from deploy-home; `develop`'s copy is ahead (`cd5e76ea`) | blocked on shiras |
+| 4 | **RULING 01**: chase @buildkit's ACK + ownership acceptance. 🔴 **Do NOT start the reclassification here** | filed, waiting |
+| 5 | Chase **ACK on §1 and §3** of the 14:15Z coop message | filed, waiting |
+| 6 | The 6 unbound pipeline ids + 74/123 features with no `spec_path` — `buildkit-roadmap link` or reject | unblocked, unowned |
+
+**Do NOT start:** `/bk-clarify 082` (evicts 078 from the active slot). Do not author a rival
+`bk_report_v1.py`, a rival `roadmap_open_table.py`, or a rival CPM-CRDT draft.
+
+## STANDING CONSTRAINTS — ADDITIONS THIS ROUND
+
+- 🔴 **The takt lake has FIVE `kind=` partitions, not four.** `kind=token` (singular) is real,
+  orphaned, and holds per-phase rows. Any census that reads four is incomplete.
+- 🔴 **Fleet-root counts are LOWER BOUNDS.** The mirror drops rows (13 of mine, measured). Read
+  the local root too, or say you did not.
+- 🔴 **A 0-byte `pgdb/.lock` proves nothing.** Live and stale look identical. Only
+  `Get-CimInstance Win32_Process` discriminates, and **never Git-Bash `ps`**.
+- 🔴 **`scripts/roadmap_open_table.py` on `develop` is AHEAD of deploy-home 2026.08.31.1** — it
+  carries today's `cd5e76ea` epic-fabrication fix. Do not "sync" it backwards from the version tree.
+- 🔴 **BK-STD-4 tiering is not optional and a `chore:`-only develop qualifies for nothing.**
+  Name tier + evidence in every release receipt.
+
+## 🟢 REBOOT READINESS — VERIFIED THIS SESSION, SAFE
+
+| check | result |
+|---|---|
+| working tree | clean; `develop` @ `6ca0f64d` **pushed** |
+| Scheduled Task `BK-OnRestart` | **Ready**, `LastTaskResult 0` (last fired 2026-09-01 07:01) |
+| roster `~/.bk-onrestart/config.json` | 15 lanes, `layoutByHost.GAVRIELLA = TwoWindows` |
+| all 15 lane paths | **15/15 `Test-Path` True** |
+| window 1 (7) | ospark · tefl · hatzinor · olamnit · buildkit · qhstate · crucible |
+| window 2 (8) | glpnet · lejepa · mstack · yngraw · yngwin · ynglin · yngapp · yngcor |
+
+🔴 **Never test `onrestart-launch.ps1` with `powershell.exe` (5.1)** — BOM-less UTF-8 + non-ASCII
+bytes give three bogus parse errors. The task uses **pwsh 7**.
+
+**READY FOR RESTART AND FOR REBOOT — type `resume marathon` in the glpnet tab.**
+
+— `gavriella` · `glpnet` · `mrun-20d9230f767b` · 2026-09-02T14:30:00Z

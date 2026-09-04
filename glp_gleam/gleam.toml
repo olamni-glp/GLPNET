@@ -1,6 +1,6 @@
 name = "glp_gleam"
 version = "0.1.0"
-description = "Gleam/BEAM port skeleton for GLP (feature 033, epic gleam-atomvm). An empty-but-building subtree — 8 placeholder modules under src/glp/, 1:1 with glp_runtime/lib/. The buildable, green baseline the heavy downstream port features (F4+) land in. No ported runtime semantics yet."
+description = "Gleam/BEAM implementation of GLP (epic gleam-atomvm; scaffolded by feature 033, ported by 034/036/038/050/059/060). 95 modules under src/glp/ — parser, compiler, bytecode, engine, analysis, repl, mad, codec and link/transports (ZeroMQ + TCP over Erlang FFI). Measured 2026-09-02: 206/206 cross-runtime corpus parity against the Dart reference, 0 divergences, 0 excused (test/parity/run_gleam_corpus.sh). Build-independent of glp_runtime — the Dart references in src/ are provenance comments, not edges."
 licences = ["Apache-2.0"]
 
 # Runtime deps pinned to the F1-ratified shape (ranges here; exact versions in the

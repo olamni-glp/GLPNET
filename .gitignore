@@ -207,3 +207,6 @@ gleam_quic/profile_c/_build/
 
 # Machine-local buildkit config (the CLI documents this as gitignored; the rule was absent).
 config.local.json
+
+# feature 101 — per-run ring conformance output (regenerate with test/ring/*.sh)
+test/ring/reports/

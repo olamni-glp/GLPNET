@@ -1,0 +1,340 @@
+{
+  "denominator": 100,
+  "runtime_free": [
+    "glp/analysis",
+    "glp/analysis/prelude",
+    "glp/analysis/srsw",
+    "glp/analysis/type_ast",
+    "glp/analysis/type_checker/clause_validation",
+    "glp/analysis/type_checker/mode",
+    "glp/analysis/type_checker/moded_head",
+    "glp/analysis/type_checker/moded_term",
+    "glp/analysis/type_checker/param_expansion",
+    "glp/analysis/type_checker/program_dfa",
+    "glp/analysis/type_checker/subtyping",
+    "glp/analysis/type_checker/type_checker",
+    "glp/analysis/type_checker/type_environment_builder",
+    "glp/analysis/type_checker/well_typed_clause",
+    "glp/analysis/type_checker/well_typed_term",
+    "glp/analysis/type_conversion",
+    "glp/bytecode",
+    "glp/bytecode/guard_defs",
+    "glp/bytecode/lint",
+    "glp/bytecode/opcodes",
+    "glp/bytecode/program",
+    "glp/codec/result_envelope",
+    "glp/codec/result_envelope_builder",
+    "glp/codec/term_codec",
+    "glp/compiler",
+    "glp/compiler/codegen",
+    "glp/compiler/loader",
+    "glp/compiler/partial_eval",
+    "glp/compiler/project_linker",
+    "glp/contract/surface",
+    "glp/diagnostics",
+    "glp/engine/arith",
+    "glp/engine/goal_boot",
+    "glp/engine/goal_format",
+    "glp/engine/output_capture",
+    "glp/engine/types",
+    "glp/link",
+    "glp/link/primitives/capability_gate",
+    "glp/link/primitives/link_faults",
+    "glp/link/primitives/link_terms",
+    "glp/link/primitives/payload_codec",
+    "glp/link/reliability/crc32",
+    "glp/link/reliability/frame_codec",
+    "glp/link/reliability/frame_reassembler",
+    "glp/link/reliability/inbound_ordering",
+    "glp/link/reliability/link_sequencer",
+    "glp/link/reliability/send_window",
+    "glp/link/seam/link_address",
+    "glp/link/seam/link_fault",
+    "glp/link/seam/link_id",
+    "glp/link/seam/link_options",
+    "glp/link/seam/link_scheme",
+    "glp/lint",
+    "glp/mad/global_name",
+    "glp/mad/global_writers_table",
+    "glp/mad/globalize",
+    "glp/mad/localize",
+    "glp/mad/mad_kernels",
+    "glp/mad/message",
+    "glp/multiagent",
+    "glp/parser/ast",
+    "glp/parser/lexer",
+    "glp/parser/parser",
+    "glp/repl/results",
+    "glp/ring/ring",
+    "glp/runtime",
+    "glp/runtime/heap",
+    "glp/runtime/suspension",
+    "glp/runtime/terms",
+    "glp/runtime/unify",
+    "glp/split/wire"
+  ],
+  "runtime_tainted": {
+    "atomvm_gated_probe": {
+      "reasons": [
+        "declares @external(erlang, ...) FFI"
+      ],
+      "path_to_taint": [
+        "atomvm_gated_probe"
+      ],
+      "direct": true
+    },
+    "glp/be/server": {
+      "reasons": [
+        "imports gleam/erlang/charlist",
+        "declares @external(erlang, ...) FFI"
+      ],
+      "path_to_taint": [
+        "glp/be/server"
+      ],
+      "direct": true
+    },
+    "glp/engine": {
+      "reasons": [
+        "imports gleam/erlang/charlist",
+        "declares @external(erlang, ...) FFI"
+      ],
+      "path_to_taint": [
+        "glp/engine"
+      ],
+      "direct": true
+    },
+    "glp/engine/kernels": {
+      "reasons": [
+        "declares @external(erlang, ...) FFI"
+      ],
+      "path_to_taint": [
+        "glp/engine/kernels"
+      ],
+      "direct": true
+    },
+    "glp/engine/runner": {
+      "reasons": [],
+      "path_to_taint": [
+        "glp/engine/runner",
+        "glp/engine/kernels"
+      ],
+      "direct": false
+    },
+    "glp/engine/scheduler": {
+      "reasons": [],
+      "path_to_taint": [
+        "glp/engine/scheduler",
+        "glp/engine/kernels"
+      ],
+      "direct": false
+    },
+    "glp/fe/client": {
+      "reasons": [
+        "imports gleam/erlang/charlist",
+        "declares @external(erlang, ...) FFI"
+      ],
+      "path_to_taint": [
+        "glp/fe/client"
+      ],
+      "direct": true
+    },
+    "glp/link/primitives/link_egress": {
+      "reasons": [],
+      "path_to_taint": [
+        "glp/link/primitives/link_egress",
+        "glp/link/primitives/link_handle",
+        "glp/link/seam/endpoint"
+      ],
+      "direct": false
+    },
+    "glp/link/primitives/link_establish": {
+      "reasons": [],
+      "path_to_taint": [
+        "glp/link/primitives/link_establish",
+        "glp/link/primitives/link_handle",
+        "glp/link/seam/endpoint"
+      ],
+      "direct": false
+    },
+    "glp/link/primitives/link_handle": {
+      "reasons": [],
+      "path_to_taint": [
+        "glp/link/primitives/link_handle",
+        "glp/link/seam/endpoint"
+      ],
+      "direct": false
+    },
+    "glp/link/primitives/link_kernels": {
+      "reasons": [
+        "imports gleam/erlang/process"
+      ],
+      "path_to_taint": [
+        "glp/link/primitives/link_kernels"
+      ],
+      "direct": true
+    },
+    "glp/link/primitives/link_loop": {
+      "reasons": [
+        "imports gleam/erlang/process"
+      ],
+      "path_to_taint": [
+        "glp/link/primitives/link_loop"
+      ],
+      "direct": true
+    },
+    "glp/link/primitives/link_pump": {
+      "reasons": [],
+      "path_to_taint": [
+        "glp/link/primitives/link_pump",
+        "glp/link/primitives/link_handle",
+        "glp/link/seam/endpoint"
+      ],
+      "direct": false
+    },
+    "glp/link/primitives/link_registry": {
+      "reasons": [],
+      "path_to_taint": [
+        "glp/link/primitives/link_registry",
+        "glp/link/primitives/link_handle",
+        "glp/link/seam/endpoint"
+      ],
+      "direct": false
+    },
+    "glp/link/primitives/link_runtime": {
+      "reasons": [
+        "imports gleam/erlang/process"
+      ],
+      "path_to_taint": [
+        "glp/link/primitives/link_runtime"
+      ],
+      "direct": true
+    },
+    "glp/link/primitives/transport_registry": {
+      "reasons": [],
+      "path_to_taint": [
+        "glp/link/primitives/transport_registry",
+        "glp/link/seam/transport",
+        "glp/link/seam/endpoint"
+      ],
+      "direct": false
+    },
+    "glp/link/seam/endpoint": {
+      "reasons": [
+        "imports gleam/erlang/process"
+      ],
+      "path_to_taint": [
+        "glp/link/seam/endpoint"
+      ],
+      "direct": true
+    },
+    "glp/link/seam/transport": {
+      "reasons": [],
+      "path_to_taint": [
+        "glp/link/seam/transport",
+        "glp/link/seam/endpoint"
+      ],
+      "direct": false
+    },
+    "glp/link/transports/bridge_client": {
+      "reasons": [],
+      "path_to_taint": [
+        "glp/link/transports/bridge_client",
+        "glp/link/seam/endpoint"
+      ],
+      "direct": false
+    },
+    "glp/link/transports/loopback": {
+      "reasons": [
+        "imports gleam/erlang/process"
+      ],
+      "path_to_taint": [
+        "glp/link/transports/loopback"
+      ],
+      "direct": true
+    },
+    "glp/link/transports/multi_accept": {
+      "reasons": [
+        "imports gleam/erlang/process",
+        "declares @external(erlang, ...) FFI"
+      ],
+      "path_to_taint": [
+        "glp/link/transports/multi_accept"
+      ],
+      "direct": true
+    },
+    "glp/link/transports/tcp": {
+      "reasons": [
+        "imports gleam/erlang/process",
+        "declares @external(erlang, ...) FFI"
+      ],
+      "path_to_taint": [
+        "glp/link/transports/tcp"
+      ],
+      "direct": true
+    },
+    "glp/link/transports/zmq": {
+      "reasons": [
+        "imports gleam/erlang/process",
+        "declares @external(erlang, ...) FFI"
+      ],
+      "path_to_taint": [
+        "glp/link/transports/zmq"
+      ],
+      "direct": true
+    },
+    "glp/mad/boot_loader": {
+      "reasons": [],
+      "path_to_taint": [
+        "glp/mad/boot_loader",
+        "glp/engine/scheduler",
+        "glp/engine/kernels"
+      ],
+      "direct": false
+    },
+    "glp/mad/mad_engine": {
+      "reasons": [],
+      "path_to_taint": [
+        "glp/mad/mad_engine",
+        "glp/engine/scheduler",
+        "glp/engine/kernels"
+      ],
+      "direct": false
+    },
+    "glp/repl/commands": {
+      "reasons": [
+        "declares @external(erlang, ...) FFI"
+      ],
+      "path_to_taint": [
+        "glp/repl/commands"
+      ],
+      "direct": true
+    },
+    "glp/repl/repl": {
+      "reasons": [
+        "declares @external(erlang, ...) FFI"
+      ],
+      "path_to_taint": [
+        "glp/repl/repl"
+      ],
+      "direct": true
+    },
+    "glp_embed": {
+      "reasons": [
+        "declares @external(erlang, ...) FFI"
+      ],
+      "path_to_taint": [
+        "glp_embed"
+      ],
+      "direct": true
+    },
+    "glp_gleam": {
+      "reasons": [],
+      "path_to_taint": [
+        "glp_gleam",
+        "glp/repl/repl"
+      ],
+      "direct": false
+    }
+  },
+  "not_read": []
+}

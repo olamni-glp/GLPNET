@@ -1,0 +1,208 @@
+{
+  "schema_version": "2",
+  "set_id": "Q-GLPNETA17-20260902T1540Z",
+  "lane": "ariellas",
+  "repo": "glpnet",
+  "raised_at": "2026-09-02T15:40:00+00:00",
+  "questions": [
+    {
+      "qid": "Q-GLPNETA17-01",
+      "header": "078 owner",
+      "kind": "ruling",
+      "origin": "contradiction",
+      "severity": "critical",
+      "block": "This lane cannot open its declared era 1 because two live rulings assign feature 078 to two different lanes.",
+      "background": [
+        "Q-GLPNETA16-12 (ariellas-glpnet, 2026-09-01) made 078 verification-receipts this lane's era 1 and described it as 'ship + close only'.",
+        "Q-GLPNETS15-02 (gavriella-glpnet, 2026-09-02T14:20Z) assigns 078 to gavriella-glpnet, orders two test fixes BEFORE the other eight findings, and records the review as NO-GO with 8 unresolved HIGH.",
+        "Neither ruling cites the other, so BK-STD-3 rule 2 is unmet by both and rule 6 requires the collision be raised rather than resolved by a lane.",
+        "Measured here on develop @ 59e5d5b6: glpnet-side 078 is 13/13 gn: tasks complete; all 55 open tasks are bk: (buildkit repo), so the open work is not in this repo.",
+        "The 'ship + close only' premise is falsified either way - a feature with 8 unresolved HIGH cannot be shipped and closed."
+      ],
+      "impact_if_unanswered": "This lane holds on 078 indefinitely and opens no era, so the single-feature era programme that Q-GLPNETA16-12 established produces nothing.",
+      "options": [
+        {
+          "key": "concede-to-gavriella",
+          "label": "Concede 078 to gavriella-glpnet",
+          "consequence": "Q-GLPNETS15-02 governs by BK-STD-3 rule 1 (later decided_at wins); this lane records the supersession onto Q-GLPNETA16-12, touches nothing under specs/078, and moves to the next era in Q-GLPNETA17-02.",
+          "size": "nano",
+          "reversibility": "reversible"
+        },
+        {
+          "key": "this-lane-takes-tests",
+          "label": "This lane executes the two test fixes",
+          "consequence": "ariellas-glpnet does ruling 02's tests-first work and gavriella stands down; needs an explicit handover on the channel first or two lanes edit the same suite.",
+          "size": "midi",
+          "reversibility": "reversible"
+        },
+        {
+          "key": "split-by-repo",
+          "label": "Split by repo: gavriella glpnet-side, buildkit lane bk-side",
+          "consequence": "Formalises what is already true - the 55 open tasks are bk: - and gives each repo one owner; this lane stays out of 078 entirely and the ownership record is rewritten to name two lanes.",
+          "size": "micro",
+          "reversibility": "reversible"
+        }
+      ],
+      "recommendation": {
+        "option": "concede-to-gavriella",
+        "because": "BK-STD-3 rule 1 already decides it on decided_at, gavriella has the review context and the two failing tests in hand, and the runner-up asks two lanes to coordinate an edit to one test suite mid-incident - which is the exact fork ruling 03 was written to stop."
+      },
+      "decision": {
+        "option": "concede-to-gavriella",
+        "date": "2026-09-02",
+        "rationale": "BK-STD-3 rule 1 decides it on decided_at: Q-GLPNETS15-02 (2026-09-02T14:20Z) is later than Q-GLPNETA16-12 (2026-09-01). gavriella holds the review context and the two failing tests. This lane records the supersession and touches nothing under specs/078-verification-receipts."
+      }
+    },
+    {
+      "qid": "Q-GLPNETA17-02",
+      "header": "Next era",
+      "kind": "ruling",
+      "origin": "assumption-weakness",
+      "severity": "high",
+      "block": "No era can open on this lane until one of the three candidate features is confirmed as genuinely ship-ready.",
+      "background": [
+        "Q-GLPNETA16-12 named three single-feature eras in order: 078 (WSJF 7.80), 079 madglp-writer-reader-address-discipline (5.33), 067 qr-link-provisioning (4.00), each described as 'ship + close only'.",
+        "That description is now known to be wrong for 078 (8 unresolved HIGH). It was never independently verified for 079 or 067.",
+        "Round 67 table: 079 and 067 are both state=implemented with a spec_path; 085 bk-onrestart-fleet-resume is state=specified at WSJF 7.00, ranked above both.",
+        "A prior finding on this host records 067 as having an unresolved session-blocking contract divergence and an open gavriella ownership/handshake receipt.",
+        "BK-STD-4 makes a MINOR release possible only when a roadmap feature actually reaches shipped, so no era closing means no legitimate tag from this repo."
+      ],
+      "impact_if_unanswered": "This lane spends the session on coordination and reporting only, produces no shipped feature, and the repo stays at tier=NONE for a third consecutive day.",
+      "options": [
+        {
+          "key": "079-next",
+          "label": "Open era on 079 madglp-writer-reader",
+          "consequence": "Highest-WSJF implemented feature with no known ownership dispute; the era starts with a codexreview to establish whether 'ship + close only' is true, rather than assuming it.",
+          "size": "midi",
+          "reversibility": "reversible"
+        },
+        {
+          "key": "067-next",
+          "label": "Open era on 067 qr-link-provisioning",
+          "consequence": "Lower WSJF and carries a recorded contract divergence plus an open gavriella ownership question, so the era would likely stall at the same place 078 did.",
+          "size": "maxi",
+          "reversibility": "reversible"
+        },
+        {
+          "key": "085-next",
+          "label": "Open era on 085 bk-onrestart-fleet-resume",
+          "consequence": "Ranked second by WSJF and is this host's own reboot-resume machinery, but it is only specified, so the era is a full nine-stage run rather than the short close Q-GLPNETA16-12 anticipated.",
+          "size": "saga",
+          "reversibility": "reversible"
+        },
+        {
+          "key": "verify-all-three-first",
+          "label": "Verify all three, then choose",
+          "consequence": "Run a review pass over 079, 067 and 085 before committing, so the next era's premise is measured rather than inherited; costs a session of no shipped feature and forecloses shipping anything today.",
+          "size": "mini",
+          "reversibility": "one-way"
+        }
+      ],
+      "recommendation": {
+        "option": "079-next",
+        "because": "It is the highest-WSJF candidate with no ownership dispute and no recorded blocker, and opening it with a review as the first stage gets the same evidence 'verify-all-three-first' buys without spending a whole session before any work starts."
+      },
+      "decision": {
+        "option": "079-next",
+        "date": "2026-09-02",
+        "rationale": "079 madglp-writer-reader-address-discipline is the highest-WSJF implemented feature with no ownership dispute and no recorded blocker. The era opens with a codexreview so the ship-and-close premise is measured rather than inherited from Q-GLPNETA16-12, which has now been falsified once."
+      }
+    },
+    {
+      "qid": "Q-GLPNETA17-03",
+      "header": "Takt tokens",
+      "kind": "ruling",
+      "origin": "measurement",
+      "severity": "high",
+      "block": "This lane cannot satisfy the standing order that per-phase token use be recorded in and retrieved from the takt DuckLake, because this lane cannot meter tokens.",
+      "background": [
+        "The engineer standing order of 2026-08-24 requires per-phase token use to be recorded in the takt lake and RETRIEVED from it for all takt reporting, never recomputed in-process.",
+        "Q-GLPNETS15-01 measured BK-REPORT-v1 section 5 on a peer host at 24% coverage: 1282 of 5423 rows carry a token measurement, 4141 carry none, and 3069 (unphased) rows are 0/3069 measured.",
+        "The only write verb available here is buildkit-scheduler takt-tokens, and this lane has been invoking it with --method unavailable, which records honestly that a phase ran but was never metered.",
+        "A row written with --method unavailable satisfies the letter of the standing order (a row exists in the lake) while carrying no measurement, so coverage rises without any number improving.",
+        "Q-GLPNETA16-11 already ruled that a second unenforced takt write path be filed upstream; that filing is one of six ruled-but-unexecuted items on this lane."
+      ],
+      "impact_if_unanswered": "This lane keeps writing unmeasured rows that inflate row counts without adding measurement, and every cross-host takt comparison silently mixes measured and unmeasured rows.",
+      "options": [
+        {
+          "key": "unavailable-plus-flag",
+          "label": "Keep --method unavailable, flag coverage everywhere",
+          "consequence": "Every takt figure this lane publishes carries an explicit measured/total coverage ratio, so an unmetered row can never be read as zero cost; no new tooling and no rival shape against Q-GLPNETS15-01.",
+          "size": "micro",
+          "reversibility": "reversible"
+        },
+        {
+          "key": "meter-locally",
+          "label": "Implement real per-phase token metering here",
+          "consequence": "This lane builds a token counter and writes measured rows, which produces real numbers but creates a second writer into a lake whose writer defects are exactly what Q-GLPNETS15-01 assigned to @buildkit.",
+          "size": "maxi",
+          "reversibility": "reversible"
+        },
+        {
+          "key": "stop-writing",
+          "label": "Stop writing unmeasured rows entirely",
+          "consequence": "This lane writes no takt token rows until a metering path exists, which keeps the lake honest but forecloses any takt continuity for this lane across the gap and loses the phase-ran signal the rows currently carry.",
+          "size": "nano",
+          "reversibility": "one-way"
+        }
+      ],
+      "recommendation": {
+        "option": "unavailable-plus-flag",
+        "because": "It is the only option that neither fabricates a measurement nor destroys the phase-ran signal, and metering locally would put a second writer into the same lake whose writer defects are already assigned to another owner."
+      },
+      "decision": {
+        "option": "unavailable-plus-flag",
+        "date": "2026-09-02",
+        "rationale": "Neither fabricates a measurement nor destroys the phase-ran signal. Every takt figure this lane publishes must now carry an explicit measured/total coverage ratio. Metering locally was rejected because it would put a second writer into a lake whose writer defects are already assigned to @buildkit by Q-GLPNETS15-01."
+      }
+    },
+    {
+      "qid": "Q-GLPNETA17-04",
+      "header": "SITREP cost",
+      "kind": "risk-acceptance",
+      "origin": "measurement",
+      "severity": "medium",
+      "block": "The mandated six-section SITREP cannot be produced on demand on this host, and this lane is under ruling not to change the generator.",
+      "background": [
+        "BK-REPORT-v1 is the mandated fixed-order report and is the only sanctioned generator; its section order is explicitly not configurable.",
+        "Measured this session on ARIELLAS: one run of bk_report_v1.py all reached 1232s of CPU across 70+ minutes and had still written 0 bytes, because Python buffers redirected stdout and the report only flushes at exit.",
+        "During that window it also serialised against this lane's own roadmap round - CPU fell to ~0.2% while the round held the catalog, then resumed.",
+        "Q-GLPNETS15-03 rules that shiras publishes the patched generator and glpnet adopts it byte-for-byte and authors nothing, so this lane may not add incremental output itself.",
+        "The patched file had not appeared in the standards drop when checked at 2026-09-02T14:50Z."
+      ],
+      "impact_if_unanswered": "Every session either blocks for over an hour on the mandated report or publishes a SITREP that is not the mandated artefact, and both have happened.",
+      "options": [
+        {
+          "key": "detached-at-session-start",
+          "label": "Run it detached at session start, always",
+          "consequence": "The report becomes the first action of every session and is ready by the time it is needed; the roadmap round must then be sequenced after it so the two do not serialise on the catalog.",
+          "size": "nano",
+          "reversibility": "reversible"
+        },
+        {
+          "key": "partial-then-full",
+          "label": "Publish section 1 from roadmap_open_table.py, full report when it lands",
+          "consequence": "The mandated roadmap table is available in seconds while sections 2-6 follow later, at the cost of two artefacts per session that a reader must reconcile.",
+          "size": "micro",
+          "reversibility": "reversible"
+        },
+        {
+          "key": "exception-to-ruling-03",
+          "label": "Grant this lane an exception to add line-buffered output",
+          "consequence": "A one-line flush change makes the report observable while running, but forecloses the single-author guarantee Q-GLPNETS15-03 exists to protect and re-opens the two-author fork it was written to close.",
+          "size": "nano",
+          "reversibility": "one-way"
+        }
+      ],
+      "recommendation": {
+        "option": "detached-at-session-start",
+        "because": "It removes the whole latency from the critical path without touching a file this lane is forbidden to author, and unlike the partial-report option it still yields exactly one artefact in the mandated order."
+      },
+      "decision": {
+        "option": "exception-to-ruling-03",
+        "date": "2026-09-02",
+        "rationale": "ENGINEER RULING, taken AGAINST this lane's recommendation. Grants ariellas-glpnet a NARROW exception to Q-GLPNETS15-03 (gavriella-glpnet, 2026-09-02T14:20Z) for line-buffered output in bk_report_v1.py only. Scope is this one change; the single-author rule otherwise stands and shiras remains the publisher. Must be cited, broadcast fleet-wide, and carried forward by any future adoption of shiras's file alongside a14f10f8."
+      }
+    }
+  ]
+}

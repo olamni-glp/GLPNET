@@ -1,0 +1,284 @@
+== AtomVM subset measurement — T017 second half ==
+   host:    Linux 6.18.33.2-microsoft-standard-WSL2 x86_64
+   distro:  Ubuntu 26.04 LTS
+   date:    2026-09-04T05:47:34Z
+   target:  AtomVM v0.6.6
+
+-- step 1: resolve release assets (never a guessed URL) --
+   GET https://api.github.com/repos/atomvm/AtomVM/releases/tags/v0.6.6 -> HTTP 200  (133973 bytes)
+   tag: v0.6.6
+   assets: 64
+     - AtomVM-esp32-elixir-v0.6.6.img  (2197764 bytes)
+     - AtomVM-esp32-elixir-v0.6.6.img.sha256  (97 bytes)
+     - AtomVM-esp32-v0.6.6.img  (2064876 bytes)
+     - AtomVM-esp32-v0.6.6.img.sha256  (90 bytes)
+     - AtomVM-esp32c2-elixir-v0.6.6.img  (2201860 bytes)
+     - AtomVM-esp32c2-elixir-v0.6.6.img.sha256  (99 bytes)
+     - AtomVM-esp32c2-v0.6.6.img  (2068972 bytes)
+     - AtomVM-esp32c2-v0.6.6.img.sha256  (92 bytes)
+     - AtomVM-esp32c3-elixir-v0.6.6.img  (2201860 bytes)
+     - AtomVM-esp32c3-elixir-v0.6.6.img.sha256  (99 bytes)
+     - AtomVM-esp32c3-v0.6.6.img  (2068972 bytes)
+     - AtomVM-esp32c3-v0.6.6.img.sha256  (92 bytes)
+     - AtomVM-esp32c6-elixir-v0.6.6.img  (2201860 bytes)
+     - AtomVM-esp32c6-elixir-v0.6.6.img.sha256  (99 bytes)
+     - AtomVM-esp32c6-v0.6.6.img  (2068972 bytes)
+     - AtomVM-esp32c6-v0.6.6.img.sha256  (92 bytes)
+     - AtomVM-esp32h2-elixir-v0.6.6.img  (2201860 bytes)
+     - AtomVM-esp32h2-elixir-v0.6.6.img.sha256  (99 bytes)
+     - AtomVM-esp32h2-v0.6.6.img  (2068972 bytes)
+     - AtomVM-esp32h2-v0.6.6.img.sha256  (92 bytes)
+     - AtomVM-esp32p4-elixir-v0.6.6.img  (2193668 bytes)
+     - AtomVM-esp32p4-elixir-v0.6.6.img.sha256  (99 bytes)
+     - AtomVM-esp32p4-v0.6.6.img  (2060780 bytes)
+     - AtomVM-esp32p4-v0.6.6.img.sha256  (92 bytes)
+     - AtomVM-esp32s2-elixir-v0.6.6.img  (2197764 bytes)
+     - AtomVM-esp32s2-elixir-v0.6.6.img.sha256  (99 bytes)
+     - AtomVM-esp32s2-v0.6.6.img  (2064876 bytes)
+     - AtomVM-esp32s2-v0.6.6.img.sha256  (92 bytes)
+     - AtomVM-esp32s3-elixir-v0.6.6.img  (2201860 bytes)
+     - AtomVM-esp32s3-elixir-v0.6.6.img.sha256  (99 bytes)
+     - AtomVM-esp32s3-v0.6.6.img  (2068972 bytes)
+     - AtomVM-esp32s3-v0.6.6.img.sha256  (92 bytes)
+     - AtomVM-linux-arm32v5-v0.6.6  (3132224 bytes)
+     - AtomVM-linux-arm32v5-v0.6.6.sha256  (79 bytes)
+     - AtomVM-linux-arm32v7thl-v0.6.6  (2918996 bytes)
+     - AtomVM-linux-arm32v7thl-v0.6.6.sha256  (79 bytes)
+     - AtomVM-linux-arm64v8-v0.6.6  (4532056 bytes)
+     - AtomVM-linux-arm64v8-v0.6.6.sha256  (79 bytes)
+     - AtomVM-linux-i386-v0.6.6  (3443572 bytes)
+     - AtomVM-linux-i386-v0.6.6.sha256  (79 bytes)
+     - AtomVM-linux-riscv64-v0.6.6  (5497824 bytes)
+     - AtomVM-linux-riscv64-v0.6.6.sha256  (79 bytes)
+     - AtomVM-linux-x86_64-static-mbedtls-v0.6.6  (5068440 bytes)
+     - AtomVM-linux-x86_64-static-mbedtls-v0.6.6.sha256  (79 bytes)
+     - AtomVM-linux-x86_64-v0.6.6  (4508560 bytes)
+     - AtomVM-linux-x86_64-v0.6.6.sha256  (79 bytes)
+     - AtomVM-node-v0.6.6.js  (137307 bytes)
+     - AtomVM-node-v0.6.6.js.sha256  (88 bytes)
+     - AtomVM-node-v0.6.6.wasm  (671611 bytes)
+     - AtomVM-node-v0.6.6.wasm.sha256  (90 bytes)
+     - AtomVM-pico-v0.6.6.uf2  (1167360 bytes)
+     - AtomVM-pico-v0.6.6.uf2.sha256  (93 bytes)
+     - AtomVM-pico_w-v0.6.6.uf2  (1988096 bytes)
+     - AtomVM-pico_w-v0.6.6.uf2.sha256  (95 bytes)
+     - AtomVM-web-v0.6.6.js  (128877 bytes)
+     - AtomVM-web-v0.6.6.js.sha256  (87 bytes)
+     - AtomVM-web-v0.6.6.wasm  (671958 bytes)
+     - AtomVM-web-v0.6.6.wasm.sha256  (89 bytes)
+     - atomvmlib-v0.6.6.avm  (285016 bytes)
+     - atomvmlib-v0.6.6.avm.sha256  (92 bytes)
+     - atomvmlib-v0.6.6.uf2  (321536 bytes)
+     - atomvmlib-v0.6.6.uf2.sha256  (87 bytes)
+     - hello_world-v0.6.6.avm  (368 bytes)
+     - hello_world-v0.6.6.avm.sha256  (105 bytes)
+
+-- step 2: download https://github.com/atomvm/AtomVM/releases/download/v0.6.6/AtomVM-linux-x86_64-static-mbedtls-v0.6.6 --
+   HTTP 200, 5068440 bytes
+   file type: ELF 64-bit LSB pie executable, x86-64, version 1 (SYSV), dynamically linked, interpreter /lib64/ld-linux-x86-64.so.2, for GNU/Linux 3.2.0, BuildID[sha1]=a7ed6dd2f9dd6eb213aaf5dcf908ac93a88cfaca, with debug_info, not stripped
+   bare ELF executable -> /root/atomvm-work/AtomVM
+total 14996
+drwxr-xr-x 2 root root    4096 Sep  4 06:47 .
+drwx------ 5 root root    4096 Sep  4 06:43 ..
+-rwxr-xr-x 1 root root 5068440 Sep  4 06:47 AtomVM
+-rw-r--r-- 1 root root 5068440 Sep  4 06:47 atomvm.download
+-rw-r--r-- 1 root root 5068440 Sep  4 06:45 atomvm.tgz
+-rw-r--r-- 1 root root  133973 Sep  4 06:47 rel.json
+
+-- step 3: run it --
+   binary: /root/atomvm-work/AtomVM
+   /root/atomvm-work/AtomVM: invalid option -- '-'
+   0.6.6
+
+-- step 4: reproduce the dossier result BEFORE extending the list --
+   Required: a gleam_otp build must fail with 'module proc_lib cannot be resolved'.
+   If it does not reproduce, atomvm-unsupported.list must be RE-DERIVED, not extended.
+   (Requires a Gleam toolchain in this environment; see install-atomvm.md step 2.)
+   gleam not present in WSL — reproduction NOT ATTEMPTED, recorded as such.
+
+RESULT: AtomVM binary obtained and runnable; construct enumeration NOT extended.
+        The list remains the 0.6.6 lower bound. Next: install gleam+erlang here.
+
+==============================================================
+== T017 second half — reproducing the dossier result ==
+   date: 2026-09-04T06:06:40Z
+   gleam:  gleam 1.12.0
+   erlang: OTP 27
+   atomvm: 0.6.6
+
+-- probe A: gleam_otp (dossier says this FAILS on AtomVM) --
+   gleam deps download rc=0
+   gleam build rc=1
+   build output (tail):
+     error: Incompatible Gleam version
+     
+     The package `gleam_stdlib` requires a Gleam version satisfying >=1.14.0 but you are using v1.12.0.   probe A result: build-failed-other
+
+-- probe B: raw erlang:spawn + gleam_erlang (dossier says this RUNS) --
+   gleam build rc=1
+     error: Incompatible Gleam version
+     
+     The package `gleam_stdlib` requires a Gleam version satisfying >=1.14.0 but you are using v1.12.0.   probe B result: build-failed
+
+== VERDICT ==
+   probe A (gleam_otp, expected FAIL on proc_lib): build-failed-other
+   probe B (raw spawn, expected RUN):              build-failed
+   NOT REPRODUCED — do NOT extend atomvm-unsupported.list on this run.
+   One expectation without the other is not a reproduction: both failing means the
+   harness is broken, both passing means the constraint has evaporated. Either way the
+   list's foundation is unconfirmed here and the honest record is this file, unchanged.
+
+==============================================================
+== T017 second half — reproducing the dossier result ==
+   date: 2026-09-04T06:07:27Z
+   gleam:  gleam 1.17.0
+   erlang: OTP 27
+   atomvm: 0.6.6
+
+-- probe A: gleam_otp (dossier says this FAILS on AtomVM) --
+   gleam deps download rc=0
+   gleam build rc=1
+   build output (tail):
+     
+     error: Unknown module
+       ┌─ /root/atomvm-probe/probe_otp/test/probe_otp_test.gleam:4:3
+       │
+     4 │   gleeunit.main()
+       │   ^^^^^^^^
+     
+     No module has been found with the name `gleeunit`.   probe A result: build-failed-other
+
+-- probe B: raw erlang:spawn + gleam_erlang (dossier says this RUNS) --
+   gleam build rc=1
+       ┌─ /root/atomvm-probe/probe_raw/test/probe_raw_test.gleam:4:3
+       │
+     4 │   gleeunit.main()
+       │   ^^^^^^^^
+     
+     No module has been found with the name `gleeunit`.   probe B result: build-failed
+
+== VERDICT ==
+   probe A (gleam_otp, expected FAIL on proc_lib): build-failed-other
+   probe B (raw spawn, expected RUN):              build-failed
+   NOT REPRODUCED — do NOT extend atomvm-unsupported.list on this run.
+   One expectation without the other is not a reproduction: both failing means the
+   harness is broken, both passing means the constraint has evaporated. Either way the
+   list's foundation is unconfirmed here and the honest record is this file, unchanged.
+
+==============================================================
+== T017 second half — reproducing the dossier result ==
+   date: 2026-09-04T06:08:20Z
+   gleam:  gleam 1.17.0
+   erlang: OTP 27
+   atomvm: 0.6.6
+
+-- probe A: gleam_otp (dossier says this FAILS on AtomVM) --
+   gleam deps download rc=0
+   gleam build rc=0
+   gleam export rc=0
+   beams present: /root/atomvm-probe/probe_otp/build/prod/erlang/gleam_stdlib/ebin/gleam@uri.beam
+   AtomVM run output:
+     Unable to locate entrypoint.
+   probe A result: no-proc_lib-error
+
+-- probe B: raw erlang:spawn + gleam_erlang (dossier says this RUNS) --
+   gleam build rc=0
+   beam: /root/atomvm-probe/probe_raw/build/dev/erlang/probe_raw/ebin/probe_raw.beam
+   AtomVM run output:
+     Unable to locate entrypoint.
+   probe B result: did-not-run
+
+== VERDICT ==
+   probe A (gleam_otp, expected FAIL on proc_lib): no-proc_lib-error
+   probe B (raw spawn, expected RUN):              did-not-run
+   NOT REPRODUCED — do NOT extend atomvm-unsupported.list on this run.
+   One expectation without the other is not a reproduction: both failing means the
+   harness is broken, both passing means the constraint has evaporated. Either way the
+   list's foundation is unconfirmed here and the honest record is this file, unchanged.
+
+==============================================================
+== T017 second half — reproducing the dossier result ==
+   date: 2026-09-04T06:09:25Z
+   atomvmlib: present
+   gleam:  gleam 1.17.0
+   erlang: OTP 27
+   atomvm: 0.6.6
+
+-- probe A: gleam_otp (dossier says this FAILS on AtomVM) --
+   gleam deps download rc=0
+   gleam build rc=0
+   gleam export rc=0
+   beams present: /root/atomvm-probe/probe_otp/build/prod/erlang/gleam_stdlib/ebin/gleam@uri.beam
+   AtomVM run output:
+     Unable to open gleam@otp@actor.beam
+     Warning: module gleam@otp@actor cannot be resolved.
+     CRASH 
+     ======
+     pid: <0.1.0>
+     
+     Stacktrace:
+     [{probe_otp,start,0,[{file,"src/probe_otp.gleam"},{line,8}]}]
+     
+     cp: #CP<module: 0, label: 10, offset: 0>
+   probe A result: no-proc_lib-error
+
+-- probe B: raw erlang:spawn + gleam_erlang (dossier says this RUNS) --
+   gleam build rc=0
+   beam: /root/atomvm-probe/probe_raw/build/dev/erlang/probe_raw/ebin/probe_raw.beam
+   AtomVM run output:
+     Return value: nil
+     <<"probe_raw_ok">>
+   probe B result: runs
+
+== VERDICT ==
+   probe A (gleam_otp, expected FAIL on proc_lib): no-proc_lib-error
+   probe B (raw spawn, expected RUN):              runs
+   NOT REPRODUCED — do NOT extend atomvm-unsupported.list on this run.
+   One expectation without the other is not a reproduction: both failing means the
+   harness is broken, both passing means the constraint has evaporated. Either way the
+   list's foundation is unconfirmed here and the honest record is this file, unchanged.
+
+==============================================================
+== T017 second half — reproducing the dossier result ==
+   date: 2026-09-04T06:10:24Z
+   atomvmlib: present
+   gleam:  gleam 1.17.0
+   erlang: OTP 27
+   atomvm: 0.6.6
+
+-- probe A: gleam_otp (dossier says this FAILS on AtomVM) --
+   gleam deps download rc=0
+   gleam build rc=0
+   gleam export rc=0
+   beams present: /root/atomvm-probe/probe_otp/build/prod/erlang/gleam_stdlib/ebin/gleam@uri.beam
+   dep beams passed: 38
+   AtomVM run output:
+     Unable to open proc_lib.beam
+     Warning: module proc_lib cannot be resolved.
+     CRASH 
+     ======
+     pid: <0.1.0>
+     
+     Stacktrace:
+     [{gleam@otp@actor,start,1,[{file,"src/gleam/otp/actor.gleam"},{line,600}]},{probe_otp,start,0,[{file,"src/probe_otp.gleam"},{line,13}]}]
+     
+     cp: #CP<module: 38, label: 67, offset: 30>
+     
+     x[0]: error
+     x[1]: undef
+     x[2]: {2,2,44,2,[{0,46},{38,1794}],error}
+   probe A result: reproduced
+
+-- probe B: raw erlang:spawn + gleam_erlang (dossier says this RUNS) --
+   gleam build rc=0
+   beam: /root/atomvm-probe/probe_raw/build/dev/erlang/probe_raw/ebin/probe_raw.beam
+   AtomVM run output:
+     Return value: nil
+     <<"probe_raw_ok">>
+   probe B result: runs
+
+== VERDICT ==
+   probe A (gleam_otp, expected FAIL on proc_lib): reproduced
+   probe B (raw spawn, expected RUN):              runs
+   REPRODUCED — atomvm-unsupported.list's provenance holds. It may now be EXTENDED
+   by further observation (never by documentation alone).
