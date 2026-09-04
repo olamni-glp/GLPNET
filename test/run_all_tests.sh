@@ -2598,6 +2598,70 @@ HEREDOC
     check "V-8: FR-006 \`_?\` stays invalid but says so legibly (FR-012 unchanged)" "anonymous reader" "$v2"
     check "V-9: FR-007 the session survives a refused goal" "Y = some(send(1, a))" "$v2"
     check_not "V-17: a refused goal does NOT report success" "Unsupported list head type" "$v2"
+
+    # -------------------------------------------------------------------------
+    # V-18..V-23 — FR-008 / SC-003: THE CROSS-RUNTIME OBLIGATION, MEASURED.
+    #
+    # Everything above this line exercises ONE runtime. FR-008 requires the same
+    # goal text to be accepted or refused IDENTICALLY on Dart, C# and Gleam, and
+    # SC-003 makes that agreement an acceptance criterion — but until these checks
+    # existed nothing in this suite ever started a second runtime, so SC-003 was
+    # backed by a claim rather than by a measurement. Feature 101 exists because
+    # exactly that kind of unmeasured claim went stale twice without being noticed.
+    #
+    # The method is a differential one: run the SAME script through both REPLs,
+    # strip the banner/prompt chrome, and require the two transcripts to be
+    # BYTE-IDENTICAL. A per-runtime pattern assertion would pass while the two
+    # disagreed about WHICH variable bound or WHAT the refusal said; a diff cannot.
+    #
+    # Gleam's half is pinned IN-LANGUAGE (glp_gleam/test/glp/engine/goal_boot_101_test.gleam,
+    # 20 checks incl. negative controls) because the Gleam REPL does not offer this
+    # script's `load` surface. That is a declared, tested division — not a gap.
+    csparity_script=$(cat <<HEREDOC
+$GTA
+first_item([send(1,a)], _).
+first_item([send(1,_)], Y).
+first_item([_], Y).
+first_item([send(1,a)], _), first_item([send(2,b)], Z).
+first_item([send(1,a)|foo], Y).
+first_item([_?], Y).
+first_item([send(1,a)], Y).
+HEREDOC
+)
+    # Keep only RESULT lines (bindings / status / refusals); drop banner + prompts.
+    csparity_norm() { sed 's/^GLP> //' | grep -E '^(→|Error:|[A-Za-z_][A-Za-z0-9_]* = )'; }
+
+    if [ "$GLPREPL_STALE" -eq 1 ] && [ -f "$CSREPL_BIN" ]; then
+        unsearchable "V-18..V-23 (101 cross-runtime Dart vs C# parity)" "$GLPREPL_STALE_WHY"
+    elif [ -f "$CSREPL_BIN" ]; then
+        v_dart=$(printf '%s\n' "$csparity_script" | $DART run "$REPL" 2>&1 | csparity_norm)
+        v_cs=$(printf '%s\n' "$csparity_script" | "$CSREPL_BIN" 2>&1 | csparity_norm)
+
+        # Guard first: an EMPTY transcript on both sides would diff clean and read as
+        # parity. That is the false-green this feature's own method note warns about,
+        # so the presence of real output is asserted BEFORE the comparison is trusted.
+        check "V-18: the Dart transcript is non-empty (guard against a clean diff of nothing)" "succeeds" "$v_dart"
+        check "V-19: the C# transcript is non-empty (same guard, other runtime)" "succeeds" "$v_cs"
+
+        if [ "$v_dart" = "$v_cs" ]; then
+            check "V-20: FR-008/SC-003 Dart and C# transcripts are BYTE-IDENTICAL" "ok" "ok"
+        else
+            check "V-20: FR-008/SC-003 Dart and C# transcripts are BYTE-IDENTICAL" "ok" \
+                  "DIVERGED
+--- dart ---
+$v_dart
+--- csharp ---
+$v_cs"
+        fi
+
+        # Named sub-claims, so a regression says WHICH half broke instead of only
+        # that the two disagree.
+        check "V-21: C# accepts \`_\` at a goal argument (was: Unsupported argument type)" "succeeds" "$v_cs"
+        check "V-22: C# REFUSES an improper tail (was: a silent WRONG ANSWER)" "list tail is neither a list nor a variable" "$v_cs"
+        check_not "V-23: no internal class name leaks from the C# runtime either" "UnderscoreTerm" "$v_cs"
+    else
+        skip "V-18..V-23 (101 cross-runtime Dart vs C# parity)" "C# REPL not built ($CSREPL_BIN) — build with: dotnet build out/csharp/glp_runtime_net.sln"
+    fi
 fi
 set -e
 
