@@ -65,6 +65,24 @@ public static class RetirementOp
     public static Dot? TargetOf(FederationOp op)
     {
         if (!IsRetirement(op) || op.Body.ValueKind != JsonValueKind.Object) return null;
+
+        // THE WHOLE BODY MUST BE VALID, not just the target. Any operation merely NAMED "retire"
+        // with a parsable target used to suppress that target from leadership — with no stated
+        // reason and without declaring the legacy destination. Retirement is the only correction
+        // mechanism on an append-only board (FR-017/FR-029); an incomplete one must not carry the
+        // ordering consequence of a complete one.
+        if (!op.Body.TryGetProperty("into_space", out var space)
+            || space.ValueKind != JsonValueKind.String
+            || !string.Equals(space.GetString(), TermSpace.LegacyId, StringComparison.Ordinal))
+            return null;
+
+        // FR-029: "a retirement with no stated reason is not reviewable." Create() enforces this on
+        // the write side; the READ side has to enforce it too, or the wire is the way around it.
+        if (!op.Body.TryGetProperty("reason", out var reason)
+            || reason.ValueKind != JsonValueKind.String
+            || string.IsNullOrWhiteSpace(reason.GetString()))
+            return null;
+
         if (!op.Body.TryGetProperty("target_op_id", out var t) || t.ValueKind != JsonValueKind.Object) return null;
         if (!t.TryGetProperty("peer", out var p) || p.ValueKind != JsonValueKind.String) return null;
         if (!t.TryGetProperty("counter", out var c) || c.ValueKind != JsonValueKind.Number) return null;

@@ -160,8 +160,17 @@ public sealed class FederationService : IAsyncDisposable
     private string? KeyForOrigin(string? origin)
     {
         if (string.IsNullOrWhiteSpace(origin)) return null;
-        if (_originKeys.TryGetValue(origin, out var peer)) return peer;
-        return _localKeys.TryGetValue(origin, out var mine) ? mine : null;
+
+        // NORMALISE BEFORE LOOKUP. Both tables are keyed ordinally on lowercase hex — as they must
+        // be, since the transport compares ordinally — so an admitted peer that consistently
+        // UPPERCASED a configured node id across origin, op_id.peer and term.host missed the lookup,
+        // was classified UnverifiedOrigin, and (with strict attribution off) was folded with no
+        // signature at all. A verification bypass by letter case.
+        string key = origin.Trim();
+        if (NodeIdentityStore.IsNodeId(key)) key = key.ToLowerInvariant();
+
+        if (_originKeys.TryGetValue(key, out var peer)) return peer;
+        return _localKeys.TryGetValue(key, out var mine) ? mine : null;
     }
 
     /// <summary>How many folded operations could not have their origin proven. For the status surface.</summary>
@@ -311,12 +320,33 @@ public sealed class FederationService : IAsyncDisposable
     /// </summary>
     public async Task AppendAndPushAsync(FederationOp op, CancellationToken ct = default)
     {
-        // DURABLE FIRST, and the fold only AFTER the write returns. An op applied to the in-memory
-        // fold before a failing append is visible, eligible for reconciliation, and — because the
-        // fold now holds its dot — classified as a duplicate on redelivery, so the append is never
-        // retried. It would be served to peers from a host that never stored it.
-        await _log.AppendAsync(op, ct).ConfigureAwait(false);   // 1. durable
-        _fold.Apply(op);                                        // 2. visible
+        // THROUGH THE SAME CRITICAL SECTION AS EVERY OTHER INGESTION PATH.
+        //
+        // The local path checked nothing and locked nothing: calling it twice with one dot appended
+        // a SECOND journal record before Apply noticed the duplicate, and a CONFLICTING operation on
+        // an existing dot was made durable before the conflict was thrown — poisoning an append-only
+        // journal that has no delete. It could also race an inbound admission for the same dot.
+        //
+        // Ordering inside the section is unchanged and still the point (FR-030): durable first, then
+        // visible. An op applied to the fold before a failing append is visible, eligible for
+        // reconciliation, and — because the fold holds its dot — treated as a duplicate on retry, so
+        // it would be served to peers from a host that never stored it.
+        await _admitGate.WaitAsync(ct).ConfigureAwait(false);
+        try
+        {
+            if (_fold.Contains(op.OpId))
+            {
+                var held = _fold.Operations.FirstOrDefault(o => o.OpId.Equals(op.OpId));
+                if (held is not null && !string.Equals(held.ToCanonicalJson(), op.ToCanonicalJson(),
+                                                       StringComparison.Ordinal))
+                    throw new DotConflictException(op.OpId);   // NOTHING has been written
+                return;                                        // already ours, already durable
+            }
+
+            await _log.AppendAsync(op, ct).ConfigureAwait(false);   // 1. durable
+            _fold.Apply(op);                                        // 2. visible
+        }
+        finally { _admitGate.Release(); }
 
         if (!_config.Enabled || !_config.PushOnAppend) return;
         await PushAsync(op, ct).ConfigureAwait(false);           // 3. best effort
@@ -999,7 +1029,18 @@ public sealed class FederationService : IAsyncDisposable
                 if (doc.RootElement.ValueKind == JsonValueKind.Object)
                     op = SchedulerBoardLog.AdaptSchedulerLine(doc.RootElement);
             }
-            catch (JsonException) { }
+            catch (Exception adapt) when (adapt is JsonException
+                                                   or ArgumentOutOfRangeException
+                                                   or ArgumentException
+                                                   or FormatException
+                                                   or InvalidOperationException)
+            {
+                // ONE BAD LINE, NOT THE WHOLE TAIL. A scheduler row with a nonpositive seq makes the
+                // adapter throw ArgumentOutOfRangeException through FederationOp.Create; catching
+                // only JsonException let it fault the board-tail task — which nothing awaits — so
+                // every later local append silently stopped being folded or pushed.
+                op = null;
+            }
         }
 
         if (op is null) return;   // a partial line, or a record of neither schema
@@ -1016,7 +1057,15 @@ public sealed class FederationService : IAsyncDisposable
         {
             if (!await AdmitAlreadyDurableAsync(op, ct).ConfigureAwait(false)) return;
         }
-        catch (AttributionRefusedException ex) { OnRefusal?.Invoke(ex); return; }
+        catch (AttributionRefusedException ex)
+        {
+            // COUNTED HERE TOO. Replay and reconciliation both increment it, so counting only on
+            // those paths made the documented metric depend on which ingestion path happened to
+            // encounter the refusal rather than on how many refusals occurred.
+            RefusedOps++;
+            OnRefusal?.Invoke(ex);
+            return;
+        }
         catch (DotConflictException) { return; }   // a conflict is refused, never pushed onward
 
         await PushAsync(op, ct).ConfigureAwait(false);
@@ -1110,10 +1159,13 @@ public sealed class FederationService : IAsyncDisposable
 
                 if (lastBreak < 0)
                 {
-                    // Beyond the ceiling with still no line ending: SKIP the oversized record rather
-                    // than stall the whole tail on it. Advancing is the lesser harm — one record is
-                    // lost to the pull's repair path, instead of every record after it.
-                    return (lines, from + bigRead);
+                    // ONLY skip when the CEILING is genuinely reached. Advancing whenever the grown
+                    // read found no newline discarded the prefix of a perfectly ordinary large
+                    // record whose writer had simply not appended its newline yet — the remainder was
+                    // then parsed without its beginning, losing the operation and every later one.
+                    if ((long)bigRead >= MaxTailRecordBytes) return (lines, from + bigRead);
+
+                    return (lines, from);   // still being written; wait for the newline
                 }
             }
 

@@ -195,6 +195,90 @@ public sealed class NodeIdentityStore
     /// command; a leaked one is not recoverable at all.
     /// </para>
     /// </summary>
+    /// <summary>
+    /// Verify a key's Windows ACL grants no one but its owner and the system.
+    /// <para>
+    /// The default path sits under the user profile and inherits owner-only ACLs — but
+    /// <c>identity_path</c> can name ANY directory, and an unencrypted PFX in a shared one inherits
+    /// that directory's permissions while startup reports success. "The usual location is safe" is
+    /// not a check; this is.
+    /// </para>
+    /// </summary>
+    [System.Runtime.Versioning.SupportedOSPlatform("windows")]
+    private static void AssertOwnerOnlyWindows(string path)
+    {
+        System.Security.AccessControl.AuthorizationRuleCollection rules;
+        System.Security.Principal.IdentityReference? owner;
+        try
+        {
+            var security = new FileInfo(path).GetAccessControl();
+            owner = security.GetOwner(typeof(System.Security.Principal.SecurityIdentifier));
+            rules = security.GetAccessRules(true, true, typeof(System.Security.Principal.SecurityIdentifier));
+        }
+        catch (Exception ex)
+        {
+            throw new InsecureKeyPermissionsException(
+                $"could not read the ACL of '{path}', so it cannot be confirmed private. Refusing to "
+                + "use a federation private key of unknown protection.", ex);
+        }
+
+        // Identities that may legitimately hold the key: its owner, the account we are running as,
+        // SYSTEM, and the Administrators group.
+        var allowed = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        if (owner is not null) allowed.Add(owner.Value);
+        using (var me = System.Security.Principal.WindowsIdentity.GetCurrent())
+        {
+            if (me.User is not null) allowed.Add(me.User.Value);
+        }
+        allowed.Add(new System.Security.Principal.SecurityIdentifier(
+            System.Security.Principal.WellKnownSidType.LocalSystemSid, null).Value);
+        allowed.Add(new System.Security.Principal.SecurityIdentifier(
+            System.Security.Principal.WellKnownSidType.BuiltinAdministratorsSid, null).Value);
+
+        foreach (System.Security.AccessControl.FileSystemAccessRule rule in rules)
+        {
+            if (rule.AccessControlType != System.Security.AccessControl.AccessControlType.Allow) continue;
+            if (allowed.Contains(rule.IdentityReference.Value)) continue;
+
+            // Any READ of an unencrypted PFX is a disclosure of the private key.
+            if ((rule.FileSystemRights & System.Security.AccessControl.FileSystemRights.Read) == 0) continue;
+
+            // WARN, DO NOT REFUSE — unless the operator has asked for strict enforcement.
+            //
+            // Measured before shipping this: an ordinary key under %TEMP% trips it, because Windows
+            // ACLs routinely grant read to groups the owner belongs to. Deleting a working key on
+            // that basis would be a FALSE POSITIVE THAT BREAKS THE DAEMON — strictly worse than the
+            // exposure it guards against, and the opposite of the fleet's own rule that a missing
+            // prerequisite makes a daemon UNHEALTHY, never UNSTARTABLE.
+            //
+            // So the finding is REPORTED and remains visible, and `require_owner_only_key` turns it
+            // into a refusal for deployments that want one. Unmeasured is not the same as safe, and
+            // this says which it is.
+            LastKeyPermissionWarning =
+                $"'{path}' grants read access to '{rule.IdentityReference.Value}'. The federation "
+                + "private key may be readable by another principal. Set require_owner_only_key to "
+                + "refuse rather than warn.";
+
+            if (!RequireOwnerOnlyKey) return;
+
+            try { File.Delete(path); } catch { }
+            throw new InsecureKeyPermissionsException(LastKeyPermissionWarning);
+        }
+    }
+
+    /// <summary>
+    /// When true, a key readable by another principal is REFUSED rather than reported. Off by
+    /// default because the Windows check false-positives on ordinary group ACLs, and a guard that
+    /// deletes a working key is worse than the exposure it prevents.
+    /// </summary>
+    public static bool RequireOwnerOnlyKey { get; set; }
+
+    /// <summary>
+    /// The most recent key-permission concern, or null. Surfaced so an unrefused finding is still
+    /// VISIBLE — a warning nobody can read is the same as no check at all.
+    /// </summary>
+    public static string? LastKeyPermissionWarning { get; private set; }
+
     private static void RestrictToOwner(string path)
     {
         if (!OperatingSystem.IsWindows())   // NTFS inherits owner-only ACLs from the profile
@@ -250,7 +334,11 @@ public sealed class NodeIdentityStore
                 + "rather than used.");
         }
 
-        if (OperatingSystem.IsWindows()) return;
+        if (OperatingSystem.IsWindows())
+        {
+            AssertOwnerOnlyWindows(path);
+            return;
+        }
 
         UnixFileMode mode;
         try { mode = File.GetUnixFileMode(path); }

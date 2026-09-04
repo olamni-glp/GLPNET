@@ -256,6 +256,13 @@ public static class Program
         Console.WriteLine($"node_id : {nodeId}");
         Console.WriteLine($"pin     : {NodeIdentityStore.PinFromNodeId(nodeId)}");
         Console.WriteLine($"spki    : {NodeIdentityStore.ExportSpki(cert)}");
+        // A warning nobody reads is the same as no check. Surface it where the operator is already
+        // looking at the key.
+        if (NodeIdentityStore.LastKeyPermissionWarning is { } warn)
+        {
+            Console.Error.WriteLine($"KEY PERMISSION WARNING: {warn}");
+        }
+
         Console.WriteLine($"key     : {path}{(existed ? " (existing)" : " (minted)")}"
                           + $"{(string.IsNullOrWhiteSpace(cfg.IdentityPath) ? "  [default]" : "  [from identity_path]")}");
         Console.WriteLine();
@@ -421,7 +428,10 @@ public static class Program
                 catch (Exception ex) when (ex is System.Text.Json.JsonException
                                                  or KeyNotFoundException
                                                  or FormatException
-                                                 or ArgumentException)
+                                                 or ArgumentException
+                                                 or ArgumentOutOfRangeException
+                                                 or InvalidOperationException
+                                                 or NotSupportedException)
                 {
                     // A MALFORMED FRAME IS ONE PEER'S PROBLEM, NOT THE DAEMON'S.
                     //
