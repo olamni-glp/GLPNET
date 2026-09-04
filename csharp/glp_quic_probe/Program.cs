@@ -26,6 +26,7 @@
 
 using System.Net;
 using System.Security.Cryptography.X509Certificates;
+using GlpRuntime.CrdtMsg.Federation;
 using GlpRuntime.CrdtMsg.Route;
 
 var bindArg = args.Length > 0 ? args[0] : "127.0.0.1:0";
@@ -62,13 +63,32 @@ if (!QuicLinkTransport.IsSupported)
 // pin-checks the DIALER's cert too. A listener without pins would admit anyone who can reach the
 // port, which is precisely the "mere reachability MUST NOT admit" property the transport's own
 // tests assert.
-X509Certificate2 cert = QuicLinkTransport.CreateDevCert("glpnet-probe");
+// THE PERSISTED IDENTITY, NOT A FRESH ONE PER RUN.
+//
+// This used QuicLinkTransport.CreateDevCert, which mints a NEW keypair on every call — so the pin
+// printed below was different every time the probe ran, and any peer that pinned it was stale
+// before the message reached them. @ariellas-glpnet measured exactly this independently (five runs,
+// five pins) and correctly called it a fleet-wide trust-anchor defect: a test helper had been
+// adopted as the thing peers pin.
+//
+// NodeIdentityStore mints once and loads thereafter, so the pin below is STABLE and publishable —
+// and it is the SAME identity `ynet-federation` uses, which is the point. Two components on one
+// host presenting two identities is how a peer ends up pinning the one that is not listening.
+X509Certificate2 cert = new NodeIdentityStore(NodeIdentityStore.DefaultPath())
+    .LoadOrMint(Environment.MachineName.ToLowerInvariant());
+
+string nodeId = NodeIdentityStore.DeriveNodeId(cert);
 string pin = QuicLinkTransport.SpkiPin(cert);
+
+Console.WriteLine($"   node id             : {nodeId}");
 Console.WriteLine($"   local cert SPKI pin : {pin}");
+Console.WriteLine($"   key                 : {NodeIdentityStore.DefaultPath()}");
 Console.WriteLine("   (a peer must carry this pin to be admitted; reachability alone is refused)");
+Console.WriteLine("   STABLE across runs — this is the persisted federation identity, not a fresh");
+Console.WriteLine("   dev cert. It is safe to publish, and `ynet-federation identity` prints the same.");
 Console.WriteLine();
 
-var transport = new QuicLinkTransport("glpnet-probe", cert, new Dictionary<string, string>());
+var transport = new QuicLinkTransport(nodeId, cert, new Dictionary<string, string>());
 using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(20));
 
 try
@@ -98,7 +118,7 @@ Console.WriteLine();
 Console.WriteLine("   bind endpoint     : IPEndPoint  — 0.0.0.0:<port> to accept from other hosts");
 Console.WriteLine("                       (127.0.0.1 binds loopback ONLY and cannot federate)");
 Console.WriteLine("   server certificate: X509Certificate2 with a private key");
-Console.WriteLine("                       QuicLinkTransport.CreateDevCert(<name>) for dev");
+Console.WriteLine("                       the persisted NodeIdentityStore identity (stable across runs)");
 Console.WriteLine("   peer pins         : IReadOnlyDictionary<peer, spkiPin>");
 Console.WriteLine("                       EMPTY DICTIONARY = admit nobody. This is the safe default");
 Console.WriteLine("                       and it is why a reachable listener is not an open one.");
