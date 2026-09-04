@@ -437,6 +437,15 @@ deliberate MVP boundary recorded here (Constitution VIII traceability):
   Sites: Dart `glp_engine.dart` tail-`else` → `rt.ConstTerm(null)` (two copies); C#
   `glp_engine.cs:1347,1430`. Now **refused** with a message naming the offending term, and the session
   stays usable afterwards. Pinned by V-6/V-7/V-9.
+  🔴 **CORRECTION, same day.** "Now refused" was true of **Dart only** when this entry was written.
+  The **C# sites named just above were still live** — both tails still coerced to
+  `new RtConstTerm(null)` and still answered the goal — for several hours after this entry claimed
+  otherwise, and the **Gleam** half had shipped with **no test**. The gap survived because no suite
+  check had ever run a second runtime. C# now mirrors Dart at all eight sites, and the cross-runtime
+  obligation is **measured**: **V-18..V-23** diff the Dart and C# transcripts of one goal script and
+  require them byte-identical. Verified as a real detector, not a vacuous one — with the C# change
+  reverted and rebuilt, V-20 fails and prints the divergence, V-22 fails, and V-23 fails on the
+  leaked class name.
   **The *meaning* of an improper tail is deliberately undecided** — assigning one is a §1.14 matter
   for Udi. This change only stops the system substituting a different term than the one typed.
   **Gleam was the only runtime that never returned a wrong answer here**: it refused both this and the

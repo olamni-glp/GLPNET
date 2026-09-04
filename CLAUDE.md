@@ -430,6 +430,23 @@ suite fails and names it (feature 101, SC-005).
   (Gleam was the only runtime that never returned a wrong answer for either defect — it
   refused both loudly and had already flagged them §1.14.)
 
+🔴 **CORRECTION OF RECORD, 2026-09-04 (later the same day).** The two entries above were
+written after the **Dart** half landed and are phrased as if the fix had reached every
+runtime. It had not. Re-measured on the same day: **C# was still unfixed** — all six throw
+sites present and **both** tail-coercion sites still returning the silent wrong answer — and
+the **Gleam** half had shipped with **no test file at all**. Neither gap was visible, because
+nothing in the suite had ever started a second runtime: **SC-003's three-runtime agreement was
+carried by a claim, not a measurement.** Both are now closed, and the obligation is measured
+rather than asserted — **V-18..V-23** run the same goal script through the Dart *and* C# REPLs
+and require the transcripts to be **byte-identical** (with a non-empty guard first, since two
+empty transcripts also compare equal); the Gleam half is pinned in-language by
+`glp_gleam/test/glp/engine/goal_boot_101_test.gleam` (20 checks, negative controls included).
+**The lesson is the same one this feature exists to teach: "fixed" measured in one runtime is
+not "fixed", and an unmeasured criterion goes stale exactly like an unmeasured note.**
+A further stale artifact is named rather than silently corrected: `goal_boot.gleam`'s header
+still says its conjunction path is "STILL DEFERRED". Measured — it is not; `setup_goals`
+routes every argument through the same `setup_args`, and `_` in a conjunction boots normally.
+
 See `docs/known-issues.md` for the full list.
 
 ---
