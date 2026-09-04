@@ -54,6 +54,17 @@ that never returns a wrong answer for these inputs.
 
 ---
 
+## Clarifications
+
+### Session 2026-09-04
+
+- Q: Is accepting an anonymous variable `_` in a top-level goal completeness, or a §1.14 language change requiring Udi? → A: **Completeness — proceed.** `_` is already accepted by the parser, SRSW checker, type checker and compiler on the same build; only the front-end goal-argument materialisation step omits it. A gap in one stage of a pipeline whose other four stages already handle the construct is incompleteness, not design. Recorded as engineer ruling **R-3**. US1 is ungated. FR-012 is unchanged: nothing about what clause heads, guards or bodies accept may change. **The meaning of an improper list tail remains §1.14 and remains Udi's** — US2 assigns it no meaning.
+- Q: FR-008/SC-003 demand three-runtime agreement, but Gleam's conjunction path is deferred while FR-002 requires `_` in conjunctive goals. → A: **Bound the parity obligation to goal shapes all three runtimes can express.** Gleam's absent conjunction path is a **declared, tested divergence**, not a silent one: it must refuse loudly (which it already does) and a regression test must pin that refusal. Closing the deferral is a separate feature.
+- Q: SC-005 says 0 untested claims remain across the project documentation, but Assumptions exclude auditing the rest of `docs/known-issues.md`. → A: **Narrow SC-005 to the four claims this feature measured.** The remainder of `docs/known-issues.md` is explicitly **not** audited by this feature.
+- Q: Does FR-006's legibility obligation extend to goal shapes already refused today but refused with an internal class name — e.g. `_?`? → A: **Yes. Every refusal the goal-term front end emits must name what the programmer typed.** `_?` stays **invalid** (no language change); only its message improves. This closes the class rather than two instances, and the fix sits in the same code path FR-001/FR-005 already touch.
+
+---
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 — Anonymous variables are accepted in goals (Priority: P1)
@@ -150,9 +161,10 @@ retired claim, and confirm the tests fail if the capability regresses.
 - **FR-003**: Each occurrence of an anonymous variable in a goal MUST be independent of every other occurrence; no two occurrences may be aliased.
 - **FR-004**: An anonymous goal argument MUST NOT be reported as a binding in the result, since it has no name to report against.
 - **FR-005**: The system MUST NOT alter a goal term that it cannot faithfully represent. Where a goal term is malformed, the system MUST refuse the goal rather than substitute a different term and report success.
-- **FR-006**: A refusal under FR-005 MUST identify the malformed term in terms the programmer typed, and MUST NOT be the sole notification via an internal class name.
+- **FR-006**: **Every refusal emitted by the goal-term front end** MUST identify the offending term in terms the programmer typed, and MUST NOT notify solely via an internal class name. This is a property of the surface, not of two shapes: it covers FR-005 malformed tails, and equally covers goal shapes that are already refused today but refused with an internal exception — including `_?` (anonymous reader), which **remains invalid** (FR-012 unchanged); only its message becomes legible.
 - **FR-007**: After a refused goal, the session MUST remain usable for subsequent goals.
-- **FR-008**: The Dart, C# and Gleam runtimes MUST agree on which goal terms they accept and which they refuse, for every shape covered by FR-001 through FR-005.
+- **FR-008**: The Dart, C# and Gleam runtimes MUST agree on which goal terms they accept and which they refuse, for every shape covered by FR-001 through FR-005 **that all three runtimes can express**. Gleam's conjunction path is currently deferred; for conjunctive shapes (FR-002) Gleam's obligation is to **refuse loudly and identifiably**, never to accept-and-diverge or to fail silently.
+- **FR-008a**: The Gleam conjunction deferral MUST be a **declared, tested divergence**: a regression test asserts that Gleam refuses a conjunctive goal loudly, so the gap cannot decay into a silent difference. Implementing Gleam's conjunction path is **out of scope** for this feature.
 - **FR-009**: The regression suite MUST contain a test for each shape in FR-001 and FR-005 that fails if the shape's handling regresses.
 - **FR-010**: The recorded limitations that measurement has retired MUST be corrected in the project documentation, each marked as retired with the date and the evidence, rather than silently removed.
 - **FR-011**: Source locations cited in the retained documentation MUST name the file that currently holds the code.
@@ -173,20 +185,22 @@ retired claim, and confirm the tests fail if the capability regresses.
 
 - **SC-001**: All four goal shapes recorded as failing in the Measured Baseline (L3) run successfully; the count of failing shapes goes from 4 to 0.
 - **SC-002**: A goal containing a malformed list tail is refused by all three runtimes; the count of runtimes that answer it goes from 2 to 0.
-- **SC-003**: For a shared set of goal shapes covering FR-001 to FR-005, the three runtimes return identical accept/refuse verdicts — 0 divergences.
+- **SC-003**: For a shared set of goal shapes covering FR-001 to FR-005 **that all three runtimes can express**, the three runtimes return identical accept/refuse verdicts — 0 divergences. Conjunctive shapes are excluded from the identical-verdict count and are instead covered by SC-003a.
+- **SC-003a**: Gleam refuses a conjunctive goal **loudly and identifiably**, pinned by a regression test — 0 silent divergences.
 - **SC-004**: A programmer can discard a goal result using the language's normal discard idiom on the first attempt, with no workaround and no invented variable name.
-- **SC-005**: Every claim about front-end goal acceptance in the project documentation is backed by a test in the regression suite; 0 untested claims remain.
+- **SC-005**: Each of the **four claims this feature measured** is backed by a regression test that fails if the capability regresses — `=..` in clause bodies (retired as stale), structs inside lists in REPL goals (retired as stale), `_` in goals (fixed), improper list tail (fixed). 0 untested claims **among those four**. The remainder of `docs/known-issues.md` is **explicitly not audited by this feature** and no claim is made about it.
 - **SC-006**: The existing regression suites remain green — no shape that works today stops working.
 
 ---
 
 ## Assumptions
 
-- **Accepting an anonymous variable in a goal is completeness, not language change.** The anonymous variable is already part of the GLP language and is already handled by the parser, SRSW checker, type checker and compiler; only the front-end step that materialises goal arguments omits it. On that basis this work is treated as closing a gap in an existing surface, and does **not** require a §1.14 language-authority approval. If the engineer reads it otherwise, US1 becomes gated and this assumption must be revisited before implementation.
+- ~~**Accepting an anonymous variable in a goal is completeness, not language change.**~~ **RESOLVED 2026-09-04 — no longer an assumption.** The engineer ruled it **completeness** (ruling **R-3**, recorded in Clarifications). US1 is ungated and no §1.14 request goes to Udi. The reasoning that carried the ruling: `_` is already accepted by the parser, SRSW checker, type checker and compiler on the same build, and only front-end goal-argument materialisation omits it.
 - **The meaning of an improper list tail is a language question and is excluded from scope.** US2 deliberately does not decide what `[a|foo]` denotes. It requires only that a term the system cannot faithfully represent be refused instead of silently replaced — which removes a wrong answer without deciding any new semantics. Assigning a meaning to such a term would be a §1.14 matter for Udi; the Gleam port reached the same conclusion independently and recorded it as a frozen-semantics gap.
 - The three runtimes remain the full set of front ends in scope. No fourth runtime is assumed.
 - The Gleam runtime's current loud refusals are treated as the correct reference behaviour for US2, and as the model for the parity required by FR-008.
-- The Gleam runtime's conjunction path is currently deferred rather than implemented; FR-002's parity obligation for Gleam is bounded by whatever conjunction support exists there, and closing that deferral is not assumed to be part of this feature unless planning finds it cheap.
+- ~~The Gleam runtime's conjunction path is currently deferred…~~ **RESOLVED 2026-09-04.** Ruled: parity is bounded to shapes all three runtimes can express (FR-008/FR-008a, SC-003/SC-003a). Gleam's conjunction deferral is a **declared, tested divergence**; implementing it is out of scope.
+- ~~Correcting the documentation is in scope; re-verifying the *rest* of `docs/known-issues.md` is not.~~ **RESOLVED 2026-09-04** — this tension with SC-005 is closed: SC-005 is narrowed to the four measured claims (see Clarifications).
 - The measured baseline was taken on build `54219ce8`. If implementation begins from a materially later build, the four measurements should be re-run before work starts, since two of the three original claims had already gone stale once.
 - Correcting the documentation is in scope for this feature; re-verifying the *rest* of `docs/known-issues.md` is not.
 
