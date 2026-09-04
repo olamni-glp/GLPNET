@@ -281,7 +281,14 @@ public static class Program
         // form embedded the current year and month — the fossil term was born of exactly this habit
         // (floor(unix_ts/300)). A random identifier orders nothing by magnitude, which is the point:
         // term-spaces are compared for EQUALITY, never for which is later.
-        string epochId = $"ynet-epoch-{Guid.NewGuid():n}"[..24];
+        // MINT UNTIL IT CANNOT BE MISREAD. A truncated hex GUID is sometimes all digits, and this
+        // command duly produced "ynet-epoch-5111282822734" — a 13-digit tail, indistinguishable
+        // from a unix millisecond timestamp. The guard below now rejects that shape, so the minter
+        // must not generate it: regenerating is free and makes the two consistent by construction
+        // rather than by luck.
+        string epochId;
+        do { epochId = $"ynet-epoch-{Guid.NewGuid():n}"[..24]; }
+        while (TermSpaceRegistry.LooksClockDerived(epochId));
         if (TermSpaceRegistry.LooksClockDerived(epochId))
         {
             Console.Error.WriteLine("refusing a clock-derived epoch id — that is how the fossil term was born (FR-015).");

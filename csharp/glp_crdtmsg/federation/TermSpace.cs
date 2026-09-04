@@ -115,6 +115,19 @@ public sealed class TermSpaceRegistry
         // The fossil's shape: an all-digit counter.
         if (epochId.Length >= 6 && epochId.All(char.IsDigit)) return true;
 
+        // AND A LONG ALL-DIGIT RUN ANYWHERE IN IT. Found by running the mint command and reading
+        // its output: a truncated hex GUID can come out all-numeric, and this code minted
+        // "ynet-epoch-5111282822734" — a 13-digit tail, which is precisely the shape of a unix
+        // millisecond timestamp and indistinguishable from one to any reader. An identifier that
+        // LOOKS clock-derived invites exactly the ordering-by-magnitude mistake FR-026 forbids,
+        // whether or not a clock produced it.
+        int run = 0;
+        foreach (char c in epochId)
+        {
+            run = char.IsDigit(c) ? run + 1 : 0;
+            if (run >= 10) return true;
+        }
+
         // AND THE SHAPE THIS CODE ITSELF EMITTED. The mint command produced
         // "ynet-epoch-2026-09-8240c4" and this guard passed it, because it only rejected all-digit
         // strings. A guard that cannot catch its own caller's output is decorative. FR-026 forbids

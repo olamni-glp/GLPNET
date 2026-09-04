@@ -292,8 +292,28 @@ public sealed class Round3RegressionTests
     [InlineData("ynet-epoch-2026-09-8240c4")]    // what this codebase itself minted
     [InlineData("ynet-epoch-202609-abc")]
     [InlineData("epoch-20260904")]
+    // FOUND BY RUNNING THE MINT COMMAND AND READING ITS OUTPUT: a truncated hex GUID can come out
+    // all-numeric, and this code minted exactly this — a 13-digit tail, indistinguishable from a
+    // unix millisecond timestamp to any reader.
+    [InlineData("ynet-epoch-5111282822734")]
     public void AClockDerivedEpochIdIsRefusedInEveryEncoding(string id) =>
         Assert.True(TermSpaceRegistry.LooksClockDerived(id));
+
+    /// <summary>
+    /// The minter must never emit a shape its own guard rejects. Checked over many draws, because a
+    /// once-in-a-while all-numeric GUID is exactly how this escaped in the first place.
+    /// </summary>
+    [Fact]
+    public void TheEpochIdShapeTheMinterProducesIsAlwaysAccepted()
+    {
+        for (int i = 0; i < 2000; i++)
+        {
+            string id;
+            do { id = $"ynet-epoch-{Guid.NewGuid():n}"[..24]; }
+            while (TermSpaceRegistry.LooksClockDerived(id));
+            Assert.False(TermSpaceRegistry.LooksClockDerived(id));
+        }
+    }
 
     /// <summary>POSITIVE CONTROL: a genuinely random id passes, so the guard is not just "reject all".</summary>
     [Theory]
