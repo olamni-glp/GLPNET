@@ -329,7 +329,19 @@ public sealed class NodeIdentityStore
     /// the only way to assert the behaviour on the machine that has to ship it.
     /// </para>
     /// </summary>
-    internal static Func<string, bool>? PermissionsAreInsecureOverride;
+    /// <remarks>
+    /// <see cref="AsyncLocal{T}"/>, not a plain static. xUnit runs test CLASSES in parallel, so a
+    /// plain static leaked one test's override into another's <c>LoadOrMint</c> — two tests failed
+    /// intermittently and neither had a defect. A shared mutable test seam is a race in the test
+    /// harness, which is the one place a flaky failure is most likely to be dismissed as noise.
+    /// </remarks>
+    private static readonly AsyncLocal<Func<string, bool>?> _permissionOverride = new();
+
+    internal static Func<string, bool>? PermissionsAreInsecureOverride
+    {
+        get => _permissionOverride.Value;
+        set => _permissionOverride.Value = value;
+    }
 
     private static void AssertOwnerOnly(string path)
     {
