@@ -597,6 +597,50 @@ public sealed class Round2RegressionTests
         finally { try { Directory.Delete(dir, true); } catch { } }
     }
 
+    /// <summary>
+    /// The heartbeat must refresh well INSIDE its own freshness window.
+    /// <para>
+    /// Found by running the daemon rather than by reading it: publishing only on pull ticks tied the
+    /// refresh rate to `pull_interval_seconds` (60s default) against a 30s window, so a healthy
+    /// daemon reported "measured 23s ago" and climbing, and would have gone UNKNOWN for half of
+    /// every minute. A fix for a false-negative that reintroduces a false-negative is not a fix.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public async Task TheHeartbeatRefreshesWellInsideItsFreshnessWindow()
+    {
+        string dir = Path.Combine(Path.GetTempPath(), "ynet_hb", Guid.NewGuid().ToString("n")[..8]);
+        string path = Path.Combine(dir, "serving-status.json");
+        try
+        {
+            var clock = new DrivableClock();
+            // A pull interval far LONGER than the freshness window — the exact live configuration.
+            var cfg = Cfg() with { PullIntervalSeconds = 600 };
+            var svc = new FederationService(cfg, new RecordingLink("A"), NewFold(),
+                                            new InMemoryBoardLog(), clock) { StatusHeartbeatPath = path };
+            await svc.BindAsync();
+
+            using var cts = new CancellationTokenSource();
+            var beat = svc.RunStatusHeartbeatAsync(cts.Token);
+
+            // Advance most of the way through the window, repeatedly. The record must never expire.
+            for (int i = 0; i < 5; i++)
+            {
+                await clock.AdvanceAsync(StatusHeartbeat.Freshness - TimeSpan.FromSeconds(5));
+                Assert.NotNull(StatusHeartbeat.ReadFresh(clock.GetUtcNow(), path));
+            }
+
+            cts.Cancel();
+            try { await beat; } catch (OperationCanceledException) { }
+
+            // POSITIVE CONTROL: once the loop STOPS, the record does expire — so the assertions
+            // above are the refresh working, not ReadFresh failing to check.
+            await clock.AdvanceAsync(StatusHeartbeat.Freshness + TimeSpan.FromSeconds(5));
+            Assert.Null(StatusHeartbeat.ReadFresh(clock.GetUtcNow(), path));
+        }
+        finally { try { Directory.Delete(dir, true); } catch { } }
+    }
+
     // ==========================================================================================
     // F12 — batch-pull-responses-below-the-transport-frame-limit
     // ==========================================================================================

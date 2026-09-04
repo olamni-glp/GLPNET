@@ -669,7 +669,33 @@ public sealed class FederationService : IAsyncDisposable
 
                 if (!_fold.Apply(op)) continue;   // already known — nothing to announce
                 await PushAsync(op, ct).ConfigureAwait(false);
+                PublishStatus();   // the fold changed; a surface that does not say so is stale
             }
+        }
+    }
+
+    /// <summary>
+    /// Refresh the published measurement on its own schedule.
+    /// <para>
+    /// WHY THIS IS SEPARATE FROM THE PULL LOOP. Publishing only on pull ticks tied the heartbeat's
+    /// refresh rate to <c>pull_interval_seconds</c> — 60 s by default, against a 30 s freshness
+    /// window. A perfectly healthy daemon therefore spent half of every minute looking DEAD to
+    /// `status`, which would have read as "listener bound: unknown" and sent an operator hunting a
+    /// fault that was not there. Measured live on GAVRIELLA before this loop existed: "measured 23s
+    /// ago" and climbing between ticks.
+    /// </para>
+    /// </summary>
+    public async Task RunStatusHeartbeatAsync(CancellationToken ct)
+    {
+        if (StatusHeartbeatPath is null) return;
+
+        // Comfortably inside the freshness window, so a reader never sees a healthy daemon expire.
+        var period = TimeSpan.FromSeconds(StatusHeartbeat.Freshness.TotalSeconds / 3);
+        while (!ct.IsCancellationRequested)
+        {
+            PublishStatus();
+            try { await Task.Delay(period, _clock, ct).ConfigureAwait(false); }
+            catch (OperationCanceledException) { return; }
         }
     }
 

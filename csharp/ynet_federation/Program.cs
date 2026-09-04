@@ -371,8 +371,10 @@ public static class Program
                           + $" ({log.AdaptedLines} adapted from scheduler-native lines,"
                           + $" {log.UnreadableLines} unreadable)");
         if (log.UnreadableLines > 0)
+        {
             Console.WriteLine("             unreadable lines are COUNTED, never silently skipped — a board that");
             Console.WriteLine("             drops a line it cannot parse converges to the wrong answer quietly.");
+        }
 
         if (!await svc.BindAsync())
         {
@@ -391,12 +393,14 @@ public static class Program
         using var stop = new CancellationTokenSource();
         Console.CancelKeyPress += (_, e) => { e.Cancel = true; stop.Cancel(); };
 
-        // Three loops, and each one exists because something it does was previously claimed and not
-        // done: the pull leg (the interval was printed while nothing read it), the log tail (`post`
-        // is a separate process whose appends this daemon could not see), and the status heartbeat
-        // (`status` is a separate process that could not see this one's measurements).
+        // Four loops, and each exists because something it does was previously claimed and not
+        // done: the receive loop, the pull leg (the interval was printed while nothing read it),
+        // the log tail (`post` is a separate process whose appends this daemon could not see), and
+        // the status heartbeat (`status` is a separate process that could not see this one's
+        // measurements — and, once it could, went stale between 60 s pull ticks).
         var pump = svc.RunPullLoopAsync(stop.Token);
         var tail = svc.RunLogTailAsync(log.WritePath, stop.Token);
+        var beat = svc.RunStatusHeartbeatAsync(stop.Token);
 
         try
         {
@@ -422,6 +426,7 @@ public static class Program
 
         try { await pump; } catch (OperationCanceledException) { }
         try { await tail; } catch (OperationCanceledException) { }
+        try { await beat; } catch (OperationCanceledException) { }
         return 0;
     }
 
