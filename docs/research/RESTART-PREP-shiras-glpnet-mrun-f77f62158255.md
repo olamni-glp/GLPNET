@@ -148,22 +148,95 @@ the boot PATH, **no** launch behaviour. Its `EXIT 0` is a **FALSE GREEN**.
 boot with no graphical session and **FAILED** (`0/15`, `status=1/FAILURE`), and the desktop autostart
 brought **15/15** back 16 minutes later — **via LOGIN**.
 
+### 🔴 NEW TOPOLOGY — TWO WINDOWS, applied and verified 2026-09-04T07:55Z
+
+The engineer changed the reboot topology from one window to **two**. **Applied on this host**
+(`~/.config/bk-onrestart/config.json`, backed up first as `.bak-20260904-glpnet-preTwoWindow`):
+
+```
+layout=2 window(s)   terminal=xfce4-terminal
+WINDOW 1 (7): ospark · ulpanit(lang/hatzinor) · tefl · buildkit · crucible · olamnit · qhstate
+WINDOW 2 (8): glpnet · lejepa · yngraw(research/yngenios) · mstack · yngcor · yngapp · ynglin · yngwin
+TOTAL 15 lanes — membership is exactly as directed; ORDER WITHIN each window was renormalised
+by the helper and does not match the directive's listing order. Membership is what sets tabs.
+```
+
+**Verified by `launch --dry-run`, and this run proved more than a no-op** — because `mstack` is
+down, the launcher actually planned a real tab: `window1: 0 tab(s) window2: 1 tab(s)`, emitting the
+exact command (`claude --continue --autocompact 1000000`, **never summarising**, with both lake
+roots exported). It still does **not** exercise terminal startup or the boot PATH.
+
+`bk-onrestart.sh preflight` → **`SAFE TO REBOOT`, exit 0**, with per-repo warnings.
+⚠ Noted from preflight: **`yngenios-linux` has `unpushed=2`** — another lane's, not mine to push.
+
 ### Reboot verdict
 
-✅ **SAFE TO REBOOT — provided you LOG BACK IN.** Resume args are
-`claude --continue --autocompact 1000000` (**never summarising**); a guard prevents double-launch.
+✅ **SAFE TO REBOOT — provided you LOG BACK IN.** A guard prevents double-launch.
 ❌ **If the host reboots to a login screen and nobody logs in, NOTHING resumes.**
-⚠ Today's systemd/launcher rewrites are **untested at boot** — this reboot is also their first real test.
+⚠ Today's systemd/launcher rewrites **and this two-window change** are **untested at boot** — this
+reboot is their first real test. **`mstack` is down NOW**, so a post-reboot 15/15 is a *recovery*.
 
-**The 15 lanes:** ospark · tefl · ulpanit (`lang/hatzinor`) · olamnit · buildkit · qhstate ·
-crucible · **glpnet** · lejepa · **mstack (DOWN)** · yngraw (`research/yngenios`) · yngwin · ynglin ·
-yngapp · yngcor.
+## 6B · 🔴 ENGINEER DIRECTIVES RECEIVED DIRECTLY 2026-09-04 — and what is NOT this lane's
+
+Received **from the engineer, not relayed** (earlier relayed versions were correctly declined):
+one realtime golden-truth **oracle board service** on all 4 hosts / 15 lanes with **CRDT** durable
+artifact; **leader-lane election** (PAXOS/RAFT/ZAB/PBFT) wired to the Oracle + `/bk-beacon`;
+**QHSM/QMSM-wrapped headless virtual terminals** onto the YNGENIOS app over ynet mailboxes;
+**`/yx-proxy`**; **`/bk-beacon` refactor**; **3270 facility** serving the GLP REPL;
+**`/bk-onrestart` C# reimplementation** fleet-wide in two eras; **all cross-platform code as L0 in
+`yngenios`**; and **per-lane exclusive feature eras** approved by ≥4 other lanes.
+
+**ENGINEER RULING `20260904T0810Z` (four decisions):** **D1** deploy+register the writer-bearing
+version on all four hosts, then converge pins, then assert `lclock>0`. **D2** ONE fleet board, repo
+as **partition key**, replicated per host — **board identity is a hard prerequisite** (buildkit
+measured the same nominal board as a **three-way fork**, 28/26/37 op-log files, `root_id` **not
+pinned**). **D3** `#1011` closed — one L0 supervision capability, N consumers. **D4** 🔴 **a new era
+opens only after the current one closes — `Q-glpnetshiras-32` CONTINUES and is not preempted.**
+
+**MINE:** the **ynet transport** (`specs/051`, `specs/065`, `csharp/ynet_transport.tests/` — 50
+tracked; `yngenios` vendors those tests **from here**) and the **GLP-side** REPL split.
+**NOT MINE — do not write into them:** `yngenios`, `yngenios-windows`, `yngenios-linux`, `buildkit`.
+Directives 2/4/5/7 and the L0 half of 3/6/8 belong to `@ariellas-buildkit`, `@shiras-buildkit`,
+`@olamnit-buildkit`, `@yngcor`, `@ynglin`, `@yngwin`.
+
+**Promoted here this session** (rounds 67–68, 124 features):
+
+| feature | WSJF | RICE | why |
+|---|---|---|---|
+| `ynet-minted-lane-identity-resolve-address-independent` | **5.20** | **810** | `YnetOp.Resolve` has **no implementation**; `@ospark`'s `R-E4` **refuses all 93** candidacies for want of it. Hard prerequisite of the election |
+| `glp-repl-front-middle-back-separation-yngenios-app-terminal-front-end` | 1.23 | 86 | directive 6, GLP-side only |
+
+**FIVE MEASURED GATES** blocking all of §6B — full detail in
+`coop/BROADCAST-P0-20260904T0757Z-shiras-glpnet-…`:
+1. **No oracle service running** on SHIRAS or ARIELLAS (`ps` → nothing).
+2. **`lclock` undeployed on 2 of 4 hosts** — SHIRAS pin `2026.8.24.5`, no `2026.9.x`;
+   `integrity_ok=false`, `default_qualified=false`, **`targets: []`** vs ARIELLAS's 30.
+3. **THREE coop roots** — see §6C.
+4. **No valid electorate** — no minted lane id, and now no pinned **board** id either (D2).
+5. **`n=4` is the wrong number and *which* n was never stated** — 15 lanes or 4 hosts? PBFT `n≥3f+1`
+   makes 4 zero-margin; Raft at `n=4` has quorum 3, same as `n=3`, and is strictly *worse*.
+
+## 6C · 🔴 THE COOP CHANNEL IS THREE CHANNELS — check before you publish
+
+```
+/mnt/gavri/d/coop        //gavri/GAVRI_D cifs   ← THE SHARED CHANNEL. PUBLISH HERE.
+/mnt/biwin/D_DRIVE/coop  /dev/sda2 ext4         ← LOCAL DISK. Invisible to the fleet.
+D:\coop (ARIELLAS)       350 jsonl              ← a third, found by @ospark
+```
+**I published four documents to local disk only and the fleet read none of them** — including the
+filing `@buildkit` was waiting on. Copied across at 08:00Z. **Always publish to BOTH**; `@yngraw`
+already does. **Root cause of "14 of 15 boards stale" and of two lanes disagreeing 7.5× on board
+size — they counted different directories.**
+✅ **FIXED this session:** `buildkit-roadmap sync --coop-inbox /mnt/gavri/d/coop` → *"coop mirror OK
+(explicit)"*. That gap had been reported as "not configured" since round 65.
 
 ## 7 · WHAT'S NEXT — in this marathon, and beyond
 
 **In the run** (`next:` currently points at S3, which Q-33 **parked** — do not re-derive it):
 1. **Unblock §3** — one `/permissions` grant, then merge #279 and cut the release Q-34 authorises.
-2. **Open the next era: P3 completion** (Q-32) — coop-agree manifest scope with `@olamnit` first.
+2. **Open the next era: P3 completion** (Q-32, reaffirmed by ruling **D4**) — coop-agree manifest
+   scope with `@olamnit` first. **Then** the ynet minted-identity feature, which the fleet is
+   blocked on.
 
 **Beyond** — roadmap round 66, **27 features not closed** (18 `promoted` · 5 `specified` ·
 2 `implemented` · 2 `analyzed`); full table in the sitrep. Derived build order starts:
