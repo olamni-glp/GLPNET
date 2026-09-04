@@ -182,6 +182,10 @@ COOP/
 # tracking them reintroduces exactly the conflict the manifest ruling removed.
 .specify/roadmap-sync/.import-provenance/
 .specify/roadmap-sync/.import-refused.json
+# ^ was LISTED here yet still TRACKED, so it kept appearing in every diff and grew to
+#   20MB (one import added 567812 lines), failing pushes at HTTP 408. `git rm --cached`
+#   was the actual fix — a .gitignore entry never untracks an already-tracked file.
+#   Engineer ruling Q-glpnetshiras-20, 2026-09-02: regenerable cache, do not track.
 
 # 064 durable-listener-service-box: operator registration + WAL file fallback
 # (runtime artifacts; the committed sample is glpservice/resume.json.sample)

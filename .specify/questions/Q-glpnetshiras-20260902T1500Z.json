@@ -1,0 +1,285 @@
+[
+  {
+    "qid": "Q-glpnetshiras-21",
+    "header": "Merge auth",
+    "block": "This lane cannot merge its own green PR, so every completed feature stops at an open PR instead of reaching develop.",
+    "origin": "contradiction",
+    "severity": "critical",
+    "background": [
+      "PR #279 is state=OPEN, mergeable=MERGEABLE, mergeStateStatus=CLEAN, and all 5 CodeQL checks report SUCCESS.",
+      "`gh pr merge 279 --merge` was attempted this session and denied by the Claude Code auto-mode permission classifier; `git pull --ff-only` was denied by the same classifier.",
+      "Engineer ruling Q-10 (recorded in .specify/decisions/) already ruled that the permission rule be widened to cover merges; it has never been applied to .claude/settings.local.json, which contains no merge-related rule at all.",
+      "PRs #259, #264, #267 and #274 all reached develop only because a peer host merged them; the same is now true of #279.",
+      "develop is 67 commits ahead of this branch and has moved on twice (v2026.09.02.2, v2026.09.02.3) while this lane waited."
+    ],
+    "impact_if_unanswered": "Every future feature this lane completes will terminate at a green PR and depend on a peer host noticing it; the single-feature-era discipline (Q-15) cannot close an era, so era takt stays unmeasurable for the same reason it is unmeasurable today.",
+    "options": [
+      {
+        "key": "widen-rule",
+        "label": "Apply Q-10: add the merge permission rule",
+        "consequence": "Add `gh pr merge` and `git merge` to .claude/settings.local.json permissions so this lane can close its own PRs; the ruling that already exists finally takes effect.",
+        "size": "nano",
+        "reversibility": "reversible"
+      },
+      {
+        "key": "peer-merge",
+        "label": "Keep peer-merge as the contract",
+        "consequence": "This lane's contract formally ends at a green PR and a named peer host owns the merge; requires a standing peer commitment or PRs sit indefinitely as #279 has.",
+        "size": "nano",
+        "reversibility": "reversible"
+      },
+      {
+        "key": "engineer-merge",
+        "label": "Engineer merges by hand each time",
+        "consequence": "You merge each PR yourself; forecloses unattended overnight era completion, because no era can close without you present.",
+        "size": "nano",
+        "reversibility": "one-way"
+      }
+    ],
+    "recommendation": {
+      "option": "widen-rule",
+      "because": "It is the ruling you already made (Q-10) and the only option that is not a workaround; peer-merge is what produced the current four-PR backlog and it depends on another host's attention rather than on a setting, and it beats the runner-up because it costs one settings line instead of a standing cross-host obligation."
+    },
+    "decision": {
+      "option": "widen-rule",
+      "date": "2026-09-02",
+      "rationale": "Engineer accepted the recommendation: apply the existing Q-10 ruling by adding the merge permission rule, rather than continuing the peer-merge backlog."
+    }
+  },
+  {
+    "qid": "Q-glpnetshiras-22",
+    "header": "Takt root",
+    "block": "The canonical local takt root is settled in code, but 652 files sit in the superseded root and every session started before today's repoint is still writing there.",
+    "origin": "measurement",
+    "severity": "high",
+    "background": [
+      "Settled at source: buildkit_cli/marathon/takt_lake.py line 330 sets DEFAULT_LOCAL_ROOT = Path('D:/_takt-lake'), which on this host maps to /mnt/biwin/D_DRIVE/_takt-lake — so that root is canonical and the launcher repoint made today at 14:13Z was the FIX, not a defect.",
+      "The superseded root /home/shira/.local/share/buildkit/_takt-lake still holds 652 files and was written at 15:30 today, i.e. AFTER the repoint, because pre-existing sessions still carry the old BUILDKIT_TAKT_LAKE in their environment.",
+      "The launcher's own comment records the same measurement independently at 11:50Z: 842 files/857 rows in one root, 596/611 in the other, BOTH written that day, NEITHER a superset, so 611 rows were invisible to the mandated bk_report_v1 path.",
+      "A dry-run of the launcher from THIS session pins the superseded root, because ${BUILDKIT_TAKT_LAKE:-default} inherits the stale value; only a clean systemd environment picks up the canonical default.",
+      "A reboot therefore FIXES this by itself for all 15 lanes; not rebooting is what keeps the split alive.",
+      "The orphaned rows are another lane's writes as well as mine, so merging them is not a change this lane should make unilaterally."
+    ],
+    "impact_if_unanswered": "The 652 files in the superseded root stay invisible to every mandated report, and any lane that keeps running without a restart keeps adding to them, so takt coverage on this host silently understates itself for as long as sessions live.",
+    "options": [
+      {
+        "key": "reboot-and-migrate",
+        "label": "Reboot to fix all lanes, then migrate the 652 orphans",
+        "consequence": "The reboot puts all 15 lanes on the canonical root with no per-lane action; afterwards copy the 652 orphaned files into /mnt/biwin/D_DRIVE/_takt-lake so the history is not lost.",
+        "size": "mini",
+        "reversibility": "reversible"
+      },
+      {
+        "key": "reexport-now",
+        "label": "Re-export the canonical root in every live session now",
+        "consequence": "Each of the 15 lanes re-exports BUILDKIT_TAKT_LAKE before its next takt write, stopping the bleed without waiting for a reboot; needs every lane to act, so one that misses it keeps splitting.",
+        "size": "mini",
+        "reversibility": "reversible"
+      },
+      {
+        "key": "leave-orphans",
+        "label": "Adopt the canonical root and abandon the 652 files",
+        "consequence": "Take the reboot fix and never merge the orphaned rows; forecloses recovering that measurement history, in a fleet where only 5 of 93 eras are measurable at all.",
+        "size": "nano",
+        "reversibility": "one-way"
+      }
+    ],
+    "recommendation": {
+      "option": "reboot-and-migrate",
+      "because": "The reboot is already on this session's plan and fixes all 15 lanes at once with no per-lane discipline required, which the re-export option cannot promise; migrating afterwards is a file copy, and abandoning the rows is the one choice that cannot be undone in a fleet that is already short of measurable eras."
+    },
+    "decision": {
+      "option": "reboot-and-migrate",
+      "date": "2026-09-02",
+      "rationale": "Engineer accepted the recommendation: the reboot repairs all 15 lanes at once; migrate the 652 orphaned files afterwards."
+    }
+  },
+  {
+    "qid": "Q-glpnetshiras-23",
+    "header": "Lockfiles",
+    "block": "This repo is fully CPM-compliant on paper but has zero lockfiles, which the fleet has ruled makes the compliance inert.",
+    "origin": "contradiction",
+    "severity": "high",
+    "background": [
+      "Measured here this session: 31/31 .csproj target net11.0, 0 inherit their TFM, 0 PackageReference carries a Version= attribute, Directory.Packages.props sets ManagePackageVersionsCentrally=true with 14 PackageVersion entries and 0 floating ranges.",
+      "Measured here this session: 0 packages.lock.json files exist and RestorePackagesWithLockFile is set in no .csproj and no .props file.",
+      "ariellas AMENDMENT-5-rev2 (20260901T134339Z) states the CPM flag is INERT without committed lockfiles and asks the table be read as 0-of-5 compliant, not 1-of-5, independently reproduced.",
+      "olamnit reported the identical shape for this repo at 20260901T155200Z: 'CPM 31of31 ZERO Version BUT ZERO LOCKFILES'.",
+      "Engineer ruling Q-shiras-36 mandates CPM all hosts all repos and bans floating versions; it does not mention lockfiles, so the lockfile obligation is an amendment on top of the ruling, not the ruling itself."
+    ],
+    "impact_if_unanswered": "This lane keeps reporting CPM compliance that a peer host has already ruled meaningless, which is exactly the false-green class of defect the fleet has been correcting all week; restores stay non-reproducible.",
+    "options": [
+      {
+        "key": "add-lockfiles",
+        "label": "Set RestorePackagesWithLockFile and commit the 31 lockfiles",
+        "consequence": "One props edit plus a restore generates and commits packages.lock.json per project; makes restores reproducible and turns the CPM claim into a real one.",
+        "size": "mini",
+        "reversibility": "reversible"
+      },
+      {
+        "key": "defer",
+        "label": "Defer lockfiles to the fleet BK-CPM-1 pilot",
+        "consequence": "Report CPM-adopted-without-lockfiles honestly and wait for BK-CPM-1 to reach unanimity before piloting lockfiles here, keeping all hosts on one mechanism.",
+        "size": "nano",
+        "reversibility": "reversible"
+      },
+      {
+        "key": "reject",
+        "label": "Rule the lockfile amendment out of scope",
+        "consequence": "Declare Q-shiras-36 satisfied by CPM plus the float ban alone; forecloses the reproducible-restore guarantee and leaves the fleet's 0-of-5 reading standing unanswered.",
+        "size": "nano",
+        "reversibility": "one-way"
+      }
+    ],
+    "recommendation": {
+      "option": "defer",
+      "because": "The lockfile obligation currently rests on one host's amendment rather than on your ruling, and the ruling that IS live (BK-CPM-1 is the base, no pilot until unanimous) explicitly forbids piloting ahead of convergence; adding lockfiles now is cheap but would be this lane piloting unilaterally against a standing no-pilot rule, which beats the runner-up only if you first ratify the amendment."
+    },
+    "decision": {
+      "option": "defer",
+      "date": "2026-09-02",
+      "rationale": "Engineer accepted the recommendation: no unilateral lockfile pilot; BK-CPM-1 is the base and forbids piloting before unanimity. Report the gap honestly."
+    }
+  },
+  {
+    "qid": "Q-glpnetshiras-24",
+    "header": "Lock wait",
+    "block": "The mandated six-section report degrades to UNAVAILABLE unless it is run behind a host serialiser that exists but that this lane was not using.",
+    "origin": "measurement",
+    "severity": "high",
+    "background": [
+      "Sections 2 PROGRESS and 4 SITREP, and the marathon half of section 6 NEXT, all returned UNAVAILABLE this session naming three different live holder PIDs (102743, 104641, 114370).",
+      "Four other lanes on shiras were running bk_report_v1 concurrently at that moment (ospark 020, qhstate, tefl, yngenios 037-yx-winbuilder), all competing for one machine-global lock.",
+      "A host-wide serialiser ALREADY EXISTS at /home/shira/.local/bin/bk-heavy-lock, written by mstack-shiras on 2026-09-01 (Q12) precisely for this; re-running the same report behind it is what produced a complete report this session.",
+      "Its header records the measured cause: the lock thrashes rather than queues (61 attempts, lock changed hands 9 times) and 65 of the last 72 engine resolutions silently ran an UNPINNED ambient engine as a result.",
+      "This lane was simply not using it — the first report was run unserialised — so the degradation was self-inflicted and avoidable, not a tool defect.",
+      "Engineer ruling Q-18 (hard-coded _LOCK_WAIT_SECONDS = 30.0 should become configurable, assigned to the buildkit lane) remains unbuilt and is now a second-order fix rather than the primary one."
+    ],
+    "impact_if_unanswered": "Lanes keep running heavy buildkit calls unserialised, which both degrades the mandated SITREP and silently drops the engine pin on this host; nothing enforces the wrapper, so it depends on each lane remembering.",
+    "options": [
+      {
+        "key": "mandate-wrapper",
+        "label": "Mandate bk-heavy-lock for every heavy call",
+        "consequence": "Every lane wraps roadmap/marathon/report/deploy calls in bk-heavy-lock; broadcast it as a fleet standard and record it in each repo's CLAUDE.md so it survives a restart.",
+        "size": "mini",
+        "reversibility": "reversible"
+      },
+      {
+        "key": "build-into-cli",
+        "label": "Move the serialiser inside buildkit itself",
+        "consequence": "buildkit takes the host lock internally so no wrapper can be forgotten; larger change in the buildkit lane and supersedes Q-18's configurable wait.",
+        "size": "midi",
+        "reversibility": "reversible"
+      },
+      {
+        "key": "q18-only",
+        "label": "Land Q-18's configurable wait and keep the wrapper optional",
+        "consequence": "Only lengthens the retry window; forecloses nothing structurally but leaves the thrash-instead-of-queue behaviour and the silent engine-pin loss in place.",
+        "size": "mini",
+        "reversibility": "reversible"
+      }
+    ],
+    "recommendation": {
+      "option": "build-into-cli",
+      "because": "A guard that each of 15 lanes must remember to type is one this session already proved gets forgotten — the wrapper existed all day and the first report still degraded; putting the lock inside buildkit makes the correct behaviour unavoidable, whereas mandating the wrapper only converts a tooling problem into a discipline problem, and Q-18's longer wait treats the symptom."
+    },
+    "decision": {
+      "option": "build-into-cli",
+      "date": "2026-09-02",
+      "rationale": "Engineer accepted the recommendation: the host lock moves inside buildkit so bk-heavy-lock cannot be forgotten; supersedes Q-18's configurable wait."
+    }
+  },
+  {
+    "qid": "Q-glpnetshiras-25",
+    "header": "Next era",
+    "block": "The two authoritative sources for what to work on next name different things, so the hand-instrumented era ruled by Q-19 has no agreed subject.",
+    "origin": "contradiction",
+    "severity": "high",
+    "background": [
+      "`buildkit-roadmap next` names front-end-goal-term-acceptance-completeness (rank 21, WSJF 3.60, RICE 3000.00, state=promoted, no spec dir yet).",
+      "`buildkit-marathon status` names backlog item S1 'scheduler dispatch leaks at all three transitions' (size=midi) as the next item in run mrun-f77f62158255, which carries 48 outstanding items.",
+      "Engineer ruling Q-19 requires the NEXT era to be hand-instrumented, stamping every stage, to find why six era stages beyond the Q-08 defect never persist.",
+      "The current run's era is unmeasurable: all nine stages report MISSING, and fleet-wide only 5 of 93 eras are measurable, so the instrumentation question is unanswered no matter which subject is chosen.",
+      "Engineer ruling Q-15 requires single-feature eras, so exactly one of these can be the next era; they cannot be run together."
+    ],
+    "impact_if_unanswered": "No era can start, because starting the wrong one burns the one hand-instrumented run that Q-19 reserved for diagnosing the missing-stage defect.",
+    "options": [
+      {
+        "key": "roadmap-21",
+        "label": "Instrument rank 21 (front-end goal-term acceptance)",
+        "consequence": "Run the roadmap's own top candidate as a normal specify-to-close era with every stage hand-stamped; a real feature, so the instrumentation is measured against representative work.",
+        "size": "midi",
+        "reversibility": "reversible"
+      },
+      {
+        "key": "marathon-s1",
+        "label": "Instrument S1 (scheduler dispatch leaks)",
+        "consequence": "Resolve the marathon's own next backlog item, which sits in the same scheduler subsystem as the missing-stage defect; diagnosis and subject reinforce each other.",
+        "size": "midi",
+        "reversibility": "reversible"
+      },
+      {
+        "key": "instrument-only",
+        "label": "Run a throwaway instrumentation era first",
+        "consequence": "A minimal feature purely to prove stage persistence before spending a real one; forecloses using the Q-19 hand-instrumented slot on delivered product value.",
+        "size": "mini",
+        "reversibility": "one-way"
+      }
+    ],
+    "recommendation": {
+      "option": "marathon-s1",
+      "because": "Q-19 exists to find why era stages do not persist, and S1 is in the scheduler — the same subsystem that owns dispatch and stage transitions — so a defect found while instrumenting it is likely the same defect; rank 21 is the better product work but would tell us less about the persistence failure, and the roadmap will still be there next era."
+    },
+    "decision": {
+      "option": "marathon-s1",
+      "date": "2026-09-02",
+      "rationale": "Engineer accepted the recommendation: S1 scheduler dispatch leaks becomes the Q-19 hand-instrumented era; same subsystem as the missing-stage defect."
+    }
+  },
+  {
+    "qid": "Q-glpnetshiras-26",
+    "header": "Coop keys",
+    "block": "Nineteen coop documents remain refused on three unpublished ariellas signing keys, and the barrier still reports the channel as fully synced.",
+    "origin": "assumption-weakness",
+    "severity": "medium",
+    "background": [
+      "Engineer ruling Q-13 required ariellas to publish its three signing keys; this session confirms they are still unpublished and the 19 documents are still refused.",
+      "Two peers re-raised it today independently: olamnit at 20260901T1630Z ('PUBLISH KEY e6eff0dfe9ebfc43, your roadmap docs are REFUSED here') and gavriella at 20260902T0600Z ('PUBLISH 3 KEYS plus THE SYNC BARRIER READS 4of4 OVER UNREAD DOCS').",
+      "gavriella reports at 20260902T0545Z that a trust-store change took its key count from 12 to 28 and that the trust store was the roadmap blocker, so the mechanism to fix this exists and has been exercised elsewhere.",
+      "The failure is silent in the wrong direction: the sync barrier reads 4-of-4 over documents that were never read, so a refusal presents as a success."
+    ],
+    "impact_if_unanswered": "This lane keeps importing a roadmap that is missing whatever those 19 documents carry while its own barrier reports full sync, so an import can be silently incomplete and look clean.",
+    "options": [
+      {
+        "key": "escalate",
+        "label": "Escalate to ariellas with a deadline",
+        "consequence": "Broadcast a dated ask naming the three key ids and a discharge deadline, as olamnit did for key e6eff0dfe9ebfc43; keeps the trust model intact.",
+        "size": "nano",
+        "reversibility": "reversible"
+      },
+      {
+        "key": "fix-barrier",
+        "label": "Fix the barrier to fail loudly first",
+        "consequence": "Make a refused document count as unread so the barrier can never read 4-of-4 over unread docs; treats the silent-success defect, which outlives this particular key.",
+        "size": "mini",
+        "reversibility": "reversible"
+      },
+      {
+        "key": "waive",
+        "label": "Waive verification for these 19 documents",
+        "consequence": "Import them unverified to unblock the roadmap; forecloses the signing guarantee for this channel and sets the precedent that an unpublished key is a reason to stop checking.",
+        "size": "nano",
+        "reversibility": "one-way"
+      }
+    ],
+    "recommendation": {
+      "option": "fix-barrier",
+      "because": "The unpublished keys are ariellas' to discharge and escalating again is cheap but has already been tried twice today by two hosts; the barrier reading 4-of-4 over unread documents is OUR defect, it is the reason the problem stayed invisible, and fixing it makes every future refusal loud instead of needing a human to notice."
+    },
+    "decision": {
+      "option": "fix-barrier",
+      "date": "2026-09-02",
+      "rationale": "Engineer accepted the recommendation: treat our own silent-success defect first - a refused document must count as unread so the barrier cannot read 4-of-4 over unread docs."
+    }
+  }
+]
