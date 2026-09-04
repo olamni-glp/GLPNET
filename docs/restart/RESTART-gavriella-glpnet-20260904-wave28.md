@@ -9,7 +9,7 @@
 
 ## 0 · THE ONE NUMBER TO CARRY OUT OF THIS SESSION
 
-**`/bk-codexreview`, run FIVE times on the same branch with identical settings, returned:**
+**`/bk-codexreview`, run SEVEN times on the same branch with identical settings, returned:**
 
 | round | findings | P1 | recurrences | in the PREVIOUS round's fixes |
 |---|---:|---:|---|---|
@@ -39,7 +39,8 @@ released all fourteen — including four that made the documented operator path 
 authenticate, publish, or report status at all.
 
 🔴 **ENGINEER RULING (2026-09-04): an era is not "reviewed" until TWO CONSECUTIVE LOW-YIELD
-ROUNDS.** Round 5 is the first of that pair. **Round 6 is still required.**
+ROUNDS.** Round 6 gave 5, round 7 gave 8 — the yield went back UP, so **the pair has not happened
+and the era is NOT shipped.** Round 8 was running at session end.
 
 🔴 **A green self-written suite is not evidence either.** A 278-test suite of my own writing
 was green across all fourteen of round 2's findings.
@@ -48,17 +49,25 @@ was green across all fourteen of round 2's findings.
 
 ## 1 · WHERE ERA 102 STANDS
 
-`102-quic-federation-transport`, branch pushed through `b737a3e8` + `c55a67f0`.
+`102-quic-federation-transport`, branch pushed through `b34a03f5`.
 
-**Tests: 364/364 (glp_crdtmsg) + 121/121 (ynet_transport).** Started the session at 278.
+**Tests: 386/386 (glp_crdtmsg) + 121/121 (ynet_transport).** Started the session at 278.
 
-**Mutation-verified: 22/22 fixes.** Each fix carries a regression test that FAILS when the fix
-is reverted. **Two mutants initially SURVIVED and both taught something:**
+**Mutation-verified: 35/35 fixes.** Each fix carries a regression test that FAILS when the fix
+is reverted. **FIVE mutants initially SURVIVED, and in every case the TEST was at fault, not the
+fix** — which is the strongest evidence in this file that a green suite proves nothing on its own:
 
 - the same-machine probe test could not reach its failure branch (the probe never fails on a
   healthy host) — **the test was decorative**; the enumeration is now injectable;
 - a `board_actor` mutant was ineffective because `&&` binds tighter than `||`, so
-  `false && A || B` still evaluated `B`. **The mutation was wrong, not the test.**
+  `false && A || B` still evaluated `B` — **the mutation was wrong, not the test**;
+- a concurrency test relied on a `Task.Yield` race that simply did not occur — replaced with a
+  **deterministic barrier** that forces the interleaving;
+- a chunking test asserted only the END STATE, which both branches reach — it now asserts that one
+  tick does **not** consume the whole backlog;
+- a key-permission test exercised the LOAD path when the defect was on the MINT path, asserted an
+  outcome both branches produce, and could not reach a Unix-only check on Windows. **It took four
+  attempts to make that one bite.**
 
 ### ✅ VERIFIED BY RUNNING IT, not by reading it
 
