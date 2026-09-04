@@ -1,0 +1,159 @@
+// SPDX-FileCopyrightText: Copyright (c) 2026 by Marcelle Kress von Wendland, The Olamni Research Group and Bancstreet Capital Partners Ltd, London, UK
+// SPDX-License-Identifier: MIT
+//
+// The federated board operation (feature 102, T006).
+//
+// Contract federation-wire.md W3 / data-model I-13..I-16 / FR-009, FR-010, FR-011, FR-017.
+//
+// Reuses Crdt.Dot (op identity) and Crdt.HashChain (pred-hash) UNCHANGED — this type is an
+// envelope around primitives that already exist and are already tested, not a new identity scheme.
+//
+// NOTE ON WHAT IS ABSENT. There is no Delete, no Withdraw, no Remove, no Tombstone here, and none
+// may be added (FR-017 / I-16). The correction mechanism is RetirementOp — an APPENDED superseding
+// op. On an append-only board a removal is indistinguishable from a suppression, so the capability
+// is absent by construction rather than guarded against at call sites.
+
+using System.Text.Json;
+using System.Text.Json.Serialization;
+using GlpRuntime.CrdtMsg.Crdt;
+
+namespace GlpRuntime.CrdtMsg.Federation;
+
+/// <summary>
+/// A board operation as it crosses the link and as it rests in a per-actor log.
+/// </summary>
+public sealed record FederationOp
+{
+    /// <summary>The exactly-once fold key (FR-010). Reuses the existing DVV dot.</summary>
+    public required Dot OpId { get; init; }
+
+    /// <summary>The originating participant's node id. MUST survive the crossing (FR-009).</summary>
+    public required string Origin { get; init; }
+
+    /// <summary>Operation kind — opaque to federation except for <see cref="RetirementOp.Kind"/>.</summary>
+    public required string Kind { get; init; }
+
+    /// <summary>
+    /// Present iff the operation is leadership-bearing. ABSENT IS NOT TERM ZERO: an op with no term
+    /// is never a candidate in an ordering decision at all.
+    /// </summary>
+    public Term? Term { get; init; }
+
+    /// <summary>Causal context (existing DVV semantics).</summary>
+    public IReadOnlyList<Dot> Deps { get; init; } = Array.Empty<Dot>();
+
+    /// <summary>Day-one hash chain over (deps, self) — existing <see cref="HashChain"/>.</summary>
+    public byte[] PredHash { get; init; } = Array.Empty<byte>();
+
+    /// <summary>Opaque body. Federation neither reads nor validates it.</summary>
+    public JsonElement Body { get; init; }
+
+    /// <summary>Build an op, computing its pred-hash from (id, deps) exactly as <see cref="Op.Create"/> does.</summary>
+    public static FederationOp Create(Dot opId, string origin, string kind, JsonElement body,
+                                      Term? term = null, IReadOnlyList<Dot>? deps = null)
+    {
+        var d = deps ?? Array.Empty<Dot>();
+        return new FederationOp
+        {
+            OpId = opId,
+            Origin = origin,
+            Kind = kind,
+            Term = term,
+            Deps = d,
+            PredHash = HashChain.PredHash(opId, d),
+            Body = body,
+        };
+    }
+
+    /// <summary>
+    /// Canonical JSON per contract W3. Deterministic property order and no whitespace, so two hosts
+    /// serialising the same op produce BYTE-IDENTICAL output — which is what makes the SC-003
+    /// byte-equality assertion meaningful rather than a comparer's opinion.
+    /// </summary>
+    public string ToCanonicalJson()
+    {
+        var sb = new System.Text.StringBuilder();
+        sb.Append("{\"op_id\":{\"peer\":").Append(JsonSerializer.Serialize(OpId.PeerName))
+          .Append(",\"counter\":").Append(OpId.Counter).Append('}');
+        sb.Append(",\"origin\":").Append(JsonSerializer.Serialize(Origin));
+        sb.Append(",\"kind\":").Append(JsonSerializer.Serialize(Kind));
+        if (Term is { } t)
+        {
+            sb.Append(",\"term\":{\"space\":").Append(JsonSerializer.Serialize(t.SpaceId))
+              .Append(",\"era_counter\":").Append(t.EraCounter)
+              .Append(",\"host\":").Append(JsonSerializer.Serialize(t.HostId)).Append('}');
+        }
+        sb.Append(",\"deps\":[");
+        for (int i = 0; i < Deps.Count; i++)
+        {
+            if (i > 0) sb.Append(',');
+            sb.Append("{\"peer\":").Append(JsonSerializer.Serialize(Deps[i].PeerName))
+              .Append(",\"counter\":").Append(Deps[i].Counter).Append('}');
+        }
+        sb.Append(']');
+        sb.Append(",\"pred_hash\":").Append(JsonSerializer.Serialize(Convert.ToHexStringLower(PredHash)));
+        sb.Append(",\"body\":").Append(Body.ValueKind == JsonValueKind.Undefined ? "null" : Body.GetRawText());
+        sb.Append('}');
+        return sb.ToString();
+    }
+
+    /// <summary>Parse the canonical form. A malformed op is a loud fault, never a silently-skipped line.</summary>
+    public static FederationOp FromJson(string json)
+    {
+        using var doc = JsonDocument.Parse(json);
+        var r = doc.RootElement;
+
+        var idEl = r.GetProperty("op_id");
+        var opId = new Dot(idEl.GetProperty("peer").GetString()!, idEl.GetProperty("counter").GetInt64());
+
+        Term? term = null;
+        if (r.TryGetProperty("term", out var tEl) && tEl.ValueKind == JsonValueKind.Object)
+        {
+            term = new Term(
+                tEl.TryGetProperty("space", out var sp) && sp.ValueKind == JsonValueKind.String
+                    ? sp.GetString()! : TermSpace.LegacyId,
+                tEl.GetProperty("era_counter").GetInt64(),
+                tEl.TryGetProperty("host", out var h) && h.ValueKind == JsonValueKind.String
+                    ? h.GetString()! : string.Empty);
+        }
+
+        var deps = new List<Dot>();
+        if (r.TryGetProperty("deps", out var dEl) && dEl.ValueKind == JsonValueKind.Array)
+            foreach (var d in dEl.EnumerateArray())
+                deps.Add(new Dot(d.GetProperty("peer").GetString()!, d.GetProperty("counter").GetInt64()));
+
+        byte[] pred = r.TryGetProperty("pred_hash", out var pEl) && pEl.ValueKind == JsonValueKind.String
+            ? Convert.FromHexString(pEl.GetString()!)
+            : Array.Empty<byte>();
+
+        return new FederationOp
+        {
+            OpId = opId,
+            Origin = r.GetProperty("origin").GetString()!,
+            Kind = r.GetProperty("kind").GetString()!,
+            Term = term,
+            Deps = deps,
+            PredHash = pred,
+            Body = r.TryGetProperty("body", out var b) ? b.Clone() : default,
+        };
+    }
+}
+
+/// <summary>
+/// An operation's ordering disposition on this host. THREE values (FR-031 / SC-015) plus the
+/// no-term case — collapsing any two of these is the defect SC-015 is written to catch.
+/// </summary>
+public enum OrderingDisposition
+{
+    /// <summary>Leadership-bearing, in the live epoch: participates in ordering.</summary>
+    Orderable,
+
+    /// <summary>Leadership-bearing but in the legacy space: retained, never wins (FR-027).</summary>
+    UnorderedLegacy,
+
+    /// <summary>Leadership-bearing in a space this host does not recognise: retained, reported unordered (FR-016).</summary>
+    UnorderedUnknownSpace,
+
+    /// <summary>Carries no term at all: not a candidate in any ordering decision. Absent is not zero.</summary>
+    NotLeadershipBearing,
+}
