@@ -397,8 +397,38 @@ When Gabi says `#remember <something>`, add that information to this file so it 
 
 ### Known limitations
 
-- **`=..` not allowed in clause bodies** (parser bug). Works in clause heads only.
-- **Structs inside lists in REPL goals fail**: `distribute_indexed([send(1,a), send(2,b)], Y, Z).` errors with "Unsupported list head type: StructTerm". Simple lists, nested lists, and variables-in-lists work; struct elements don't. Location: `glp_repl.dart` `_buildListTermForConj` / `_buildListTerm`.
+🔴 **Re-measure before trusting any entry here.** Of the three limitations recorded in this
+block before 2026-09-02, **two were already false** and one was **understated**. Notes rot;
+the runtime does not tell you when a note goes stale. Every surviving claim below is now
+pinned by a test in `test/run_all_tests.sh` **Section V** — if a capability regresses, the
+suite fails and names it (feature 101, SC-005).
+
+- ~~**`=..` not allowed in clause bodies** (parser bug). Works in clause heads only.~~
+  **RETIRED 2026-09-02, re-confirmed 2026-09-04 — this was FALSE.** A module whose clause
+  bodies contain only `Term =.. Parts?` / `Parts ..= Term?` loads cleanly through the whole
+  pipeline (SRSW → PE → type check → compile). Pinned by **V-14**: the fixture
+  `programs/tests/typed/goal_term_acceptance.glp` has a body-position `=..` and would not
+  load if the claim were true.
+- ~~**Structs inside lists in REPL goals fail** … "Unsupported list head type: StructTerm" …
+  Location: `glp_repl.dart`.~~
+  **RETIRED 2026-09-02, re-confirmed 2026-09-04 — this was FALSE.** `first_item([send(1,a),
+  send(2,b)], Y).` → `Y = some(send(1, a))`. Conjunctive and nested-list forms also work;
+  both list builders already branch on struct heads. Pinned by **V-15**.
+  **The cited location was also wrong** — the goal builders live in
+  `glp_runtime/lib/engine/glp_engine.dart`, not `glp_repl.dart`.
+- ~~**Anonymous `_` rejected in top-level goals** (recorded as C#-only).~~
+  **FIXED 2026-09-04 (feature 101).** It was **cross-runtime**, not C#-only: Dart failed at
+  **four** positions (top-level argument, inside a structure, list element, conjunction path)
+  and the code surface was **eight sites** in two parallel families. `_` is now accepted at
+  every position a named variable is, reports no binding (it has no name), and each
+  occurrence is independent. Pinned by **V-1..V-5**.
+- ~~**Improper list tail in a goal**~~ — **PREVIOUSLY UNRECORDED, FIXED 2026-09-04.** Dart and
+  C# **silently coerced an improper tail to nil and reported success**: `first_item([send(1,a)|foo], Y).`
+  returned byte-identically to `[send(1,a)|[]]`. **A wrong answer, not an error.** Now refused
+  with a message naming the term typed. The *meaning* of an improper tail remains a §1.14
+  question for Udi and is deliberately undecided. Pinned by **V-6/V-7**.
+  (Gleam was the only runtime that never returned a wrong answer for either defect — it
+  refused both loudly and had already flagged them §1.14.)
 
 See `docs/known-issues.md` for the full list.
 
