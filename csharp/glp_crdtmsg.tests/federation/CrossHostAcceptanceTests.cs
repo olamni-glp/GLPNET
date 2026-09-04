@@ -116,8 +116,10 @@ public sealed class CrossHostAcceptanceTests
             Assert.Equal(Tri.Yes, status.ListenerBound);
             Assert.Equal(Tri.Yes, status.PeerAdmitted);
 
-            // THE assertion that separates SC-001 from the mechanism proof.
-            Assert.False(status.SameMachine ?? true);
+            // THE assertion that separates SC-001 from the mechanism proof. It must be MEASURED as
+            // No — an Unknown here (a crossing whose peer address was not captured) is not evidence
+            // of cross-host federation either, and must not satisfy SC-001.
+            Assert.Equal(Tri.No, status.SameMachine);
 
             // And the clarified window from ruling Q-GLPNETG28-03.
             Assert.True(seconds <= 5.0, $"steady-state push took {seconds:F2}s, over the 5s bound");

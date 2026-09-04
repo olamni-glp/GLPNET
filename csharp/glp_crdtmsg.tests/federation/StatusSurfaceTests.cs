@@ -244,14 +244,67 @@ public sealed class StatusSurfaceTests
             ListenerBound = Tri.Yes,
             PeerAdmitted = Tri.Yes,
             OpReceivedFromPeer = Tri.Yes,
-            SameMachine = true,
+            SameMachine = Tri.Yes,
         };
 
-        Assert.True(s.SameMachine);
+        Assert.Equal(Tri.Yes, s.SameMachine);
         Assert.Contains("same machine           : yes", s.Render());
 
-        var crossHost = s with { SameMachine = false };
+        var crossHost = s with { SameMachine = Tri.No };
         Assert.NotEqual(s.Render(), crossHost.Render());   // the two are DISTINGUISHABLE
+    }
+
+    /// <summary>
+    /// REGRESSION (found by adversarial read during codexreview, not by codex).
+    ///
+    /// `_sameMachine` was set ONLY on the dialling path, so a LISTENER that received an op rendered
+    /// "op received from peer: yes" beside "same machine: n/a (no crossing observed)" — the surface
+    /// contradicting itself — and rendered IDENTICALLY to the genuine no-crossing case. That is the
+    /// same two-states-one-output defect SC-007 exists to forbid, hiding inside the very field that
+    /// enforces FR-022.
+    ///
+    /// A crossing whose peer address was not captured is UNKNOWN. Three distinct renderings.
+    /// </summary>
+    [Fact]
+    public void ACrossingWithAnUnmeasuredPeerAddressIsUnknownNotNotApplicable()
+    {
+        var noCrossing = new FederationStatus { OpReceivedFromPeer = Tri.No, SameMachine = null };
+        var crossedUnmeasured = new FederationStatus { OpReceivedFromPeer = Tri.Yes, SameMachine = Tri.Unknown };
+        var crossedMeasured = new FederationStatus { OpReceivedFromPeer = Tri.Yes, SameMachine = Tri.No };
+
+        Assert.Contains("same machine           : n/a", noCrossing.Render());
+        Assert.Contains("same machine           : unknown", crossedUnmeasured.Render());
+        Assert.Contains("same machine           : no", crossedMeasured.Render());
+
+        // All THREE are distinguishable — the assertion that would have caught the original defect.
+        var rendered = new[] { noCrossing, crossedUnmeasured, crossedMeasured }
+            .Select(x => x.Render()).ToArray();
+        Assert.Equal(3, rendered.Distinct().Count());
+
+        // And the contradiction itself is gone: nothing says "no crossing observed" while an op
+        // has in fact crossed.
+        Assert.DoesNotContain("no crossing observed", crossedUnmeasured.Render());
+    }
+
+    /// <summary>
+    /// The listener path end-to-end: receive an op without ever dialling, and assert the surface
+    /// does not claim "no crossing observed".
+    /// </summary>
+    [Fact]
+    public async Task AListenerThatReceivesAnOpDoesNotClaimNoCrossingWasObserved()
+    {
+        var link = new FakeLink("B");
+        var svc = Service(Config(), link);
+        await svc.BindAsync();                    // listener only — DialAsync is never called
+
+        var op = FederationOp.Create(new Dot("gavriella", 1), "gavriella", "board_post", Body);
+        link.PushInbound(new LinkInbound("A", Encoding.UTF8.GetBytes(op.ToCanonicalJson()), FederationService.BoardBox));
+        await svc.ReceiveOneAsync();
+
+        var s = svc.Status();
+        Assert.Equal(Tri.Yes, s.OpReceivedFromPeer);
+        Assert.Equal(Tri.Unknown, s.SameMachine);              // measured-as-unmeasurable
+        Assert.DoesNotContain("no crossing observed", s.Render());
     }
 
     /// <summary>Loopback and this host's own addresses are detected as same-machine.</summary>
@@ -267,7 +320,7 @@ public sealed class StatusSurfaceTests
     public void NoCrossingObservedMeansSameMachineIsNotApplicable()
     {
         var svc = Service(Config(), new FakeLink("A"));
-        Assert.Null(svc.Status().SameMachine);
+        Assert.Null(svc.Status().SameMachine);   // nothing crossed, so the question does not arise
         Assert.Contains("n/a", svc.Status().Render());
     }
 

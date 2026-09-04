@@ -70,10 +70,22 @@ public sealed record FederationStatus
     public Tri OpReceivedFromPeer { get; init; } = Tri.Unknown;
 
     /// <summary>
-    /// The observed crossing was between two processes on ONE machine (FR-022). When true the
-    /// surface MUST NOT be read as cross-host federation, however green the other four states look.
+    /// Whether an observed crossing was between two processes on ONE machine (FR-022). When
+    /// <see cref="Tri.Yes"/> the surface MUST NOT be read as cross-host federation, however green
+    /// the other four states look.
+    /// <para>
+    /// THREE-VALUED, PLUS NULL, and the distinction is load-bearing:
+    ///   <c>null</c>          — no crossing has been observed, so the question does not arise;
+    ///   <see cref="Tri.Unknown"/> — a crossing WAS observed but the peer's address was not captured
+    ///                        (the passive/listener side, and the reconciliation-pull path, learn of
+    ///                        an op without learning where it came from);
+    ///   <see cref="Tri.Yes"/>/<see cref="Tri.No"/> — actually measured.
+    /// </para>
+    /// Collapsing <c>null</c> and <see cref="Tri.Unknown"/> makes a listener that HAS received an op
+    /// render "no crossing observed" beside "op received from peer: yes" — a surface contradicting
+    /// itself, and rendering identically to the genuine no-crossing case.
     /// </summary>
-    public bool? SameMachine { get; init; }
+    public Tri? SameMachine { get; init; }
 
     /// <summary>Host software policy blocked startup (FR-023). Null when it did not.</summary>
     public PolicyRefusal? PolicyRefused { get; init; }
@@ -108,7 +120,14 @@ public sealed record FederationStatus
         sb.AppendLine(Line("peer admitted", PeerAdmitted,
             PeerAdmitted == Tri.Yes ? $"({AdmittedParticipants} participant{(AdmittedParticipants == 1 ? "" : "s")})" : null));
         sb.AppendLine(Line("op received from peer", OpReceivedFromPeer));
-        sb.AppendLine($"{"same machine",-23}: {(SameMachine is null ? "n/a   (no crossing observed)" : SameMachine.Value ? "yes" : "no")}");
+        string same = SameMachine switch
+        {
+            null => "n/a   (no crossing observed)",
+            Tri.Unknown => "unknown   (a crossing was observed but the peer address was not captured)",
+            Tri.Yes => "yes",
+            _ => "no",
+        };
+        sb.AppendLine($"{"same machine",-23}: {same}");
         sb.AppendLine($"{"policy refusal",-23}: {(PolicyRefused is null ? "none" : $"{PolicyRefused.Policy} (0x{PolicyRefused.HResult:X8})")}");
         return sb.ToString();
     }

@@ -84,7 +84,7 @@ public sealed class FederationService : IAsyncDisposable
 
     private bool _bound;
     private bool _opCrossed;
-    private bool? _sameMachine;
+    private Tri? _sameMachine;   // null until a crossing is observed; see FederationStatus.SameMachine
     private PolicyRefusal? _policyRefusal;
     private CancellationTokenSource? _pumpCts;
 
@@ -158,7 +158,7 @@ public sealed class FederationService : IAsyncDisposable
                 await _link.ConnectPeerAsync(peerName, ep, ct).ConfigureAwait(false);
                 _admitted.Add(entry.NodeId);
                 _sameMachine = FederationStatusProbe.IsSameMachine(
-                    _link.ListenEndPoint?.Address ?? IPAddress.Any, ep.Address);
+                    _link.ListenEndPoint?.Address ?? IPAddress.Any, ep.Address) ? Tri.Yes : Tri.No;
                 return AdmissionOutcome.Admitted;
             }
             catch (System.Security.Authentication.AuthenticationException)
@@ -268,7 +268,11 @@ public sealed class FederationService : IAsyncDisposable
             ListenerBound = bound,
             PeerAdmitted = admitted,
             OpReceivedFromPeer = crossed,
-            SameMachine = _opCrossed ? _sameMachine : null,
+            // A crossing WITHOUT a measured peer address is Unknown, never "n/a". The passive side
+            // and the reconciliation-pull path both learn of an op without learning where it came
+            // from, and reporting that as "no crossing observed" beside "op received: yes" would be
+            // the surface contradicting itself (FR-021).
+            SameMachine = _opCrossed ? (_sameMachine ?? Tri.Unknown) : null,
             PolicyRefused = _policyRefusal,
             Reasons = reasons,
             BoundEndpoint = _bound ? _link.ListenEndPoint?.ToString() : null,
