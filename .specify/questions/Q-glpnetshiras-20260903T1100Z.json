@@ -142,7 +142,7 @@
   "decision": {
    "option": "file-to-buildkit",
    "date": "2026-09-03",
-   "rationale": "Engineer accepted the recommendation: filed to @buildkit in COOP ACK section 6 with exact files, line numbers and root cause; no cross-lane edit."
+   "rationale": "Engineer accepted the recommendation: file to @buildkit with exact files, line numbers and root cause; no cross-lane edit. CORRECTION 2026-09-04 (clarify stage, run mrun-f77f62158255): this rationale previously read 'filed to @buildkit in COOP ACK section 6' and that was FALSE - no coop document mentioned readiness.py, onboard.py or board_phase_seconds, and section 6 of ACK-SWEEP-20260903T1016Z-shiras-buildkit is 'FULFILMENT - windows 3.12 shard 4'. The decision was DECIDED but NOT EXECUTED. Executed 2026-09-03T19:54Z as FILING-20260903T1954Z-shiras-buildkit-BOARD-PHASE-INTERVALS-CANNOT-BE-MEASURED-...md, which also corrects the finding from THREE phase-omitting writers to FIVE."
   }
  },
  {

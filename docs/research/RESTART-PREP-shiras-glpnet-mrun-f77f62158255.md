@@ -3,9 +3,13 @@
 
 # RESTART PREP — shiras / glpnet · run `mrun-f77f62158255`
 
-    written:  2026-09-03T16:10Z   (supersedes the 2026-09-02T16:00Z revision)
+    written:  2026-09-03T16:10Z, AMENDED 2026-09-04T05:00Z (supersedes the 2026-09-02T16:00Z rev)
     host:     SHIRAS (Linux)   repo: olamni-glp/GLPNET
-    branch:   100-cpm-central-package-management @ b77cf573 (pushed, in sync)
+    branch:   100-cpm-central-package-management
+              🔴 DO NOT TRUST A COMMIT HASH WRITTEN HERE -- this file is amended in place
+              and its header has already gone stale once (it named b77cf573 after 9d99478f had
+              landed). Read the tip with `git log --oneline -1` and `git status`; that is the
+              only in-sync claim this document is allowed to make.
     run:      mrun-f77f62158255 [open]  feature=glpnet-shiras-tidyup-and-scheduler-rootcause
     resume:   type exactly  →  resume marathon
     status:   ✅ SAFE TO RESTART.   ⚠️ SAFE TO REBOOT **ONLY IF YOU LOG BACK IN** — see §6.
@@ -144,15 +148,26 @@ and resolving paths; guard 6 prevents double-launch; resume args are
 ❌ **If the host reboots to a login screen and nobody logs in, NOTHING resumes** — the systemd
 path is broken, so linger does not save you.
 
-**Clean-env dry-run (tests the real boot path, not this session's):**
+**Clean-env dry-run — 🔴 A CONFIGURATION CHECK ONLY. IT DOES NOT VALIDATE THE BOOT PATH.**
+(corrected 2026-09-04, codex finding P2-5.) With all 15 lanes already up the launcher takes its
+`nothing to do` branch immediately, so this command exercises **no** terminal startup, **no**
+`claude` lookup on the boot PATH, and **no** launch behaviour whatsoever. Reading its EXIT 0 as
+reboot-safety is a FALSE GREEN — it is the same shape of false-clean this lane has now filed twice.
+What it does prove: the config parses, the 15 lanes are declared, and the launcher hardcodes its
+own lake root rather than inheriting one.
 
 ```bash
 env -u BUILDKIT_TAKT_LAKE -u BUILDKIT_TAKT_LAKE_FLEET \
   bash ~/.local/share/buildkit/deploy-home/onrestart/bk-onrestart.sh launch --dry-run
 ```
-→ `all 15 lane(s) already up - nothing to do.` EXIT 0, and the launcher **hardcodes**
-`BUILDKIT_TAKT_LAKE=/mnt/biwin/D_DRIVE/_takt-lake` rather than inheriting it. **The old §5.1
-inherited-env trap is CLOSED** (the Q-14 fix propagated).
+→ `all 15 lane(s) already up - nothing to do.` EXIT 0 — **the no-op branch, see above.** The
+launcher **hardcodes** `BUILDKIT_TAKT_LAKE=/mnt/biwin/D_DRIVE/_takt-lake` rather than inheriting it,
+so the old §5.1 inherited-env trap is **CLOSED** (the Q-14 fix propagated). That much is readable
+from the script itself and does not depend on the dry run.
+
+**The only evidence that the boot path actually works is the 2026-09-02T17:17 boot measurement in
+the table above** — where the systemd unit FAILED and the desktop autostart brought 15/15 back 16
+minutes later, via LOGIN. Nothing since has re-tested it.
 
 **The 15 lanes, in launch order:** ospark · tefl · ulpanit (`lang/hatzinor`) · olamnit · buildkit ·
 qhstate · crucible · glpnet · lejepa · mstack · yngraw (`research/yngenios`) · yngwin · ynglin ·

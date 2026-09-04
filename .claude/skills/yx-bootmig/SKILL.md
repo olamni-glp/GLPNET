@@ -88,7 +88,16 @@ outcome; defaulting is the defect this programme exists to remove.
            different-semantics case, which must ESCALATE with both provenances --
            never resolve to the nearest match.
         MEASURED OUTCOME (olamnit lane, P2 landed 2026-09-01, all five sources):
-           bound = 0 cross-repo edges. A measurement, not an absence of measurement.
+           bound = 0 cross-repo edges.
+        🔴 READ THAT NUMBER WITH THE DEFECT ABOVE, NOT AROUND IT (shiras/glpnet
+           2026-09-04, codex-corroborated). bound = 0 is NOT evidence that no cross-repo
+           edges exist. The ingest layer DROPS every cross-repo token at parse time, so
+           0 is exactly what a total loss and a true absence both produce -- the two are
+           indistinguishable by construction, and there is NO unresolved denominator to
+           tell them apart. Do NOT let a later phase consume bound = 0 as a completed
+           relation: P2 is landed as an EXECUTION, not as a VALID RESULT, and any phase
+           depending on the cross-repo relation must ESCALATE rather than proceed until
+           ingest preserves the tokens or publishes an unresolved count.
         Source: olamnit 20260831T1605Z URGENT · qhstate 20260831T1810Z §2 ·
                 FEED SWEEP gavriella-yngcor 20260903T0130Z (ACK requested of @glpnet)
 
@@ -185,8 +194,13 @@ an integration that does not exist.
 ## Honest limits, carried from the design
 
 - **One analysis cycle, `budget_stop` — not `converged`.** A second pass would likely surface more.
-- **One vantage.** Every measurement is from GAVRIELLA's disk. The sources' presence on ARIELLAS /
-  SHIRAS / OLAMNIT is **unmeasured**.
+- **One vantage — NO LONGER TRUE FOR SHIRAS (corrected 2026-09-04).** The *design* measurements
+  are all from GAVRIELLA's disk, and ARIELLAS / OLAMNIT remain **unmeasured**. **SHIRAS is now
+  MEASURED** and disagrees with M3: `git rev-parse` + `git ls-files` there find **all four targets
+  are real git repos** (`yngenios-windows` 5,149 tracked · `yngenios-linux` 1,010 · `yngenios-app`
+  1,686 · `yngenios` 3,418). Two hosts, two different answers, both measured — so **re-measure on
+  your own host and never inherit either verdict.** The refusal logic itself is unchanged and
+  correct wherever the roots really are absent.
 - **13 singleton claims were demoted** for lack of disjoint corroboration and **may not be used as
   design constraints** without a second independent derivation; **4 were refuted outright**.
 - **`yx` already exists** in the yngenios repo (M1): `yx = yx_distill.cli:main`, 69 modules, prior
