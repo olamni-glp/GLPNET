@@ -1,0 +1,140 @@
+[
+  {
+    "qid": "Q-glpnetshiras-35",
+    "header": "Tab layout",
+    "block": "Your last two directives specify different reboot tab topologies for this host, and I have already applied the earlier one.",
+    "origin": "contradiction",
+    "severity": "medium",
+    "background": [
+      "Directive A (earlier today) was explicit and split: relaunch ospark, tefl, hatzinor(ulpanit), olamnit, buildkit, qhstate, crucible 'as tabs in one terminal window' AND THEN glpnet, lejepa, mstack, yngraw, yngwin, ynglin, yngapp, yngcor 'as tabs in a second terminal window'.",
+      "Directive B (latest) lists all fifteen lanes in a single sequence ending 'as tabs in a terminal window' - one window, no split.",
+      "APPLIED ALREADY: I set layout=2 and registered the 8 window-2 lanes, backing the config up first as config.json.bak-20260904-glpnet-preTwoWindow. Verified: layout=2, WINDOW 1 (7) ospark/ulpanit/tefl/buildkit/crucible/olamnit/qhstate, WINDOW 2 (8) glpnet/lejepa/yngraw/mstack/yngcor/yngapp/ynglin/yngwin, 15 total, and preflight returns SAFE TO REBOOT exit 0.",
+      "The config is HOST-level and shared by all 15 lanes on SHIRAS, so whichever way this goes it is one lane changing a file every lane depends on. Reverting is one command (bk-onrestart.sh set-layout 1) and the backup is in place."
+    ],
+    "impact_if_unanswered": "The host reboots into a topology that may not be the one you want, and because the config is host-level a second lane may notice the mismatch and flip it back, producing a config race across lanes during the one operation where the fleet cannot afford surprises.",
+    "options": [
+      {
+        "key": "keep-two",
+        "label": "Keep two windows (currently applied)",
+        "consequence": "Matches your explicit split with the named 7/8 membership, is already applied, verified, and preflight-green. Costs nothing further. Risk: if directive B was a deliberate revert, the host comes back in the wrong shape.",
+        "size": "nano",
+        "reversibility": "reversible"
+      },
+      {
+        "key": "revert-one",
+        "label": "Revert to one window, all 15 tabs",
+        "consequence": "Takes the LATEST instruction as authoritative, which is the rule I have applied everywhere else this session. One command plus a re-verify; the backup makes it exact. Risk: loses the 7/8 separation you took the trouble to enumerate.",
+        "size": "nano",
+        "reversibility": "reversible"
+      },
+      {
+        "key": "defer-to-host-owner",
+        "label": "Leave it and let a host-level owner decide",
+        "consequence": "Avoids one lane repeatedly rewriting shared host config on alternating readings. But it leaves the topology in whatever state the last writer left it, which is exactly the ambiguity being asked about.",
+        "size": "nano",
+        "reversibility": "reversible"
+      }
+    ],
+    "recommendation": {
+      "option": "keep-two",
+      "because": "Directive A named the two groups and their exact membership, which reads as deliberate design rather than phrasing; directive B's single list is the same 15 lanes in the same order and reads as a restatement, not a revert. It is applied, verified and preflight-green, and reverting is one command if you tell me B was intentional."
+    },
+    "decision": {
+      "option": "revert-one",
+      "date": "2026-09-04",
+      "rationale": "Engineer chose the LATEST instruction over my recommendation: revert to ONE window with all 15 tabs. APPLIED and verified 2026-09-04T08:58Z - layout=1, WINDOW 1 (15 lanes), total 15, none lost; backup config.json.bak-20260904-glpnet-preTwoWindow retained."
+    }
+  },
+  {
+    "qid": "Q-glpnetshiras-36",
+    "header": "L0 fit",
+    "block": "Directive 8 requires the designated fleet elector in L0, but a process spawner may not be L0-admissible at all under the lattice rules.",
+    "origin": "assumption-weakness",
+    "severity": "high",
+    "background": [
+      "You designated yng-broker/yng-guardian the PBFT leader elector, fleetwide coordinator and fleetwide signature verifier on all four hosts.",
+      "MEASURED 2026-09-04: it exists in yngenios-windows ONLY (100 tracked files; 0 in yngenios/L0, 0 in yngenios-linux, 0 in yngenios-app), it is built to net10.0 against the standing net11 mandate, 86 of the 100 files are checked-in bin/Release DLLs, it is not running and not on PATH, and grep -rilE 'pbft|raft|paxos|election|quorum|signature' over its source returns only TWO FALSE POSITIVES. What exists is a spawn/convergence broker: BrokerCore, Reconciler, Registry, SpawnEngine, SpawnConvergence, StopPath.",
+      "Directive 8 says ALL cross-platform code must be L0 in yngenios as a shared capability, critical and mandatory. A fleetwide elector is the most cross-platform component in the programme - every host runs one.",
+      "But LATTICE.md rules L0 as byte-exact verbatim source, ALGORITHMIC CORE ONLY, with ZERO platform actions and zero third-party runtime deps. Spawning and supervising OS processes is a platform action by definition, so the component as it stands appears L0-INADMISSIBLE."
+    ],
+    "impact_if_unanswered": "Either the spawner is moved into L0 and breaks the lattice invariant that L0 carries no platform actions - corrupting the separation you called mandatory - or directive 8 is quietly not applied to the one component that most needs to be cross-platform, and the Linux hosts get no elector at all.",
+    "options": [
+      {
+        "key": "split-core-and-actuation",
+        "label": "Split: election/verification core to L0, spawn/actuation to L1a/L1b",
+        "consequence": "Preserves the lattice invariant AND satisfies directive 8 for the part that must be shared. The consensus algorithm, quorum arithmetic and signature verification are pure and belong in L0; process spawning and host supervision stay per-platform. Costs a real refactor of a prototype and a contract between the halves.",
+        "size": "maxi",
+        "reversibility": "reversible"
+      },
+      {
+        "key": "move-whole-thing",
+        "label": "Move the whole component into L0 as-is",
+        "consequence": "Fastest route to 'directive 8 satisfied' and keeps one codebase. It is ONE-WAY: it puts platform actions inside L0, and it FORECLOSES the lattice's 'algorithmic core only, zero platform actions' invariant — once L0 contains a process spawner that invariant is no longer true, every later reviewer cites this component as precedent for the next exception, and the byte-exact L0 hash guarantee now covers host-specific spawn code that cannot be identical across platforms. Recovering it means re-splitting later against accumulated dependants.",
+        "size": "midi",
+        "reversibility": "one-way"
+      },
+      {
+        "key": "keep-per-platform",
+        "label": "Keep it per-platform; exempt it from directive 8",
+        "consequence": "Honest about what the component is and avoids polluting L0, but leaves each host with its own elector implementation - which for a CONSENSUS component means four implementations that must agree bit-for-bit, the worst possible thing to duplicate.",
+        "size": "midi",
+        "reversibility": "reversible"
+      }
+    ],
+    "recommendation": {
+      "option": "split-core-and-actuation",
+      "because": "It is the only option that keeps both of your rules true at once. Consensus and signature verification are exactly the kind of pure algorithmic core L0 exists for, and process spawning is exactly what it forbids; the split is therefore not a compromise but the correct decomposition. It also stops four hosts each carrying their own copy of a consensus algorithm, which is the one thing that must never diverge."
+    },
+    "decision": {
+      "option": "split-core-and-actuation",
+      "date": "2026-09-04",
+      "rationale": "Engineer accepted the recommendation: the election/quorum/signature-verification CORE goes to L0 (pure, algorithmic, what L0 exists for) and the spawn/host actuation stays in L1a/L1b (platform actions, which L0 forbids). Owners: @yngwin holds the code today, @yngcor holds L0. NOT glpnet work - recorded here because glpnet measured it."
+    }
+  },
+  {
+    "qid": "Q-glpnetshiras-37",
+    "header": "Merge grant",
+    "block": "The merge permission I escalated under Q-31 has not been granted, and it now blocks the PR, every release, and the fleet-visibility of a safety correction.",
+    "origin": "measurement",
+    "severity": "critical",
+    "background": [
+      "Q-31 decided test-and-merge. I tested on CI that was 5/5 GREEN at tip db4ce9a1: `git pull --ff-only` SUCCEEDS and `git push` SUCCEEDS (so that half of the old record was stale), but `gh pr merge 279 --merge` is REFUSED by the Claude Code auto mode classifier.",
+      "I did NOT route around it by merging locally and pushing develop - that accomplishes the denied action under another name, so the block is intact and deliberate.",
+      "CONSEQUENCE 1: PR #279 cannot land, so the committed [SUPERSEDED] yx-bootmig correction is invisible to every peer - `git show origin/develop:.claude/skills/yx-bootmig/SKILL.md | grep -c SUPERSEDED` returns 0 on develop while the fix sits on the branch.",
+      "CONSEQUENCE 2: `buildkit release` also merges a PR to main, so the Q-34 decision to supersede the S6 release hold is DECIDED BUT UNEXECUTABLE. The branch is now 15 commits ahead of develop and develop is 17 ahead of main."
+    ],
+    "impact_if_unanswered": "Every era this lane completes ends at a green PR that nobody merges. Work accumulates unreleased, safety corrections stay unreachable by peers, and the lane's contribution to the fleet is gated on another lane noticing - which has already cost three days on the yx-bootmig row alone.",
+    "options": [
+      {
+        "key": "grant-permission",
+        "label": "Grant it: /permissions add Bash(gh pr merge:*)",
+        "consequence": "One action, permanent for this and future sessions; the lane then owns its own merges and can execute the release you already authorised under Q-34. Reversible by removing the rule. This is the option I recommended under Q-31 as the durable follow-up.",
+        "size": "nano",
+        "reversibility": "reversible"
+      },
+      {
+        "key": "peer-merge-permanent",
+        "label": "Keep peer-merge as the standing contract",
+        "consequence": "Preserves the separation the classifier enforces and costs no permission change; peers merged #259/#264/#267/#274 before. But it makes every release depend on another lane's attention, and the current backlog shows that dependency failing silently rather than loudly.",
+        "size": "nano",
+        "reversibility": "reversible"
+      },
+      {
+        "key": "merge-only-releases",
+        "label": "Grant merge narrowly, for release PRs only",
+        "consequence": "Unblocks `buildkit release` while keeping feature-PR merges under peer review, which is the tighter of the two risks. Requires a narrower permission rule that may be awkward to express, since `gh pr merge` does not distinguish a release PR from any other by command shape.",
+        "size": "nano",
+        "reversibility": "reversible"
+      }
+    ],
+    "recommendation": {
+      "option": "grant-permission",
+      "because": "The block is not protecting anything a review would catch: CI is 5/5 green, the work is codex-reviewed across two passes with all 13 findings remediated, and you have already authorised the release under Q-34. What it is currently protecting against is this lane finishing its own work. The narrow variant sounds safer but cannot be expressed cleanly in a command-shape rule, so it would fail open or fail confusing."
+    },
+    "decision": {
+      "option": "grant-permission",
+      "date": "2026-09-04",
+      "rationale": "Engineer accepted the recommendation: grant Bash(gh pr merge:*) via /permissions. Until the rule is live in this session the merge remains refused; on the next attempt that succeeds, merge PR #279 then execute the release authorised under Q-34."
+    }
+  }
+]
