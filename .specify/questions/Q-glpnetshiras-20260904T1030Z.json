@@ -1,0 +1,56 @@
+[
+  {
+    "qid": "Q-glpnetshiras-38",
+    "header": "iroh in L0",
+    "block": "Integrating iroh as the QUIC implementation \"from L0 upward\" collides with the recorded L0 contract, because a QUIC network stack is inherently a platform action with third-party runtime dependencies.",
+    "origin": "contradiction",
+    "severity": "critical",
+    "background": [
+      "MEASURED 2026-09-04: iroh is GREENFIELD - zero tracked files matching 'iroh' in GLPNET, yngenios, yngenios-windows, yngenios-linux and yngenios-app. There is also NO Rust toolchain on SHIRAS (no cargo, no rustc), and iroh is a Rust crate.",
+      "This lane's own durable record (restart-prep, sourced from yngenios/docs/architecture/LATTICE.md in a prior session) states L0 is byte-exact verbatim source, hash-verified against L0/MANIFEST.sha256, ALGORITHMIC CORE ONLY, with ZERO platform actions and ZERO third-party runtime deps. HONESTY: LATTICE.md is not reachable from this host today, so I am citing this lane's recorded reading, not a fresh one.",
+      "A QUIC stack is the opposite of that on both counts: it binds sockets (platform action) and it is third-party (iroh/quinn). This is the SAME shape as Q-36, where you ruled the yng-broker spawner must be SPLIT - election core to L0, spawn/actuation to L1a/L1b - rather than moved wholesale into L0.",
+      "GLPNET already ships a working QUIC stack on System.Net.Quic: QuicLinkTransport ListenAsync/AcceptConnectionAsync, QuicEndpoint, and specs/064-durable-listener-service-box at 14/14 tasks with re-bind-on-boot. As of today it is EXECUTED-verified working on this host (IsSupported=True once libmsquic is on the loader path). So this is not a choice between iroh and nothing; it is a choice between iroh and a shipped, working stack.",
+      "THE PRIZE, and it is large: iroh's NodeId is an Ed25519 public key - a MINTED, STABLE, ADDRESS-INDEPENDENT, SELF-CERTIFYING identity - and iroh discovery resolves NodeId to current addresses. That is EXACTLY the contract I specified for YnetOp.Resolve and exactly what ospark's R-E4 refuses all 93 candidacies for want of. iroh may solve the fleet's identity gate off the shelf rather than us designing it."
+    ],
+    "impact_if_unanswered": "Either a Rust QUIC stack is pulled into L0 and the byte-exact, zero-platform-action, zero-third-party-dep invariant that the whole lattice rests on is broken at its foundation, or the directive is quietly not applied and the fleet keeps hand-designing the minted identity that iroh already implements and has hardened in production.",
+    "options": [
+      {
+        "key": "split-identity-core-from-transport",
+        "label": "Split: adopt iroh's identity MODEL in L0, keep the iroh stack at L1",
+        "consequence": "L0 gets only the pure part - the NodeId contract (Ed25519 key as identity, Resolve maps id to address, Refused is valid), which is algorithmic and dependency-free and satisfies the zero-platform-action rule. The iroh RUNTIME (sockets, relay, hole-punching, the Rust crate) sits at L1a/L1b behind the existing ILinkTransport/LinkScheme seam. Consistent with your Q-36 ruling on exactly this shape. Costs an FFI or sidecar boundary and a Rust toolchain on each host.",
+        "size": "saga",
+        "reversibility": "reversible"
+      },
+      {
+        "key": "iroh-wholesale-l0",
+        "label": "Put iroh in L0 as directed, wholesale",
+        "consequence": "Literal compliance with the directive and one stack everywhere. It is ONE-WAY: it FORECLOSES the L0 invariant permanently - once L0 contains a third-party Rust network runtime, 'byte-exact algorithmic core, zero platform actions, zero third-party runtime deps' is false, the MANIFEST.sha256 guarantee now covers a foreign build product, every later exception cites this as precedent, and re-splitting later must fight every dependant added meanwhile.",
+        "size": "saga",
+        "reversibility": "one-way"
+      },
+      {
+        "key": "keep-system-net-quic",
+        "label": "Keep System.Net.Quic; take only iroh's identity IDEA",
+        "consequence": "Zero new dependency, zero new toolchain, and the shipped stack already works and is verified on this host today. We adopt the Ed25519-NodeId identity model by design rather than by dependency. Loses iroh's genuinely hard parts - NAT hole-punching, relays, peer discovery - which we would then have to build or do without.",
+        "size": "maxi",
+        "reversibility": "reversible"
+      },
+      {
+        "key": "prototype-first",
+        "label": "Prototype iroh at L1 first; decide placement on evidence",
+        "consequence": "Refuses to place an unmeasured dependency in the fleet's foundation, and answers the FFI/toolchain/footprint questions with measurement instead of assumption. Slowest to a ruling, and leaves the identity gate open for longer while R-E4 keeps refusing every candidacy.",
+        "size": "maxi",
+        "reversibility": "reversible"
+      }
+    ],
+    "recommendation": {
+      "option": "split-identity-core-from-transport",
+      "because": "It is the only option that takes the prize without paying the irreversible price. The valuable half of iroh for this fleet is the IDENTITY model, and that half is pure, dependency-free and belongs in L0; the transport half is inherently platform-bound and belongs at L1, behind a seam GLPNET already owns. It also matches the decomposition you already ruled for yng-broker under Q-36, so the lattice gets one consistent rule rather than two exceptions."
+    },
+    "decision": {
+      "option": "split-identity-core-from-transport",
+      "date": "2026-09-04",
+      "rationale": "Engineer accepted the recommendation: iroh's IDENTITY MODEL (NodeId contract - public key is identity, Resolve maps id to address, Refused is valid) goes to L0 as pure dependency-free algorithmic core; the iroh RUNTIME (sockets, relay, hole-punching, Rust crate) sits at L1a/L1b behind the ILinkTransport/LinkScheme seam GLPNET owns. Same decomposition as Q-36 for yng-broker, so the lattice gets ONE consistent rule. Rejected wholesale-into-L0 as one-way. OPEN SUB-QUESTION recorded, not decided: whether iroh ships vendored-as-Rust (new per-host toolchain prerequisite, cargo absent on SHIRAS and ARIELLAS - same class as the libmsquic gap it removes) or as a prebuilt native library."
+    }
+  }
+]

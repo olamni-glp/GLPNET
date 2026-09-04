@@ -1,0 +1,227 @@
+{
+  "schema_version": "BK-STD-2",
+  "set_id": "Q-GLPNETG27-20260904T1600Z",
+  "lane": "gavriella",
+  "repo": "glpnet",
+  "raised_at": "2026-09-04T16:00:00+00:00",
+  "answered_at": "2026-09-04T16:20:00+00:00",
+  "context": "Session start after a context CLEAR (not a compaction) on host GAVRIELLA, lane glpnet. Located objectively per CLAUDE.md Restart-Resume rather than from a summary. All four questions were presented interactively via AskUserQuestion per the CLAUDE.md BK-STD-2 carve-out, and all four were answered to the recommendation.",
+  "questions": [
+    {
+      "qid": "Q-GLPNETG27-01",
+      "header": "Next ERA",
+      "origin": "contradiction",
+      "severity": "critical",
+      "question": "Which is the MANDATORY next ERA for the glpnet lane on GAVRIELLA, given the standing ruling that an ERA is a FEATURE run specify-to-close and never atomised, so this lane runs exactly one?",
+      "block": "No era can be opened, so every downstream pipeline stage the directive mandates is blocked at step 0.",
+      "background": [
+        "The live marathon on this host is mrun-20d9230f767b / 078-verification-receipts at 28/111 steps with 214 outstanding items, most of them PARKED awaiting engineer rulings.",
+        "buildkit-roadmap next independently names rank 21 front-end-goal-term-acceptance as the next-to-build, which is a different feature entirely.",
+        "The engineer directive names a third thing: QUIC / ynet / oracle-federation work, arriving as an ERA REQ from @gavriella-buildkit at 20260904T1045Z with ACK REQUIRED.",
+        "These three are mutually exclusive under the one-feature-per-era ruling, so the lane cannot satisfy the directive and the roadmap and the open run at the same time."
+      ],
+      "impact_if_unanswered": "The lane would guess between three defensible candidates, and a wrong guess spends an entire era on work the engineer did not ask for while the fleet waits on ACK #2.",
+      "options": [
+        {
+          "key": "quic-era",
+          "label": "QUIC federation era",
+          "size": "maxi",
+          "reversibility": "reversible",
+          "consequence": "Unblocks the single-golden-board directive and the PBFT election, neither of which can proceed without inter-host transport; the oracle reports the 4-host board blocked solely on transport, and this session proved the transport is unrun rather than absent. Defers 078 and rank-21, but 078's marathon run stays open and resumable so nothing is discarded."
+        },
+        {
+          "key": "finish-078",
+          "label": "Finish 078 verification-receipts",
+          "size": "midi",
+          "reversibility": "reversible",
+          "consequence": "Closes a security-relevant hole at instances.py:204 where a tampered receipt can claim all 13 SC-001 instances, and stops the 214-item backlog growing. Leaves the fleet transport blocker untouched with three hosts waiting on ACK #2."
+        },
+        {
+          "key": "rank-21",
+          "label": "Rank-21 front-end goal-term",
+          "size": "midi",
+          "reversibility": "reversible",
+          "consequence": "The only candidate that is core-GLP language work rather than fleet infrastructure; restores Dart/C-sharp REPL parity and absorbs three documented footguns. Contributes nothing to the QUIC, oracle or QHSM directive."
+        },
+        {
+          "key": "engineer-names",
+          "label": "Engineer names a different feature",
+          "size": "nano",
+          "reversibility": "reversible",
+          "consequence": "The lane stops guessing and builds exactly what is intended, at the cost of one more round trip before any work starts."
+        }
+      ],
+      "recommendation": {
+        "option": "quic-era",
+        "because": "It beats finish-078 because it is the only candidate on the fleet critical path, and it beats rank-21 because this session reduced it from a build to a configuration job: the probe binds 0.0.0.0:47890 here and all four hosts were measured as routable L2 neighbours on one flat /24."
+      },
+      "decision": {
+        "option": "quic-era",
+        "date": "2026-09-04",
+        "rationale": "Answered to the recommendation. The measured critical path: transport proven unrun rather than absent, and all four hosts proven routable on one subnet, so the remaining work is configuration plus a handshake. The deferred candidates lose nothing - 078's run stays open and rank-21 stays at the head of the roadmap."
+      }
+    },
+    {
+      "qid": "Q-GLPNETG27-02",
+      "header": "App Control",
+      "origin": "measurement",
+      "severity": "critical",
+      "question": "Smart App Control is ON and ENFORCING on GAVRIELLA, blocking freshly-built unsigned net11.0 assemblies at load; how should C-sharp daemons be unblocked?",
+      "block": "No C-sharp daemon in the directive can be hosted as a long-running process on this host.",
+      "background": [
+        "Measured state is VerifiedAndReputablePolicyState=1 and CodeIntegrityPolicyEnforcementStatus=2, and a freshly-built unsigned net11.0 assembly was blocked with FileLoadException, Application Control policy has blocked this file (0x800711C7), while an assembly built minutes earlier still ran.",
+        "This is a false green that SURVIVES CI: dotnet build reports 0 errors and dotnet test passes, and only then does the daemon refuse to load at runtime.",
+        "It is a live candidate explanation for yng-broker being up 14 hours on this host with exactly one op emitted and a dead spawn capability.",
+        "The affected deliverables are yx-proxy, the refactored bk-beacon, the QHSM/QMSM terminal, the 3270 terminal and the /bk-onrestart C-sharp reimplementation - that is most of the directive."
+      ],
+      "impact_if_unanswered": "Every C-sharp daemon in the directive stays undeliverable on this host while continuing to look healthy in CI, so the gap is invisible until a daemon is started and silently fails to load.",
+      "options": [
+        {
+          "key": "code-sign",
+          "label": "Code-sign in buildkit ship",
+          "size": "midi",
+          "reversibility": "reversible",
+          "consequence": "Keeps the security control fully intact and fixes the problem fleet-wide rather than per-host, since a signed assembly is admitted on any host with SAC enforcing. Costs a signing certificate and a pipeline change, making it the slowest option to first-run."
+        },
+        {
+          "key": "wdac-exception",
+          "label": "WDAC exception for our trees",
+          "size": "mini",
+          "reversibility": "reversible",
+          "consequence": "Fastest path to a running daemon, but trades a real currently-enforcing security control for build convenience on the host that holds the fleet signing and verification role, and leaves a standing hole rather than a one-time action. The rule can be removed but anything that ran under it cannot be un-run."
+        },
+        {
+          "key": "tests-only",
+          "label": "Tests-only, no daemons",
+          "size": "micro",
+          "reversibility": "reversible",
+          "consequence": "Zero security change and demonstrably works for proving mechanisms, as used for this week's federation proof. Structurally cannot host a long-running daemon, so it defers the directive rather than delivering it."
+        },
+        {
+          "key": "sac-off",
+          "label": "Turn Smart App Control off",
+          "size": "nano",
+          "reversibility": "one-way",
+          "consequence": "Unblocks everything immediately with no per-binary work, but removes the control for the entire machine and forecloses ever restoring it - Windows cannot re-enable Smart App Control once disabled without a full OS reinstall. Explicitly not recommended."
+        }
+      ],
+      "recommendation": {
+        "option": "code-sign",
+        "because": "It beats wdac-exception because it preserves the security control instead of trading it away on the very host that holds the fleet signing role, and unlike tests-only it can actually host a daemon; the extra cost is a certificate and one pipeline change, paid once for the whole fleet."
+      },
+      "decision": {
+        "option": "code-sign",
+        "date": "2026-09-04",
+        "rationale": "Answered to the recommendation. The security control is preserved rather than traded away, and the fix is fleet-wide: a signed assembly is admitted on every host with SAC enforcing, not only where an exception was added. The one-way option of disabling SAC was explicitly declined."
+      }
+    },
+    {
+      "qid": "Q-GLPNETG27-03",
+      "header": "Term space",
+      "origin": "measurement",
+      "severity": "critical",
+      "question": "Before the first cross-host board merge, what is a leader-election term?",
+      "block": "No federated board merge can safely happen, so the four-oracle single golden board cannot be assembled.",
+      "background": [
+        "The local ynet board holds one leader_claim with term 5961694, and the formula was verified exactly as term = floor(unix_ts / 300), a five-minute wall-clock bucket, while BK-ELECT-1 is on term 1.",
+        "Every leader rule resolves by MAX-TERM, so folding the two boards makes the clock claim win by 5,961,693 terms.",
+        "The code that emitted the claim has since been DELETED, but on an append-only CRDT board deleting the emitter does not delete the op - the fossil keeps voting, and suppression is undetectable by design.",
+        "A clock ballot also advances fastest for the host that did the least work: shiras measured boards stale 2.1 to 7.4 days, roughly 2,130 buckets of unearned advantage on reconnect."
+      ],
+      "impact_if_unanswered": "The merge is the irreversible step - max-term is monotone, so once the boards fold together no later op can lower the winning term and the fleet is permanently led by a fossil of deleted code.",
+      "options": [
+        {
+          "key": "namespaced-triple",
+          "label": "(space_id, era_counter, host_id)",
+          "size": "midi",
+          "reversibility": "reversible",
+          "consequence": "Terms become a namespaced triple compared only within a space, with era_counter advancing only on a genuine leadership event and never on the clock, so the fossil lives in a different space and can never beat term 1 and no host gains advantage from being offline. Reversible only while done BEFORE merging; four lanes independently converged on this model."
+        },
+        {
+          "key": "superseding-op",
+          "label": "Additive superseding op first",
+          "size": "micro",
+          "reversibility": "reversible",
+          "consequence": "The honest fix for the instance, since suppression is undetectable on this board and an additive correction is the only visible one, and it is one decision rather than a four-host code change. Does not fix the clock ballot, so the stale-host-wins problem returns at the next election."
+        },
+        {
+          "key": "both",
+          "label": "Both: supersede then re-key",
+          "size": "maxi",
+          "reversibility": "reversible",
+          "consequence": "Fixes both the live instance and the underlying mechanism, and is the only option leaving no known term hazard standing. The most work, and it delays the first merge."
+        },
+        {
+          "key": "no-federate",
+          "label": "Do not federate boards yet",
+          "size": "nano",
+          "reversibility": "reversible",
+          "consequence": "Avoids the irreversible step entirely while still allowing the cross-host handshake to be proven by federating transport only and carrying no board ops. Leaves the single golden board undelivered - the safe hold."
+        }
+      ],
+      "recommendation": {
+        "option": "namespaced-triple",
+        "because": "It beats superseding-op because it removes the defect as well as the instance, and it beats no-federate because it unblocks the board rather than parking it; crucially it is only reversible in the window before the first merge, so deciding it now costs nothing and deciding it later costs everything."
+      },
+      "decision": {
+        "option": "namespaced-triple",
+        "date": "2026-09-04",
+        "rationale": "Answered to the recommendation, and taken inside the only window in which the choice is reversible. It removes both the live fossil hazard, which becomes non-comparable in a different space, and the underlying defect of a wall-clock ballot that rewards absence. Four lanes had independently converged on the same model, so this ratifies a fleet position rather than imposing a new one."
+      }
+    },
+    {
+      "qid": "Q-GLPNETG27-04",
+      "header": "Reach auth",
+      "origin": "missing-requirement",
+      "severity": "high",
+      "question": "Is the lane authorised to make GAVRIELLA reachable for the cross-host QUIC handshake that discharges ACK #2 of the ERA REQ?",
+      "block": "ACK #2 stays open, so the four-oracle single board cannot be demonstrated between two real machines.",
+      "background": [
+        "The only inbound firewall rules present are per-binary auto-rules for glp_quic_probe and quicprobe.exe on the Public profile, with no rule for a broker, guardian or oracle daemon.",
+        "QUIC is UDP, so a TCP allow rule admits nothing and a port scan for a listening TCP socket reports absence where a healthy QUIC service exists.",
+        "QuicLinkTransport pin-checks BOTH directions and an empty peerPins dictionary admits nobody, so a handshake needs each host's certificate plus the other three SPKI pins exchanged; this host's current pin is damqmgPnyTO+6darp2yNeCiOaiWxaomPkkMcuLLoU6k=.",
+        "Opening an inbound port and distributing certificate material are both outward-facing changes to host security posture, which the lane will not make on its own initiative."
+      ],
+      "impact_if_unanswered": "ACK #2 stays open indefinitely and the estate keeps citing a mechanism proof taken between two roots on one machine as though it were evidence of cross-host federation.",
+      "options": [
+        {
+          "key": "dev-scoped",
+          "label": "Yes - dev certs, scoped rule",
+          "size": "mini",
+          "reversibility": "reversible",
+          "consequence": "One inbound UDP allow rule scoped to the chosen port and to the Private profile and 192.168.0.0/24 only, not Public and not Any, with CreateDevCert material and the four SPKI pins exchanged over the existing coop channel. Exposure is bounded twice - unreachable off-LAN, and mTLS pinning independently refuses any unpinned dialer - and both halves are removable."
+        },
+        {
+          "key": "real-identity",
+          "label": "Yes, but real identity not dev certs",
+          "size": "midi",
+          "reversibility": "reversible",
+          "consequence": "Avoids ever standing up a second identity scheme, a real concern since two auth models are already live - Ed25519 versus macaroons - with no board-of-record ruling. Slower to first handshake and couples ACK #2 to an unresolved identity ruling."
+        },
+        {
+          "key": "firewall-only",
+          "label": "Firewall yes, certs later",
+          "size": "micro",
+          "reversibility": "reversible",
+          "consequence": "Proves reachability without distributing any trust material, but cannot complete a handshake because empty peerPins admits nobody. Converts one unknown into a known and no more."
+        },
+        {
+          "key": "refuse",
+          "label": "No - do not open anything",
+          "size": "nano",
+          "reversibility": "reversible",
+          "consequence": "Zero new exposure, with the existing mechanism proof standing as the deliverable - an op crossing mTLS QUIC between two roots on one machine with the fold converging exactly once, 190/190 green. The cross-host handshake is not attempted and ACK #2 would be reported REFUSED BY POLICY rather than pending."
+        }
+      ],
+      "recommendation": {
+        "option": "dev-scoped",
+        "because": "It beats real-identity because it does not couple a transport proof to an unresolved identity ruling, and it beats firewall-only because it can actually complete the handshake; the exposure it adds is bounded by the LAN scope and again by SPKI pinning, and dev certs are throwaway by design."
+      },
+      "decision": {
+        "option": "dev-scoped",
+        "date": "2026-09-04",
+        "rationale": "Answered to the recommendation. Authorises the minimum change that can actually discharge ACK #2: a single UDP rule scoped to the Private profile and the 192.168.0.0/24 the four hosts were measured to share, with throwaway dev certificates. Exposure is bounded twice over and both halves are removable."
+      }
+    }
+  ]
+}
