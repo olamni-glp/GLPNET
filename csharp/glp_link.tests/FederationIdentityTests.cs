@@ -261,6 +261,38 @@ public sealed class FederationIdentityTests : IDisposable
         Assert.Empty(Directory.GetFiles(_dir, "*.tmp-*"));
     }
 
+    /// <summary>
+    /// A pin and a node id are THE SAME 32 BYTES in two encodings (@gavriella-glpnet, 19:30Z). They
+    /// must therefore never be confused, and both must come from one derivation — an operator who
+    /// pastes hex into a base64 pin field gets every valid peer refused, and the refusal looks like
+    /// a security event rather than the configuration error it is.
+    /// </summary>
+    [Fact]
+    public void NodeIdAndPin_AreTheSameBytesInTwoEncodings()
+    {
+        var identity = FederationIdentity.LoadOrCreate("host-a", _dir);
+
+        Assert.Equal(32, Convert.FromHexString(identity.NodeId).Length);
+        Assert.Equal(Convert.FromBase64String(identity.Pin), Convert.FromHexString(identity.NodeId));
+        Assert.NotEqual(identity.Pin, identity.NodeId);                  // never interchangeable as strings
+        Assert.Equal(identity.NodeId, identity.NodeId.ToLowerInvariant()); // ordinal tables need one case
+    }
+
+    /// <summary>
+    /// The SPKI must be published too: a pin is a HASH and cannot verify a signature, so without it
+    /// an admitted peer can forge ops in another admitted peer's name.
+    /// </summary>
+    [Fact]
+    public void Spki_IsPublishedAndIsWhatThePinHashes()
+    {
+        var identity = FederationIdentity.LoadOrCreate("host-a", _dir);
+
+        var spki = Convert.FromBase64String(identity.Spki);
+        Assert.Equal(
+            System.Security.Cryptography.SHA256.HashData(spki),
+            Convert.FromBase64String(identity.Pin));
+    }
+
     /// <summary>The env var is a real seam: it, not the user profile, decides where keys live.</summary>
     [Fact]
     public void KeystoreEnvVar_OverridesTheDefaultDirectory()

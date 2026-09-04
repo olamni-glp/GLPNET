@@ -71,6 +71,13 @@ var identity = QuicLinkTransport.LoadFederationIdentity("glpnet-probe");
 X509Certificate2 cert = identity.Cert;
 string pin = identity.Pin;
 Console.WriteLine($"   local cert SPKI pin : {pin}");
+// Publish all THREE. A pin and a node id are the same 32 bytes in different encodings, and an
+// operator who pastes one into the other's field gets every valid peer refused by what LOOKS like
+// a security event (@gavriella-glpnet, 2026-09-04T19:30Z). The SPKI is separate again: a pin is a
+// hash and cannot verify a signature, so without it an admitted peer can forge ops in another
+// admitted peer's name.
+Console.WriteLine($"   node_id (hex)       : {identity.NodeId}");
+Console.WriteLine($"   spki (base64)       : {identity.Spki}");
 Console.WriteLine($"   keystore            : {identity.PfxPath}");
 Console.WriteLine($"   identity            : {(identity.Created ? "MINTED (first run on this host)" : "LOADED (stable across restarts)")}");
 Console.WriteLine("   (a peer must carry this pin to be admitted; reachability alone is refused)");

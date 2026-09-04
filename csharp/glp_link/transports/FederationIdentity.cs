@@ -55,6 +55,24 @@ namespace GlpRuntime.Link.Transports;
 public sealed record FederationIdentity(
     X509Certificate2 Cert, string Pin, string PfxPath, bool Created)
 {
+    /// <summary>
+    /// The same 32 bytes as <see cref="Pin"/>, in lowercase HEX rather than base64 — the fleet's
+    /// <c>node_id</c>. Published because @gavriella-glpnet measured (2026-09-04T19:30Z) an operator
+    /// writing a hex node id into a base64 pin field: **every correctly configured peer was refused,
+    /// and the refusal presented as a pin mismatch — a configuration bug wearing a security event's
+    /// clothes.** Exposing both encodings from ONE derivation is how that stops being possible.
+    /// </summary>
+    public string NodeId => Convert.ToHexString(
+        SHA256.HashData(Cert.PublicKey.ExportSubjectPublicKeyInfo())).ToLowerInvariant();
+
+    /// <summary>
+    /// The full SubjectPublicKeyInfo, base64. **A pin is a hash and therefore cannot verify a
+    /// signature** — an admitted peer could otherwise forge ops in another admitted peer's name,
+    /// including the leadership tie-break, which is monotone and unfixable after a CRDT merge.
+    /// Publish this beside the pin so an op's claimed author can actually be checked.
+    /// </summary>
+    public string Spki => Convert.ToBase64String(Cert.PublicKey.ExportSubjectPublicKeyInfo());
+
     /// <summary>Env var overriding the keystore DIRECTORY (a deployment/test seam, not a default).</summary>
     public const string KeystoreEnvVar = "GLPNET_FEDERATION_KEYSTORE";
 
