@@ -17,7 +17,8 @@ because an aggregate is exactly how an unmeasured criterion becomes a green one.
 | | |
 |---|---|
 | Baseline before any change | **190 / 190** (`glp_crdtmsg.tests`, Release, net11.0, re-measured this session) |
-| After implementation | **265 / 265** — +75 federation tests, **0 failures, 0 skipped, 0 regressions** |
+| After implementation | 265 / 265 |
+| After codexreview + self-review fixes | **278 / 278** — +88 federation tests, **0 failures, 0 skipped, 0 regressions** |
 | Build | 0 errors, `glp_crdtmsg` + `ynet_federation` |
 | Operator console | runs under Smart App Control via `dotnet run` (verified, §Console below) |
 
@@ -42,6 +43,28 @@ because an aggregate is exactly how an unmeasured criterion becomes a green one.
 | **SC-015** | ✅ MEASURED | `UnknownSpaceLegacySpaceAndNoTermAreThreeDifferentResults` — asserts `Distinct().Count() == 4`. *Added by the analyze pass, finding C1.* |
 
 **13 of 15 measured. SC-001 unmeasured. SC-008 partial.** Neither is reported as met.
+
+## Review findings — four defects, all in code that was already green
+
+The suite was **265/265 green over every one of these**. That is the point: a green
+self-written suite is not evidence. Three came from adversarial self-review during the
+codexreview stage, one from codex itself.
+
+| # | Found by | Severity | Defect |
+|---|---|---|---|
+| 1 | self-review | HIGH | `_sameMachine` was set **only** on the dialling path, so a listener that received an op rendered `op received from peer: yes` beside `same machine: n/a (no crossing observed)` — the surface contradicting itself, and rendering **identically to the genuine no-crossing case**. The same two-states-one-output defect SC-007 forbids, hiding inside the field that enforces FR-022. |
+| 2 | self-review | HIGH | `MergeGate` was declared, unit-tested, and **never called** from `FederationService`. FR-018 — the enforcement of the STOP ORDER — was a green test over an ungated merge path. A guard that exists and is tested is *worse* than none: it reads as protection in every review. |
+| 3 | **codex** | **P1** | My fix for #2 gated `ReconcileAsync` (the pull path) but left `ReceiveOneAsync` — **the primary push path** — ungated. A non-aware peer could bypass FR-018 entirely by pushing instead of pulling. Gating the secondary path and not the primary one is not a partial fix; it is no fix. |
+| 4 | self-review | MEDIUM | `PullIntervalSeconds` was configured, validated and **printed to the operator** (`pull every 60s`) while no timer read it and no frame carried a pull. FR-028's pull leg existed as a method nothing called. |
+
+Fixes: a fail-closed capability handshake (`HelloProtocol`) with a per-peer table; the gate
+applied on **both** the push and pull paths using the peer's **declared** capabilities rather than
+an assumed-`true` literal; a real pull wire protocol (`pull-req` carries the frontier, `pull-resp`
+only what the peer lacks) driven by an actual loop; and `SameMachine` widened to `Tri?` so
+*unmeasured* is distinguishable from *not applicable*.
+
+**Two older tests failed against the new gate and had to be corrected** — which is how I know it is
+load-bearing rather than decorative.
 
 ## Functional requirements
 
