@@ -28,6 +28,15 @@ It is deliberately scoped to **transport plus the ordering rule that makes a mer
 not elect a leader and does not implement PBFT — those sit on top of this and are blocked by its
 absence.
 
+## Clarifications
+
+### Session 2026-09-04
+
+- Q: Who assigns the term-space identifier, and when are two hosts in the same space? -> A: One shared `space_id` is minted **per federation epoch** by a recorded operator action and carried in configuration (ruling `Q-GLPNETG28-01`). The fossil operation's implicit legacy space is a *different* space, so it stays incomparable-but-retained.
+- Q: SC-001 needs a physically separate second host that this lane cannot schedule - how does the era close? -> A: Build both federation ends plus the operator runbook here, prove every criterion except SC-001 locally, and issue an ACK-required broadcast to all hosts; SC-001 is measured the moment any peer stands up its listener (ruling `Q-GLPNETG28-02`).
+- Q: What is the convergence window? -> A: Push on append, with a 60-second reconciliation pull as a backstop. Acceptance asserts **5 seconds** steady-state and **120 seconds** following a deliberate link outage (ruling `Q-GLPNETG28-03`).
+- Q: How is the live fossil `leader_claim` operation neutralised without deleting it? -> A: Append a superseding operation that assigns it to a named **legacy term-space**; the original is never removed, so FR-017's append-only guarantee survives (ruling `Q-GLPNETG28-04`).
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - A lane on one host sees a claim made on another host (Priority: P1)
@@ -50,7 +59,8 @@ implemented.
 
 1. **Given** two hosts each running a local oracle with the transport enabled, **When** a lane on
    host A appends a claim operation, **Then** a lane reading host B's oracle sees that claim
-   attributed to host A's node identity within the convergence window.
+   attributed to host A's node identity within 5 seconds in steady state, or within 120
+   seconds when the link between them has been interrupted and restored.
 2. **Given** the same setup, **When** the operation is delivered to host B more than once (a
    retrying link redelivers it), **Then** host B's fold contains the operation **exactly once**.
 3. **Given** a lane on host B that claims the same package concurrently, **When** both operations
@@ -236,6 +246,24 @@ assert the connection is refused before any board operation is transferred.
 - **FR-025**: Every configuration change made to enable federation MUST be reversible by a documented
   action, and that action MUST be recorded alongside the change that required it.
 
+**Clarified 2026-09-04 (rulings `Q-GLPNETG28-01`..`-04`)**
+
+- **FR-026**: A term-space identifier MUST be minted **per federation epoch** by an explicit,
+  recorded operator action and carried in the host's configuration; it MUST NOT be derived from a
+  host identity, and it MUST NOT be derived from wall-clock time. Minting a new epoch MUST be an
+  additive configuration change that leaves prior operations readable.
+- **FR-027**: Operations carrying no recognised term-space, including those predating the term-space
+  rule, MUST be treated as belonging to a named **legacy** space, and MUST therefore be incomparable
+  to live-epoch terms rather than dropped, rewritten, or coerced into the live space.
+- **FR-028**: An operation MUST be pushed to admitted peers as it is appended, and each host MUST ALSO
+  run a periodic reconciliation pull that recovers operations a dropped link lost. Neither mechanism
+  alone satisfies this requirement, and the pull MUST be verifiable by a test that deliberately
+  interrupts the link.
+- **FR-029**: Retiring a faulty operation MUST be done by appending a superseding retirement
+  operation that names the target operation and assigns it to the legacy term-space. The retirement
+  operation MUST itself be an ordinary board operation, subject to the same fold, attribution and
+  append-only rules as any other.
+
 ### Key Entities
 
 - **Participant**: A host taking part in federation. Has a stable identity independent of address,
@@ -257,7 +285,8 @@ assert the connection is refused before any board operation is transferred.
 ### Measurable Outcomes
 
 - **SC-001**: A claim made on one host is visible, correctly attributed, on a second **physically
-  separate** host, with no shared filesystem involved in the transfer.
+  separate** host within **5 seconds** in steady state, with no shared filesystem involved in the
+  transfer.
 - **SC-002**: An operation delivered twice appears exactly once in the receiving fold, verified by a
   test that deliberately redelivers it.
 - **SC-003**: Two hosts holding the same operation set produce byte-identical folds regardless of
@@ -276,6 +305,13 @@ assert the connection is refused before any board operation is transferred.
   recorded reversal, returning the host to its prior state.
 - **SC-010**: A deliberately corrupted or absent measurement is reported as *unknown* and never as a
   clean negative, verified by a test that removes the ability to measure.
+- **SC-011**: An operation appended while the link is down is present in the peer's fold within
+  **120 seconds** of the link being restored, verified by a test that interrupts and restores it.
+- **SC-012**: A retired operation is still present in the log after retirement and is reported as
+  unordered, verified by a test that asserts both its continued presence and its exclusion from the
+  ordering decision.
+- **SC-013**: Minting a new federation epoch leaves every operation from the prior epoch readable and
+  attributed, verified by reading the prior epoch's operations back after the mint.
 
 ## Assumptions
 
