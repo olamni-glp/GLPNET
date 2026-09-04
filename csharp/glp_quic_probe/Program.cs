@@ -28,6 +28,7 @@ using System.Net;
 using System.Security.Cryptography.X509Certificates;
 using GlpRuntime.CrdtMsg.Route;
 using Ynet.Transport.Link;
+using Ynet.Transport.Capability;
 
 // 🔴 FIRST, AND THE ORDER IS LOAD-BEARING. QuicListener.IsSupported runs MsQuic's static
 // initialiser, and a DllImportResolver registered after that has NO effect. Touching
@@ -92,6 +93,29 @@ Console.WriteLine(ephemeral
 if (certOrigin == "recreated-expired")
     Console.WriteLine("   🔴 the stored anchor had EXPIRED and was re-minted: THIS HOST'S PIN HAS CHANGED — re-publish it.");
 Console.WriteLine("   (a peer must carry this pin to be admitted; reachability alone is refused)");
+Console.WriteLine();
+
+// ---- 2b. the LANE NODE ID (feature 102 / ruling Q-glpnetshiras-39) -------
+// The cert pin above says "this host's TLS anchor". It does not say WHO this lane is: nodeId =
+// H(pubkey) is the address-INDEPENDENT name a peer resolves, votes on, and files board ops under.
+// NodeIdentity.Generate() minted a fresh keypair per call — the same defect the cert had — so the
+// id changed at every process start and no pin table could survive a reboot. LoadOrMint persists it.
+var laneName = Environment.GetEnvironmentVariable("YNET_LANE")
+               ?? Environment.MachineName.ToLowerInvariant() + ".glpnet";
+using var nodeIdentity = NodeIdentity.LoadOrMint(laneName, out var idOrigin);
+Console.WriteLine("== lane node identity (feature 102) ==");
+Console.WriteLine($"   lane                : {laneName}");
+Console.WriteLine($"   nodeId = H(pubkey)  : {nodeIdentity.NodeId}");
+Console.WriteLine($"   algorithm           : {nodeIdentity.Algorithm}");
+Console.WriteLine($"   origin              : {idOrigin}");
+Console.WriteLine(idOrigin switch
+{
+    IdentityOrigin.Loaded => "   ✅ PERSISTED — run this probe again and the id above is identical.",
+    IdentityOrigin.Minted => "   first use on this host: minted and written. Re-run to see it load.",
+    _ => "   🔴 the stored key was UNREADABLE and re-minted: THIS LANE'S NODE ID HAS CHANGED — re-publish it.",
+});
+Console.WriteLine("   Resolve(nodeId) -> address is served by INodeAddressResolver; an unbound id is");
+Console.WriteLine("   refused RecordNotFound, and a refusal is a valid answer — never a fabricated address.");
 Console.WriteLine();
 
 var transport = new QuicLinkTransport("glpnet-probe", cert, new Dictionary<string, string>());
