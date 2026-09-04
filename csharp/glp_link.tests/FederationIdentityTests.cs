@@ -105,15 +105,73 @@ public sealed class FederationIdentityTests : IDisposable
         Assert.Throws<InvalidOperationException>(() => FederationIdentity.LoadOrCreate("host-a", _dir));
     }
 
-    /// <summary>A pfx without its sidecar is refused rather than re-derived — the pin file is the
-    /// published artifact, and inventing it hides that the publication step never happened.</summary>
+    /// <summary>
+    /// A pfx whose sidecar is absent is REPAIRED, not refused and not reminted: the pin is a pure
+    /// function of the cert, so re-deriving it invents nothing, whereas minting would change the
+    /// host's published identity. This is also the window a concurrent starter observes between the
+    /// two atomic renames. (A sidecar that DISAGREES is the dangerous case, and still throws.)
+    /// </summary>
     [Fact]
-    public void MissingFingerprintSidecar_IsRefused()
+    public void MissingFingerprintSidecar_IsRederivedFromTheCert_NotReminted()
     {
-        FederationIdentity.LoadOrCreate("host-a", _dir);
+        var original = FederationIdentity.LoadOrCreate("host-a", _dir);
         File.Delete(Path.Combine(_dir, "host-a.fingerprint"));
 
-        Assert.Throws<FileNotFoundException>(() => FederationIdentity.LoadOrCreate("host-a", _dir));
+        var repaired = FederationIdentity.LoadOrCreate("host-a", _dir);
+
+        Assert.Equal(original.Pin, repaired.Pin);
+        Assert.False(repaired.Created);
+        Assert.Equal(
+            original.Pin,
+            File.ReadAllText(Path.Combine(_dir, "host-a.fingerprint")).Trim());
+    }
+
+    /// <summary>
+    /// THE RACE (codex review, critical): several callers starting at once on a virgin keystore must
+    /// converge on ONE identity. Exactly one wins the atomic rename; the losers must adopt the
+    /// winner's pin rather than each returning the keypair it happened to mint.
+    /// </summary>
+    [Fact]
+    public void ConcurrentFirstStart_ConvergesOnOneIdentity()
+    {
+        var results = new FederationIdentity[16];
+        Parallel.For(0, results.Length, i => results[i] = FederationIdentity.LoadOrCreate("host-a", _dir));
+
+        Assert.Single(results.Select(r => r.Pin).Distinct());
+        Assert.Equal(1, results.Count(r => r.Created)); // exactly one minter, never two
+        Assert.Equal(
+            results[0].Pin,
+            File.ReadAllText(Path.Combine(_dir, "host-a.fingerprint")).Trim());
+    }
+
+    /// <summary>
+    /// No temp file may survive a completed call: a leftover .tmp-* holding an unclaimed private key
+    /// is both litter and key material lying around outside the keystore's contract.
+    /// </summary>
+    [Fact]
+    public void ConcurrentFirstStart_LeavesNoTempKeyMaterialBehind()
+    {
+        Parallel.For(0, 8, _ => FederationIdentity.LoadOrCreate("host-a", _dir));
+
+        Assert.Empty(Directory.GetFiles(_dir, "*.tmp-*"));
+        Assert.Equal(2, Directory.GetFiles(_dir).Length); // exactly the pfx and its sidecar
+    }
+
+    /// <summary>
+    /// What a RESTART actually is, from the keystore's point of view: nothing in memory, only the
+    /// bytes on disk. Loading straight from the files must reproduce the same pin — this is the
+    /// in-process proxy for the cross-process evidence (five probe processes, one pin).
+    /// </summary>
+    [Fact]
+    public void AfterRestart_TheDiskAloneReproducesTheSamePin()
+    {
+        var minted = FederationIdentity.LoadOrCreate("host-a", _dir);
+
+        var fromDiskOnly = FederationIdentity.Load(
+            Path.Combine(_dir, "host-a.pfx"), Path.Combine(_dir, "host-a.fingerprint"));
+
+        Assert.Equal(minted.Pin, fromDiskOnly.Pin);
+        Assert.True(fromDiskOnly.Cert.HasPrivateKey);
     }
 
     /// <summary>
@@ -141,6 +199,24 @@ public sealed class FederationIdentityTests : IDisposable
 
         Assert.NotEqual(before.Pin, rotated.Pin);
         Assert.Equal(rotated.Pin, after.Pin); // the rotated identity is the persisted one now
+    }
+
+    /// <summary>
+    /// Rotation must leave the pair CONSISTENT, never a new key beside the old pin. Both files are
+    /// replaced by atomic rename, so a reader sees the old pair or the new one and never a mixture.
+    /// </summary>
+    [Fact]
+    public void Rotation_LeavesNoMixedTrustMaterial()
+    {
+        FederationIdentity.LoadOrCreate("host-a", _dir);
+        var rotated = FederationIdentity.LoadOrCreate("host-a", _dir, rotate: true);
+
+        var reloaded = FederationIdentity.Load(
+            Path.Combine(_dir, "host-a.pfx"), Path.Combine(_dir, "host-a.fingerprint"));
+
+        Assert.Equal(rotated.Pin, reloaded.Pin);
+        Assert.Equal(QuicTransport.SpkiPin(reloaded.Cert), reloaded.Pin);
+        Assert.Empty(Directory.GetFiles(_dir, "*.tmp-*"));
     }
 
     /// <summary>The env var is a real seam: it, not the user profile, decides where keys live.</summary>

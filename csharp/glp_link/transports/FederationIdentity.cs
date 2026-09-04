@@ -97,8 +97,12 @@ public sealed record FederationIdentity(
         var pfxPath = Path.Combine(dir, commonName + ".pfx");
         var fpPath = Path.Combine(dir, commonName + ".fingerprint");
 
+        // A pfx with no sidecar yet is NOT an error: it is either a concurrent starter caught between
+        // the two renames, or an interrupted first run. The pin is a pure function of the cert, so
+        // re-deriving it invents nothing — the pfx is the authority. (A sidecar that DISAGREES with
+        // the cert is a different animal entirely and is still refused, in Load.)
         if (!rotate && File.Exists(pfxPath))
-            return Load(pfxPath, fpPath);
+            return LoadAfterEnsuringSidecar(pfxPath, fpPath);
 
         // A half-written pair (pfx gone, sidecar left behind) is corruption, not a first run: minting
         // over it would silently change a pin peers may already hold. Refuse unless asked to rotate.
@@ -108,7 +112,7 @@ public sealed record FederationIdentity(
                 + "Refusing to mint a replacement identity, because that would silently change this "
                 + "host's published SPKI pin. Remove the stale sidecar deliberately, or pass rotate: true.");
 
-        return Create(dir, pfxPath, fpPath, commonName);
+        return Create(dir, pfxPath, fpPath, commonName, rotate);
     }
 
     /// <summary>Load an identity pair, fail-closed on any missing/inconsistent material.</summary>
@@ -143,7 +147,16 @@ public sealed record FederationIdentity(
         return new FederationIdentity(cert, computed, pfxPath, Created: false);
     }
 
-    private static FederationIdentity Create(string dir, string pfxPath, string fpPath, string commonName)
+    /// <summary>
+    /// Mint and CLAIM an identity. The claim is a same-directory rename of a freshly created temp
+    /// file, which is atomic and exclusive on both Windows and Unix — so two processes starting at
+    /// once cannot each believe they minted the host's identity. Exactly one wins the rename; every
+    /// loser discards its keypair and LOADS the winner's, and all of them return the same pin. A
+    /// last-writer-wins WriteAllBytes would instead hand two callers two different pins and persist
+    /// only one of them, which is the original defect wearing a race condition.
+    /// </summary>
+    private static FederationIdentity Create(
+        string dir, string pfxPath, string fpPath, string commonName, bool rotate)
     {
         Directory.CreateDirectory(dir);
 
@@ -159,22 +172,113 @@ public sealed record FederationIdentity(
         using var minted = req.CreateSelfSigned(now.AddMinutes(-1), now.Add(Lifetime));
         var pfxBytes = minted.Export(X509ContentType.Pfx);
 
-        // Write the PFX first and the sidecar second: interrupted between the two, the next load
-        // sees a pfx without a pin and says so, rather than a pin for a key that never existed.
-        WritePrivate(pfxPath, pfxBytes);
-        var cert = X509CertificateLoader.LoadPkcs12(pfxBytes, null, X509KeyStorageFlags.Exportable);
-        var pin = QuicTransport.SpkiPin(cert);
-        WritePrivate(fpPath, System.Text.Encoding.ASCII.GetBytes(pin + Environment.NewLine));
+        var tempPfx = pfxPath + ".tmp-" + Guid.NewGuid().ToString("N");
+        WritePrivate(tempPfx, pfxBytes);
+        try
+        {
+            // rotate is a deliberate operator act on a quiet host, so it replaces; a first run must
+            // never replace, because losing that race means someone else's pin is already published.
+            File.Move(tempPfx, pfxPath, overwrite: rotate);
+        }
+        catch (IOException) when (!rotate && File.Exists(pfxPath))
+        {
+            TryDelete(tempPfx);
+            return LoadAfterEnsuringSidecar(pfxPath, fpPath); // lost the race — adopt the winner
+        }
+        catch
+        {
+            TryDelete(tempPfx);
+            throw;
+        }
 
-        return new FederationIdentity(cert, pin, pfxPath, Created: true);
+        var cert = X509CertificateLoader.LoadPkcs12(pfxBytes, null, X509KeyStorageFlags.Exportable);
+        WriteSidecar(fpPath, QuicTransport.SpkiPin(cert), replace: true);
+        return new FederationIdentity(cert, QuicTransport.SpkiPin(cert), pfxPath, Created: true);
     }
 
-    /// <summary>Write owner-only. On Unix that is an explicit 0600; on Windows the per-user
-    /// LocalApplicationData ACL already excludes other users and no extra ACL work is done.</summary>
+    /// <summary>
+    /// Load a pfx that another process just claimed, writing the sidecar if that process has not
+    /// got there yet. The pin is DERIVED FROM THE PFX, never invented: an absent sidecar means the
+    /// publication step has not completed, not that the pin is unknown.
+    /// </summary>
+    private static FederationIdentity LoadAfterEnsuringSidecar(string pfxPath, string fpPath)
+    {
+        if (!File.Exists(fpPath))
+        {
+            var claimed = X509CertificateLoader.LoadPkcs12(
+                File.ReadAllBytes(pfxPath), null, X509KeyStorageFlags.Exportable);
+            WriteSidecar(fpPath, QuicTransport.SpkiPin(claimed), replace: false);
+        }
+        return Load(pfxPath, fpPath);
+    }
+
+    /// <summary>Publish the pin by atomic rename too, so no reader ever sees a half-written pin.</summary>
+    private static void WriteSidecar(string fpPath, string pin, bool replace)
+    {
+        var temp = fpPath + ".tmp-" + Guid.NewGuid().ToString("N");
+        WritePrivate(temp, System.Text.Encoding.ASCII.GetBytes(pin + Environment.NewLine));
+        try
+        {
+            File.Move(temp, fpPath, overwrite: replace);
+        }
+        catch (IOException) when (!replace && File.Exists(fpPath))
+        {
+            TryDelete(temp); // another process published the same pin first — nothing to do
+        }
+        catch
+        {
+            TryDelete(temp);
+            throw;
+        }
+    }
+
+    private static void TryDelete(string path)
+    {
+        try { File.Delete(path); } catch (IOException) { } catch (UnauthorizedAccessException) { }
+    }
+
+    /// <summary>
+    /// Create owner-only and write. The permission is applied AT CREATION, not after: a
+    /// WriteAllBytes-then-chmod leaves the private key world-readable for the width of the write.
+    /// <c>CreateNew</c> also refuses a pre-existing file, so a planted symlink cannot redirect the
+    /// key material somewhere readable. On Unix that is <c>UnixCreateMode</c> 0600 passed to open(2);
+    /// on Windows it is an explicit protected DACL granting only the current user, because the
+    /// per-user LocalApplicationData ACL does NOT travel to a directory named by
+    /// <see cref="KeystoreEnvVar"/>.
+    /// </summary>
     private static void WritePrivate(string path, byte[] bytes)
     {
-        File.WriteAllBytes(path, bytes);
+        var options = new FileStreamOptions
+        {
+            Mode = FileMode.CreateNew,
+            Access = FileAccess.Write,
+            Share = FileShare.None,
+        };
         if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-            File.SetUnixFileMode(path, UnixFileMode.UserRead | UnixFileMode.UserWrite);
+            options.UnixCreateMode = UnixFileMode.UserRead | UnixFileMode.UserWrite;
+
+        using (var stream = new FileStream(path, options))
+            stream.Write(bytes, 0, bytes.Length);
+
+        if (OperatingSystem.IsWindows())
+            RestrictToCurrentUser(path);
+    }
+
+    /// <summary>Replace the file's DACL with a single full-control ACE for the current user and
+    /// break inheritance — the Windows half of "owner-only", applied to the file we just created.</summary>
+    [System.Runtime.Versioning.SupportedOSPlatform("windows")]
+    private static void RestrictToCurrentUser(string path)
+    {
+        using var identity = System.Security.Principal.WindowsIdentity.GetCurrent();
+        var owner = identity.User;
+        if (owner is null) return; // no SID to grant to: leave the inherited ACL rather than an empty one
+
+        var security = new System.Security.AccessControl.FileSecurity();
+        security.SetAccessRuleProtection(isProtected: true, preserveInheritance: false);
+        security.AddAccessRule(new System.Security.AccessControl.FileSystemAccessRule(
+            owner,
+            System.Security.AccessControl.FileSystemRights.FullControl,
+            System.Security.AccessControl.AccessControlType.Allow));
+        new FileInfo(path).SetAccessControl(security);
     }
 }
