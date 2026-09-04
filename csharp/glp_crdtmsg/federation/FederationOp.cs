@@ -48,6 +48,17 @@ public sealed record FederationOp
     /// <summary>Opaque body. Federation neither reads nor validates it.</summary>
     public JsonElement Body { get; init; }
 
+    /// <summary>
+    /// Base64 signature by the ORIGIN's federation identity over <see cref="ToSignableJson"/>.
+    /// <para>
+    /// Absent is a real state, not an error: a host whose peers have not published their public keys
+    /// cannot verify anything, and that is reported as <c>UnverifiedOrigin</c> rather than silently
+    /// treated as either valid or forged (see <see cref="OpAttribution"/>). What is NOT permitted is
+    /// folding a signed-key-known origin's op with no signature.
+    /// </para>
+    /// </summary>
+    public string? Signature { get; init; }
+
     /// <summary>Build an op, computing its pred-hash from (id, deps) exactly as <see cref="Op.Create"/> does.</summary>
     public static FederationOp Create(Dot opId, string origin, string kind, JsonElement body,
                                       Term? term = null, IReadOnlyList<Dot>? deps = null)
@@ -71,6 +82,22 @@ public sealed record FederationOp
     /// byte-equality assertion meaningful rather than a comparer's opinion.
     /// </summary>
     public string ToCanonicalJson()
+    {
+        string body = ToSignableJson();
+        if (Signature is null) return body;
+        // The signature is appended OUTSIDE the signed region — see ToSignableJson.
+        return body[..^1] + ",\"sig\":" + JsonSerializer.Serialize(Signature) + "}";
+    }
+
+    /// <summary>
+    /// The canonical form WITHOUT the signature — the exact bytes an origin signature covers.
+    /// <para>
+    /// Signing must cover the bytes that cross the wire, minus the signature itself. Deriving the
+    /// signed region from a different serialisation is how signature checks come to pass over bytes
+    /// nobody ever transmitted.
+    /// </para>
+    /// </summary>
+    public string ToSignableJson()
     {
         var sb = new System.Text.StringBuilder();
         sb.Append("{\"op_id\":{\"peer\":").Append(JsonSerializer.Serialize(OpId.PeerName))
@@ -135,8 +162,17 @@ public sealed record FederationOp
             Deps = deps,
             PredHash = pred,
             Body = r.TryGetProperty("body", out var b) ? b.Clone() : default,
+            Signature = r.TryGetProperty("sig", out var sg) && sg.ValueKind == JsonValueKind.String
+                ? sg.GetString() : null,
         };
     }
+
+    /// <summary>
+    /// A copy carrying an origin signature. Signing is a separate step from construction because the
+    /// signable bytes are only fixed once every other field is.
+    /// </summary>
+    public FederationOp SignedBy(System.Security.Cryptography.X509Certificates.X509Certificate2 identity) =>
+        this with { Signature = OpAttribution.Sign(this with { Signature = null }, identity) };
 }
 
 /// <summary>

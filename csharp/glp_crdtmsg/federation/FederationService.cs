@@ -81,7 +81,16 @@ public sealed class FederationService : IAsyncDisposable
     private readonly IBoardLog _log;
     private readonly HashSet<string> _admitted = new(StringComparer.Ordinal);
     private readonly Dictionary<string, PeerCapabilities> _peerCaps = new(StringComparer.Ordinal);
+    private readonly IReadOnlyDictionary<string, string> _originKeys;
     private readonly TimeProvider _clock;
+
+    /// <summary>
+    /// Node ids whose link is believed live. A peer DROPS OUT of this on a send failure, which is
+    /// what makes the pull loop re-dial it. Distinct from <see cref="_admitted"/>, which records
+    /// that a peer has EVER completed mutual verification — a different fact, and the one the status
+    /// surface reports.
+    /// </summary>
+    private readonly HashSet<string> _connected = new(StringComparer.Ordinal);
 
     private bool _bound;
     private bool _opCrossed;
@@ -97,8 +106,23 @@ public sealed class FederationService : IAsyncDisposable
         _fold = fold;
         _peers = config.ToPeerSet();
         _log = log;
+        _originKeys = _peers.ToSpkiTable();
         _clock = clock ?? TimeProvider.System;
     }
+
+    /// <summary>
+    /// When true, an operation whose origin cannot be cryptographically verified is REFUSED rather
+    /// than folded. Default false, because a peer that has not published its public key is a
+    /// deployment state, not an attack — but the state is reported (<see cref="UnverifiedOps"/>),
+    /// never silently treated as verified.
+    /// </summary>
+    public bool RequireVerifiedAttribution { get; init; }
+
+    /// <summary>How many folded operations could not have their origin proven. For the status surface.</summary>
+    public int UnverifiedOps { get; private set; }
+
+    /// <summary>Where the serving process publishes its measured status, so a separate `status` can read it.</summary>
+    public string? StatusHeartbeatPath { get; init; }
 
     public FederationFold Fold => _fold;
     public PeerSet Peers => _peers;
@@ -126,6 +150,7 @@ public sealed class FederationService : IAsyncDisposable
             var addr = IPAddress.Parse(_config.BindAddress);
             await _link.ListenAsync(new IPEndPoint(addr, _config.BindPort), ct).ConfigureAwait(false);
             _bound = true;
+            PublishStatus();
             return true;
         }
         catch (Exception ex) when (PolicyRefusal.Detect(ex) is { } refusal)
@@ -144,9 +169,13 @@ public sealed class FederationService : IAsyncDisposable
     /// as <see cref="AdmissionOutcome.NameResolutionFailed"/> and NEVER as a transport failure —
     /// every host on this estate resolves to fe80:: link-local only.
     /// </summary>
-    public async Task<AdmissionOutcome> DialAsync(string peerName, CancellationToken ct = default)
+    /// <param name="peer">
+    /// The peer's NODE ID — the same string used as the transport's dial key, its hello value and
+    /// its pin-table key. A human name is not accepted here; it is a label, not an identity.
+    /// </param>
+    public async Task<AdmissionOutcome> DialAsync(string peer, CancellationToken ct = default)
     {
-        var entry = _peers.Entries.FirstOrDefault(e => e.Name == peerName);
+        var entry = _peers.Find(peer) ?? _peers.Entries.FirstOrDefault(e => e.Name == peer);
         if (entry is null) return AdmissionOutcome.NotInPeerSet;
         if (entry.Endpoints.Count == 0) return AdmissionOutcome.NameResolutionFailed;
 
@@ -156,13 +185,15 @@ public sealed class FederationService : IAsyncDisposable
         {
             try
             {
-                await _link.ConnectPeerAsync(peerName, ep, ct).ConfigureAwait(false);
+                await _link.ConnectPeerAsync(entry.NodeId, ep, ct).ConfigureAwait(false);
                 _admitted.Add(entry.NodeId);
+                _connected.Add(entry.NodeId);
                 // Declare our own capabilities so the peer's gate can admit us. A peer that never
                 // hears this refuses our pushes — which is the correct fail-closed direction.
-                await AnnounceCapabilitiesAsync(peerName, ct).ConfigureAwait(false);
+                await AnnounceCapabilitiesAsync(entry.NodeId, ct).ConfigureAwait(false);
                 _sameMachine = FederationStatusProbe.IsSameMachine(
                     _link.ListenEndPoint?.Address ?? IPAddress.Any, ep.Address) ? Tri.Yes : Tri.No;
+                PublishStatus();
                 return AdmissionOutcome.Admitted;
             }
             catch (System.Security.Authentication.AuthenticationException)
@@ -186,11 +217,15 @@ public sealed class FederationService : IAsyncDisposable
     /// </summary>
     public async Task AppendAndPushAsync(FederationOp op, CancellationToken ct = default)
     {
-        _fold.Apply(op);
+        // DURABLE FIRST, and the fold only AFTER the write returns. An op applied to the in-memory
+        // fold before a failing append is visible, eligible for reconciliation, and — because the
+        // fold now holds its dot — classified as a duplicate on redelivery, so the append is never
+        // retried. It would be served to peers from a host that never stored it.
         await _log.AppendAsync(op, ct).ConfigureAwait(false);   // 1. durable
+        _fold.Apply(op);                                        // 2. visible
 
         if (!_config.Enabled || !_config.PushOnAppend) return;
-        await PushAsync(op, ct).ConfigureAwait(false);           // 2. best effort
+        await PushAsync(op, ct).ConfigureAwait(false);           // 3. best effort
     }
 
     /// <summary>Push one op to every admitted peer. Best effort — a failure here is repaired by the pull.</summary>
@@ -200,8 +235,14 @@ public sealed class FederationService : IAsyncDisposable
         foreach (var entry in _peers.Entries)
         {
             if (!_admitted.Contains(entry.NodeId)) continue;
-            try { await _link.SendAsync(entry.Name, BoardBox, bytes, ct).ConfigureAwait(false); }
-            catch { /* the 60 s reconciliation pull is the repair path (FR-028) */ }
+            try { await _link.SendAsync(entry.NodeId, BoardBox, bytes, ct).ConfigureAwait(false); }
+            catch
+            {
+                // Mark the link down so the pull loop RE-DIALS it. Swallowing the failure and
+                // leaving the peer "connected" is what made a dropped link permanent: every later
+                // send went into a connection that no longer existed and failed the same way.
+                _connected.Remove(entry.NodeId);
+            }
         }
     }
 
@@ -240,6 +281,17 @@ public sealed class FederationService : IAsyncDisposable
                 _peerCaps[inbound.FromPeer] = HelloProtocol.Decode(inbound.Bytes);
                 return false;
 
+            case AckProtocol.Box:
+                // A PEER has attested that it folded this dot. This is the only evidence that an op
+                // became visible remotely — a local write returning proves nothing about the peer,
+                // and PushAsync swallows send failures by design.
+                lock (_ackGate)
+                {
+                    _acked.Add(AckProtocol.Decode(inbound.Bytes));
+                    foreach (var w in _ackWaiters) w.TrySetResult();
+                }
+                return false;
+
             case BoardBox:
                 // FR-018 ON THE PUSH PATH — the PRIMARY delivery path.
                 //
@@ -265,14 +317,102 @@ public sealed class FederationService : IAsyncDisposable
         }
 
         var op = FederationOp.FromJson(Encoding.UTF8.GetString(inbound.Bytes));
-        bool isNew = _fold.Apply(op);
-        if (isNew) await _log.AppendAsync(op, ct).ConfigureAwait(false);
+        bool isNew = await AdmitAndFoldAsync(op, ct).ConfigureAwait(false);
+
+        // Attest that it is now in THIS host's fold. Sent for a redelivery too: the sender's ack may
+        // have been the thing that was lost, and a silent second delivery would leave it waiting.
+        if (inbound.Box == BoardBox) await SendAckAsync(inbound.FromPeer, op.OpId, ct).ConfigureAwait(false);
 
         _opCrossed = true;
         // The passive side learns of an op without learning where it came from. That is UNKNOWN,
         // not "no crossing observed" — and never silently No (FR-021/FR-022).
         _sameMachine ??= Tri.Unknown;
+        PublishStatus();
         return isNew;
+    }
+
+    /// <summary>
+    /// Check one inbound operation's ATTRIBUTION, then store it durably, then expose it in the fold.
+    /// Every inbound path goes through here; there is deliberately no second way in.
+    /// <para>
+    /// THE ORDER MATTERS TWICE OVER. Attribution is checked before anything is written, so a forged
+    /// op never reaches the log. The durable append then happens before <c>Apply</c>, so a failed
+    /// write cannot leave the op visible-but-unstored — a state in which redelivery is classified as
+    /// a duplicate, the append is never retried, and this host serves an operation it does not have.
+    /// </para>
+    /// </summary>
+    private async Task<bool> AdmitAndFoldAsync(FederationOp op, CancellationToken ct)
+    {
+        if (_fold.Contains(op.OpId)) return false;   // redelivery — already durable, already visible
+
+        var attribution = OpAttribution.Check(
+            op, _originKeys.TryGetValue(op.Origin ?? "", out var spki) ? spki : null);
+
+        // An inconsistent or forged attribution is REFUSED outright, whatever the strictness setting.
+        // Wrong attribution is a fault (FR-009), and term.host is the leadership tie-break — a forged
+        // one is monotone and cannot be undone after the merge.
+        if (attribution.Verdict is AttributionVerdict.Inconsistent or AttributionVerdict.SignatureInvalid)
+            throw new AttributionRefusedException(attribution);
+
+        if (attribution.Verdict == AttributionVerdict.UnverifiedOrigin)
+        {
+            if (RequireVerifiedAttribution) throw new AttributionRefusedException(attribution);
+            UnverifiedOps++;   // COUNTED and reported, never silently treated as verified
+        }
+
+        await _log.AppendAsync(op, ct).ConfigureAwait(false);   // durable
+        return _fold.Apply(op);                                 // then visible
+    }
+
+    private readonly object _ackGate = new();
+    private readonly HashSet<Dot> _acked = new();
+    private readonly List<TaskCompletionSource> _ackWaiters = new();
+
+    /// <summary>Tell a peer that its operation is now in this host's fold (FR-009).</summary>
+    private async Task SendAckAsync(string peer, Dot opId, CancellationToken ct)
+    {
+        try { await _link.SendAsync(peer, AckProtocol.Box, AckProtocol.Encode(opId), ct).ConfigureAwait(false); }
+        catch { /* advisory: convergence does not depend on it, only the acceptance measurement does */ }
+    }
+
+    /// <summary>True once some peer has attested that it folded this operation.</summary>
+    public bool WasAckedByPeer(Dot opId)
+    {
+        lock (_ackGate) return _acked.Contains(opId);
+    }
+
+    /// <summary>
+    /// Wait until a peer attests to having folded <paramref name="opId"/>, or the timeout expires.
+    /// <para>
+    /// This is what makes SC-001 a measurement rather than a local timing. Returns false on timeout;
+    /// the caller records UNKNOWN, never a green.
+    /// </para>
+    /// </summary>
+    public async Task<bool> WaitForPeerAckAsync(Dot opId, TimeSpan timeout, CancellationToken ct = default)
+    {
+        var deadline = _clock.GetUtcNow() + timeout;
+        while (true)
+        {
+            TaskCompletionSource waiter;
+            lock (_ackGate)
+            {
+                if (_acked.Contains(opId)) return true;
+                waiter = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+                _ackWaiters.Add(waiter);
+            }
+
+            var remaining = deadline - _clock.GetUtcNow();
+            if (remaining <= TimeSpan.Zero) { lock (_ackGate) _ackWaiters.Remove(waiter); return false; }
+
+            var timer = Task.Delay(remaining, _clock, ct);
+            var done = await Task.WhenAny(waiter.Task, timer).ConfigureAwait(false);
+            lock (_ackGate) _ackWaiters.Remove(waiter);
+
+            if (done == timer)
+            {
+                lock (_ackGate) return _acked.Contains(opId);
+            }
+        }
     }
 
     /// <summary>This host's own declared capabilities — it IS term-space aware (FR-013..FR-018).</summary>
@@ -296,8 +436,10 @@ public sealed class FederationService : IAsyncDisposable
     /// <summary>Record that a peer completed mutual verification, keyed by NODE ID (FR-007).</summary>
     private void MarkAdmitted(string peerName)
     {
-        var entry = _peers.Entries.FirstOrDefault(e => e.Name == peerName || e.NodeId == peerName);
-        if (entry is not null) _admitted.Add(entry.NodeId);
+        var entry = _peers.Find(peerName) ?? _peers.Entries.FirstOrDefault(e => e.Name == peerName);
+        if (entry is null) return;
+        _admitted.Add(entry.NodeId);
+        _connected.Add(entry.NodeId);   // a frame just arrived on it, so the link is live
     }
 
     /// <summary>
@@ -316,20 +458,44 @@ public sealed class FederationService : IAsyncDisposable
         {
             // A pull that cannot be sent is retried at the next interval. That IS the backstop —
             // it must not throw, or one unreachable peer would stop reconciliation with every peer.
+            // But the link is marked DOWN, so the next interval re-dials rather than sending into
+            // the same dead connection forever.
+            var entry = _peers.Find(peerName) ?? _peers.Entries.FirstOrDefault(e => e.Name == peerName);
+            if (entry is not null) _connected.Remove(entry.NodeId);
         }
     }
 
-    /// <summary>Answer a peer's pull with only the ops it lacks — the RESPONSE half.</summary>
-    public async Task AnswerPullAsync(string peerName, VersionVector peerFrontier, CancellationToken ct = default)
+    /// <summary>
+    /// Answer a peer's pull with only the ops it lacks — the RESPONSE half, in frame-sized batches.
+    /// <para>
+    /// A peer far enough behind produces more than one frame's worth of ops. Encoding them into a
+    /// single frame exceeds the transport's 64 MiB guard, which REJECTS it — and the identical
+    /// oversized frame is then rebuilt and rejected at every interval, so the peer never makes any
+    /// progress at all. Batches are sent in dot order, so a peer that receives only the first of
+    /// them still converges monotonically.
+    /// </para>
+    /// </summary>
+    public async Task AnswerPullAsync(string peerName, FederationFrontier peerFrontier, CancellationToken ct = default)
     {
         var missing = OpsMissingFrom(peerFrontier);
         if (missing.Count == 0) return;
-        try
+
+        foreach (var batch in PullProtocol.BatchResponses(missing))
         {
-            await _link.SendAsync(peerName, PullProtocol.ResponseBox,
-                PullProtocol.EncodeResponse(missing), ct).ConfigureAwait(false);
+            try
+            {
+                await _link.SendAsync(peerName, PullProtocol.ResponseBox,
+                    PullProtocol.EncodeResponse(batch), ct).ConfigureAwait(false);
+            }
+            catch
+            {
+                // Stop at the first failure: the batches are a prefix sequence, so sending later
+                // ones past a gap would hand the peer a set it cannot use. Retried next interval.
+                var entry = _peers.Find(peerName) ?? _peers.Entries.FirstOrDefault(e => e.Name == peerName);
+                if (entry is not null) _connected.Remove(entry.NodeId);
+                return;
+            }
         }
-        catch { /* retried at the peer's next interval */ }
     }
 
     /// <summary>
@@ -346,9 +512,24 @@ public sealed class FederationService : IAsyncDisposable
 
             foreach (var entry in _peers.Entries)
             {
-                if (!_admitted.Contains(entry.NodeId)) continue;
-                await RequestPullAsync(entry.Name, ct).ConfigureAwait(false);
+                // RECONNECT FIRST. Without this the loop could only pull from peers whose FIRST
+                // dial happened to succeed: a peer missed at startup was skipped forever, and a
+                // peer whose established connection later closed stayed "admitted" while every
+                // pull went into a connection that no longer existed and failed silently. Restoring
+                // the network then repaired nothing until the process was restarted — in a loop
+                // whose entire purpose is to be the repair path (FR-028).
+                if (!_connected.Contains(entry.NodeId))
+                {
+                    try { await DialAsync(entry.NodeId, ct).ConfigureAwait(false); }
+                    catch (OperationCanceledException) { return; }
+                    catch { /* still unreachable; try again next interval */ }
+                }
+
+                if (!_connected.Contains(entry.NodeId)) continue;
+                await RequestPullAsync(entry.NodeId, ct).ConfigureAwait(false);
             }
+
+            PublishStatus();   // keeps the separate `status` command's reading fresh
         }
     }
 
@@ -372,20 +553,21 @@ public sealed class FederationService : IAsyncDisposable
         int added = 0;
         foreach (var op in peerOps)
         {
-            if (_fold.Contains(op.OpId)) continue;   // already have it — the frontier test
-            if (_fold.Apply(op))
+            // Same admission and same ordering as the push path — attribution checked, durable
+            // write, then visible. There is one way into the fold, not two with different rules.
+            if (await AdmitAndFoldAsync(op, ct).ConfigureAwait(false))
             {
-                await _log.AppendAsync(op, ct).ConfigureAwait(false);
                 added++;
                 _opCrossed = true;
                 _sameMachine ??= Tri.Unknown;        // an op crossed, but the pull carries no address
             }
         }
+        if (added > 0) PublishStatus();
         return added;
     }
 
     /// <summary>The ops a peer lacks, given its frontier. The reply half of the pull.</summary>
-    public IReadOnlyList<FederationOp> OpsMissingFrom(VersionVector peerFrontier) =>
+    public IReadOnlyList<FederationOp> OpsMissingFrom(FederationFrontier peerFrontier) =>
         _fold.Operations.Where(o => !peerFrontier.Contains(o.OpId)).ToList();
 
     /// <summary>
@@ -424,6 +606,86 @@ public sealed class FederationService : IAsyncDisposable
             BoundEndpoint = _bound ? _link.ListenEndPoint?.ToString() : null,
             AdmittedParticipants = _admitted.Count,
         };
+    }
+
+    /// <summary>
+    /// Watch a log file for operations appended by ANOTHER process and push them (FR-028's push leg
+    /// across a process boundary).
+    /// <para>
+    /// `serve` and `post` are separate processes — that is what the runbook instructs. Without this
+    /// loop, `post` appended locally and the running daemon never learned of it, so a posted claim
+    /// reached no peer until the next pull happened to carry it (and, before the frontier was
+    /// hole-preserving, possibly never). The durable log IS the channel: it is already append-only,
+    /// already crash-safe and already the thing both processes agree on, so no socket, port or pipe
+    /// is introduced to carry what a file already carries.
+    /// </para>
+    /// <para>
+    /// Ops already in the fold are skipped, so a restart re-reading the file pushes nothing twice,
+    /// and the loop never appends — it only reads what another process made durable.
+    /// </para>
+    /// </summary>
+    public async Task RunLogTailAsync(string path, CancellationToken ct)
+    {
+        long offset = 0;
+        try { if (File.Exists(path)) offset = new FileInfo(path).Length; }
+        catch (IOException) { }
+
+        var period = TimeSpan.FromSeconds(1);
+        while (!ct.IsCancellationRequested)
+        {
+            try { await Task.Delay(period, _clock, ct).ConfigureAwait(false); }
+            catch (OperationCanceledException) { return; }
+
+            List<string> lines = new();
+            try
+            {
+                if (!File.Exists(path)) continue;
+                long length = new FileInfo(path).Length;
+
+                // A shorter file means it was replaced, not appended to. Re-read from the start
+                // rather than seeking past the end of the new content and going permanently blind.
+                if (length < offset) offset = 0;
+                if (length == offset) continue;
+
+                using var fs = new FileStream(path, FileMode.Open, FileAccess.Read,
+                                              FileShare.ReadWrite | FileShare.Delete);
+                fs.Seek(offset, SeekOrigin.Begin);
+                using var reader = new StreamReader(fs);
+                string? line;
+                while ((line = await reader.ReadLineAsync(ct).ConfigureAwait(false)) is not null)
+                    if (!string.IsNullOrWhiteSpace(line)) lines.Add(line);
+                offset = fs.Position;
+            }
+            catch (IOException) { continue; }   // mid-append; the next tick reads the whole line
+
+            foreach (var text in lines)
+            {
+                FederationOp op;
+                try { op = FederationOp.FromJson(text); }
+                catch (Exception ex) when (ex is JsonException or KeyNotFoundException or InvalidOperationException or FormatException)
+                {
+                    continue;   // a scheduler-native or partial line; not ours to push
+                }
+
+                if (!_fold.Apply(op)) continue;   // already known — nothing to announce
+                await PushAsync(op, ct).ConfigureAwait(false);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Publish the measured status so a SEPARATE `status` process can read it (FR-019/FR-021).
+    /// <para>
+    /// Fail-safe: a status file that cannot be written must never stop the daemon federating. The
+    /// reader's staleness window then makes the absent measurement report as unknown, which is the
+    /// honest answer, rather than as a negative.
+    /// </para>
+    /// </summary>
+    public void PublishStatus()
+    {
+        if (StatusHeartbeatPath is null) return;
+        try { StatusHeartbeat.From(Status(), _fold.Count, _clock.GetUtcNow()).Publish(StatusHeartbeatPath); }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
     }
 
     public async ValueTask DisposeAsync()

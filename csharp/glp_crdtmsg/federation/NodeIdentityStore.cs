@@ -11,8 +11,17 @@
 // once and loaded thereafter, and the node id derived from it is what gets published.
 //
 // nodeId = SHA-256(SPKI), the same derivation Ynet.Transport.Capability.NodeIdentity uses, and the
-// same SPKI QuicLinkTransport.SpkiPin() hashes. The transport pin and the node id are THE SAME
-// VALUE UNDER TWO NAMES — they do not need reconciling by a mapping table, only naming consistently.
+// same SPKI QuicLinkTransport.SpkiPin() hashes.
+//
+// THE SAME 32 BYTES — IN TWO DIFFERENT ENCODINGS, AND THAT DIFFERENCE WAS LOAD-BEARING.
+// DeriveNodeId emits lowercase HEX; QuicTransport.SpkiPin emits BASE64. An earlier revision of this
+// comment claimed the two "do not need reconciling, only naming consistently" and the console duly
+// assigned the hex node id straight into `Pin`. Every correctly-configured peer was then refused by
+// the TLS callback before federation could start — an admission failure produced entirely by an
+// encoding mismatch, presenting as a pin mismatch, i.e. as a security event.
+//
+// So the conversion is EXPLICIT and lives here, next to the derivation it must agree with. Nothing
+// downstream may assign a node id to a pin field or vice versa; it calls PinFromNodeId.
 
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
@@ -68,6 +77,47 @@ public sealed class NodeIdentityStore
     /// </summary>
     public static string DeriveNodeId(X509Certificate2 cert) =>
         Convert.ToHexStringLower(SHA256.HashData(cert.PublicKey.ExportSubjectPublicKeyInfo()));
+
+    /// <summary>
+    /// The transport's SPKI pin for a node id: the SAME 32 bytes, re-encoded from hex to base64.
+    /// <para>
+    /// This is the whole of the reconciliation between <see cref="DeriveNodeId"/> (hex, the operator
+    /// surface) and <c>QuicTransport.SpkiPin</c> (base64, the TLS callback). Assigning one to the
+    /// other refuses every correct peer.
+    /// </para>
+    /// </summary>
+    /// <exception cref="FormatException">The node id is not 32 bytes of hexadecimal.</exception>
+    public static string PinFromNodeId(string nodeId)
+    {
+        string s = (nodeId ?? "").Trim();
+        if (s.Length != 64)
+            throw new FormatException(
+                $"node id must be 64 hex characters (SHA-256 of the SPKI); got {s.Length} — a pin is not a node id");
+        return Convert.ToBase64String(Convert.FromHexString(s));
+    }
+
+    /// <summary>The inverse, for reading a pin back onto the operator surface.</summary>
+    public static string NodeIdFromPin(string pin) =>
+        Convert.ToHexStringLower(Convert.FromBase64String(pin));
+
+    /// <summary>True when a string is a well-formed node id (64 hex characters).</summary>
+    public static bool IsNodeId(string? s) =>
+        s is { Length: 64 } && s.All(Uri.IsHexDigit);
+
+    /// <summary>
+    /// The base64 SubjectPublicKeyInfo of an identity — what a PEER needs in order to VERIFY this
+    /// host's operation signatures. The pin is a hash and cannot verify a signature; this can.
+    /// It is safe to publish: it is a public key.
+    /// </summary>
+    public static string ExportSpki(X509Certificate2 cert) =>
+        Convert.ToBase64String(cert.PublicKey.ExportSubjectPublicKeyInfo());
+
+    /// <summary>
+    /// The node id implied by a published SPKI. Lets a configured public key be CHECKED against the
+    /// node id and pin it claims to belong to, so a wrong key cannot be installed quietly.
+    /// </summary>
+    public static string NodeIdFromSpki(string spkiBase64) =>
+        Convert.ToHexStringLower(SHA256.HashData(Convert.FromBase64String(spkiBase64)));
 
     private static void RestrictToOwner(string path)
     {

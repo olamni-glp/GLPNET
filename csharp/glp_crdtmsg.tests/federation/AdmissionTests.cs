@@ -32,7 +32,7 @@ public sealed class AdmissionTests
     public async Task AnUnpinnedDialerIsRefusedAndNoBoardDataCrosses()
     {
         var link = new FakeLink("A");
-        var cfg = new FederationConfig { Enabled = true, BindAddress = "0.0.0.0", BindPort = 47890, SpaceId = LiveEpoch };
+        var cfg = new FederationConfig { Enabled = true, BoardRootPath = "D:/coop/buildkit/sched", BoardActor = "gavriella", BindAddress = "0.0.0.0", BindPort = 47890, SpaceId = LiveEpoch };
         var svc = new FederationService(cfg, link, new FederationFold(new TermSpaceRegistry(LiveEpoch)), new InMemoryBoardLog());
         await svc.BindAsync();
 
@@ -89,8 +89,8 @@ public sealed class AdmissionTests
     {
         var cfg = new FederationConfig
         {
-            Enabled = true, BindAddress = "0.0.0.0", BindPort = 47890, SpaceId = LiveEpoch,
-            Peers = { new PeerConfig { Name = "olamnit", NodeId = "n1", Endpoints = { "192.168.0.136:47890" }, Pin = "p" } },
+            Enabled = true, BoardRootPath = "D:/coop/buildkit/sched", BoardActor = "gavriella", BindAddress = "0.0.0.0", BindPort = 47890, SpaceId = LiveEpoch,
+            Peers = { new PeerConfig { Name = "olamnit", NodeId = "1111111111111111111111111111111111111111111111111111111111111111", Endpoints = { "192.168.0.136:47890" } } },
         };
         var svc = new FederationService(cfg, new FakeLink("A") { PinMismatch = true },
             new FederationFold(new TermSpaceRegistry(LiveEpoch)), new InMemoryBoardLog());
@@ -106,8 +106,8 @@ public sealed class AdmissionTests
     {
         var cfg = new FederationConfig
         {
-            Enabled = true, BindAddress = "0.0.0.0", BindPort = 47890, SpaceId = LiveEpoch,
-            Peers = { new PeerConfig { Name = "olamnit", NodeId = "n1", Endpoints = { "192.168.0.136:47890" }, Pin = "p" } },
+            Enabled = true, BoardRootPath = "D:/coop/buildkit/sched", BoardActor = "gavriella", BindAddress = "0.0.0.0", BindPort = 47890, SpaceId = LiveEpoch,
+            Peers = { new PeerConfig { Name = "olamnit", NodeId = "1111111111111111111111111111111111111111111111111111111111111111", Endpoints = { "192.168.0.136:47890" } } },
         };
         var svc = new FederationService(cfg, new FakeLink("A") { Broken = true },
             new FederationFold(new TermSpaceRegistry(LiveEpoch)), new InMemoryBoardLog());
@@ -121,8 +121,8 @@ public sealed class AdmissionTests
     {
         var cfg = new FederationConfig
         {
-            Enabled = true, BindAddress = "0.0.0.0", BindPort = 47890, SpaceId = LiveEpoch,
-            Peers = { new PeerConfig { Name = "olamnit", NodeId = "n1", Endpoints = { }, Pin = "p" } },
+            Enabled = true, BoardRootPath = "D:/coop/buildkit/sched", BoardActor = "gavriella", BindAddress = "0.0.0.0", BindPort = 47890, SpaceId = LiveEpoch,
+            Peers = { new PeerConfig { Name = "olamnit", NodeId = "1111111111111111111111111111111111111111111111111111111111111111", Endpoints = { } } },
         };
         var svc = new FederationService(cfg, new FakeLink("A"),
             new FederationFold(new TermSpaceRegistry(LiveEpoch)), new InMemoryBoardLog());
@@ -190,7 +190,7 @@ public sealed class AdmissionTests
     [Fact]
     public void ALoopbackBindWhileEnabledIsRefused()
     {
-        var cfg = new FederationConfig { Enabled = true, BindAddress = "127.0.0.1", SpaceId = LiveEpoch };
+        var cfg = new FederationConfig { Enabled = true, BoardRootPath = "D:/coop/buildkit/sched", BoardActor = "gavriella", BindAddress = "127.0.0.1", SpaceId = LiveEpoch };
         var problems = cfg.Validate();
         Assert.Contains(problems, p => p.StartsWith("bind_address:"));
         Assert.Contains(problems, p => p.Contains("not peer-reachable"));
@@ -200,7 +200,7 @@ public sealed class AdmissionTests
     [Fact]
     public void AnEmptySpaceIdWhileEnabledIsRefused()
     {
-        var cfg = new FederationConfig { Enabled = true, BindAddress = "0.0.0.0", SpaceId = "" };
+        var cfg = new FederationConfig { Enabled = true, BoardRootPath = "D:/coop/buildkit/sched", BoardActor = "gavriella", BindAddress = "0.0.0.0", SpaceId = "" };
         Assert.Contains(cfg.Validate(), p => p.StartsWith("space_id:"));
     }
 
@@ -208,7 +208,7 @@ public sealed class AdmissionTests
     [Fact]
     public void AClockDerivedSpaceIdIsRefused()
     {
-        var cfg = new FederationConfig { Enabled = true, BindAddress = "0.0.0.0", SpaceId = "5961694" };
+        var cfg = new FederationConfig { Enabled = true, BoardRootPath = "D:/coop/buildkit/sched", BoardActor = "gavriella", BindAddress = "0.0.0.0", SpaceId = "5961694" };
         Assert.Contains(cfg.Validate(), p => p.Contains("clock-derived"));
     }
 
@@ -218,11 +218,11 @@ public sealed class AdmissionTests
     {
         var cfg = new FederationConfig
         {
-            Enabled = true, BindAddress = "0.0.0.0", SpaceId = LiveEpoch,
+            Enabled = true, BoardRootPath = "D:/coop/buildkit/sched", BoardActor = "gavriella", BindAddress = "0.0.0.0", SpaceId = LiveEpoch,
             Peers =
             {
-                new PeerConfig { Name = "a", NodeId = "same", Endpoints = { "192.168.0.1:47890" } },
-                new PeerConfig { Name = "b", NodeId = "same", Endpoints = { "192.168.0.2:47890" } },
+                new PeerConfig { Name = "a", NodeId = "5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a", Endpoints = { "192.168.0.1:47890" } },
+                new PeerConfig { Name = "b", NodeId = "5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a", Endpoints = { "192.168.0.2:47890" } },
             },
         };
         Assert.Contains(cfg.Validate(), p => p.Contains("duplicate"));
@@ -234,8 +234,8 @@ public sealed class AdmissionTests
     {
         var cfg = new FederationConfig
         {
-            Enabled = true, BindAddress = "0.0.0.0", SpaceId = LiveEpoch,
-            Peers = { new PeerConfig { Name = "o", NodeId = "n", Endpoints = { "olamnit:47890" } } },
+            Enabled = true, BoardRootPath = "D:/coop/buildkit/sched", BoardActor = "gavriella", BindAddress = "0.0.0.0", SpaceId = LiveEpoch,
+            Peers = { new PeerConfig { Name = "o", NodeId = "2222222222222222222222222222222222222222222222222222222222222222", Endpoints = { "olamnit:47890" } } },
         };
         Assert.Contains(cfg.Validate(), p => p.Contains("literal address"));
     }
@@ -261,8 +261,8 @@ public sealed class AdmissionTests
         {
             var cfg = new FederationConfig
             {
-                Enabled = true, BindAddress = "0.0.0.0", BindPort = 47890, SpaceId = LiveEpoch,
-                Peers = { new PeerConfig { Name = "olamnit", NodeId = "n1", Endpoints = { "192.168.0.136:47890" }, Pin = "p" } },
+                Enabled = true, BoardRootPath = "D:/coop/buildkit/sched", BoardActor = "gavriella", BindAddress = "0.0.0.0", BindPort = 47890, SpaceId = LiveEpoch,
+                Peers = { new PeerConfig { Name = "olamnit", NodeId = "1111111111111111111111111111111111111111111111111111111111111111", Endpoints = { "192.168.0.136:47890" } } },
             };
             cfg.Save(path);
 
@@ -351,8 +351,8 @@ public sealed class AdmissionTests
     {
         var cfg = new FederationConfig
         {
-            Enabled = true, BindAddress = "0.0.0.0", BindPort = 47890, SpaceId = LiveEpoch,
-            Peers = { new PeerConfig { Name = "olamnit", NodeId = "n1", Endpoints = { "192.168.0.136:47890" }, Pin = "p" } },
+            Enabled = true, BoardRootPath = "D:/coop/buildkit/sched", BoardActor = "gavriella", BindAddress = "0.0.0.0", BindPort = 47890, SpaceId = LiveEpoch,
+            Peers = { new PeerConfig { Name = "olamnit", NodeId = "1111111111111111111111111111111111111111111111111111111111111111", Endpoints = { "192.168.0.136:47890" } } },
         };
         var log = new InMemoryBoardLog();
         var svc = new FederationService(cfg, new FakeLink("A") { Broken = true },

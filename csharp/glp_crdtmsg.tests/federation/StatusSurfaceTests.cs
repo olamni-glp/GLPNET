@@ -27,16 +27,31 @@ public sealed class StatusSurfaceTests
     private static FederationConfig Config(bool enabled = true, params PeerConfig[] peers) => new()
     {
         Enabled = enabled,
+        BoardRootPath = "D:/coop/buildkit/sched",
+        BoardActor = "gavriella",
         BindAddress = "0.0.0.0",
         BindPort = 47890,
         SpaceId = LiveEpoch,
         Peers = peers.ToList(),
     };
 
-    private static PeerConfig Peer(string name, string nodeId, params string[] endpoints) => new()
+    /// <summary>
+    /// A peer fixture whose node id has the REAL shape (64 hex = SHA-256 of an SPKI) and whose pin
+    /// is DERIVED from it. A fixture that uses a made-up node id and an unrelated pin string cannot
+    /// catch the encoding mismatch that refused every correctly-configured peer in production.
+    /// </summary>
+    private static PeerConfig Peer(string name, string seed, params string[] endpoints)
     {
-        Name = name, NodeId = nodeId, Endpoints = endpoints.ToList(), Pin = "pin-" + nodeId,
-    };
+        string nodeId = Convert.ToHexStringLower(
+            System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(seed)));
+        return new PeerConfig
+        {
+            Name = name,
+            NodeId = nodeId,
+            Endpoints = endpoints.ToList(),
+            Pin = NodeIdentityStore.PinFromNodeId(nodeId),
+        };
+    }
 
     private static FederationService Service(FederationConfig cfg, FakeLink link) =>
         new(cfg, link, new FederationFold(new TermSpaceRegistry(LiveEpoch)), new InMemoryBoardLog());

@@ -68,7 +68,13 @@ public static class RetirementOp
         if (!op.Body.TryGetProperty("target_op_id", out var t) || t.ValueKind != JsonValueKind.Object) return null;
         if (!t.TryGetProperty("peer", out var p) || p.ValueKind != JsonValueKind.String) return null;
         if (!t.TryGetProperty("counter", out var c) || c.ValueKind != JsonValueKind.Number) return null;
-        return new Dot(p.GetString()!, c.GetInt64());
+
+        // TryGetInt64, not GetInt64. A JSON number can be fractional or outside Int64 — GetInt64
+        // THROWS on both, contradicting this method's contract two lines above and, because the
+        // caller once inserted the op first, leaving the fold partially mutated when the exception
+        // escaped. A malformed retirement must not be able to stop the fold; that is the point.
+        if (!c.TryGetInt64(out long counter)) return null;
+        return new Dot(p.GetString()!, counter);
     }
 
     /// <summary>The stated reason, for the operator surface.</summary>

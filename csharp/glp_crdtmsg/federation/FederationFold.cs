@@ -24,7 +24,11 @@ public sealed class FederationFold
     private readonly TermSpaceRegistry _spaces;
     private readonly Dictionary<Dot, FederationOp> _ops = new();
     private readonly HashSet<Dot> _retired = new();
-    private VersionVector _seen = new();
+
+    // A HOLE-PRESERVING frontier, not a VersionVector. A max-merge vector reports "seen 7" after
+    // 5 and 7 arrive, so Contains(6) answers TRUE for an op that never arrived, the pull suppresses
+    // it, and a transient loss becomes permanent divergence. See FederationFrontier.
+    private FederationFrontier _seen = new();
 
     public FederationFold(TermSpaceRegistry spaces) => _spaces = spaces;
 
@@ -47,12 +51,18 @@ public sealed class FederationFold
         if (_ops.ContainsKey(op.OpId))
             return false;                       // union-by-id: redelivery does NOT double-count
 
+        // The retirement body is decoded BEFORE the op is inserted. Decoding first means a
+        // malformed body cannot leave the fold half-mutated: either the op and its consequence both
+        // land, or neither does. (TargetOf returns null rather than throwing on every malformed
+        // shape — including a fractional or out-of-range counter — but ordering the work this way
+        // does not depend on that promise holding.)
+        Dot? retires = RetirementOp.IsRetirement(op) ? RetirementOp.TargetOf(op) : null;
+
         _ops[op.OpId] = op;
         _seen = _seen.With(op.OpId);
 
         // A retirement op is an ORDINARY op that also records an ordering consequence (FR-029).
-        if (RetirementOp.IsRetirement(op) && RetirementOp.TargetOf(op) is { } target)
-            _retired.Add(target);
+        if (retires is { } target) _retired.Add(target);
 
         return true;
     }
@@ -121,6 +131,9 @@ public sealed class FederationFold
     public string ToCanonicalJson() =>
         "[" + string.Join(",", Operations.Select(o => o.ToCanonicalJson())) + "]";
 
-    /// <summary>The causal frontier — reused for the reconciliation pull (contract W5).</summary>
-    public VersionVector Frontier => _seen;
+    /// <summary>
+    /// The causal frontier for the reconciliation pull (contract W5). Hole-preserving: a gap is
+    /// advertised AS a gap, so the peer resends what was lost instead of suppressing it forever.
+    /// </summary>
+    public FederationFrontier Frontier => _seen;
 }

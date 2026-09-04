@@ -37,8 +37,22 @@ public enum AdmissionOutcome
     NameResolutionFailed,
 }
 
-/// <summary>One admitted participant: an identity, its pin, and the addresses it answers on.</summary>
-public sealed record PeerEntry(string Name, string NodeId, IReadOnlyList<IPEndPoint> Endpoints, string Pin);
+/// <summary>
+/// One admitted participant: an identity, its pin, the addresses it answers on, and — when the
+/// operator has published it — the public key its operation signatures are verified against.
+/// <para>
+/// <c>Name</c> is a HUMAN LABEL and nothing else. It is never a wire key, never a dial key and never
+/// a pin-table key; <see cref="NodeId"/> is all three. Keying the transport by name while the
+/// service identified peers by node id made both the accept-side lookup and the dial-side
+/// remote-name check reject correctly-configured peers.
+/// </para>
+/// </summary>
+public sealed record PeerEntry(
+    string Name,
+    string NodeId,
+    IReadOnlyList<IPEndPoint> Endpoints,
+    string Pin,
+    string? Spki = null);
 
 /// <summary>The participants this host will admit. Empty by default, meaning admit nobody.</summary>
 public sealed class PeerSet
@@ -91,9 +105,30 @@ public sealed class PeerSet
             : AdmissionOutcome.PinMismatch;
     }
 
-    /// <summary>The pin table in the shape <c>QuicLinkTransport</c> expects: peer name -> SPKI pin.</summary>
+    /// <summary>
+    /// The pin table <c>QuicLinkTransport</c> expects: <b>node id</b> -> base64 SPKI pin.
+    /// <para>
+    /// KEYED BY NODE ID, NOT BY NAME. The transport's dial key, its hello value and this dictionary's
+    /// key must be the SAME string, and the service's identity for a peer is its node id. Keying
+    /// this by <see cref="PeerEntry.Name"/> — as an earlier revision did — made the accept side's
+    /// `_peerPins[claimed]` lookup miss and the dial side's remote-name check fail, refusing every
+    /// correctly-configured peer while reporting a pin mismatch, i.e. a security event.
+    /// </para>
+    /// </summary>
     public IReadOnlyDictionary<string, string> ToPinTable() =>
-        _byNodeId.Values.ToDictionary(e => e.Name, e => e.Pin, StringComparer.Ordinal);
+        _byNodeId.Values.ToDictionary(e => e.NodeId, e => e.Pin, StringComparer.Ordinal);
+
+    /// <summary>
+    /// Published public keys by origin node id, for verifying operation signatures. A peer with no
+    /// published key is simply absent — its ops report as <c>UnverifiedOrigin</c>, never as forged.
+    /// </summary>
+    public IReadOnlyDictionary<string, string> ToSpkiTable() =>
+        _byNodeId.Values.Where(e => !string.IsNullOrWhiteSpace(e.Spki))
+                 .ToDictionary(e => e.NodeId, e => e.Spki!, StringComparer.Ordinal);
+
+    /// <summary>The human label for a node id, for operator-facing output only.</summary>
+    public string LabelFor(string nodeId) =>
+        _byNodeId.TryGetValue(nodeId, out var e) && !string.IsNullOrWhiteSpace(e.Name) ? e.Name : nodeId;
 
     /// <summary>Human reason for a not-admitted state, naming the missing pins (FR-019 / contract S6).</summary>
     public string WhyNotAdmitted() =>

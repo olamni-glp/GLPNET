@@ -425,7 +425,7 @@ public sealed class FoldConvergenceTests
         await svc.AppendAndPushAsync(Op("gavriella", 2));
 
         // The requester already has op 1.
-        var theirFrontier = new VersionVector().With(new Dot("gavriella", 1));
+        var theirFrontier = new FederationFrontier().With(new Dot("gavriella", 1));
         await svc.AnswerPullAsync("peer", theirFrontier);
 
         var resp = link.Sent.Single(x => x.Box == PullProtocol.ResponseBox);
@@ -442,7 +442,7 @@ public sealed class FoldConvergenceTests
         var svc = new FederationService(EnabledConfig(), link, NewFold(), new InMemoryBoardLog());
         await svc.AppendAndPushAsync(Op("gavriella", 1));
 
-        await svc.AnswerPullAsync("peer", new VersionVector().With(new Dot("gavriella", 1)));
+        await svc.AnswerPullAsync("peer", new FederationFrontier().With(new Dot("gavriella", 1)));
         Assert.DoesNotContain(link.Sent, x => x.Box == PullProtocol.ResponseBox);
     }
 
@@ -450,17 +450,25 @@ public sealed class FoldConvergenceTests
     [Fact]
     public void TheFrontierRoundTripsCanonically()
     {
-        var vv = new VersionVector().With(new Dot("b", 2)).With(new Dot("a", 5));
+        var vv = new FederationFrontier()
+            .With(new Dot("b", 1)).With(new Dot("b", 2))
+            .With(new Dot("a", 1)).With(new Dot("a", 5));
         var back = FrontierCodec.Decode(FrontierCodec.Encode(vv));
 
-        Assert.Equal(5, back["a"]);
-        Assert.Equal(2, back["b"]);
+        // "a" has a HOLE: 1 is contiguous, 5 sits above it, 2-4 were never seen. Both halves must
+        // survive the round trip, or the peer suppresses exactly the ops the pull exists to recover.
+        Assert.Equal(1, back.ContiguousUpTo("a"));
+        Assert.Equal(new long[] { 5 }, back.Above("a").ToArray());
+        Assert.Equal(2, back.ContiguousUpTo("b"));
+        Assert.Empty(back.Above("b"));
         Assert.Equal(FrontierCodec.Encode(vv), FrontierCodec.Encode(back));
     }
 
     private static FederationConfig EnabledConfig() => new()
     {
         Enabled = true,
+        BoardRootPath = "D:/coop/buildkit/sched",
+        BoardActor = "gavriella",
         BindAddress = "0.0.0.0",
         BindPort = 47890,
         SpaceId = LiveEpoch,

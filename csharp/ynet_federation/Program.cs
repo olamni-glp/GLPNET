@@ -8,6 +8,18 @@
 // Every verb that CHANGES anything records its reversal in the same breath (FR-025). The reversal is
 // DATA, not documentation: a runbook line saying "and to undo it, remove the rule" is a reversal
 // nobody can execute six weeks later on a host they did not configure.
+//
+// FOUR THINGS THE ROUND-2 REVIEW FOUND HERE, ALL OF THE SAME SHAPE — the console was internally
+// consistent and matched the runbook only if you never ran two commands at once:
+//
+//   1. `add-peer` wrote the hex NODE ID into the pin field, which the TLS callback compares against
+//      base64. Every correctly-configured peer was refused before federation could start.
+//   2. `post` opened its own service, never bound or dialled it, and pushed to an empty admitted
+//      set — so it wrote locally and reached nobody, while the running daemon never heard of it.
+//   3. `status` read only configuration, so while `serve` was genuinely federating it reported
+//      `listener bound: No` — the runbook's expected output unreachable by the runbook's procedure.
+//   4. The board log was a private file under the config directory, so real lane claims never
+//      entered the fold and federated ops never reached the oracle the lanes read: a second oracle.
 
 using System.Net;
 using System.Text.Json;
@@ -49,6 +61,13 @@ public static class Program
             Console.Error.WriteLine("  `buildkit ship` — ruling Q-GLPNETG27-02 declined disabling the protection as one-way.");
             return 3;
         }
+        catch (BoardRootException ex)
+        {
+            // Named separately: attaching to the wrong root is how a second board gets created, and
+            // a generic "error:" here would invite the operator to work around it.
+            Console.Error.WriteLine($"BOARD ROOT REFUSED: {ex.Message}");
+            return 4;
+        }
         catch (Exception ex)
         {
             Console.Error.WriteLine($"error: {ex.Message}");
@@ -62,21 +81,49 @@ public static class Program
     {
         var cfg = FederationConfig.Load();
         var peers = cfg.ToPeerSet();
+        var now = DateTimeOffset.UtcNow;
 
-        var reasons = new Dictionary<string, string>();
-        if (peers.AdmitsNobody) reasons["peer admitted"] = peers.WhyNotAdmitted();
+        // READ THE SERVING PROCESS'S OWN MEASUREMENT. This command is a separate process from
+        // `serve`, so it can measure the stack and the configuration itself but NOT the listener,
+        // the admitted peers or a crossing. Reporting those as No from here was reporting an
+        // unmeasured state as a measured negative — the exact FR-021 violation.
+        var heartbeat = StatusHeartbeat.ReadFresh(now);
+        var stack = FederationStatusProbe.MeasureStackSupported();
 
-        // Four INDEPENDENT measurements. Nothing here infers one state from another (FR-020).
-        var status = new FederationStatus
+        FederationStatus status;
+        if (heartbeat is not null)
         {
-            StackSupported = FederationStatusProbe.MeasureStackSupported(),
-            ListenerBound = Tri.No,          // this process is not the serving one
-            PeerAdmitted = peers.AdmitsNobody ? Tri.No : Tri.Unknown,
-            OpReceivedFromPeer = Tri.Unknown, // not measurable from outside the serving process
-            Reasons = reasons,
-        };
+            status = heartbeat.ToStatus(stack);
+            Console.Write(status.Render());
+            Console.WriteLine($"\nsource: serving process pid {heartbeat.Pid}, measured "
+                              + $"{(int)heartbeat.AgeAt(now).TotalSeconds}s ago; fold holds {heartbeat.FoldOperations} operation(s).");
+        }
+        else
+        {
+            var reasons = new Dictionary<string, string>
+            {
+                ["listener bound"] = "no serving process is publishing a current measurement",
+                ["op received from peer"] = "not measurable from outside the serving process",
+            };
+            if (peers.AdmitsNobody) reasons["peer admitted"] = peers.WhyNotAdmitted();
 
-        Console.Write(status.Render());
+            status = new FederationStatus
+            {
+                StackSupported = stack,
+                // UNKNOWN, not No. This process did not measure them, and an unmeasured state is
+                // not a negative result (FR-021). Only the empty peer set is a genuine measured No:
+                // it is read from configuration, which this process CAN see.
+                ListenerBound = Tri.Unknown,
+                PeerAdmitted = peers.AdmitsNobody ? Tri.No : Tri.Unknown,
+                OpReceivedFromPeer = Tri.Unknown,
+                Reasons = reasons,
+            };
+            Console.Write(status.Render());
+            Console.WriteLine($"\nsource: configuration only — no fresh measurement at {StatusHeartbeat.DefaultPath()}.");
+            Console.WriteLine($"        A record older than {(int)StatusHeartbeat.Freshness.TotalSeconds}s is treated as no");
+            Console.WriteLine("        measurement at all: a file written by a process that has since been killed");
+            Console.WriteLine("        is how a dead daemon reports itself healthy. Run `serve` in another terminal.");
+        }
 
         if (!cfg.Enabled)
             Console.WriteLine("\nfederation is DISABLED in configuration — local lanes are served normally (FR-004).");
@@ -115,6 +162,11 @@ public static class Program
                     "bind_address" => cfg with { BindAddress = a[3] },
                     "bind_port" => cfg with { BindPort = int.Parse(a[3]) },
                     "space_id" => cfg with { SpaceId = a[3] },
+                    "identity_path" => cfg with { IdentityPath = a[3] },
+                    "board_root" => cfg with { BoardRootPath = a[3] },
+                    "board_actor" => cfg with { BoardActor = a[3] },
+                    "write_into_lane_segment" => cfg with { WriteIntoLaneSegment = bool.Parse(a[3]) },
+                    "require_verified_attribution" => cfg with { RequireVerifiedAttribution = bool.Parse(a[3]) },
                     "pull_interval_seconds" => cfg with { PullIntervalSeconds = int.Parse(a[3]) },
                     "push_on_append" => cfg with { PushOnAppend = bool.Parse(a[3]) },
                     _ => throw new ArgumentException($"unknown key '{a[2]}'"),
@@ -130,20 +182,50 @@ public static class Program
 
             case "add-peer":
             {
-                string? name = Arg(a, "--name"), nodeId = Arg(a, "--node-id");
+                string? name = Arg(a, "--name"), nodeId = Arg(a, "--node-id"), spki = Arg(a, "--spki");
                 var endpoints = Args(a, "--endpoint");
                 if (name is null || nodeId is null || endpoints.Count == 0)
                 {
-                    Console.Error.WriteLine("usage: config add-peer --name <n> --node-id <hex> --endpoint <ip:port> [--endpoint ...]");
+                    Console.Error.WriteLine("usage: config add-peer --name <n> --node-id <hex> --endpoint <ip:port> [--endpoint ...] [--spki <base64>]");
                     return 1;
                 }
+
+                if (!NodeIdentityStore.IsNodeId(nodeId))
+                {
+                    Console.Error.WriteLine($"--node-id '{nodeId}' is not 64 hex characters.");
+                    Console.Error.WriteLine("  A node id is SHA-256(SPKI) in hex — the value `identity` prints on the peer.");
+                    return 1;
+                }
+
+                // DERIVE the pin; never assign the node id to it. They are the same 32 bytes in two
+                // encodings (hex here, base64 in the TLS callback), and assigning one to the other
+                // refuses every correct peer while presenting the refusal as a pin mismatch.
+                string pin = NodeIdentityStore.PinFromNodeId(nodeId);
+
+                if (spki is not null && !string.Equals(NodeIdentityStore.NodeIdFromSpki(spki), nodeId,
+                                                      StringComparison.OrdinalIgnoreCase))
+                {
+                    Console.Error.WriteLine("--spki does not hash to --node-id — this key does not belong to this participant.");
+                    return 1;
+                }
+
                 string prior = JsonSerializer.Serialize(cfg);
                 cfg.Peers.RemoveAll(p => p.NodeId.Equals(nodeId, StringComparison.OrdinalIgnoreCase));
-                cfg.Peers.Add(new PeerConfig { Name = name, NodeId = nodeId, Endpoints = endpoints, Pin = nodeId });
+                cfg.Peers.Add(new PeerConfig
+                {
+                    Name = name,
+                    NodeId = nodeId,
+                    Endpoints = endpoints,
+                    Pin = pin,
+                    Spki = spki ?? "",
+                });
                 cfg.Save();
                 Ledger().Record($"config add-peer {name} [{nodeId}]", "restore the recorded prior config", "admit a federation peer", prior);
 
                 Console.WriteLine($"peer '{name}' added with {endpoints.Count} endpoint(s) — ONE participant regardless (FR-007).");
+                Console.WriteLine($"pin derived from node id: {pin}");
+                if (spki is null)
+                    Console.WriteLine("no --spki given: this peer's operations will fold as UNVERIFIED ORIGIN (self-declared attribution).");
                 Console.Write(FederationConfig.Load().RenderEffective());
                 return 0;
             }
@@ -158,19 +240,28 @@ public static class Program
 
     private static int Identity(string[] a)
     {
-        var store = new NodeIdentityStore(NodeIdentityStore.DefaultPath());
+        var cfg = FederationConfig.Load();
+        // HONOUR identity_path. Ignoring it meant a deployment that pre-provisions a key silently
+        // federated under a freshly-minted one that no peer had pinned — the configured setting
+        // inert while appearing effective.
+        string path = cfg.EffectiveIdentityPath;
+        var store = new NodeIdentityStore(path);
         bool existed = store.Exists;
         var cert = store.LoadOrMint(Environment.MachineName.ToLowerInvariant());
         string nodeId = NodeIdentityStore.DeriveNodeId(cert);
 
         if (!existed)
-            Ledger().Record("minted node.key", $"delete {NodeIdentityStore.DefaultPath()}", "a stable node id that survives restarts");
+            Ledger().Record("minted node.key", $"delete {path}", "a stable node id that survives restarts");
 
         Console.WriteLine($"node_id : {nodeId}");
-        Console.WriteLine($"key     : {NodeIdentityStore.DefaultPath()}{(existed ? " (existing)" : " (minted)")}");
+        Console.WriteLine($"pin     : {NodeIdentityStore.PinFromNodeId(nodeId)}");
+        Console.WriteLine($"spki    : {NodeIdentityStore.ExportSpki(cert)}");
+        Console.WriteLine($"key     : {path}{(existed ? " (existing)" : " (minted)")}"
+                          + $"{(string.IsNullOrWhiteSpace(cfg.IdentityPath) ? "  [default]" : "  [from identity_path]")}");
         Console.WriteLine();
-        Console.WriteLine("Publish the node_id to peers. It is stable BECAUSE it is persisted — a pin read");
-        Console.WriteLine("from a probe run is ephemeral and must never be published as stable.");
+        Console.WriteLine("Publish the node_id AND the spki to peers: the node id admits you, the spki lets");
+        Console.WriteLine("them VERIFY your operations rather than take your attribution on trust. Both are");
+        Console.WriteLine("stable BECAUSE the key is persisted — a pin read from a probe run is ephemeral.");
         return 0;
     }
 
@@ -207,18 +298,30 @@ public static class Program
 
     // ---- post / retire / serve ----------------------------------------------------------------
 
+    /// <summary>
+    /// Append one board operation. THIS PROCESS DOES NOT PUSH — the running `serve` daemon tails the
+    /// log and pushes what it finds.
+    /// <para>
+    /// The previous implementation opened a full service here, never bound or dialled it, and called
+    /// AppendAndPushAsync against an empty admitted set: the op was written locally and reached
+    /// nobody, while the running daemon had no way to learn of it. Appending durably and letting the
+    /// daemon carry it is correct in both directions — with no daemon running the op is still on the
+    /// board and converges at the next pull, and with one running it is pushed within a second.
+    /// </para>
+    /// </summary>
     private static async Task<int> Post(string[] a)
     {
         string body = Arg(a, "--body") ?? "";
-        var (cfg, svc, nodeId) = await Open();
-        await using var _ = svc;
+        if (string.IsNullOrWhiteSpace(body)) { Console.Error.WriteLine("usage: post --body <text>"); return 1; }
 
-        long counter = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();   // a DOT counter, never a TERM
-        var op = FederationOp.Create(new Dot(nodeId, counter), nodeId, "board_post",
-            JsonSerializer.SerializeToElement(new { body, lane = Environment.MachineName }));
+        var (cfg, log, cert, nodeId) = await OpenLogAsync();
 
-        await svc.AppendAndPushAsync(op);
-        Console.WriteLine($"appended {op.OpId} locally, then pushed (append-then-ship, FR-030).");
+        var op = FederationOp.Create(await NextDotAsync(cfg, log, nodeId), nodeId, "board_post",
+            JsonSerializer.SerializeToElement(new { body, lane = cfg.BoardActor }))
+            .SignedBy(cert);
+
+        await log.AppendAsync(op);
+        Report(cfg, log, op);
         return 0;
     }
 
@@ -233,22 +336,43 @@ public static class Program
             return 1;
         }
 
-        var (cfg, svc, nodeId) = await Open();
-        await using var _ = svc;
+        var (cfg, log, cert, nodeId) = await OpenLogAsync();
 
-        var op = RetirementOp.Create(
-            new Dot(nodeId, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()), nodeId, Dot.Parse(target), reason);
-        await svc.AppendAndPushAsync(op);
+        var op = RetirementOp.Create(await NextDotAsync(cfg, log, nodeId), nodeId, Dot.Parse(target), reason)
+                             .SignedBy(cert);
+        await log.AppendAsync(op);
 
         Console.WriteLine($"retired {target} into the legacy space by appending {op.OpId}.");
         Console.WriteLine("The target is STILL PRESENT in the log — removal is indistinguishable from suppression.");
+        Report(cfg, log, op);
         return 0;
+    }
+
+    private static void Report(FederationConfig cfg, SchedulerBoardLog log, FederationOp op)
+    {
+        Console.WriteLine($"appended {op.OpId} to {log.WritePath}");
+        bool serving = StatusHeartbeat.ReadFresh(DateTimeOffset.UtcNow) is not null;
+        Console.WriteLine(serving
+            ? "a serving process is running and tails this log — it will push the operation within a second."
+            : "NO serving process is publishing a measurement, so nothing will push this operation now."
+              + "\n  It is durably on the board and converges at the peer's next reconciliation pull."
+              + "\n  Run `serve` in another terminal to push on append.");
     }
 
     private static async Task<int> Serve()
     {
-        var (cfg, svc, nodeId) = await Open();
+        var (cfg, svc, log, nodeId) = await OpenServiceAsync();
         await using var _ = svc;
+
+        Console.WriteLine($"board root : {log.Root}");
+        Console.WriteLine($"actor      : {cfg.BoardActor}   node id: {nodeId}");
+        Console.WriteLine($"log        : {log.WritePath}");
+        Console.WriteLine($"fold       : {svc.Fold.Count} operation(s) replayed"
+                          + $" ({log.AdaptedLines} adapted from scheduler-native lines,"
+                          + $" {log.UnreadableLines} unreadable)");
+        if (log.UnreadableLines > 0)
+            Console.WriteLine("             unreadable lines are COUNTED, never silently skipped — a board that");
+            Console.WriteLine("             drops a line it cannot parse converges to the wrong answer quietly.");
 
         if (!await svc.BindAsync())
         {
@@ -259,7 +383,7 @@ public static class Program
         Console.Write(svc.Status().Render());
         foreach (var p in cfg.Peers)
         {
-            var outcome = await svc.DialAsync(p.Name);
+            var outcome = await svc.DialAsync(p.NodeId);
             Console.WriteLine($"dial {p.Name,-12}: {outcome}");
         }
 
@@ -267,10 +391,12 @@ public static class Program
         using var stop = new CancellationTokenSource();
         Console.CancelKeyPress += (_, e) => { e.Cancel = true; stop.Cancel(); };
 
-        // The pull loop runs ALONGSIDE the receive loop. Until this line existed the message above
-        // was a false statement to the operator: the interval was configured, validated and printed
-        // while nothing read it (FR-028).
+        // Three loops, and each one exists because something it does was previously claimed and not
+        // done: the pull leg (the interval was printed while nothing read it), the log tail (`post`
+        // is a separate process whose appends this daemon could not see), and the status heartbeat
+        // (`status` is a separate process that could not see this one's measurements).
         var pump = svc.RunPullLoopAsync(stop.Token);
+        var tail = svc.RunLogTailAsync(log.WritePath, stop.Token);
 
         try
         {
@@ -284,11 +410,18 @@ public static class Program
                     // doing its job.
                     Console.Error.WriteLine($"REFUSED: {ex.Message}");
                 }
+                catch (AttributionRefusedException ex)
+                {
+                    // Same discipline, different gate: a forged or inconsistent attribution is
+                    // rejected loudly and named, never folded and never allowed to stop the daemon.
+                    Console.Error.WriteLine($"REFUSED: {ex.Message}");
+                }
             }
         }
         catch (OperationCanceledException) { }
 
         try { await pump; } catch (OperationCanceledException) { }
+        try { await tail; } catch (OperationCanceledException) { }
         return 0;
     }
 
@@ -325,7 +458,8 @@ public static class Program
             }
             else if (c.What.StartsWith("minted node.key"))
             {
-                try { File.Delete(NodeIdentityStore.DefaultPath()); Console.WriteLine("deleted node.key"); }
+                string keyPath = FederationConfig.Load().EffectiveIdentityPath;
+                try { File.Delete(keyPath); Console.WriteLine($"deleted {keyPath}"); }
                 catch (Exception ex) { Console.Error.WriteLine($"could not delete node.key: {ex.Message}"); }
             }
         }
@@ -335,25 +469,61 @@ public static class Program
 
     // ---- helpers -----------------------------------------------------------------------------
 
-    private static async Task<(FederationConfig, FederationService, string)> Open()
+    /// <summary>
+    /// Open this host's identity and its log on the EXISTING board root. Used by the verbs that
+    /// append but do not serve — they need durable storage and an identity, not a transport.
+    /// </summary>
+    private static async Task<(FederationConfig, SchedulerBoardLog, System.Security.Cryptography.X509Certificates.X509Certificate2, string)>
+        OpenLogAsync()
     {
         var cfg = FederationConfig.Load();
-        var store = new NodeIdentityStore(NodeIdentityStore.DefaultPath());
+        var problems = cfg.Validate();
+        if (problems.Count > 0)
+            throw new InvalidOperationException("federation config refused: " + string.Join("; ", problems));
+
+        var store = new NodeIdentityStore(cfg.EffectiveIdentityPath);
         var cert = store.LoadOrMint(Environment.MachineName.ToLowerInvariant());
         string nodeId = NodeIdentityStore.DeriveNodeId(cert);
 
+        string root = BoardRoot.Resolve(null, cfg.BoardRootPath);
+        var log = new SchedulerBoardLog(root, cfg.BoardActor,
+            cfg.WriteIntoLaneSegment ? BoardWriteMode.LaneSegment : BoardWriteMode.FederationKind);
+
+        await Task.CompletedTask;
+        return (cfg, log, cert, nodeId);
+    }
+
+    /// <summary>
+    /// The next dot counter for this host: durable, contiguous, and safe against a second process.
+    /// Seeded from the log so a lost sequence file can never re-issue a counter already on the board.
+    /// </summary>
+    private static async Task<Dot> NextDotAsync(FederationConfig cfg, SchedulerBoardLog log, string nodeId)
+    {
+        long floor = DotSequencer.HighestFor(nodeId, await log.ReadAllAsync());
+        return new DotSequencer(DotSequencer.DefaultPath(), nodeId, floor).Next();
+    }
+
+    private static async Task<(FederationConfig, FederationService, SchedulerBoardLog, string)> OpenServiceAsync()
+    {
+        var (cfg, log, cert, nodeId) = await OpenLogAsync();
+
+        // The pin table is keyed by NODE ID — the same string used as the dial key and the hello
+        // value. Keying it by the human name made both the accept-side lookup and the dial-side
+        // remote-name check reject correctly-configured peers.
         var transport = new QuicLinkTransport(nodeId, cert, cfg.ToPeerSet().ToPinTable());
         var fold = new FederationFold(new TermSpaceRegistry(
             string.IsNullOrWhiteSpace(cfg.SpaceId) ? "ynet-epoch-unset" : cfg.SpaceId));
 
-        string logPath = Path.Combine(Path.GetDirectoryName(FederationConfig.DefaultPath())!,
-                                      $"{Environment.MachineName.ToLowerInvariant()}-board-000001.jsonl");
-        var log = new JsonlBoardLog(logPath);
-
-        // Replay the local log so the fold starts where the last process left off.
+        // Replay the WHOLE board — every actor's log under the root, not just this host's own
+        // segment. A fold built from one host's operations is that host's corner, not the board.
         foreach (var op in await log.ReadAllAsync()) fold.Apply(op);
 
-        return (cfg, new FederationService(cfg, new QuicFederationLink(transport), fold, log), nodeId);
+        var svc = new FederationService(cfg, new QuicFederationLink(transport), fold, log)
+        {
+            StatusHeartbeatPath = StatusHeartbeat.DefaultPath(),
+            RequireVerifiedAttribution = cfg.RequireVerifiedAttribution,
+        };
+        return (cfg, svc, log, nodeId);
     }
 
     private static ChangeLedger Ledger() => new(ChangeLedger.DefaultPath());
@@ -383,16 +553,25 @@ public static class Program
         Console.WriteLine("""
             ynet-federation — operator console for the ynet federation transport
 
-              status                                        four states, separately reported
+              status                                        four states, read from the SERVING process
               config show                                   the EFFECTIVE configuration
               config set <key> <value>                      then reads it back for verification
               config add-peer --name --node-id --endpoint    several --endpoint = ONE participant
-              identity init                                 mint/load the persisted node id
+                              [--spki <base64>]              publish the key to VERIFY their ops
+              identity                                      mint/load the persisted node id + spki
               epoch mint --rationale <why>                   a recorded operator action
-              serve                                         bind, dial peers, receive
-              post --body <text>                            append locally, then push
+              serve                                         bind, dial, receive, pull, tail, publish
+              post --body <text>                            append to the board; `serve` pushes it
               retire --op <peer:counter> --reason <why>      append a superseding op; never delete
               revert [--all]                                 replay the recorded reversals
+
+            config keys: enabled, bind_address, bind_port, space_id, identity_path, board_root,
+                         board_actor, write_into_lane_segment, require_verified_attribution,
+                         pull_interval_seconds, push_on_append
+
+            `post` and `status` are SEPARATE PROCESSES from `serve` and behave correctly as such:
+            post appends durably and serve tails the log; status reads serve's published measurement
+            and reports UNKNOWN — never No — when no serving process is publishing one.
 
             Run via `dotnet run` — Smart App Control blocks unsigned apphosts on this host.
             """);

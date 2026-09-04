@@ -24,7 +24,25 @@ public sealed record PeerConfig
     [JsonPropertyName("name")] public string Name { get; init; } = "";
     [JsonPropertyName("node_id")] public string NodeId { get; init; } = "";
     [JsonPropertyName("endpoints")] public List<string> Endpoints { get; init; } = new();
+
+    /// <summary>
+    /// The transport pin: base64(SHA-256(SPKI)). NOT the node id, which is the same bytes in hex.
+    /// Left empty it is DERIVED from <see cref="NodeId"/>, which is the only correct relationship
+    /// between the two and removes the operator's opportunity to get it wrong.
+    /// </summary>
     [JsonPropertyName("pin")] public string Pin { get; init; } = "";
+
+    /// <summary>
+    /// The peer's published base64 SubjectPublicKeyInfo, for verifying its operation signatures.
+    /// Optional: without it the peer's ops are <c>UnverifiedOrigin</c>, never assumed valid.
+    /// </summary>
+    [JsonPropertyName("spki")] public string Spki { get; init; } = "";
+
+    /// <summary>The effective pin — configured, or derived from the node id when absent.</summary>
+    public string EffectivePin =>
+        !string.IsNullOrWhiteSpace(Pin) ? Pin
+        : NodeIdentityStore.IsNodeId(NodeId) ? NodeIdentityStore.PinFromNodeId(NodeId)
+        : "";
 }
 
 /// <summary>The operator's surface. Readable back for verification (FR-002).</summary>
@@ -38,6 +56,33 @@ public sealed record FederationConfig
     [JsonPropertyName("push_on_append")] public bool PushOnAppend { get; init; } = true;
     [JsonPropertyName("pull_interval_seconds")] public int PullIntervalSeconds { get; init; } = 60;
     [JsonPropertyName("peers")] public List<PeerConfig> Peers { get; init; } = new();
+
+    /// <summary>
+    /// The EXISTING scheduler board root federation attaches to (e.g. <c>D:\coop\buildkit\sched</c>).
+    /// Federation reads and appends here; it does not create a board of its own. Empty means
+    /// unconfigured, and `serve` refuses rather than inventing a second board.
+    /// </summary>
+    [JsonPropertyName("board_root")] public string BoardRootPath { get; init; } = "";
+
+    /// <summary>
+    /// The actor name whose op-log this host appends to — the lane identity on the board, which is
+    /// NOT the node id (that is the transport identity).
+    /// </summary>
+    [JsonPropertyName("board_actor")] public string BoardActor { get; init; } = "";
+
+    /// <summary>
+    /// When true, federated operations are appended into the lane's own <c>ops</c> segment rather
+    /// than federation's own kind. Off by default: it puts federation-shaped lines in front of every
+    /// existing scheduler reader on the estate, which is an interop decision, not a default.
+    /// </summary>
+    [JsonPropertyName("write_into_lane_segment")] public bool WriteIntoLaneSegment { get; init; }
+
+    /// <summary>
+    /// When true, an operation whose origin cannot be cryptographically verified is refused rather
+    /// than folded-and-counted. Off until peers have published their keys, so that turning it on is
+    /// a deliberate tightening rather than a silent outage.
+    /// </summary>
+    [JsonPropertyName("require_verified_attribution")] public bool RequireVerifiedAttribution { get; init; }
 
     /// <summary>The default federation port, authorised for a scoped inbound rule by ruling Q-GLPNETG27-04.</summary>
     public const int DefaultPort = 47890;
@@ -57,6 +102,15 @@ public sealed record FederationConfig
             // up green and no peer can ever reach you (FR-001 / I-31).
             if (IPAddress.TryParse(BindAddress, out var addr) && IPAddress.IsLoopback(addr))
                 problems.Add("bind_address: loopback bind is not peer-reachable — a listener bound to loopback looks healthy and admits nobody");
+
+            // Without a board root, federation has nothing to attach to — and the previous fallback
+            // (a private file under the config directory) silently produced a SECOND board that the
+            // lanes never read. Refusing is the only safe answer.
+            if (string.IsNullOrWhiteSpace(BoardRootPath))
+                problems.Add("board_root: empty — federation attaches to the EXISTING board; without a root it would converge a second, invisible one");
+
+            if (string.IsNullOrWhiteSpace(BoardActor))
+                problems.Add("board_actor: empty — an operation must be appended to a named actor's log to be attributable on the board (FR-009)");
 
             if (string.IsNullOrWhiteSpace(SpaceId))
                 problems.Add("space_id: empty — an unminted space cannot order anything (FR-026)");
@@ -80,6 +134,38 @@ public sealed record FederationConfig
             }
             if (!seenNodeIds.Add(p.NodeId))
                 problems.Add($"peers[{p.Name}].node_id: duplicate '{p.NodeId}' — one participant, one entry (FR-007)");
+
+            // The node id is SHA-256(SPKI) in hex. A value of any other shape cannot produce a pin,
+            // so the peer would be refused at the TLS callback for a reason that presents as a pin
+            // mismatch — a configuration fault reported as a security event.
+            if (!NodeIdentityStore.IsNodeId(p.NodeId))
+            {
+                problems.Add($"peers[{p.Name}].node_id: '{p.NodeId}' is not 64 hex characters — a node id is SHA-256(SPKI) in hex (FR-007)");
+            }
+            else if (!string.IsNullOrWhiteSpace(p.Pin))
+            {
+                // A pin given explicitly must be the SAME BYTES as the node id. Silently preferring
+                // one over the other is how a peer ends up pinned to a key it does not hold.
+                string derived;
+                try { derived = NodeIdentityStore.PinFromNodeId(p.NodeId); }
+                catch (FormatException) { derived = ""; }
+                if (derived.Length > 0 && !string.Equals(derived, p.Pin.Trim(), StringComparison.Ordinal))
+                    problems.Add($"peers[{p.Name}].pin: does not match node_id — the pin is base64 of the SAME SHA-256(SPKI) the node id is hex of; leave it empty to derive it");
+            }
+
+            // A published key must belong to the identity it is filed under, and this is checkable:
+            // SHA-256 of the SPKI must be the node id. Otherwise a wrong key installs quietly and
+            // every signature from that peer fails as a forgery.
+            if (!string.IsNullOrWhiteSpace(p.Spki))
+            {
+                string implied;
+                try { implied = NodeIdentityStore.NodeIdFromSpki(p.Spki.Trim()); }
+                catch (FormatException) { implied = ""; }
+                if (implied.Length == 0)
+                    problems.Add($"peers[{p.Name}].spki: not valid base64 — expected a base64 SubjectPublicKeyInfo");
+                else if (!string.Equals(implied, p.NodeId.Trim(), StringComparison.OrdinalIgnoreCase))
+                    problems.Add($"peers[{p.Name}].spki: hashes to '{implied}', not to node_id '{p.NodeId}' — this key does not belong to this participant");
+            }
 
             foreach (var ep in p.Endpoints)
             {
@@ -107,10 +193,22 @@ public sealed record FederationConfig
             var eps = new List<IPEndPoint>();
             foreach (var e in p.Endpoints)
                 if (IPEndPoint.TryParse(e, out var ip)) eps.Add(ip);
-            set.Add(new PeerEntry(p.Name, p.NodeId, eps, p.Pin));
+            set.Add(new PeerEntry(p.Name, p.NodeId, eps, p.EffectivePin,
+                                  string.IsNullOrWhiteSpace(p.Spki) ? null : p.Spki.Trim()));
         }
         return set;
     }
+
+    /// <summary>
+    /// Where this host's own identity lives: <c>identity_path</c> when configured, else the default.
+    /// <para>
+    /// Honouring this is not cosmetic. A deployment that pre-provisions a key and is silently given a
+    /// freshly-minted one instead federates under an identity no peer has pinned — every peer
+    /// refuses it, and the configured setting is inert while appearing effective.
+    /// </para>
+    /// </summary>
+    public string EffectiveIdentityPath =>
+        string.IsNullOrWhiteSpace(IdentityPath) ? NodeIdentityStore.DefaultPath() : IdentityPath;
 
     private static readonly JsonSerializerOptions Json = new()
     {
@@ -158,11 +256,13 @@ public sealed record FederationConfig
         sb.AppendLine($"enabled               : {Enabled}");
         sb.AppendLine($"bind                  : {BindAddress}:{BindPort}");
         sb.AppendLine($"space_id              : {(string.IsNullOrWhiteSpace(SpaceId) ? "(unset)" : SpaceId)}");
+        sb.AppendLine($"identity_path         : {EffectiveIdentityPath}{(string.IsNullOrWhiteSpace(IdentityPath) ? " (default)" : " (configured)")}");
         sb.AppendLine($"push_on_append        : {PushOnAppend}");
         sb.AppendLine($"pull_interval_seconds : {PullIntervalSeconds}");
         sb.AppendLine($"peers                 : {Peers.Count} participant(s)");
         foreach (var p in Peers)
-            sb.AppendLine($"  - {p.Name} [{p.NodeId}] {string.Join(", ", p.Endpoints)}");
+            sb.AppendLine($"  - {p.Name} [{p.NodeId}] {string.Join(", ", p.Endpoints)}"
+                          + $"  key: {(string.IsNullOrWhiteSpace(p.Spki) ? "NOT PUBLISHED (ops unverified)" : "published")}");
         var problems = Validate();
         sb.AppendLine(problems.Count == 0 ? "validation            : OK" : "validation            : REFUSED");
         foreach (var pr in problems) sb.AppendLine($"  ! {pr}");

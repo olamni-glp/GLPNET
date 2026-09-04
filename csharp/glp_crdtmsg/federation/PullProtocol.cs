@@ -20,24 +20,21 @@ using GlpRuntime.CrdtMsg.Crdt;
 
 namespace GlpRuntime.CrdtMsg.Federation;
 
-/// <summary>Wire-serialisable causal frontier: peer -> highest contiguously-known counter.</summary>
+/// <summary>
+/// Wire-serialisable causal frontier: per peer, the contiguous run PLUS the counters seen above it.
+/// <para>
+/// The "above" half is what makes a hole repairable. An encoding that carried only a high-water mark
+/// advertised counters this host had never received, and the peer then suppressed exactly the
+/// operations the pull leg exists to recover.
+/// </para>
+/// </summary>
 public static class FrontierCodec
 {
     /// <summary>Canonical JSON, peers in ordinal order so two hosts produce identical bytes.</summary>
-    public static string Encode(VersionVector v)
-    {
-        var pairs = v.Peers.Select(p => $"{JsonSerializer.Serialize(p)}:{v[p]}");
-        return "{" + string.Join(",", pairs) + "}";
-    }
+    public static string Encode(FederationFrontier f) => f.ToCanonicalJson();
 
-    public static VersionVector Decode(string json)
-    {
-        var vv = new VersionVector();
-        using var doc = JsonDocument.Parse(json);
-        foreach (var prop in doc.RootElement.EnumerateObject())
-            vv = vv.With(new Dot(prop.Name, prop.Value.GetInt64()));
-        return vv;
-    }
+    /// <summary>Parse a frontier. Tolerates the older bare-number encoding (see FederationFrontier).</summary>
+    public static FederationFrontier Decode(string json) => FederationFrontier.FromCanonicalJson(json);
 }
 
 /// <summary>
@@ -53,18 +50,58 @@ public static class PullProtocol
     /// <summary>Box for "here are the ops you lack".</summary>
     public const string ResponseBox = "pull-resp";
 
+    /// <summary>
+    /// The largest response this protocol will build. Well under the transport's 64 MiB frame guard,
+    /// which REJECTS an oversized frame — and a rejected frame is retried identically at every
+    /// interval, so a peer more than one frame behind could never make partial progress. Batching is
+    /// therefore a correctness requirement, not a tuning knob.
+    /// </summary>
+    public const int MaxResponseBytes = 8 * 1024 * 1024;
+
     /// <summary>Build a pull request carrying this host's frontier.</summary>
-    public static byte[] EncodeRequest(VersionVector frontier) =>
+    public static byte[] EncodeRequest(FederationFrontier frontier) =>
         System.Text.Encoding.UTF8.GetBytes(FrontierCodec.Encode(frontier));
 
     /// <summary>Read the frontier out of a pull request.</summary>
-    public static VersionVector DecodeRequest(byte[] bytes) =>
+    public static FederationFrontier DecodeRequest(byte[] bytes) =>
         FrontierCodec.Decode(System.Text.Encoding.UTF8.GetString(bytes));
 
     /// <summary>Build a pull response carrying only the ops the requester lacks.</summary>
     public static byte[] EncodeResponse(IReadOnlyList<FederationOp> ops) =>
         System.Text.Encoding.UTF8.GetBytes(
             "[" + string.Join(",", ops.Select(o => o.ToCanonicalJson())) + "]");
+
+    /// <summary>
+    /// Split the ops a peer lacks into batches that each encode below <see cref="MaxResponseBytes"/>.
+    /// <para>
+    /// Ops are kept in their given (deterministic dot) order, so a peer that receives only the first
+    /// batches has a PREFIX and converges monotonically over successive intervals. A single op larger
+    /// than the batch limit still gets its own batch — refusing to send it at all would strand it
+    /// forever, and the transport's own guard is the backstop for a genuinely unsendable frame.
+    /// </para>
+    /// </summary>
+    public static IReadOnlyList<IReadOnlyList<FederationOp>> BatchResponses(IReadOnlyList<FederationOp> ops)
+    {
+        var batches = new List<IReadOnlyList<FederationOp>>();
+        var current = new List<FederationOp>();
+        int size = 2;   // the enclosing "[]"
+
+        foreach (var op in ops)
+        {
+            int cost = System.Text.Encoding.UTF8.GetByteCount(op.ToCanonicalJson()) + 1; // + separator
+            if (current.Count > 0 && size + cost > MaxResponseBytes)
+            {
+                batches.Add(current);
+                current = new List<FederationOp>();
+                size = 2;
+            }
+            current.Add(op);
+            size += cost;
+        }
+
+        if (current.Count > 0) batches.Add(current);
+        return batches;
+    }
 
     /// <summary>Read the ops out of a pull response.</summary>
     public static IReadOnlyList<FederationOp> DecodeResponse(byte[] bytes)
@@ -75,6 +112,41 @@ public static class PullProtocol
         foreach (var el in doc.RootElement.EnumerateArray())
             ops.Add(FederationOp.FromJson(el.GetRawText()));
         return ops;
+    }
+}
+
+/// <summary>
+/// The fold acknowledgement (FR-009, added after the round-2 review found SC-001 unprovable).
+///
+/// WHAT WAS WRONG. The SC-001 measurement timed a local append and a socket write. `PushAsync`
+/// swallows a send failure by design — the pull is its repair path — so the elapsed figure was
+/// achievable with the peer switched off, and nothing anywhere read the peer's fold. SC-001 could
+/// therefore be recorded as MEASURED without any evidence that the claim became visible remotely,
+/// which is the single criterion SC-001 exists to establish.
+///
+/// FR-009 requires an operation to APPEAR IN THE PEER'S FOLD. That is a fact about the peer, and
+/// the only party who can attest to it is the peer. So a receiver that folds an inbound board op
+/// says so, naming the dot it folded, and the sender can wait for that rather than for its own
+/// write to return.
+///
+/// The ack is advisory to convergence — losing one costs nothing, because the pull leg still
+/// repairs — but it is REQUIRED for the acceptance measurement, which is exactly the right split:
+/// the protocol does not depend on it, and the evidence does.
+/// </summary>
+public static class AckProtocol
+{
+    /// <summary>Box carrying "I folded this dot".</summary>
+    public const string Box = "board-ack";
+
+    public static byte[] Encode(Dot opId) =>
+        System.Text.Encoding.UTF8.GetBytes(
+            "{\"peer\":" + JsonSerializer.Serialize(opId.PeerName) + ",\"counter\":" + opId.Counter + "}");
+
+    public static Dot Decode(byte[] bytes)
+    {
+        using var doc = JsonDocument.Parse(System.Text.Encoding.UTF8.GetString(bytes));
+        var r = doc.RootElement;
+        return new Dot(r.GetProperty("peer").GetString()!, r.GetProperty("counter").GetInt64());
     }
 }
 

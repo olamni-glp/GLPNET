@@ -85,16 +85,18 @@ public sealed class CrossHostAcceptanceTests
             var cert = identity.LoadOrMint("gavriella");
             string localNodeId = NodeIdentityStore.DeriveNodeId(cert);
 
-            await using var transport = new QuicLinkTransport("gavriella", cert,
-                new Dictionary<string, string> { ["peer"] = peerNodeId });
+            await using var transport = new QuicLinkTransport(localNodeId, cert,
+                new Dictionary<string, string> { [peerNodeId] = NodeIdentityStore.PinFromNodeId(peerNodeId) });
 
             var cfg = new FederationConfig
             {
                 Enabled = true,
+                BoardRootPath = "D:/coop/buildkit/sched",
+                BoardActor = "gavriella",
                 BindAddress = "0.0.0.0",
                 BindPort = FederationConfig.DefaultPort,
                 SpaceId = LiveEpoch,
-                Peers = { new PeerConfig { Name = "peer", NodeId = peerNodeId, Endpoints = { endpoint }, Pin = peerNodeId } },
+                Peers = { new PeerConfig { Name = "peer", NodeId = peerNodeId, Endpoints = { endpoint }, Pin = NodeIdentityStore.PinFromNodeId(peerNodeId) } },
             };
 
             await using var svc = new FederationService(cfg, new QuicFederationLink(transport),
@@ -102,15 +104,41 @@ public sealed class CrossHostAcceptanceTests
                 new JsonlBoardLog(Path.Combine(dir, "gavriella-board-000001.jsonl")));
 
             Assert.True(await svc.BindAsync(ct));
-            Assert.Equal(AdmissionOutcome.Admitted, await svc.DialAsync("peer", ct));
+            Assert.Equal(AdmissionOutcome.Admitted, await svc.DialAsync(peerNodeId, ct));
 
             var claim = FederationOp.Create(
                 new Dot(localNodeId, 1), localNodeId, "claim",
                 JsonSerializer.SerializeToElement(new { wp = "sc-001-probe", lane = "gavriella-GLPNET" }));
 
+            // MEASURE THE REMOTE FOLD, NOT THE LOCAL WRITE.
+            //
+            // Round 2 found that this timed an append plus a socket write. PushAsync swallows a send
+            // failure by design (the pull is its repair path), so that figure was achievable with
+            // the peer switched off, and nothing read the peer's fold. SC-001 asserts a claim is
+            // VISIBLE ON A SECOND HOST; only the peer can attest to that, so we wait for its ack.
             var started = DateTimeOffset.UtcNow;
             await svc.AppendAndPushAsync(claim, ct);
+
+            // The receive loop has to run for an inbound ack to be read at all.
+            var pump = Task.Run(async () =>
+            {
+                try { while (!ct.IsCancellationRequested) await svc.ReceiveOneAsync(ct); }
+                catch { /* cancelled, or a refusal the acceptance run does not adjudicate */ }
+            }, ct);
+
+            bool acked = await svc.WaitForPeerAckAsync(claim.OpId, TimeSpan.FromSeconds(10), ct);
             double seconds = (DateTimeOffset.UtcNow - started).TotalSeconds;
+
+            if (!acked)
+            {
+                // NOT a failure and emphatically NOT a pass: no peer attested to folding the claim,
+                // so remote visibility is UNMEASURED. Recording a green here on a local timing is
+                // the precise false-green this era exists to remove.
+                Record(Sc001Evidence.Unmeasured(
+                    $"pushed {claim.OpId} to {endpoint} but no peer acknowledged folding it within 10s — "
+                    + "remote visibility is UNPROVEN; a local append returning is not evidence"));
+                return;
+            }
 
             var status = svc.Status();
             Assert.Equal(Tri.Yes, status.ListenerBound);
@@ -121,8 +149,12 @@ public sealed class CrossHostAcceptanceTests
             // of cross-host federation either, and must not satisfy SC-001.
             Assert.Equal(Tri.No, status.SameMachine);
 
-            // And the clarified window from ruling Q-GLPNETG28-03.
-            Assert.True(seconds <= 5.0, $"steady-state push took {seconds:F2}s, over the 5s bound");
+            // A crossing was OBSERVED, because the ack itself crossed.
+            Assert.Equal(Tri.Yes, status.OpReceivedFromPeer);
+
+            // And the clarified window from ruling Q-GLPNETG28-03 — now measured to the REMOTE fold.
+            Assert.True(seconds <= 5.0,
+                $"claim took {seconds:F2}s to become visible on the peer, over the 5s bound");
 
             Record(Sc001Evidence.Measured(endpoint, claim.OpId.ToString(), seconds));
         }
