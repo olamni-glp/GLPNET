@@ -1,5 +1,24 @@
 ## [Unreleased]
 
+## [v2026.09.04.3] - 2026-09-04
+
+### Added
+- prove a board op crosses QUIC and the fold converges exactly once
+- prove glpnet can bind a real QUIC listener - the estate's inter-host transport is UNRUN, not missing
+
+### Changed
+- Merge branch 'develop' of https://github.com/olamni-glp/GLPNET into develop
+- four BK-STD-2 engineer rulings - term space is a namespaced triple (stop order), code-sign not WDAC, QUIC federation era, scoped UDP rule authorised
+- Q-38 decided - iroh identity model to L0, iroh stack to L1 behind the GLPNET seam; and Q-35/36/37 records
+- ACK ERA REQ - probe re-run BOUND, I: is a self-loopback so GAVRI is not a 4th host, all 4 hosts routable on one /24
+- Merge branch 'develop' of https://github.com/olamni-glp/GLPNET into develop
+- QUIC ground truth EXECUTED both ways - IsSupported False on default path, True with libmsquic on it; and LD_LIBRARY_PATH greens tests while leaving every service broken
+- merge blocker CLEARED - PR 279 merged, v2026.09.04.2 released, yx-bootmig fix now ON develop; one-window topology per Q-35; QUIC ships but libmsquic is absent on this host
+- Merge branch 'develop' of https://github.com/olamni-glp/GLPNET into develop
+- merge peer roadmap exports
+- Merge branch 'develop' of https://github.com/olamni-glp/GLPNET into develop
+- Merge pull request #286 from olamni-glp/main
+
 ## [v2026.09.04.2] - 2026-09-04
 
 ### Added
