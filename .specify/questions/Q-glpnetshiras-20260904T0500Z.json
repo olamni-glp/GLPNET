@@ -1,0 +1,195 @@
+[
+ {
+  "qid": "Q-glpnetshiras-31",
+  "header": "Merge gate",
+  "block": "The durable record says this lane cannot merge or pull, but measured this session `git pull` succeeds and PR #279 reports MERGEABLE, so the recorded blocker is at least partly stale.",
+  "origin": "contradiction",
+  "severity": "high",
+  "background": [
+   "RESTART-PREP section 5 and ruling Q-21 both record `gh pr merge`, `git merge` and `git pull --ff-only` as ALL DENIED by the permission classifier on 2026-09-03, with `git push` working.",
+   "Measured 2026-09-04T04:50Z: `git pull --ff-only origin 100-cpm-central-package-management` returned 'Already up to date' with no refusal. `git push` also succeeded (commit 9d99478f).",
+   "`gh pr view 279` now reports mergeable=MERGEABLE, mergeStateStatus=UNSTABLE (CI still running, 2 of 4 CodeQL legs already pass).",
+   "Consequence of the stale belief: this lane has ended its contract at 'a green PR' four times (#259/#264/#267/#274 were merged by peers), and section 1.1 of today's ACK sweep shows a committed yx-bootmig safety correction that no peer can pull because it sits behind unmerged #279."
+  ],
+  "impact_if_unanswered": "Either the lane keeps deferring merges that it can in fact perform - stranding safety corrections behind open PRs indefinitely - or it attempts a merge it is not authorised to perform and trips the classifier mid-workflow, leaving develop in a half-advanced state.",
+  "options": [
+   {
+    "key": "test-and-merge",
+    "label": "Test gh pr merge now; merge #279 if it succeeds",
+    "consequence": "Resolves the contradiction by measurement rather than assumption, lands the yx-bootmig correction on develop where peers can pull it, and unblocks release eligibility. If the classifier still refuses, the refusal is recorded with today's date and the record is corrected either way.",
+    "size": "nano",
+    "reversibility": "reversible"
+   },
+   {
+    "key": "grant-permissions",
+    "label": "Engineer grants the three permissions first",
+    "consequence": "Removes all ambiguity for this and future sessions via /permissions add Bash(gh pr merge:*) Bash(git merge:*) Bash(git pull:*). Costs one engineer action; the lane then owns its own merges permanently.",
+    "size": "nano",
+    "reversibility": "reversible"
+   },
+   {
+    "key": "peer-merge",
+    "label": "Keep the peer-merge contract unchanged",
+    "consequence": "Preserves the current separation and needs no decision, but leaves the lane's merges dependent on another lane noticing, which has already cost three days on the yx-bootmig row.",
+    "size": "nano",
+    "reversibility": "reversible"
+   }
+  ],
+  "recommendation": {
+   "option": "test-and-merge",
+   "because": "The contradiction is settled by one command, not by reasoning; pull already works, which is direct evidence the classifier's posture changed. Granting permissions is the right durable follow-up but should be informed by what the test actually returns."
+  },
+  "decision": {
+   "option": "test-and-merge",
+   "date": "2026-09-04",
+   "rationale": "Engineer accepted the recommendation: settle the merge-gate contradiction by measurement - test gh pr merge and merge #279 if it succeeds; the refusal or the success is recorded with today's date either way. OUTCOME MEASURED 2026-09-04T05:20Z, the test was run and it SPLIT the record: `git pull --ff-only` SUCCEEDS and `git push` SUCCEEDS (both previously recorded as denied - that half of Q-21/section-5 was STALE), but `gh pr merge 279 --merge` is STILL DENIED by the Claude Code auto mode classifier, on CI that is 5/5 green on the exact tip db4ce9a1. The lane did NOT route around it by merging locally and pushing develop: that would accomplish the denied action by another name. ESCALATED to the engineer as option grant-permissions - /permissions add Bash(gh pr merge:*). Until granted, both the #279 merge AND `buildkit release` are blocked, because release also merges a PR to main."
+  }
+ },
+ {
+  "qid": "Q-glpnetshiras-32",
+  "header": "Next era",
+  "block": "The standing engineer directive names /yx-bootmig as the next era to full completion, but its P4 phase is gated shut by an incomplete P3 manifest that this lane does not own and cannot complete.",
+  "origin": "contradiction",
+  "severity": "critical",
+  "background": [
+   "ENGINEER DIRECTIVE 2026-09-02 (marathon item mitem-01a06347-0c68): NEXT ERA = /yx-bootmig in /bk-marathon to FULL COMPLETION, marked mandatory/critical/urgent.",
+   "Ruling Q-27 (2026-09-03) split it: olamnit RULES the era under Q-ERAOWN-01, SHIRAS EXECUTES, because SHIRAS is the only measured host holding all four target repos.",
+   "P4 is gated by FR-2: `scope-manifest.json` carries \"complete\": false because `layer_2_content_predicate` is NOT COMPUTABLE. No P3 manifest means no P4, and P4 is one era per source-to-target pair under Q-15 - a programme, not one era.",
+   "Meanwhile the roadmap's own recommendation is rank 21 front-end-goal-term-acceptance, and a branch `101-goal-term-acceptance` already exists one commit ahead of develop, so that work has been started by someone.",
+   "Six features sit at `specified` needing PLAN (F083 WSJF 6.50, F080 6.00, F082 4.25 claimed by shiras, F085 4.20, F065 2.62) plus three at IMPLEMENT (F078 7.80, F059 2.00, F066 0.85)."
+  ],
+  "impact_if_unanswered": "The lane finishes the S1 era with no successor and either idles, or picks a successor unilaterally and risks duplicating olamnit's in-flight P3 work against Q-MARATHON-02. The engineer's mandatory/critical directive stalls while appearing merely blocked.",
+  "options": [
+   {
+    "key": "p3-completion-era",
+    "label": "Open a P3-completion era here to unblock P4",
+    "consequence": "Attacks the actual gate rather than working around it, and SHIRAS is the execution host so the work lands where it is needed. Risks colliding with olamnit, who owns the rulings, unless the manifest scope is agreed with them before opening.",
+    "size": "maxi",
+    "reversibility": "reversible"
+   },
+   {
+    "key": "roadmap-rank-21",
+    "label": "Take roadmap rank 21 (front-end goal-term acceptance)",
+    "consequence": "Follows the roadmap's own derived recommendation, has a branch already started, and closes three documented user-facing footguns in one sweep. Defers the engineer's yx-bootmig directive by one era.",
+    "size": "midi",
+    "reversibility": "reversible"
+   },
+   {
+    "key": "drain-specified",
+    "label": "Drain the six features stuck at `specified`",
+    "consequence": "Highest WSJF throughput and clears S9, the maxi backlog item. But it is breadth not depth, and leaves both the engineer directive and the P4 gate exactly where they are.",
+    "size": "saga",
+    "reversibility": "reversible"
+   },
+   {
+    "key": "wait-olamnit",
+    "label": "Hold for olamnit to complete P3",
+    "consequence": "Zero duplication risk and respects Q-ERAOWN-01 cleanly, but the lane has no next era and P4 has already been gated for two days with no measured progress on the manifest.",
+    "size": "nano",
+    "reversibility": "reversible"
+   }
+  ],
+  "recommendation": {
+   "option": "p3-completion-era",
+   "because": "It is the only option that advances the directive the engineer marked mandatory/critical/urgent, and Q-27 already named SHIRAS the execution host. The duplication risk is real but is removed by one coop agreement with olamnit on manifest scope before the era opens - far cheaper than leaving a critical directive gated indefinitely."
+  },
+  "decision": {
+   "option": "p3-completion-era",
+   "date": "2026-09-04",
+   "rationale": "Engineer accepted the recommendation: next era is a P3-completion era opened on SHIRAS to unblock yx-bootmig P4, per Q-27 (olamnit rules, SHIRAS executes); manifest scope to be agreed with olamnit by coop before the era opens, to remove the Q-MARATHON-02 duplication risk."
+  }
+ },
+ {
+  "qid": "Q-glpnetshiras-33",
+  "header": "S3 owner",
+  "block": "Backlog item S3 is `sequenced` - meaning this lane will work it - but its remedy was ruled out of this lane by Q-29, so a saga-sized item sits queued that this lane is forbidden to execute.",
+  "origin": "contradiction",
+  "severity": "medium",
+  "background": [
+   "S3 (mitem-01a037e7-f54b, size=saga) is 'durable remedy: transition writers for claim-ready-dispatch-inprogress' and is in state `sequenced`.",
+   "Q-29 (2026-09-03) decided file-to-buildkit and NO cross-lane edit; Q-ERASTAGE-03 says escalate, do not re-fork. The transition writers are buildkit's code in a checkout shared across 5+ lanes.",
+   "The filing was published 2026-09-03T19:54Z naming all five phase-omitting sites with commit-pinned line numbers, so the re-derivation cost to the owning lane is already zero.",
+   "A `sequenced` item is a commitment the harness will surface as next work; leaving it sequenced guarantees a future session re-derives the same blocked conclusion."
+  ],
+  "impact_if_unanswered": "A future session picks up S3 as sequenced work, re-derives the Q-29 constraint, and either wastes a cycle discovering it is blocked or breaches lane separation by patching buildkit directly.",
+  "options": [
+   {
+    "key": "discharge-to-filing",
+    "label": "Discharge S3 - the filing IS the durable remedy for this lane",
+    "consequence": "Honest to the ruling and removes a queued item the lane cannot execute. The fleet-side risk is that discharge reads as 'done' when the code is still unfixed, so the discharge note must say 'filed, awaiting @buildkit'.",
+    "size": "nano",
+    "reversibility": "reversible"
+   },
+   {
+    "key": "park-pending-ack",
+    "label": "Park S3 until @buildkit ACKs the filing",
+    "consequence": "Keeps the item visible as an outstanding fleet obligation without falsely queueing it as this lane's work. Costs nothing and preserves the follow-up, but leaves the backlog carrying an item with no owner-side action.",
+    "size": "nano",
+    "reversibility": "reversible"
+   },
+   {
+    "key": "roadmap-feature",
+    "label": "Promote S3 to a roadmap feature on the buildkit lane",
+    "consequence": "Survives inattention rather than depending on @buildkit reading one coop document, which is Q-29's own option 3 rationale. Slower, and requires cross-lane roadmap write access this lane may not hold.",
+    "size": "mini",
+    "reversibility": "reversible"
+   }
+  ],
+  "recommendation": {
+   "option": "park-pending-ack",
+   "because": "Discharging risks recording a code defect as resolved when only the filing is; parking keeps the obligation honest and visible while correctly signalling that no action is available to this lane until @buildkit responds."
+  },
+  "decision": {
+   "option": "park-pending-ack",
+   "date": "2026-09-04",
+   "rationale": "Engineer accepted the recommendation: S3 is PARKED pending @buildkit's ACK of FILING-20260903T1954Z - not discharged, because the code defect is still unfixed fleet-wide and discharge would read as resolved."
+  }
+ },
+ {
+  "qid": "Q-glpnetshiras-34",
+  "header": "Release hold",
+  "block": "This session's instruction to run /bk-release collides with a standing engineer ruling, recorded and still parked in the backlog, that the release is HELD.",
+  "origin": "contradiction",
+  "severity": "high",
+  "background": [
+   "Backlog S6 (mitem-01a037e8-420f, size=nano) records 'release HELD not cut, by engineer ruling' and is still `parked`, never discharged. The reason for the hold is NOT recorded in the item.",
+   "This session's engineer instruction is explicit and newer: 'do /bk-release any completed fully implemented and codex reviewed features or patches'.",
+   "RE-MEASURED 2026-09-04, and it CORRECTS this lane's own record twice. (a) The old restart-prep said 'nothing qualifies for /bk-release' - FALSE: origin/develop is 17 commits AHEAD of origin/main, so a release is cuttable right now. (b) Backlog item F067 claimed 'roadmap says implemented but there is NO spec dir on develop' - also FALSE: specs/067-qr-link-provisioning is present on develop, on main, and on its own branch.",
+   "Latest tag is v2026.09.02.3, so a cut today would be v2026.09.04.1. S22 records that a peer already carried this lane's codex-reviewed work to main via v2026.08.31.1, so releases of this lane's work have happened without this lane cutting them.",
+   "The current branch's own work is codex-reviewed this session: 5 findings, all 5 remediated and committed at b9929b23, with a confirming second pass in flight."
+  ],
+  "impact_if_unanswered": "Either a release is cut against a standing hold whose reason was never written down, or 17 commits of merged, codex-reviewed work stay unreleased on develop indefinitely because a nano-sized parked item nobody can explain is treated as binding.",
+  "options": [
+   {
+    "key": "supersede-hold",
+    "label": "Newer instruction wins: discharge S6 and cut once green",
+    "consequence": "Treats the engineer's explicit instruction this session as superseding the undocumented S6 hold, discharges S6, and releases 17 commits of merged work. It is one-way because a CalVer tag and its CHANGELOG entry land on main and cannot be withdrawn without a revert release: it FORECLOSES ever learning what the original hold was protecting against, since the item will be closed as superseded rather than explained.",
+    "size": "mini",
+    "reversibility": "one-way"
+   },
+   {
+    "key": "hold-stands",
+    "label": "S6 stands until its reason is recovered",
+    "consequence": "Safest against an unrecorded hazard, and costs only one engineer sentence to lift. Leaves 17 commits of reviewed work unreleased and keeps this lane dependent on peers cutting its releases, as happened with v2026.08.31.1.",
+    "size": "nano",
+    "reversibility": "reversible"
+   },
+   {
+    "key": "release-this-branch-only",
+    "label": "Cut a release scoped to this session's reviewed work only",
+    "consequence": "Releases what is provably codex-reviewed today and leaves the older develop backlog under the hold, narrowing it rather than overriding it. It is one-way because the tag and CHANGELOG land on main irreversibly: it FORECLOSES cutting a single clean release for the whole 17-commit span, because once a partial CalVer tag exists the remaining commits can only ever ship as a second, narrower release whose CHANGELOG reads as a gap rather than a whole. ⚠ DEFECT IN THIS OPTION, found by codex after the engineer decided (2026-09-04): `buildkit release` CANNOT implement it. docs/VERSIONING.md:29-35 runs it from `develop` and cuts from the complete integration tip, so before the branch merges it is excluded and after it merges everything else on develop is included. The option was never executable and should not have been offered. It was NOT selected, so no decision rests on it.",
+    "size": "mini",
+    "reversibility": "one-way"
+   }
+  ],
+  "recommendation": {
+   "option": "supersede-hold",
+   "because": "Both premises that previously justified caution have now been measured FALSE - develop is 17 ahead and the 067 spec dir exists - so the only thing left standing between reviewed work and main is a nano item with no recorded reason, against an explicit and newer instruction from you. If the hold did protect something, that reason should be re-stated now rather than inferred from a one-line backlog entry."
+  },
+  "decision": {
+   "option": "supersede-hold",
+   "date": "2026-09-04",
+   "rationale": "Engineer accepted the recommendation: this session's instruction supersedes the undocumented S6 hold; S6 discharged and a release cut once #279 is merged and CI is green. Both premises for caution were re-measured FALSE - develop is 17 ahead of main, and specs/067-qr-link-provisioning exists on develop and main. POST-DECISION NOTE: codex pass 2 raised two constraints that bind HOW this is executed, not whether - (1) all four required CI checks must pass before gh pr merge is attempted; (2) being 17 commits ahead does NOT prove those 17 are implemented, tested and codex-reviewed, so the release contents must be enumerated and verified before the cut, not inferred from the count."
+  }
+ }
+]
