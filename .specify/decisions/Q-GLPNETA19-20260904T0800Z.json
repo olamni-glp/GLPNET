@@ -1,0 +1,134 @@
+{
+  "schema_version": "1",
+  "set_id": "Q-GLPNETA19-20260904T0800Z",
+  "lane": "glpnet",
+  "repo": "glpnet",
+  "raised_at": "2026-09-04T08:00:00+00:00",
+  "context": "Raised by ariellas.glpnet after the 2026-09-04 directive wave (YNET oracle board service up, leader election across 15 lanes by Paxos/Raft/ZAB/PBFT, four host oracles as one golden-truth board, yx-proxy and bk-beacon and bk-onrestart and the 3270 terminal all as C# .NET 11 QHSM/QMSM mailbox daemons, all cross-platform code as L0, and RUN CURRENT ERA TO FULL COMPLETION NO DEFERRALS). Every question below is a measured tension between that directive and something already recorded or measured on this host today, not a preference. Q-01 is the direct blocker on the no-deferrals instruction. Q-02 and Q-03 must be answered before any leader election is built, because the substrate measurement says the requested algorithm family cannot run on the transport that exists. Ledger evidence: ops glpnet:000037 through glpnet:000041.",
+  "questions": [
+    {
+      "id": "Q-GLPNETA19-01",
+      "kind": "ruling",
+      "header": "No deferrals",
+      "question": "You instructed RUN CURRENT ERA TO FULL COMPLETION, NO DEFERRALS, all stages specify through close. I cannot comply, and the reason is an authority I do not hold. The live run mrun-f5ef56dba3c1 (glpnet-full-completion-programme, seq 354, 42/135 steps, 164 outstanding) has as its next step W11: resolve origin/080-occurs-checked-substitution. W11 is BLOCKED on discharge item J2 - a section 1.14 LANGUAGE AUTHORITY ruling reserved to Udi, not to you: whether an occurs-check violation is a UnifyFail (runtime) or a CompileError (static). CLAUDE.md Language Authority and DISCIPLINE 1.14 both say the GLP language definition cannot be revised without Udi's express approval. Steps W12 through W18 are unblocked (PREREQ W10 is complete) but W18 needs its own engineer ruling on the Gleam cluster. How should the era proceed?",
+      "blocks": [
+        "W11 and the 080 occurs-check work",
+        "the no-deferrals instruction as literally stated",
+        "F-cluster burn-down"
+      ],
+      "escalate_after_hours": 2,
+      "multi_select": false,
+      "options": [
+        {
+          "label": "Route J2, run W12-W17",
+          "recommended": true,
+          "means": "I proceed immediately on the unblocked steps (067-vs-067b survivor, 051, 066, 058, re-derive decisions) while J2 goes to Udi separately, and W11 lands when he rules.",
+          "cost": "The era completes with one step outstanding, so it is not literally no-deferrals. Evidence: measured: buildkit-marathon status names W11 next and J2 blocked; W12-W17 all carry PREREQ W10 which is complete."
+        },
+        {
+          "label": "You rule 1.14 on Udi's behalf",
+          "means": "You give the UnifyFail-vs-CompileError decision yourself and I record it as your ruling with that provenance stated.",
+          "cost": "Overrides a written authority boundary that both CLAUDE.md and DISCIPLINE 1.14 reserve to Udi, and a wrong answer changes the language definition. Evidence: recorded: J2 says this is the only block in the programme Gabi cannot clear."
+        },
+        {
+          "label": "Halt the era until Udi rules",
+          "means": "Nothing advances on this run until the 1.14 answer arrives.",
+          "cost": "Idles a lane with 164 outstanding items and 6 unblocked steps for a decision that has already been open since 2026-08-24. Evidence: measured: W12-W17 are unblocked today."
+        }
+      ]
+    },
+    {
+      "id": "Q-GLPNETA19-02",
+      "kind": "ruling",
+      "header": "Quorum first",
+      "question": "You asked for a coordinating leader lane elected across 15 lanes and for four host oracles to present one golden-truth board. I measured the substrate before proposing an algorithm. The YNET board is HOST-LOCAL: 16 mailboxes, 954 ops, all ARIELLAS - there is nothing to elect over yet. Of the four hosts, only three are reachable from here (G: = Olamnit_D, H: and I: = GAVRI_D); SHIRAS has NO MOUNT on this host. And critically, H: and I: are THE SAME UNC PATH, so any peer enumeration that walks drive letters sees four peers where there are three hosts and gives GAVRI two votes - a quorum computed that way believes it has majority while holding two real hosts. That is a split-brain generator, and divergence is already measurable: roadmap-sync inboxes hold 294 (I:), 194 (G:) and 36 (local D:) entries. Should federation precede election?",
+      "blocks": [
+        "leader election",
+        "the four-oracle golden-truth board",
+        "the buildkit lane's assigned era on ariellas, shiras and olamnit"
+      ],
+      "escalate_after_hours": 4,
+      "multi_select": false,
+      "options": [
+        {
+          "label": "Federate first, then lease a leader",
+          "recommended": true,
+          "means": "Order: dedupe mount topology by host identity not drive letter; make SHIRAS reachable or declare it out of quorum; CRDT-merge the four boards; then lease a coordinator over the merged view.",
+          "cost": "Delays the visible leader-election deliverable behind unglamorous plumbing. Evidence: measured: H: and I: resolve to the same UNC; SHIRAS unmounted; three divergent inbox counts."
+        },
+        {
+          "label": "Elect over three hosts, SHIRAS out",
+          "means": "Declare SHIRAS explicitly out of quorum, fix the double-mount, and elect across the three reachable hosts now.",
+          "cost": "SHIRAS holds two of your assigned mandatory eras, so it would be governed by a board it cannot vote in. Evidence: directive assigns the L0 and yngenios-linux eras to shiras."
+        },
+        {
+          "label": "Elect now on current topology",
+          "means": "Build the election immediately against the mounts as they are.",
+          "cost": "GAVRI gets two votes from one host. A two-of-four quorum would read as majority. I would refuse to certify this as a golden-truth board. Evidence: measured: identical UNC behind H: and I:."
+        }
+      ]
+    },
+    {
+      "id": "Q-GLPNETA19-03",
+      "kind": "ruling",
+      "header": "Lease/Raft",
+      "question": "You named Paxos/Raft/ZAB/PBFT for the leader election. All four require a live quorum with BOUNDED message delay and stable membership. The transport here is intermittently-mounted SMB file shares, and CLAUDE.md already records the channel as asynchronous - the volume is not always mounted at both ends. Under that transport, terms churn and elections flap. Meanwhile buildkit ALREADY SHIPS the right primitive: src/buildkit_cli/scheduler/engine/daemon/confirm.py implements an R10 single-writer lease with foreign-heartbeat detection that refuses rather than becoming a second writer. A lease over a CRDT-merged board degrades to NO LEADER (safe) rather than TWO LEADERS (corrupting) - the opposite failure mode to a flapping Raft term - and the CRDT already provides convergence, so consensus would buy ordering the board does not need. Which mechanism should be wired to the Oracle and bk-beacon?",
+      "blocks": [
+        "the leader-election feature design",
+        "the buildkit lane era on three hosts",
+        "Oracle and bk-beacon wiring"
+      ],
+      "escalate_after_hours": 8,
+      "multi_select": false,
+      "options": [
+        {
+          "label": "Reuse the shipped R10 lease",
+          "recommended": true,
+          "means": "Wire the existing single-writer lease plus heartbeat to the Oracle and bk-beacon; the feature becomes integration and hardening rather than a consensus implementation.",
+          "cost": "Gives a leader with a lease rather than a consensus-proven leader, so there is no total order across hosts if one is ever needed. Evidence: measured: confirm.py lines 338, 409, 414 implement and enforce the lease today."
+        },
+        {
+          "label": "Implement Raft properly",
+          "means": "Build real Raft with terms, randomized timeouts and a log, over a transport upgraded to bounded delay.",
+          "cost": "Requires a real network transport this estate does not have; ynet cross-process traffic is recorded as unavailable (YnetLink.Dial throws, specs/051 is 0/23). Substantial new work on the critical path. Evidence: recorded trap 7 in restart rev11."
+        },
+        {
+          "label": "PBFT for byzantine safety",
+          "means": "Byzantine-tolerant consensus, on the argument that the board is unauthenticated and lanes could forge.",
+          "cost": "Highest complexity of the four, and it solves forgery that S6 signing solves far more cheaply. Evidence: measured today: I emitted an op under another lane's identity by accident, which S6 fixes directly."
+        }
+      ]
+    },
+    {
+      "id": "Q-GLPNETA19-04",
+      "kind": "ruling",
+      "header": "Trust gate",
+      "question": "I imported the roadmap from all three reachable inboxes to build the single golden truth you asked for. Every peer publisher was REFUSED: unknown publisher, acquire and verify the key, or pass --allow-untrusted. Zero peer rows applied, from inboxes holding 294 (GAVRI share), 194 (OLAMNIT share) and 36 (local) entries. So the cross-host roadmap channel is mounted, populated, and importing nothing - that is the federation gap in one line. Recorded ruling N7 says fix at the PRODUCER and do not relax the consumer gate, so I did not pass --allow-untrusted. Separately, 76 files lack a .license sidecar. How should peer trust be established?",
+      "blocks": [
+        "cross-host roadmap convergence",
+        "the single golden-truth board",
+        "any fleet-wide feature count"
+      ],
+      "escalate_after_hours": 4,
+      "multi_select": false,
+      "options": [
+        {
+          "label": "Acquire and verify publisher keys",
+          "recommended": true,
+          "means": "Each publishing host's key is acquired and verified once, so imports authenticate rather than bypass. Fixes the cause and keeps the gate.",
+          "cost": "Needs a one-time key exchange across four hosts, and SHIRAS is currently unreachable from here. Evidence: measured: three publisher keys refused by name on the I: import."
+        },
+        {
+          "label": "Import with --allow-untrusted",
+          "means": "Relax the consumer gate so peer rows land immediately and the roadmap converges today.",
+          "cost": "Weakens the project-id trust gate on peer content and contradicts recorded ruling N7. On an unauthenticated board this admits anything any writer produced. Evidence: recorded: N7 says fix at the producer, do not relax the consumer gate."
+        },
+        {
+          "label": "Leave roadmap unfederated for now",
+          "means": "Each host keeps its own roadmap; no cross-host feature count is claimed.",
+          "cost": "Directly contradicts the one-board directive, and fleet feature counts stay per-host and incomparable. Evidence: measured: three inboxes, three different entry counts."
+        }
+      ]
+    }
+  ]
+}

@@ -1,5 +1,38 @@
 ## [Unreleased]
 
+## [v2026.09.04.2] - 2026-09-04
+
+### Added
+- rounds 67-68 - two engineer-directed features scored+promoted (ynet minted lane identity WSJF 5.2 RICE 810, GLP REPL front/middle/back), 124 features, and the coop mirror FIXED to publish to the SHARED root
+- capture+score+promote GLP REPL front/middle/back split over the ynet transport contract
+
+### Fixed
+- pass-2 remedies - the P2 gate is a CONJUNCTION not an or, the GAVRIELLA retraction citation is UNVERIFIABLE here so it is recorded not adopted, and release-this-branch-only was never executable by buildkit release
+- apply all 5 codex findings - bound=0 is not evidence of absence, the Q-29 completion claim was false, SHIRAS is no longer unmeasured, and the reboot dry-run is a config check NOT boot validation
+- the S1 filing to @buildkit was NEVER written - correct my own false claim, clarify stage of mrun-f77f62158255
+- supersede the INVERTED P2 callgraph-node-key instruction, name the real ingest-layer root cause
+
+### Changed
+- Merge pull request #279 from olamni-glp/100-cpm-central-package-management
+- engineer directives + ruling D1-D4, the TWO-WINDOW reboot topology applied and verified, the three-coop-roots warning, and the two promoted features
+- roadmap export r67+ and merge of ariellas/glpnet fleet broadcasts
+- Merge branch 'develop' of https://github.com/olamni-glp/GLPNET into develop
+- ack(glpnet): receipt + itemised compliance, independent corroboration of qhstate lease finding, self-correction on board federation
+- broadcast(glpnet): federation before election, carrier already exists, and a self-reported mis-emission
+- broadcast(glpnet): S4 carrier claimed, era reqs with ACK, and an undeclared GPL-3.0 QP/C blocker under the whole route
+- era close-out - roadmap sync round 67 published, ruling Q-GLPNETS17-03 recorded, codify notes captured
+- Merge pull request #284 from olamni-glp/main
+- rewrite the restart pointer whole - era S1 CLOSED 9/9 fully measured, the merge gate re-measured (pull works, gh pr merge does NOT), and mstack is down BEFORE any reboot
+- round 66 - reconcile/import/reconcile/dedupe/export/sync all rc=0, 21 epics / 122 features / 4030 journal lines, 0 refused, no OOM
+- record the MEASURED merge-gate outcome - pull and push work, gh pr merge is STILL DENIED, and the lane did not route around it
+- restart+reboot prep - reboot gate RE-MEASURED, the systemd path FAILS at boot and the desktop autostart is what actually resumes the fleet
+- round 65 sync + BK-STD-2 rulings Q-glpnetshiras-27..30 all decided; per-host yx-bootmig corrections and the BK-STD-2 carve-out
+- S1 era specify - prove Q-19 and S1 root causes, mint the nine era stages, record the yx-bootmig next-era directive
+- round 64 (reconcile/import/reconcile/dedupe/export/sync all RC=0, 0 dedupe groups over 122 live, 21 epics/123 features/3902 journal lines, barrier 5/4) + six BK-STD-2 engineer questions Q-glpnetshiras-21..26 ALL DECIDED. ROOT CAUSE of this session's degraded report found and it was MINE: bk-heavy-lock has existed on this host since 2026-09-01 and I ran BK-REPORT unserialised, losing PROGRESS+SITREP+marathon-NEXT to registry contention - not a tool defect. Q-25 settles the Q-19 subject: S1 scheduler-dispatch-leaks is the hand-instrumented era, not roadmap rank 21. Q-22 REVERSES my own P1: takt_lake.py:330 makes D:/_takt-lake canonical so today's repoint was the FIX and the REBOOT REPAIRS the split - correction filed to coop 20 min after the claim. Also records two live defects in sync-64 output: 'malformed journal record' is a MISDIAGNOSIS of a PGLite OOM (the DETAIL line says so), and the barrier counts the retired slug 'gavriellas' as a host, reading 5/4
+- restart+reboot prep for run mrun-f77f62158255, resumable with 'resume marathon'. REBOOT GATE MEASURED SAFE: dry-run exits 0, 15/15 lanes registered with distinct names and resolving paths, 15/15 session stores present and touched today so guard 1 is satisfied and claude --continue will resume rather than silently start an empty session, unit has [Install], timer enabled, autostart enabled, and the launcher now exports the takt lake roots (the Q-14 fix propagated). ONE RESIDUAL RISK RECORDED: Linger=no, so resume is tied to LOGIN not boot - a reboot stopping at a login screen relaunches nothing until someone logs in. Also records that BK-REPORT must be run with the bkvenv python, not python3, or every section returns ModuleNotFoundError
+- record engineer rulings Q-glpnetshiras-17..20 and untrack the 20MB import-refusal ledger per Q-20. ROOT CAUSE of the recurring push failure found: the path was ALREADY listed in .gitignore at line 184 yet the file was still TRACKED - a .gitignore entry never untracks an already-tracked file - so it kept appearing in every diff, grew to 20MB (one import added 567812 lines) and failed pushes at HTTP 408. git rm --cached is the actual fix. Also rules: step 2 lamport-clock re-addressed to the buildkit lane as a release obligation (this install has NO lclock code at all); the registry lock wait to become configurable; and the next era to be hand-instrumented to find why six era stages beyond the Q-08 defect never persist
+- round 63 - reconcile x2 in sync, import (1 new file, 2 already-applied, 16 foreign correctly refused, 0 untagged), dedupe 0 groups over 122 live, export 21 epics / 123 features / 3902 journal lines. The regenerable 20MB .import-refused.json delta is again NOT carried: it failed the push at HTTP 408 last round and it rebuilds on every import
+
 ## [v2026.09.04.1] - 2026-09-04
 
 ### Added
