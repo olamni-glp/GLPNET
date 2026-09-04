@@ -131,7 +131,19 @@ public sealed record FederationOp
         var r = doc.RootElement;
 
         var idEl = r.GetProperty("op_id");
-        var opId = new Dot(idEl.GetProperty("peer").GetString()!, idEl.GetProperty("counter").GetInt64());
+        long counter = idEl.GetProperty("counter").GetInt64();
+
+        // COUNTERS START AT 1. FederationFrontier's contiguous run defaults to 0, so Contains()
+        // reports every nonpositive dot as ALREADY HELD — and if such an operation's push were
+        // lost, the reconciliation pull would suppress it permanently and the replicas diverge in
+        // silence. Refusing it at the decoder is the only place that catches it before the frontier
+        // has already told the lie.
+        if (counter < 1)
+            throw new FormatException(
+                $"op_id.counter must be >= 1; got {counter}. A nonpositive counter is reported as "
+                + "already-held by every frontier, so a lost operation could never be recovered.");
+
+        var opId = new Dot(idEl.GetProperty("peer").GetString()!, counter);
 
         Term? term = null;
         if (r.TryGetProperty("term", out var tEl) && tEl.ValueKind == JsonValueKind.Object)

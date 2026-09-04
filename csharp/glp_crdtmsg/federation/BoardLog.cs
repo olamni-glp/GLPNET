@@ -70,11 +70,20 @@ public sealed class InMemoryBoardLog : IBoardLog
     /// <summary>When set, <see cref="AppendAsync"/> throws — used to prove append-before-ship (SC-014).</summary>
     public bool FailNextAppend { get; set; }
 
-    public Task AppendAsync(FederationOp op, CancellationToken ct = default)
+    /// <summary>
+    /// When set, the append YIELDS before storing — opening the interleaving window a real disk
+    /// write has. Without it a concurrency test cannot fail: a synchronous append gives the racing
+    /// caller no opportunity to observe the pre-append state, so the test passes whether or not the
+    /// admission sequence is serialised. A mutation removing the lock SURVIVED for exactly that
+    /// reason until this existed.
+    /// </summary>
+    public bool YieldDuringAppend { get; set; }
+
+    public async Task AppendAsync(FederationOp op, CancellationToken ct = default)
     {
         if (FailNextAppend) { FailNextAppend = false; throw new IOException("simulated durable-write failure"); }
+        if (YieldDuringAppend) await Task.Yield();
         lock (_ops) _ops.Add(op);
-        return Task.CompletedTask;
     }
 
     public Task<IReadOnlyList<FederationOp>> ReadAllAsync(CancellationToken ct = default)

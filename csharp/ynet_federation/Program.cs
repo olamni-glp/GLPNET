@@ -557,6 +557,11 @@ public static class Program
             RequireVerifiedAttribution = cfg.RequireVerifiedAttribution,
         };
 
+        // ENROL THIS HOST'''S OWN KEY. The verifier table holds configured PEERS, so with strict
+        // attribution on, the tail and startup replay classified THIS host'''s own operations as
+        // UnverifiedOrigin and refused them — turning the security setting into a mute button.
+        svc.EnrolLocalIdentity(nodeId, NodeIdentityStore.ExportSpki(cert));
+
         // Replay the WHOLE board — every actor's log under the root, not just this host's own
         // segment. A fold built from one host's operations is that host's corner, not the board.
         //

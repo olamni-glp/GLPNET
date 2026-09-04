@@ -110,7 +110,16 @@ public sealed class SchedulerBoardLog : IBoardLog
                     using var fs = new FileStream(path, FileMode.Append, FileAccess.Write,
                                                   FileShare.Read, bufferSize: 4096, useAsync: true);
                     await fs.WriteAsync(bytes, ct).ConfigureAwait(false);
-                    await fs.FlushAsync(ct).ConfigureAwait(false);
+
+                    // FLUSH TO DISK, not merely out of the managed buffer.
+                    //
+                    // FR-030 exists because a federation that ships an operation it has not stored
+                    // loses that operation whenever the link succeeds and the local write does not.
+                    // FlushAsync satisfies the letter of "flushed" while leaving the bytes in the OS
+                    // cache: this method returning is what permits the push, so a power loss here
+                    // leaves the PEER holding an operation the ORIGIN never durably recorded — the
+                    // precise inversion FR-030 forbids.
+                    fs.Flush(flushToDisk: true);
                     break;
                 }
                 catch (IOException) when (attempt < 50)

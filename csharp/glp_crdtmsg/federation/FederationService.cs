@@ -74,6 +74,12 @@ public sealed class FederationService : IAsyncDisposable
     /// <summary>The box federated board operations travel on.</summary>
     public const string BoardBox = "board";
 
+    /// <summary>
+    /// The most a single tail tick will read from one log. The tail catches up over successive
+    /// ticks rather than materialising an arbitrarily large board in one allocation.
+    /// </summary>
+    public const int MaxTailChunkBytes = 4 * 1024 * 1024;
+
     private readonly FederationConfig _config;
     private readonly IFederationLink _link;
     private readonly FederationFold _fold;
@@ -127,6 +133,31 @@ public sealed class FederationService : IAsyncDisposable
     /// </summary>
     public bool RequireVerifiedAttribution { get; init; }
 
+    /// <summary>
+    /// This host's own node id and public key, so its OWN operations verify.
+    /// <para>
+    /// Without it, <c>require_verified_attribution</c> refused everything this host posted: the
+    /// verifier table held only configured PEERS, so the tail and startup replay classified local
+    /// operations as UnverifiedOrigin and dropped them. Turning the security setting on disabled
+    /// the host's ability to publish at all — a gate that locks the door from the inside.
+    /// </para>
+    /// </summary>
+    public void EnrolLocalIdentity(string nodeId, string spkiBase64)
+    {
+        if (string.IsNullOrWhiteSpace(nodeId) || string.IsNullOrWhiteSpace(spkiBase64)) return;
+        _localKeys[nodeId.Trim().ToLowerInvariant()] = spkiBase64.Trim();
+    }
+
+    private readonly Dictionary<string, string> _localKeys = new(StringComparer.Ordinal);
+
+    /// <summary>The origin key for a node id: a configured peer's, or this host's own.</summary>
+    private string? KeyForOrigin(string? origin)
+    {
+        if (string.IsNullOrWhiteSpace(origin)) return null;
+        if (_originKeys.TryGetValue(origin, out var peer)) return peer;
+        return _localKeys.TryGetValue(origin, out var mine) ? mine : null;
+    }
+
     /// <summary>How many folded operations could not have their origin proven. For the status surface.</summary>
     public int UnverifiedOps { get; private set; }
 
@@ -148,7 +179,11 @@ public sealed class FederationService : IAsyncDisposable
     /// <summary>Health, derived from what was MEASURED — never from configuration alone.</summary>
     public FederationHealth Health =>
         !_config.Enabled ? FederationHealth.Disabled
-        : _admitted.Count > 0 ? FederationHealth.Federating
+        // LIVE CONNECTIVITY, not history. _admitted records that a peer has EVER completed mutual
+        // verification and is deliberately retained across a send failure — so reading health from
+        // it meant a service whose last link had dropped went on reporting Federating, which is the
+        // one thing FR-004 says must never happen: a degraded deployment reported as a working one.
+        : _connected.Count > 0 ? FederationHealth.Federating
         : FederationHealth.DegradedLocalOnly;
 
     /// <summary>
@@ -323,21 +358,36 @@ public sealed class FederationService : IAsyncDisposable
             case PullProtocol.ResponseBox:
                 // Use what the peer ACTUALLY DECLARED, never an assumed-true literal — passing a
                 // hard-coded `true` here would have made the gate unfalsifiable on this path too.
+                //
+                // AND PASS THE SENDER. A pull response arrives with an authenticated FromPeer;
+                // discarding it recorded a null crossing, so an operation recovered only via pull
+                // reported "an op crossed" while leaving same_machine unknown even when that peer
+                // HAD been measured — withholding valid cross-host evidence SC-001 depends on.
                 await ReconcileAsync(PullProtocol.DecodeResponse(inbound.Bytes),
                                      _peerCaps.TryGetValue(inbound.FromPeer, out var rc)
                                          ? rc
-                                         : new PeerCapabilities(TermSpaceAware: false, null), ct)
+                                         : new PeerCapabilities(TermSpaceAware: false, null),
+                                     ct, inbound.FromPeer)
                     .ConfigureAwait(false);
                 return false;
 
             case HelloProtocol.Box:
+                bool firstHello = !_peerCaps.ContainsKey(inbound.FromPeer);
                 _peerCaps[inbound.FromPeer] = HelloProtocol.Decode(inbound.Bytes);
-                // ANSWER IT. The gate is fail-closed both ways, so a side that never declares its
-                // own capabilities has every push and pull response refused BY THE OTHER SIDE. When
-                // only one host can dial — which a peer entry with no endpoints deliberately allows
-                // — the dialer never learned the listener was term-space aware and federation was
-                // permanently one-way, with both surfaces reporting admitted peers.
-                await AnnounceCapabilitiesAsync(inbound.FromPeer, ct).ConfigureAwait(false);
+
+                // ANSWER ONCE, AND ONLY THE FIRST DECLARATION.
+                //
+                // The gate is fail-closed both ways, so a side that never declares its own
+                // capabilities has every push and pull response refused BY THE OTHER SIDE — which
+                // left federation permanently one-way whenever only one host could dial.
+                //
+                // But answering EVERY hello made two daemons volley control frames forever: A's
+                // reply is a hello, which B answers with a hello, which A answers... The fix for a
+                // one-way link became an infinite loop, and both surfaces still looked healthy.
+                // Replying only to a peer's FIRST declaration terminates the exchange after exactly
+                // one round trip, which is all the gate needs.
+                if (firstHello)
+                    await AnnounceCapabilitiesAsync(inbound.FromPeer, ct).ConfigureAwait(false);
                 return false;
 
             case AckProtocol.Box:
@@ -407,6 +457,46 @@ public sealed class FederationService : IAsyncDisposable
     /// </summary>
     private async Task<bool> AdmitAndFoldAsync(FederationOp op, CancellationToken ct)
     {
+        // SERIALISED. The receive, pull and board-tail paths call this concurrently, and the
+        // sequence check→append→apply is not atomic without it: two deliveries could both observe
+        // Contains == false, BOTH append to the append-only log, and only then deduplicate in the
+        // fold. Two conflicting same-dot operations could likewise both reach the journal before one
+        // threw — permanently poisoning every future replay, on a log with no delete.
+        await _admitGate.WaitAsync(ct).ConfigureAwait(false);
+        try { return await AdmitAndFoldLockedAsync(op, ct).ConfigureAwait(false); }
+        finally { _admitGate.Release(); }
+    }
+
+    private readonly SemaphoreSlim _admitGate = new(1, 1);
+
+    /// <summary>
+    /// Admit an operation that is ALREADY on disk — the tailed-record path.
+    /// <para>
+    /// A tailed record is by definition durable: it is being read from the log. Routing it through
+    /// the appending path wrote a second copy of every operation `post` created, because in `serve`
+    /// the log being tailed IS <c>_log</c>. The gate still runs; only the write is skipped.
+    /// </para>
+    /// </summary>
+    private bool AdmitAlreadyDurable(FederationOp op)
+    {
+        var attribution = OpAttribution.Check(op, KeyForOrigin(op.Origin));
+
+        if (attribution.Verdict is AttributionVerdict.Inconsistent or AttributionVerdict.SignatureInvalid)
+            throw new AttributionRefusedException(attribution);
+
+        if (attribution.Verdict == AttributionVerdict.UnverifiedOrigin)
+        {
+            if (RequireVerifiedAttribution) throw new AttributionRefusedException(attribution);
+            UnverifiedOps++;
+        }
+
+        lock (_admitSync) return _fold.Apply(op);
+    }
+
+    private readonly object _admitSync = new();
+
+    private async Task<bool> AdmitAndFoldLockedAsync(FederationOp op, CancellationToken ct)
+    {
         // NOT a bare Contains() check. That early return bypassed FederationFold.Apply and the
         // canonical-content comparison inside it, so a peer sending a DIFFERENT operation on an
         // already-folded dot was treated as a redelivery — and then ACKED. Replicas kept different
@@ -421,8 +511,7 @@ public sealed class FederationService : IAsyncDisposable
             return false;   // a genuine redelivery — already durable, already visible
         }
 
-        var attribution = OpAttribution.Check(
-            op, _originKeys.TryGetValue(op.Origin ?? "", out var spki) ? spki : null);
+        var attribution = OpAttribution.Check(op, KeyForOrigin(op.Origin));
 
         // An inconsistent or forged attribution is REFUSED outright, whatever the strictness setting.
         // Wrong attribution is a fault (FR-009), and term.host is the leadership tie-break — a forged
@@ -655,9 +744,14 @@ public sealed class FederationService : IAsyncDisposable
     /// The reconciliation pull (FR-028). Exchanges the causal frontier FIRST and transfers only the
     /// ops the peer lacks — shipping the whole log every 60 s is a broadcast storm, not a backstop.
     /// </summary>
+    /// <param name="fromPeer">
+    /// The authenticated sender, when known. Carried so a crossing recovered through the pull can be
+    /// attributed — without it the same-machine verdict stays Unknown even for a measured peer.
+    /// </param>
     public async Task<int> ReconcileAsync(IReadOnlyCollection<FederationOp> peerOps,
                                           PeerCapabilities peer,
-                                          CancellationToken ct = default)
+                                          CancellationToken ct = default,
+                                          string? fromPeer = null)
     {
         // FR-018 ENFORCED HERE, not merely declared. This is the merge, so this is where the gate
         // has to sit: a gate that only exists in a unit test is a green test over an ungated path.
@@ -685,7 +779,7 @@ public sealed class FederationService : IAsyncDisposable
                 {
                     added++;
                     _opCrossed = true;
-                    RecordCrossing(null);            // an op crossed, but the pull carries no address
+                    RecordCrossing(fromPeer);        // attributed when the sender is known
                 }
             }
             catch (AttributionRefusedException ex)
@@ -834,12 +928,12 @@ public sealed class FederationService : IAsyncDisposable
 
     public async Task RunLogTailAsync(IReadOnlyList<string> paths, CancellationToken ct)
     {
+        // START AT ZERO, matching RunBoardTailAsync. Snapshotting the current length opens the same
+        // replay-to-tail race: an operation appended between replay finishing and this line running
+        // is neither replayed nor tailed. Re-reading costs nothing because the fold deduplicates by
+        // dot, and the read is chunk-bounded so a large backlog cannot fault the task.
         var offsets = new Dictionary<string, long>(StringComparer.OrdinalIgnoreCase);
-        foreach (var path in paths)
-        {
-            try { offsets[path] = File.Exists(path) ? new FileInfo(path).Length : 0; }
-            catch (IOException) { offsets[path] = 0; }
-        }
+        foreach (var path in paths) offsets[path] = 0;
 
         var period = TimeSpan.FromSeconds(1);
         while (!ct.IsCancellationRequested)
@@ -883,16 +977,20 @@ public sealed class FederationService : IAsyncDisposable
 
         if (op is null) return;   // a partial line, or a record of neither schema
 
-        // ADMISSION APPLIES HERE TOO. Applying directly let an operation with inconsistent identity
-        // fields — or an invalid signature from a configured origin — poison the fold, bypassing the
-        // always-on consistency gate that every other inbound path enforces.
+        // ADMISSION APPLIES HERE TOO — but WITHOUT re-appending.
+        //
+        // A tailed record is BY DEFINITION already on disk: it is being read FROM the log. In
+        // `serve`, `_log` is the very SchedulerBoardLog whose path is tailed, so routing this
+        // through AdmitAndFoldAsync wrote a second copy of every operation `post` created —
+        // duplicating each live post in the append-only journal, which nothing can undo.
+        //
+        // The gate still runs; only the write is skipped, because it already happened.
         try
         {
-            if (!await AdmitAndFoldAsync(op, ct).ConfigureAwait(false)) return;
+            if (!AdmitAlreadyDurable(op)) return;
         }
         catch (AttributionRefusedException ex) { OnRefusal?.Invoke(ex); return; }
         catch (DotConflictException) { return; }   // a conflict is refused, never pushed onward
-        catch (IOException) { return; }            // the durable write failed; nothing is visible
 
         await PushAsync(op, ct).ConfigureAwait(false);
         PublishStatus();   // the fold changed; a surface that does not say so is stale
@@ -916,8 +1014,7 @@ public sealed class FederationService : IAsyncDisposable
         int folded = 0;
         foreach (var op in ops)
         {
-            var attribution = OpAttribution.Check(
-                op, _originKeys.TryGetValue(op.Origin ?? "", out var spki) ? spki : null);
+            var attribution = OpAttribution.Check(op, KeyForOrigin(op.Origin));
 
             if (!attribution.Acceptable(RequireVerifiedAttribution))
             {
@@ -953,7 +1050,14 @@ public sealed class FederationService : IAsyncDisposable
             using var fs = new FileStream(path, FileMode.Open, FileAccess.Read,
                                           FileShare.ReadWrite | FileShare.Delete);
             fs.Seek(from, SeekOrigin.Begin);
-            var buffer = new byte[length - from];
+
+            // BOUNDED READ. Starting every log at offset 0 (which is what closes the replay-to-tail
+            // race) means "the remaining suffix" is the WHOLE FILE on the first pass. Allocating
+            // that in one buffer OOMs or overflows on a large board, faulting the tail task — and
+            // nothing awaits that task, so push-on-append would stop permanently and silently.
+            // Reading a bounded chunk per tick converges just as surely, one chunk at a time.
+            int want = (int)Math.Min(MaxTailChunkBytes, length - from);
+            var buffer = new byte[want];
             int read = fs.Read(buffer, 0, buffer.Length);
             string text = Encoding.UTF8.GetString(buffer, 0, read);
 

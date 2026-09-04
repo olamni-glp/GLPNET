@@ -154,17 +154,46 @@ public sealed class NodeIdentityStore
     public static string NodeIdFromSpki(string spkiBase64) =>
         Convert.ToHexStringLower(SHA256.HashData(Convert.FromBase64String(spkiBase64)));
 
+    /// <summary>
+    /// Restrict the key to its owner, and FAIL CLOSED if that cannot be done.
+    /// <para>
+    /// The PFX is written unencrypted. On Unix it may be created group- or world-readable, so a
+    /// failure to tighten permissions leaves a federation PRIVATE KEY exposed. Swallowing that and
+    /// reporting a successful identity creation is the worst combination available: the operator is
+    /// told everything is fine, and the key that authenticates this host to the estate is readable.
+    /// </para>
+    /// <para>
+    /// So the file is REMOVED and the failure raised. A missing identity is recoverable in one
+    /// command; a leaked one is not recoverable at all.
+    /// </para>
+    /// </summary>
     private static void RestrictToOwner(string path)
     {
+        if (OperatingSystem.IsWindows()) return;   // NTFS inherits owner-only ACLs from the profile
+
         try
         {
-            if (!OperatingSystem.IsWindows())
-                File.SetUnixFileMode(path, UnixFileMode.UserRead | UnixFileMode.UserWrite);
+            File.SetUnixFileMode(path, UnixFileMode.UserRead | UnixFileMode.UserWrite);
         }
-        catch
+        catch (Exception ex)
         {
-            // Best effort. Failing to tighten permissions must not prevent the identity from
-            // existing — but it is never reported as success either; the caller surfaces the path.
+            try { File.Delete(path); } catch { /* the raise below is what matters */ }
+            throw new IOException(
+                $"could not restrict '{path}' to owner-only permissions, so the federation private "
+                + "key would be left readable by others. The key has been removed rather than "
+                + "reported as successfully created.", ex);
+        }
+
+        // VERIFY, do not assume. SetUnixFileMode can succeed on a filesystem that does not honour
+        // it (a mounted share, some container overlays), and an unenforced permission is not one.
+        var mode = File.GetUnixFileMode(path);
+        if ((mode & (UnixFileMode.GroupRead | UnixFileMode.OtherRead
+                     | UnixFileMode.GroupWrite | UnixFileMode.OtherWrite)) != 0)
+        {
+            try { File.Delete(path); } catch { }
+            throw new IOException(
+                $"'{path}' still reports mode {mode} after owner-only permissions were applied — the "
+                + "filesystem does not enforce them. The federation private key has been removed.");
         }
     }
 }

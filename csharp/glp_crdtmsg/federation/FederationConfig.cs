@@ -194,9 +194,17 @@ public sealed record FederationConfig
                 // A hostname is a WARNING, not a refusal: names on this estate resolve to fe80::
                 // link-local only, so a dial by name fails for a reason that is not QUIC and gets
                 // misread as a transport failure (FR-003).
-                var host = ep.Contains(':') ? ep[..ep.LastIndexOf(':')] : ep;
-                if (!IPAddress.TryParse(host, out _))
-                    problems.Add($"peers[{p.Name}].endpoints: '{ep}' is not a literal address — names on this estate resolve to link-local only; use a literal IPv4 address (FR-003)");
+                // VALIDATE THE WHOLE ENDPOINT, PORT INCLUDED. Checking only the host half let
+                // "192.0.2.1:notaport" pass; ToPeerSet then silently dropped the unparsable entry
+                // and the configuration error resurfaced much later as a name-resolution or
+                // reachability failure — pointing the operator at the network for a typo.
+                if (!IPEndPoint.TryParse(ep, out var parsed) || parsed.Port is < 1 or > 65535)
+                {
+                    var host = ep.Contains(':') ? ep[..ep.LastIndexOf(':')] : ep;
+                    problems.Add(IPAddress.TryParse(host, out _)
+                        ? $"peers[{p.Name}].endpoints: '{ep}' has no valid port — an endpoint is <ip>:<port>, and an unparsable one is silently dropped and later misreported as unreachability"
+                        : $"peers[{p.Name}].endpoints: '{ep}' is not a literal address — names on this estate resolve to link-local only; use a literal IPv4 address (FR-003)");
+                }
             }
         }
 
