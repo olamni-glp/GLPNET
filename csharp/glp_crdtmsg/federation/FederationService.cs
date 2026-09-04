@@ -349,6 +349,11 @@ public sealed class FederationService : IAsyncDisposable
                     _acked.Add(AckProtocol.Decode(inbound.Bytes));
                     foreach (var w in _ackWaiters) w.TrySetResult();
                 }
+                // ATTRIBUTE THE CROSSING. An ack is a frame that genuinely crossed from this peer,
+                // so the same-machine question is answerable for it. Recording the dot without the
+                // peer left _crossedFrom empty, so SameMachine stayed null and the acceptance run's
+                // required Tri.No assertion could not pass even after a successful remote fold.
+                RecordCrossing(inbound.FromPeer);
                 return false;
 
             case BoardBox:
@@ -402,7 +407,19 @@ public sealed class FederationService : IAsyncDisposable
     /// </summary>
     private async Task<bool> AdmitAndFoldAsync(FederationOp op, CancellationToken ct)
     {
-        if (_fold.Contains(op.OpId)) return false;   // redelivery — already durable, already visible
+        // NOT a bare Contains() check. That early return bypassed FederationFold.Apply and the
+        // canonical-content comparison inside it, so a peer sending a DIFFERENT operation on an
+        // already-folded dot was treated as a redelivery — and then ACKED. Replicas kept different
+        // operations permanently, because reconciliation compares dots too. The conflict check has
+        // to be on the path that actually admits, not only on the one that folds locally.
+        if (_fold.Contains(op.OpId))
+        {
+            var held = _fold.Operations.FirstOrDefault(o => o.OpId.Equals(op.OpId));
+            if (held is not null && !string.Equals(held.ToCanonicalJson(), op.ToCanonicalJson(),
+                                                   StringComparison.Ordinal))
+                throw new DotConflictException(op.OpId);
+            return false;   // a genuine redelivery — already durable, already visible
+        }
 
         var attribution = OpAttribution.Check(
             op, _originKeys.TryGetValue(op.Origin ?? "", out var spki) ? spki : null);
@@ -511,6 +528,12 @@ public sealed class FederationService : IAsyncDisposable
     /// remote is the answer No.
     /// </para>
     /// </summary>
+    /// <summary>True once any frame — an operation or an ack — has crossed from a named peer.</summary>
+    private bool HasObservedCrossing
+    {
+        get { lock (_machineGate) return _crossedFrom.Count > 0; }
+    }
+
     private Tri SameMachineVerdict()
     {
         lock (_machineGate)
@@ -714,7 +737,14 @@ public sealed class FederationService : IAsyncDisposable
             // and the reconciliation-pull path both learn of an op without learning where it came
             // from, and reporting that as "no crossing observed" beside "op received: yes" would be
             // the surface contradicting itself (FR-021).
-            SameMachine = _opCrossed ? SameMachineVerdict() : null,
+            // GATED ON ANY OBSERVED CROSSING, not on _opCrossed alone.
+            //
+            // _opCrossed means "an operation was received FROM a peer" — the fourth reported state.
+            // An ACK is not that: it is the peer attesting it folded OURS. But it is still a frame
+            // that genuinely crossed, so the same-machine question IS answerable for it, and the
+            // acceptance run depends on that answer. Collapsing the two facts left SameMachine null
+            // after a successful remote fold.
+            SameMachine = (_opCrossed || HasObservedCrossing) ? SameMachineVerdict() : null,
             PolicyRefused = _policyRefusal,
             Reasons = reasons,
             BoundEndpoint = _bound ? _link.ListenEndPoint?.ToString() : null,
@@ -760,12 +790,14 @@ public sealed class FederationService : IAsyncDisposable
         var offsets = new Dictionary<string, long>(StringComparer.OrdinalIgnoreCase);
         var period = TimeSpan.FromSeconds(1);
 
-        // Start at the END of what already exists: startup replay has folded it already.
-        foreach (var p in EnumerateBoardLogs(boardRoot, ownPath))
-        {
-            try { offsets[p] = File.Exists(p) ? new FileInfo(p).Length : 0; }
-            catch (IOException) { offsets[p] = 0; }
-        }
+        // START AT ZERO, NOT AT THE CURRENT LENGTH.
+        //
+        // Snapshotting the length here opened a silent gap: an operation appended between startup
+        // replay finishing and this line running was neither replayed NOR tailed, and could not
+        // enter the fold or be advertised until the daemon restarted. Re-reading from the start is
+        // free of that race and costs nothing, because the fold deduplicates by dot — everything
+        // replay already folded returns false from Apply and is not pushed twice.
+        foreach (var p in EnumerateBoardLogs(boardRoot, ownPath)) offsets[p] = 0;
 
         while (!ct.IsCancellationRequested)
         {
@@ -824,21 +856,81 @@ public sealed class FederationService : IAsyncDisposable
         }
     }
 
-    /// <summary>Fold one tailed line and push it, ignoring anything that is not a federation op.</summary>
+    /// <summary>
+    /// Fold one tailed line and push it. Handles BOTH line schemas on the board.
+    /// <para>
+    /// A real lane appends a SCHEDULER-NATIVE record, whose <c>op_id</c> is a string — so
+    /// <c>FederationOp.FromJson</c> throws and an earlier version silently discarded it. The tail
+    /// then watched the live `ops` directories and pushed nothing from them, which is the whole
+    /// point of watching them. The adapter that startup replay uses has to be on this path too.
+    /// </para>
+    /// </summary>
     private async Task FoldAndPushTailedLineAsync(string text, CancellationToken ct)
     {
-        FederationOp op;
+        FederationOp? op = null;
         try { op = FederationOp.FromJson(text); }
         catch (Exception ex) when (ex is JsonException or KeyNotFoundException or InvalidOperationException or FormatException)
         {
-            return;   // a scheduler-native or partial line; not ours to push
+            // Not federation-native. Try the scheduler-native shape before giving up on it.
+            try
+            {
+                using var doc = JsonDocument.Parse(text);
+                if (doc.RootElement.ValueKind == JsonValueKind.Object)
+                    op = SchedulerBoardLog.AdaptSchedulerLine(doc.RootElement);
+            }
+            catch (JsonException) { }
         }
 
-        try { if (!_fold.Apply(op)) return; }        // already known — nothing to announce
-        catch (DotConflictException) { return; }     // a conflict is refused, never pushed onward
+        if (op is null) return;   // a partial line, or a record of neither schema
+
+        // ADMISSION APPLIES HERE TOO. Applying directly let an operation with inconsistent identity
+        // fields — or an invalid signature from a configured origin — poison the fold, bypassing the
+        // always-on consistency gate that every other inbound path enforces.
+        try
+        {
+            if (!await AdmitAndFoldAsync(op, ct).ConfigureAwait(false)) return;
+        }
+        catch (AttributionRefusedException ex) { OnRefusal?.Invoke(ex); return; }
+        catch (DotConflictException) { return; }   // a conflict is refused, never pushed onward
+        catch (IOException) { return; }            // the durable write failed; nothing is visible
 
         await PushAsync(op, ct).ConfigureAwait(false);
         PublishStatus();   // the fold changed; a surface that does not say so is stale
+    }
+
+    /// <summary>
+    /// Fold the operations replayed from disk at startup, applying the SAME admission checks the
+    /// live paths apply.
+    /// <para>
+    /// Startup used to insert replayed ops straight into the fold, so <c>require_verified_attribution</c>
+    /// was bypassed after every restart: an unsigned or tampered operation already on the board became
+    /// visible and eligible for propagation. A gate that a restart turns off is not a gate.
+    /// </para>
+    /// <para>
+    /// Refused operations are COUNTED and reported, not dropped silently, and they are never removed
+    /// from the log — FR-011 holds even for an operation this host will not fold.
+    /// </para>
+    /// </summary>
+    public int ReplayIntoFold(IEnumerable<FederationOp> ops)
+    {
+        int folded = 0;
+        foreach (var op in ops)
+        {
+            var attribution = OpAttribution.Check(
+                op, _originKeys.TryGetValue(op.Origin ?? "", out var spki) ? spki : null);
+
+            if (!attribution.Acceptable(RequireVerifiedAttribution))
+            {
+                RefusedOps++;
+                OnRefusal?.Invoke(new AttributionRefusedException(attribution));
+                continue;
+            }
+            if (attribution.Verdict == AttributionVerdict.UnverifiedOrigin) UnverifiedOps++;
+
+            try { if (_fold.Apply(op)) folded++; }
+            catch (DotConflictException) { RefusedOps++; }
+        }
+        return folded;
     }
 
     /// <summary>

@@ -411,6 +411,25 @@ public static class Program
             while (!stop.IsCancellationRequested)
             {
                 try { await svc.ReceiveOneAsync(stop.Token); }
+                catch (Exception ex) when (ex is System.Text.Json.JsonException
+                                                 or KeyNotFoundException
+                                                 or FormatException
+                                                 or ArgumentException)
+                {
+                    // A MALFORMED FRAME IS ONE PEER'S PROBLEM, NOT THE DAEMON'S.
+                    //
+                    // Any admitted peer sending bad JSON in a hello, ack, pull or board frame threw
+                    // out of the decoder, past this loop, into Main — terminating federation for
+                    // EVERY peer. One corrupt frame could take the host off the board, which is a
+                    // denial of service any admitted party could trigger by accident.
+                    Console.Error.WriteLine($"REJECTED malformed frame: {ex.GetType().Name}: {ex.Message}");
+                }
+                catch (DotConflictException ex)
+                {
+                    // Two different operations claiming one dot. Refused loudly and the loop
+                    // continues — the conflicting op is never folded, and never acked.
+                    Console.Error.WriteLine($"REJECTED: {ex.Message}");
+                }
                 catch (MergeRefusedException ex)
                 {
                     // A refused merge is REPORTED and the loop continues. Refusing one peer must not
@@ -491,8 +510,17 @@ public static class Program
             throw new InvalidOperationException("federation config refused: " + string.Join("; ", problems));
 
         var store = new NodeIdentityStore(cfg.EffectiveIdentityPath);
+        bool existed = store.Exists;
         var cert = store.LoadOrMint(Environment.MachineName.ToLowerInvariant());
         string nodeId = NodeIdentityStore.DeriveNodeId(cert);
+
+        // RECORD IT HERE TOO. Only the `identity` verb logged the mint, but `post`, `retire` and
+        // `serve` all mint on first use — and on a fresh host one of those is usually the first
+        // command run. `revert --all` then left a minted key behind, so a change made to enable
+        // federation was not reversible by the documented action (FR-025).
+        if (!existed)
+            Ledger().Record("minted node.key", $"delete {cfg.EffectiveIdentityPath}",
+                            "a stable node id that survives restarts");
 
         string root = BoardRoot.Resolve(null, cfg.BoardRootPath);
         var log = new SchedulerBoardLog(root, cfg.BoardActor,
@@ -523,15 +551,19 @@ public static class Program
         var fold = new FederationFold(new TermSpaceRegistry(
             string.IsNullOrWhiteSpace(cfg.SpaceId) ? "ynet-epoch-unset" : cfg.SpaceId));
 
-        // Replay the WHOLE board — every actor's log under the root, not just this host's own
-        // segment. A fold built from one host's operations is that host's corner, not the board.
-        foreach (var op in await log.ReadAllAsync()) fold.Apply(op);
-
         var svc = new FederationService(cfg, new QuicFederationLink(transport), fold, log)
         {
             StatusHeartbeatPath = StatusHeartbeat.DefaultPath(),
             RequireVerifiedAttribution = cfg.RequireVerifiedAttribution,
         };
+
+        // Replay the WHOLE board — every actor's log under the root, not just this host's own
+        // segment. A fold built from one host's operations is that host's corner, not the board.
+        //
+        // THROUGH THE SERVICE, not straight into the fold: replaying directly bypassed every
+        // admission check, so require_verified_attribution was switched off by every restart and an
+        // unsigned or tampered operation already on disk became visible and propagatable.
+        svc.ReplayIntoFold(await log.ReadAllAsync());
         return (cfg, svc, log, nodeId);
     }
 

@@ -71,11 +71,21 @@ public sealed record FederationConfig
     [JsonPropertyName("board_actor")] public string BoardActor { get; init; } = "";
 
     /// <summary>
-    /// When true, federated operations are appended into the lane's own <c>ops</c> segment rather
-    /// than federation's own kind. Off by default: it puts federation-shaped lines in front of every
-    /// existing scheduler reader on the estate, which is an interop decision, not a default.
+    /// When true (THE DEFAULT, engineer ruling 2026-09-04), federated operations are appended into
+    /// the lane's own <c>ops</c> segment, where every existing scheduler reader already looks.
+    /// <para>
+    /// This was off while the interop question was open, and the consequence was the finding two
+    /// consecutive review rounds ranked first: a host could ACK a claim it had folded while the lane
+    /// ON THAT HOST still could not see it. Federation that converges a board nobody reads is the
+    /// second oracle in a different costume. The engineer ruled to accept the interop risk, because
+    /// it is the only option that delivers a single truth board.
+    /// </para>
+    /// <para>
+    /// Set it false to restore the federation-owned <c>fedops</c> kind if a scheduler reader turns
+    /// out to be strict about line shape.
+    /// </para>
     /// </summary>
-    [JsonPropertyName("write_into_lane_segment")] public bool WriteIntoLaneSegment { get; init; }
+    [JsonPropertyName("write_into_lane_segment")] public bool WriteIntoLaneSegment { get; init; } = true;
 
     /// <summary>
     /// When true, an operation whose origin cannot be cryptographically verified is refused rather
@@ -110,7 +120,19 @@ public sealed record FederationConfig
                 problems.Add("board_root: empty — federation attaches to the EXISTING board; without a root it would converge a second, invisible one");
 
             if (string.IsNullOrWhiteSpace(BoardActor))
+            {
                 problems.Add("board_actor: empty — an operation must be appended to a named actor's log to be attributable on the board (FR-009)");
+            }
+            else if (BoardActor.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0
+                     || BoardActor.Contains("..", StringComparison.Ordinal)
+                     || Path.IsPathRooted(BoardActor)
+                     || BoardActor.Contains('/') || BoardActor.Contains('\\'))
+            {
+                // It is used as a PATH SEGMENT. A rooted value or one containing traversal resolves
+                // the write path OUTSIDE the validated board root — which creates, by typo or by
+                // hostile config, exactly the second-board condition this feature exists to prevent.
+                problems.Add($"board_actor: '{BoardActor}' is not a single safe path segment — it names a directory under the board root, so it must not be rooted or contain separators or '..'");
+            }
 
             if (string.IsNullOrWhiteSpace(SpaceId))
                 problems.Add("space_id: empty — an unminted space cannot order anything (FR-026)");
@@ -257,6 +279,10 @@ public sealed record FederationConfig
         sb.AppendLine($"bind                  : {BindAddress}:{BindPort}");
         sb.AppendLine($"space_id              : {(string.IsNullOrWhiteSpace(SpaceId) ? "(unset)" : SpaceId)}");
         sb.AppendLine($"identity_path         : {EffectiveIdentityPath}{(string.IsNullOrWhiteSpace(IdentityPath) ? " (default)" : " (configured)")}");
+        sb.AppendLine($"board_root            : {(string.IsNullOrWhiteSpace(BoardRootPath) ? "(unset - federation will refuse)" : BoardRootPath)}");
+        sb.AppendLine($"board_actor           : {(string.IsNullOrWhiteSpace(BoardActor) ? "(unset)" : BoardActor)}");
+        sb.AppendLine($"writes into           : {(WriteIntoLaneSegment ? "the lane's own ops/ segment (lanes see federated ops)" : "federation's fedops/ kind (lanes do NOT see federated ops)")}");
+        sb.AppendLine($"attribution           : {(RequireVerifiedAttribution ? "VERIFIED signature required" : "unverified origins folded and counted")}");
         sb.AppendLine($"push_on_append        : {PushOnAppend}");
         sb.AppendLine($"pull_interval_seconds : {PullIntervalSeconds}");
         sb.AppendLine($"peers                 : {Peers.Count} participant(s)");
