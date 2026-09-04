@@ -1,0 +1,196 @@
+{
+  "schema_version": "1",
+  "set_id": "Q-GLPNETS17-20260904T0730Z",
+  "lane": "gavriella",
+  "repo": "glpnet",
+  "raised_at": "2026-09-04T07:30:00+00:00",
+  "context": "Era 101-gleam-capability-delivery, stage implement, 20 of 22 tasks done. The engineer directive is to run the era to full completion with no deferrals, through specify -> clarify -> plan -> tasks -> analyze -> implement -> codexreview -> ship -> close. Two of the three blocks recorded in the wave-24 restart brief have since been measured GONE (the lock-holding PID exited; the deploy version skew does not exist - GLPNET is already pinned to the version that created the runs). Push was also recorded as refused by the session permission layer and has now been measured WORKING. What remains are the questions below. Q1 and Q2 both block era close and are entangled: Q1 decides whether the AtomVM ring can be built at all on this host, Q2 decides what 'complete' means for an era one of whose two rings cannot be conformance-tested here by construction. Authored against BK-QUESTION v2 (shiras-tefl 20260903T1055Z), validated before sending.",
+  "questions": [
+    {
+      "id": "Q-GLPNETS17-01",
+      "kind": "ruling",
+      "header": "AtomVM list",
+      "question": "T017 must enumerate AtomVM's unsupported constructs so that T018's build-time gate can REFUSE BY NAME (contract C3 - a runtime rejection is a silent degrade and does not satisfy FR-004). research.md R3 recorded the full list as NOT MEASURED and forbade guessing it. The AtomVM toolchain is not installed on this host, so I cannot measure it here. But a prior spike in this same repo DID run AtomVM 0.6.6 on a Linux host build and observed a real failure. Where should the enumeration come from?",
+      "blocks": [
+        "101 T017",
+        "101 T018",
+        "101 implement",
+        "101 codexreview",
+        "101 ship",
+        "101 close"
+      ],
+      "impact_if_unanswered": "T018 stays unimplemented and the atomvm ring keeps reporting UNREAD. Nothing goes red and every suite stays green, so the gap is invisible in CI - the delivery simply never covers the app ring while continuing to look healthy.",
+      "escalate_after_hours": 4,
+      "multi_select": false,
+      "options": [
+        {
+          "label": "Adopt the measured dossier boundary",
+          "recommended": true,
+          "means": "Take the enumeration from docs/research/gleam-atomvm/dossier.md, which is measured evidence, not documentation: the spike ran AtomVM 0.6.6 (linux-x86_64-static-mbedtls) and observed 'module proc_lib cannot be resolved'. The refusal list becomes proc_lib and everything routing through it - gleam_otp, the gen_* behaviours, and gleam_erlang's own process.spawn. Implement T018's build-time gate against that list, and label the list in-code as a LOWER BOUND measured on 0.6.6, not an exhaustive subset.",
+          "cost": "The list is not exhaustive, so T018's gate can pass a construct AtomVM would still reject. It is honest about that in the code and the report, but it means a green T018 is weaker evidence than a green T016.",
+          "why_not_others": "Installing AtomVM buys exhaustiveness but AtomVM ships no official Windows build, so it means WSL or another host - days of yak-shaving for a list whose load-bearing entry we already measured. Descoping US2 removes the app ring from the era entirely, which is the one thing the original directive most wanted and the reason the contract/ring split was designed. Doing nothing keeps a gap that CI cannot see. This option is the only one that uses evidence already measured IN THIS REPO, which is what R3's prohibition on guessing was actually protecting."
+        },
+        {
+          "label": "Install AtomVM and measure it",
+          "means": "Stand up an AtomVM toolchain (WSL2 or a Linux host), build the port against it, and enumerate the unsupported constructs by observation rather than inference.",
+          "cost": "AtomVM publishes no official Windows binary; this is a WSL or cross-host task of unknown length, and it blocks era 101 close for its whole duration. It also puts the measurement on a host that is not the one the app ring actually targets."
+        },
+        {
+          "label": "Descope US2 into its own feature",
+          "means": "Close era 101 delivering the L0 contract and the BEAM ring only; move T017/T018/T019 into a new roadmap feature gated on AtomVM toolchain availability.",
+          "cost": "The era then delivers one ring, which is exactly the shape the aggregate refuses. It also defers the app ring indefinitely behind a dependency nobody has scheduled - and the app ring is the half the directive cared about most."
+        },
+        {
+          "label": "Do nothing for now",
+          "do_nothing": true,
+          "means": "Leave T017/T018 unimplemented and the atomvm ring UNREAD. The aggregate keeps refusing, the coverage matrix keeps showing 1 of 4 cells measured.",
+          "cost": "This is the current state and it is at least honest - nothing claims to be tested that is not. But the era cannot close, and the refusal is indistinguishable from the one we would get if the work were merely unstarted. This is the baseline the other options are priced against."
+        }
+      ],
+      "background": [
+        {
+          "fact": "No AtomVM toolchain on this host: 'atomvm' and 'packbeam' are both absent from PATH and there is no install under the user profile.",
+          "measured_on": "Get-Command atomvm/packbeam + user-profile scan on GAVRIELLA, 2026-09-03"
+        },
+        {
+          "fact": "A prior spike ran AtomVM 0.6.6 (linux-x86_64-static-mbedtls host build) and a gleam_otp actor build crashed with 'module proc_lib cannot be resolved'; the raw erlang:spawn + gleam_erlang Subjects variant ran byte-identical to Erlang.",
+          "measured_on": "docs/research/gleam-atomvm/dossier.md lines 87 and 131"
+        },
+        {
+          "fact": "gleam.toml already records the gleam_otp exclusion as verified transitively, so the project is ALREADY built against this boundary - the enumeration would document a constraint the tree already honours.",
+          "measured_on": "glp_gleam/gleam.toml dependency block"
+        },
+        {
+          "fact": "research.md R3 chose BUILD-time refusal over runtime, and rejected allow-list-by-trial as untestable and unable to name what it rejected.",
+          "measured_on": "specs/101-gleam-capability-delivery/research.md R3"
+        }
+      ],
+      "refuted": [
+        {
+          "premise": "T017 is simply an unstarted task that this session could have done.",
+          "refuted_by": "It is a toolchain absence, not an unstarted task - the measurement is impossible on this host regardless of effort, which is why it needs a ruling rather than more work."
+        }
+      ]
+    },
+    {
+      "id": "Q-GLPNETS17-02",
+      "kind": "ruling",
+      "header": "Era close",
+      "question": "The cross-ring aggregate REFUSES while any required ring is unbuilt or unread, and that refusal is the feature's single most important guard (C4-R / SC-006 - it is what stops a green BEAM ring being reported as the whole delivery). But host-side conformance can NEVER be measured on this host: the MAUI Blazor Hybrid host is target-side and absent from this repo, and synthesizing a stand-in host is explicitly forbidden by R4. So even with Q1 answered, the aggregate will still refuse. On what basis may era 101 close?",
+      "blocks": [
+        "101 ship",
+        "101 close",
+        "era close",
+        "the next era starting"
+      ],
+      "impact_if_unanswered": "The era stays open indefinitely against a condition this host can never satisfy, and the slot stays held - 21 features are already waiting behind it. The silent version is worse: someone eventually reads the green guard suite as the delivery verdict and closes it anyway.",
+      "escalate_after_hours": 4,
+      "multi_select": false,
+      "options": [
+        {
+          "label": "Close on scope-bounded aggregate",
+          "recommended": true,
+          "means": "Era 101 closes when every ring that CAN be measured on this host is green and every ring that cannot is UNREAD with a named, re-measured reason. The aggregate keeps refusing a full-delivery claim - that guard is untouched - but the era's close criterion becomes the scope-bounded verdict, recorded explicitly as 'BEAM ring delivered and verified; AtomVM ring gated on target-side host, tracked as a named follow-up'.",
+          "cost": "The era closes with a delivery that is genuinely incomplete, and the record has to carry that distinction clearly or a later reader will mistake 'era closed' for 'capability fully delivered'.",
+          "why_not_others": "Holding the era open until the aggregate is green blocks on a host that does not exist in this lane - the slot is already held with 21 features waiting, and no amount of work here changes it. Relaxing the aggregate to green on one ring destroys the exact guard the feature was built to provide and is the failure mode SC-006 names. Doing nothing has the same cost as holding open, plus the risk that the green guard suite gets misread as the verdict. This option is the only one that closes the era without weakening a single guard."
+        },
+        {
+          "label": "Hold open for AtomVM",
+          "means": "Era 101 stays open until an AtomVM toolchain and a MAUI host are both available and the aggregate genuinely goes green.",
+          "cost": "Blocks indefinitely on two dependencies neither owned nor scheduled by this lane, while the pipeline slot stays held and 21 features wait behind it."
+        },
+        {
+          "label": "Relax aggregate to BEAM",
+          "means": "Change C4-R so a single green ring satisfies the aggregate, then close the era on a green verdict.",
+          "cost": "Destroys the feature's primary guard. This is precisely the lie SC-006 exists to prevent - a green that is indistinguishable from a complete delivery - and it would be shipped by the very feature that defined the rule."
+        },
+        {
+          "label": "Do nothing for now",
+          "do_nothing": true,
+          "means": "Leave the era in implement with the aggregate refusing, and revisit when the toolchain question resolves itself.",
+          "cost": "Identical practical cost to holding open, but without even a recorded decision - so the next session re-derives this same question from scratch. This is the baseline the other options are priced against."
+        }
+      ],
+      "background": [
+        {
+          "fact": "The BEAM ring passes 206/206 with the Dart toolchain VERIFIABLY ABSENT from PATH; the script refuses to report if dart is still reachable after stripping.",
+          "measured_on": "test/ring/run_beam_ring_no_dart.sh, exit 0, 2026-09-03"
+        },
+        {
+          "fact": "'maui' occurs 0 times in glpnet product code - the host is target-side and absent, re-measured at report time rather than assumed.",
+          "measured_on": "grep over *.gleam/*.dart/*.cs/*.py excluding .specify and .claude, 2026-09-04"
+        },
+        {
+          "fact": "The coverage matrix shows 1 of 4 source-x-ring cells measured; the other 3 are UNREAD with named reasons, never blank.",
+          "measured_on": "test/ring/coverage_matrix.sh, 2026-09-03"
+        },
+        {
+          "fact": "The pipeline slot has been held by 101 since 2026-09-02T23:41Z with 21 features waiting behind it.",
+          "measured_on": "buildkit-builder status, 2026-09-04"
+        },
+        {
+          "fact": "All 6 ring guard suites are green while the aggregate simultaneously refuses - both are correct, and the suite runner now prints that distinction so they cannot be conflated.",
+          "measured_on": "test/ring/run_ring_tests.sh exit 0 and test/ring/aggregate.sh exit 1, same tree, 2026-09-03"
+        }
+      ],
+      "refuted": [
+        {
+          "premise": "A green ring guard suite means the capability is delivered.",
+          "refuted_by": "The suite measures whether the GUARDS hold; the delivery verdict is the aggregate, which refuses. I nearly shipped that conflation myself and added a line to the runner's summary specifically to prevent it."
+        }
+      ]
+    },
+    {
+      "id": "Q-GLPNETS17-03",
+      "kind": "ruling",
+      "header": "Unbound ids",
+      "question": "Six pipeline feature ids bind to no roadmap feature, so their pipeline records can never move a roadmap state. The remedy that `reconcile` itself prints - `buildkit-roadmap link` - REFUSES on these, because it only moves features from promoted to specified and all six are closed. So the tool recommends a fix it will then reject. Separately, 74 of 124 roadmap features carry no spec_path at all and can never bind by basename. How do you want this handled?",
+      "blocks": [
+        "roadmap sync accuracy",
+        "any future roadmap-driven state move for those 6 features"
+      ],
+      "impact_if_unanswered": "reconcile keeps reporting 'NOT in sync' on every run in every session. The real cost is not the six ids - it is that a permanently-dirty reconcile trains every lane to ignore its output, so a genuine desync will not be noticed.",
+      "escalate_after_hours": 24,
+      "multi_select": false,
+      "options": [
+        {
+          "label": "Record as known-cosmetic, suppress the noise",
+          "recommended": true,
+          "means": "Record a decision stating the six are closed-and-unbindable by design, and raise it to the buildkit lane as a defect in `link` (it should either accept closed features for a pure binding operation, or stop recommending itself as the remedy). Until that lands, treat a reconcile whose ONLY complaint is these six as in-sync.",
+          "cost": "The six stay unbound, so the roadmap's binding report stays technically inaccurate; the suppression has to name exactly those six or it will hide a real desync later.",
+          "why_not_others": "Forcing the link risks writing a state move onto closed features, and wave-24 already found one force target that resolves correctly today - so a blanket --force could corrupt a binding that is currently right. Backfilling all 74 missing spec_paths is a large, error-prone data-entry job that does not fix these six, since their problem is the closed-state refusal and not a missing path. Doing nothing leaves the reconcile permanently dirty, which is the outcome that actually causes harm by training everyone to ignore it."
+        },
+        {
+          "label": "Force the link on all six",
+          "means": "Use the force path on `buildkit-roadmap link` to bind the six ids to their roadmap features regardless of closed state.",
+          "cost": "Wave-24 measured that one force target already points at specs/059 and resolves correctly; a blanket force could overwrite a correct binding. It also writes to closed features, which the tool refuses for a reason nobody in this lane has established."
+        },
+        {
+          "label": "Backfill all 74 missing spec_paths",
+          "means": "Populate spec_path on the 74 roadmap features that carry none, so basename binding can work fleet-wide.",
+          "cost": "Large manual data-entry across mostly-closed historical features, and it does not resolve these six - their blocker is the closed-state refusal in `link`, not a missing path."
+        },
+        {
+          "label": "Do nothing for now",
+          "do_nothing": true,
+          "means": "Leave reconcile reporting 6 unbound on every run.",
+          "cost": "Every session re-derives this, and a permanently-dirty reconcile is one that stops being read - so the next genuine desync arrives unnoticed. This is the baseline the other options are priced against."
+        }
+      ],
+      "background": [
+        {
+          "fact": "16 of 22 pipeline feature ids bind; 6 are unbound: 031, 036, 039, 049, 050, 060 - all Gleam-chain features.",
+          "measured_on": "buildkit-roadmap reconcile, 2026-09-04"
+        },
+        {
+          "fact": "74 of 124 roadmap features carry no spec_path and can never bind by basename.",
+          "measured_on": "buildkit-roadmap reconcile binding report, 2026-09-04"
+        },
+        {
+          "fact": "`buildkit-roadmap link` refuses on closed features - it only moves promoted to specified - so the remedy reconcile prints cannot be applied to any of the six.",
+          "measured_on": "wave-24 session, re-confirmed by the reconcile output naming link as the remedy while all six are closed"
+        }
+      ]
+    }
+  ]
+}
