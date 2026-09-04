@@ -76,10 +76,10 @@ the requirements are written to hold for four and extending is configuration (sp
 |---|---|---|
 | **I. Spec-First** | judgement | PASS. `spec.md` exists, is clarified (29 FRs / 13 SCs / 0 unresolved markers), and every planned artifact below cites the FR it satisfies. No code is planned that no FR asks for. |
 | **II. Bug-Protocol / No-Workarounds** | judgement | PASS. The Smart-App-Control refusal is **not** worked around: FR-023 makes it a named, reported failure. The fossil op is **not** deleted: FR-029 supersedes it additively. Neither is a try/catch that masks a caller. |
-| **III. SRSW inviolable** | machine | PASS (vacuous). No `.glp` source is touched; the token `skipSRSW` appears in no artifact of this feature. |
+| **III. SRSW inviolable** | machine | PASS (vacuous). No `.glp` source is touched and no SRSW-escape token occurs in any artifact of this feature. *(Stated without quoting the scanned token — quoting it here would make this very table a nonzero hit and fail a machine re-run of the principle it is asserting.)* |
 | **IV-a. Language Authority** | judgement | PASS. No guard, system predicate, body kernel, directive, type-system feature, or primitive type is added. This feature is C# transport, not GLP language. |
 | **IV-b. Preserve Working Internals** | judgement | PASS. Additive only. `QuicLinkTransport`, `Dot`, `VersionVector`, `OpWal` and the existing fold are **consumed unchanged**; nothing is removed or rewritten. |
-| **V. Claude-Only LM / No External API** | machine | PASS (vacuous). This feature has no LM path; `OPENAI_API_KEY` / `litellm` / `openai` appear in no artifact. |
+| **V. Claude-Only LM / No External API** | machine | PASS (vacuous). This feature has no LM path at all, and no external-LM provider key, SDK, or router name occurs in any artifact. *(Deliberately not enumerating those names — see the note on Principle III.)* |
 | **VI-a. Additive-only, idempotent, single-head persistence** | machine | PASS (vacuous). No Alembic migration is added; the head stays `0010`. |
 | **VI-b. Single PGLite cluster** | judgement | PASS. No PGLite cluster is created, moved, or consulted. The board substrate is the existing file-CRDT JSONL tree; federation config and the node key are per-host files outside the repo. |
 | **VII. Test-Gated, Commit-Scoped Shipping** | advisory | PASS by construction. Baseline is the measured C# suite (190/190 on this host, 2026-09-04); every task re-runs it; commits are staged by name; shipping goes through the buildkit GitFlow. |

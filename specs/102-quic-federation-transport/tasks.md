@@ -96,6 +96,11 @@ even though User Story 1 is the MVP.
       7 days with no leadership event; assert `EraCounter` is unchanged.
 - [ ] **T018** [P] `tests/federation/TermOrderingTests.cs` — **FR-018 gate is load-bearing**: a peer
       advertising no term-space capability is refused. Deleting `MergeGate` must make this test fail.
+- [ ] **T018a** [P] `tests/federation/TermOrderingTests.cs` — **FR-016, FR-031, SC-015** *(added by
+      the analyze pass, finding C1)*: an op from an **unrecognised** space, one from the **legacy**
+      space, and one carrying **no term** produce **three different** reported results. The test must
+      fail if any two are collapsed. Without this, `Unknown` and `Legacy` could render identically —
+      the same two-states-one-output defect SC-007 exists to forbid, one layer down.
 
 **Checkpoint**: the 🛑 STOP ORDER of ruling `Q-GLPNETG27-03` is now liftable — the fold is
 term-space aware and the fossil has an additive remedy. **US3 is independently shippable.**
@@ -152,7 +157,9 @@ term-space aware and the fossil has an additive remedy. **US3 is independently s
 - [ ] **T031** `federation/FederationService.cs` — bind (`FR-001`, refuse a loopback bind while
       enabled), dial by **literal IPv4** (`FR-003`), and report a name-resolution failure as
       `NameResolutionFailed`, never as a transport failure.
-- [ ] **T032** Durability order: **append locally, then ship** (contract W4). Never the reverse.
+- [ ] **T032** Durability order: **append locally, then ship** — **FR-030** (contract W4). Never the
+      reverse. *(FR-030 was promoted from contract-only to a spec requirement by the analyze pass,
+      finding U1: a load-bearing data-safety rule may not live only in the plan layer.)*
 - [ ] **T033** Push-on-append leg. **FR-028**, 5 s steady-state target.
 - [ ] **T034** Pull backstop every 60 s, exchanging **version vectors first** and transferring only
       the ops the peer lacks (reusing `VersionVector.Join`/`Contains`). Shipping the whole log is a
@@ -167,8 +174,9 @@ term-space aware and the fossil has an additive remedy. **US3 is independently s
 - [ ] **T038** [P] `tests/federation/FoldConvergenceTests.cs` — **SC-011**: append while the link is
       down, restore the link, assert presence within **120 s**. Deleting the pull backstop must make
       this test fail.
-- [ ] **T039** [P] `tests/federation/FoldConvergenceTests.cs` — **W4**: kill between local append and
-      push; assert the op survives locally and is delivered by the backstop.
+- [ ] **T039** [P] `tests/federation/FoldConvergenceTests.cs` — **FR-030, SC-014** (contract W4):
+      kill between local append and push; assert the op survives locally and is delivered by the
+      backstop.
 - [ ] **T040** `tests/federation/CrossHostAcceptanceTests.cs` — **SC-001**. Reads peer configuration;
       **with no peer present it SKIPS LOUDLY**, reporting *peer absent — SC-001 UNMEASURED*, and
       **never passes by default**. An unmeasured criterion reported green is exactly FR-021's

@@ -264,6 +264,16 @@ assert the connection is refused before any board operation is transferred.
   operation MUST itself be an ordinary board operation, subject to the same fold, attribution and
   append-only rules as any other.
 
+**Added 2026-09-04 by the `/bk-analyze` pass (findings U1, C1)**
+
+- **FR-030**: An operation MUST be durably recorded in the originating host's own log **before** it
+  is transmitted to any peer. A federation that transmits an operation it has not stored loses that
+  operation whenever the link succeeds and the local write does not.
+- **FR-031**: The three dispositions of an operation's term-space — recognised as the live epoch,
+  recognised as legacy, and **not recognised at all** — MUST be separately reported. In particular an
+  unrecognised space MUST NOT be rendered identically to the legacy space, and neither may be
+  rendered identically to an operation carrying no term.
+
 ### Key Entities
 
 - **Participant**: A host taking part in federation. Has a stable identity independent of address,
@@ -312,6 +322,11 @@ assert the connection is refused before any board operation is transferred.
   ordering decision.
 - **SC-013**: Minting a new federation epoch leaves every operation from the prior epoch readable and
   attributed, verified by reading the prior epoch's operations back after the mint.
+- **SC-014**: An operation appended locally survives a process kill occurring between the local
+  append and the transmission, verified by a test that kills at exactly that point.
+- **SC-015**: An operation from an unrecognised term-space, one from the legacy space, and one
+  carrying no term produce **three different** reported results, verified by a test that would fail
+  if any two were collapsed.
 
 ## Assumptions
 
