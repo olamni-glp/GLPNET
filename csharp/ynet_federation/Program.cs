@@ -181,6 +181,7 @@ public static class Program
                     "board_actor" => cfg with { BoardActor = a[3] },
                     "write_into_lane_segment" => cfg with { WriteIntoLaneSegment = bool.Parse(a[3]) },
                     "require_verified_attribution" => cfg with { RequireVerifiedAttribution = bool.Parse(a[3]) },
+                    "require_owner_only_key" => cfg with { RequireOwnerOnlyKey = bool.Parse(a[3]) },
                     "pull_interval_seconds" => cfg with { PullIntervalSeconds = int.Parse(a[3]) },
                     "push_on_append" => cfg with { PushOnAppend = bool.Parse(a[3]) },
                     _ => throw new ArgumentException($"unknown key '{a[2]}'"),
@@ -245,6 +246,19 @@ public static class Program
                     Pin = pin,
                     Spki = spki ?? "",
                 });
+
+                // VALIDATE BEFORE SAVING — the same discipline `config set` now applies. Adding a
+                // peer with a hostname or a malformed port wrote the config and exited 0, and the
+                // next `serve` refused it: exactly the write-an-invalid-config behaviour already
+                // fixed one branch away. A rule enforced on one verb and not its sibling is not a rule.
+                var peerProblems = cfg.Validate();
+                if (peerProblems.Count > 0)
+                {
+                    Console.Error.WriteLine("peer REFUSED — nothing was written:");
+                    foreach (var p in peerProblems) Console.Error.WriteLine($"  ! {p}");
+                    return 1;
+                }
+
                 cfg.Save();
                 Ledger().Record($"config add-peer {name} [{nodeId}]", "restore the recorded prior config", "admit a federation peer", prior);
 
@@ -408,6 +422,15 @@ public static class Program
         var (cfg, svc, log, nodeId) = await OpenServiceAsync();
         await using var _ = svc;
 
+        // SURFACE THE KEY WARNING WHERE THE DAEMON STARTS. It was printed by `identity` only, and
+        // nothing in the CLI ever set RequireOwnerOnlyKey — so a federation private key readable by
+        // another principal was used in SILENCE by the one command that actually serves with it.
+        if (NodeIdentityStore.LastKeyPermissionWarning is { } keyWarn)
+        {
+            Console.Error.WriteLine($"KEY PERMISSION WARNING: {keyWarn}");
+            Console.Error.WriteLine("  Set require_owner_only_key true to refuse rather than warn.");
+        }
+
         Console.WriteLine($"board root : {log.Root}");
         Console.WriteLine($"actor      : {cfg.BoardActor}   node id: {nodeId}");
         Console.WriteLine($"log        : {log.WritePath}");
@@ -552,6 +575,10 @@ public static class Program
         if (problems.Count > 0)
             throw new InvalidOperationException("federation config refused: " + string.Join("; ", problems));
 
+        // WIRE THE SETTING BEFORE THE KEY IS TOUCHED. Nothing set this static, so the refusal
+        // branch could not be reached from a deployment however the operator configured it.
+        NodeIdentityStore.RequireOwnerOnlyKey = cfg.RequireOwnerOnlyKey;
+
         var store = new NodeIdentityStore(cfg.EffectiveIdentityPath);
         bool existed = store.Exists;
         var cert = store.LoadOrMint(Environment.MachineName.ToLowerInvariant());
@@ -598,6 +625,11 @@ public static class Program
         {
             StatusHeartbeatPath = StatusHeartbeat.DefaultPath(),
             RequireVerifiedAttribution = cfg.RequireVerifiedAttribution,
+
+            // THE REAL TRANSPORT HAS THE RACE, so this is where the wait belongs: hello and board
+            // use independent QUIC streams with no ordering between them, and an op posted right
+            // after a dial can otherwise arrive before the hello and be merge-refused.
+            DialHandshakeTimeout = TimeSpan.FromSeconds(5),
         };
 
         // ENROL THIS HOST'''S OWN KEY. The verifier table holds configured PEERS, so with strict

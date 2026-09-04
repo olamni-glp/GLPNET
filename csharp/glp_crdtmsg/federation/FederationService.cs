@@ -264,6 +264,17 @@ public sealed class FederationService : IAsyncDisposable
                 // Declare our own capabilities so the peer's gate can admit us. A peer that never
                 // hears this refuses our pushes — which is the correct fail-closed direction.
                 await AnnounceCapabilitiesAsync(entry.NodeId, ct).ConfigureAwait(false);
+
+                // WAIT FOR THE PEER'S REPLY BEFORE CALLING THE LINK USABLE.
+                //
+                // Hello and board travel on INDEPENDENT QUIC box streams, which have no cross-stream
+                // ordering. An operation posted immediately after DialAsync returned could therefore
+                // reach the peer FIRST, be refused by its fail-closed merge gate, and then wait for
+                // the 60-second pull — blowing the 5-second steady-state target for the ordinary
+                // case of "dial, then post", which is exactly what the runbook tells an operator to
+                // do. Awaiting our own write proves only that we wrote.
+                await WaitForPeerCapabilitiesAsync(entry.NodeId, DialHandshakeTimeout, ct)
+                    .ConfigureAwait(false);
                 // KEYED BY PEER. A single field was overwritten by every successful dial, so with
                 // two peers an op from a same-machine one inherited the last remote peer's "No" and
                 // was reported as cross-host evidence — the precise thing FR-022 exists to prevent.
@@ -366,6 +377,13 @@ public sealed class FederationService : IAsyncDisposable
                 // leaving the peer "connected" is what made a dropped link permanent: every later
                 // send went into a connection that no longer existed and failed the same way.
                 _connected.TryRemove(entry.NodeId, out _);
+
+                // FORGET WHAT IT DECLARED. Capability state outlived the connection, so a peer that
+                // reconnected — restarted, or DOWNGRADED — inherited its previous "term-space
+                // aware: true" and could push board data before declaring anything. The gate is
+                // fail-closed per session precisely so that cannot happen; a cache that survives the
+                // session quietly reopens it.
+                _peerCaps.TryRemove(entry.NodeId, out _);
             }
         }
     }
@@ -574,6 +592,23 @@ public sealed class FederationService : IAsyncDisposable
         if (attribution.Verdict == AttributionVerdict.UnverifiedOrigin)
         {
             if (RequireVerifiedAttribution) throw new AttributionRefusedException(attribution);
+
+            // A LEADERSHIP-BEARING OP IS REFUSED WITHOUT A VERIFIED ORIGIN, WHATEVER THE SETTING.
+            //
+            // Counting an unverified op is adequate for an ordinary board post: the worst case is a
+            // misattributed note. It is NOT adequate for one carrying a TERM. An admitted peer with
+            // no configured key could submit an unsigned op naming the live space and a maximal era
+            // counter and win WinningTerm permanently — term ordering is monotone, so there is no
+            // later fix, only a new epoch, which is a different board.
+            //
+            // So the relaxed default stays where it is harmless and stops where it is not.
+            if (op.Term is not null)
+                throw new AttributionRefusedException(new AttributionResult(
+                    AttributionVerdict.UnverifiedOrigin,
+                    $"operation from '{op.Origin}' carries a TERM but its origin cannot be verified — "
+                    + "publish that peer's spki. A leadership-bearing operation is monotone: accepting "
+                    + "one unverified can install a permanent winner that no later correction removes."));
+
             UnverifiedOps++;   // COUNTED and reported, never silently treated as verified
         }
 
@@ -650,6 +685,52 @@ public sealed class FederationService : IAsyncDisposable
         }
         catch { /* the peer will refuse our pushes until it hears this; fail-closed is correct */ }
     }
+
+    /// <summary>
+    /// Wait until a peer has declared its capabilities, or the timeout expires.
+    /// <para>
+    /// Returns false on timeout rather than throwing: a peer that never answers is a DEGRADED link,
+    /// not a startup failure, and the pull leg still repairs it. What it must not do is let the
+    /// caller believe the link is ready to carry board traffic when the peer's gate will refuse it.
+    /// </para>
+    /// </summary>
+    public async Task<bool> WaitForPeerCapabilitiesAsync(string peer, TimeSpan timeout,
+                                                         CancellationToken ct = default)
+    {
+        if (timeout <= TimeSpan.Zero) return _peerCaps.ContainsKey(peer);
+
+        // REAL TIME, NOT THE INJECTED CLOCK.
+        //
+        // The injected clock exists so tests can drive the 60-second pull and the heartbeat without
+        // waiting. Routing a handshake wait through it DEADLOCKED the first version of this fix:
+        // DialAsync awaited a delay on a clock only the test could advance, and the test was blocked
+        // inside DialAsync. A short handshake bound is a wall-clock concern, and conflating the two
+        // made a correctness fix into a hang.
+        var deadline = DateTimeOffset.UtcNow + timeout;
+        while (DateTimeOffset.UtcNow < deadline)
+        {
+            if (_peerCaps.ContainsKey(peer)) return true;
+            try { await Task.Delay(TimeSpan.FromMilliseconds(25), ct).ConfigureAwait(false); }
+            catch (OperationCanceledException) { return _peerCaps.ContainsKey(peer); }
+        }
+        return _peerCaps.ContainsKey(peer);
+    }
+
+    /// <summary>
+    /// How long <see cref="DialAsync"/> waits for a peer's capability reply before treating the link
+    /// as usable. **Zero by default; the serving process sets it.**
+    /// <para>
+    /// The race this guards is specific to the REAL transport: hello and board travel on independent
+    /// QUIC streams with no cross-stream ordering. An in-process link has no such race — its frames
+    /// are injected explicitly — so defaulting the wait ON made every test dial burn five real
+    /// seconds waiting for a reply that was never going to be sent by a fake.
+    /// </para>
+    /// <para>
+    /// Defaulting a production-only concern ON everywhere is how a correctness fix becomes a
+    /// test-suite timeout. It is set at the one place the real QUIC transport is constructed.
+    /// </para>
+    /// </summary>
+    public TimeSpan DialHandshakeTimeout { get; init; } = TimeSpan.Zero;
 
     /// <summary>What a peer declared, or null if it has not declared anything. For the status surface.</summary>
     public PeerCapabilities? DeclaredCapabilitiesOf(string peerName) =>

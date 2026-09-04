@@ -334,8 +334,11 @@ public sealed class Round5RegressionTests
     [Fact]
     public void CounterOneIsAccepted()
     {
+        // A CONFORMANT pred_hash — the decoder now requires one, and this test is about the
+        // COUNTER. A fixture that breaks a different rule cannot show you which rule failed.
+        string pred = Convert.ToHexStringLower(HashChain.PredHash(new Dot("g", 1), Array.Empty<Dot>()));
         string json = "{\"op_id\":{\"peer\":\"g\",\"counter\":1},\"origin\":\"g\","
-                    + "\"kind\":\"board_post\",\"deps\":[],\"pred_hash\":\"\",\"body\":null}";
+                    + "\"kind\":\"board_post\",\"deps\":[],\"pred_hash\":\"" + pred + "\",\"body\":null}";
         Assert.Equal(1, FederationOp.FromJson(json).OpId.Counter);
         Assert.False(new FederationFrontier().Contains(new Dot("g", 1)));
     }

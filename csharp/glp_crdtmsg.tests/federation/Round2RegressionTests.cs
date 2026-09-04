@@ -727,20 +727,27 @@ public sealed class Round2RegressionTests
     /// </para>
     /// </summary>
     [Fact]
-    public void AnUnsendableOpIsSkippedAndNamedRatherThanRetriedForever()
+    public void AnOpAboveTheBatchThresholdButBelowTheWireLimitIsStillSent()
     {
-        var huge = FederationOp.Create(new Dot("g", 1), "g", "board_post",
+        // ROUND 9 SAID "skip the unsendable"; MY FIX MEASURED AGAINST THE WRONG LIMIT and round 10
+        // caught it. MaxResponseBytes (8 MiB) is a BATCHING preference; MaxWireBytes (64 MiB) is
+        // what the transport will actually carry. Skipping everything above the former stranded
+        // every operation in between — permanently, and silently, via the frontier.
+        var big = FederationOp.Create(new Dot("g", 1), "g", "board_post",
             JsonSerializer.SerializeToElement(new { body = new string('x', PullProtocol.MaxResponseBytes + 1024) }));
         var ordinary = Op("g", 2);
 
-        var batches = PullProtocol.BatchResponses(new[] { huge, ordinary });
+        var batches = PullProtocol.BatchResponses(new[] { big, ordinary });
 
-        // The ordinary op behind it STILL CROSSES — that is the whole point.
-        Assert.Equal(new[] { ordinary.OpId }, batches.SelectMany(b => b).Select(o => o.OpId));
+        // BOTH cross. The big one alone, the ordinary one after it.
+        Assert.Equal(new[] { big.OpId, ordinary.OpId }, batches.SelectMany(b => b).Select(o => o.OpId));
+        Assert.DoesNotContain(big.OpId, PullProtocol.Oversized);
 
-        // And the skip is VISIBLE, not silent: an op that can never replicate is a fact an operator
-        // needs, and a board that quietly drops one converges to the wrong answer.
-        Assert.Contains(huge.OpId, PullProtocol.Oversized);
+        // Each batch still fits the wire.
+        Assert.All(batches, b => Assert.True(PullProtocol.EncodeResponse(b).Length <= PullProtocol.MaxWireBytes));
+
+        // AND THE TWO LIMITS ARE STILL DISTINCT — the confusion that caused this.
+        Assert.True(PullProtocol.MaxWireBytes > PullProtocol.MaxResponseBytes);
     }
 
     // ==========================================================================================
@@ -758,8 +765,12 @@ public sealed class Round2RegressionTests
     [InlineData("-99999999999999999999999999")]
     public void AMalformedRetirementCounterReturnsNullRatherThanThrowing(string counter)
     {
+        // A CONFORMANT pred_hash, because the decoder now requires one. The fixture has to obey the
+        // wire contract it is testing a DIFFERENT part of — a fixture that violates one rule while
+        // probing another cannot tell you which rule failed.
+        string pred = Convert.ToHexStringLower(HashChain.PredHash(new Dot("g", 1), Array.Empty<Dot>()));
         string json = "{\"op_id\":{\"peer\":\"g\",\"counter\":1},\"origin\":\"g\",\"kind\":\"retire\","
-                    + "\"deps\":[],\"pred_hash\":\"\",\"body\":{\"target_op_id\":{\"peer\":\"g\",\"counter\":"
+                    + "\"deps\":[],\"pred_hash\":\"" + pred + "\",\"body\":{\"target_op_id\":{\"peer\":\"g\",\"counter\":"
                     + counter + "},\"into_space\":\"legacy\",\"reason\":\"r\"}}";
         var op = FederationOp.FromJson(json);
 

@@ -180,11 +180,15 @@ public sealed record FederationOp
         // chain data into the durable fold in the default unverified-origin mode — the pred-hash is
         // the day-one integrity chain over (opId, deps), so a value that does not recompute is not a
         // weaker claim, it is a false one.
+        // THE FIELD IS REQUIRED, so an ABSENT one is malformed — not exempt. Skipping validation
+        // when pred was empty let an operation be stored with no causal integrity value at all, and
+        // even signed in that form. Create() always computes 32 bytes; the wire must carry them.
         var expected = HashChain.PredHash(opId, deps);
-        if (pred.Length != 0 && !pred.AsSpan().SequenceEqual(expected))
+        if (pred.Length != expected.Length || !pred.AsSpan().SequenceEqual(expected))
             throw new FormatException(
-                "pred_hash does not match HashChain.PredHash(op_id, deps) — the causal chain this "
-                + "operation asserts is not the one its own fields produce.");
+                $"pred_hash is {pred.Length} bytes and does not match the {expected.Length}-byte "
+                + "HashChain.PredHash(op_id, deps) — the causal chain this operation asserts is not "
+                + "the one its own fields produce.");
 
         return new FederationOp
         {

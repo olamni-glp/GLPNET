@@ -59,6 +59,13 @@ public static class PullProtocol
     public const int MaxResponseBytes = 8 * 1024 * 1024;
 
     /// <summary>
+    /// The transport's own frame guard — the REAL limit on what can cross. Distinct from
+    /// <see cref="MaxResponseBytes"/>, which is only how large a batch this protocol prefers to
+    /// build. Confusing the two skipped every operation between the batch size and the wire size.
+    /// </summary>
+    public const int MaxWireBytes = 64 * 1024 * 1024;
+
+    /// <summary>
     /// Dots skipped because a single operation exceeds <see cref="MaxResponseBytes"/> and therefore
     /// cannot cross this transport. COUNTED AND NAMED, never silently dropped — an operation that
     /// can never be replicated is a fact an operator has to be able to see.
@@ -97,16 +104,34 @@ public static class PullProtocol
         {
             int cost = System.Text.Encoding.UTF8.GetByteCount(op.ToCanonicalJson()) + 1; // + separator
 
-            // AN OPERATION THAT CANNOT CROSS IS SKIPPED, NOT RETRIED FOREVER.
+            // SKIP ONLY WHAT THE WIRE CANNOT CARRY — measured against the TRANSPORT limit, not the
+            // batching threshold.
             //
-            // Giving an oversized op "its own batch" produced a frame the transport rejects, rebuilt
-            // identically at every interval — so it never crossed AND every op behind it was
-            // stranded. The board tail admits records up to 96 MiB while QUIC refuses above 64 MiB,
-            // so this is reachable from a local append, not only from a hostile peer. Skipping costs
-            // one operation; not skipping costs all of them.
-            if (cost > MaxResponseBytes)
+            // Round 9 correctly said an unsendable op must not be retried forever: the transport
+            // rejects the frame, the identical frame is rebuilt every interval, and everything
+            // behind it is stranded. But my fix tested against MaxResponseBytes — 8 MiB, a BATCHING
+            // convenience — so every operation between 8 MiB and the 64 MiB wire limit, all of them
+            // perfectly sendable on their own, was skipped PERMANENTLY. The frontier went on
+            // reporting them missing while the pull would never send them: permanent replica
+            // divergence, introduced by the fix for permanent replica divergence.
+            //
+            // An over-correction is still a defect.
+            if (cost > MaxWireBytes)
             {
                 Oversized.Add(op.OpId);
+                continue;
+            }
+
+            // Between the batch threshold and the wire limit: sendable, but only ALONE.
+            if (cost > MaxResponseBytes)
+            {
+                if (current.Count > 0)
+                {
+                    batches.Add(current);
+                    current = new List<FederationOp>();
+                    size = 2;
+                }
+                batches.Add(new List<FederationOp> { op });
                 continue;
             }
 

@@ -94,6 +94,16 @@ public sealed record FederationConfig
     /// </summary>
     [JsonPropertyName("require_verified_attribution")] public bool RequireVerifiedAttribution { get; init; }
 
+    /// <summary>
+    /// When true, a private key readable by another principal is REFUSED rather than warned about.
+    /// <para>
+    /// This exists because the static that gated the refusal was never set by anything in the CLI,
+    /// so the strict branch was unreachable in production — a security control with no way to turn
+    /// it on is a comment.
+    /// </para>
+    /// </summary>
+    [JsonPropertyName("require_owner_only_key")] public bool RequireOwnerOnlyKey { get; init; }
+
     /// <summary>The default federation port, authorised for a scoped inbound rule by ruling Q-GLPNETG27-04.</summary>
     public const int DefaultPort = 47890;
 
