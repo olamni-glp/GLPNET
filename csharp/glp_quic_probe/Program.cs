@@ -62,10 +62,19 @@ if (!QuicLinkTransport.IsSupported)
 // pin-checks the DIALER's cert too. A listener without pins would admit anyone who can reach the
 // port, which is precisely the "mere reachability MUST NOT admit" property the transport's own
 // tests assert.
-X509Certificate2 cert = QuicLinkTransport.CreateDevCert("glpnet-probe");
-string pin = QuicLinkTransport.SpkiPin(cert);
+// The identity is PERSISTED, not minted per run (Q-GLPNETA21-01). Before this fix the probe
+// called CreateDevCert and printed a DIFFERENT pin on every run of the same binary on the same
+// unchanged host — measured five times on ARIELLAS 2026-09-04T17:35Z. A pin table exchanged
+// between hosts is only worth exchanging if the pin outlives the process that published it, so
+// the probe now prints the pin a peer can actually write down. Run it twice: the pin must not move.
+var identity = QuicLinkTransport.LoadFederationIdentity("glpnet-probe");
+X509Certificate2 cert = identity.Cert;
+string pin = identity.Pin;
 Console.WriteLine($"   local cert SPKI pin : {pin}");
+Console.WriteLine($"   keystore            : {identity.PfxPath}");
+Console.WriteLine($"   identity            : {(identity.Created ? "MINTED (first run on this host)" : "LOADED (stable across restarts)")}");
 Console.WriteLine("   (a peer must carry this pin to be admitted; reachability alone is refused)");
+Console.WriteLine("   (re-run this probe — a pin that CHANGES is the Q-GLPNETA21-01 defect returning)");
 Console.WriteLine();
 
 var transport = new QuicLinkTransport("glpnet-probe", cert, new Dictionary<string, string>());
@@ -98,7 +107,10 @@ Console.WriteLine();
 Console.WriteLine("   bind endpoint     : IPEndPoint  — 0.0.0.0:<port> to accept from other hosts");
 Console.WriteLine("                       (127.0.0.1 binds loopback ONLY and cannot federate)");
 Console.WriteLine("   server certificate: X509Certificate2 with a private key");
-Console.WriteLine("                       QuicLinkTransport.CreateDevCert(<name>) for dev");
+Console.WriteLine("                       QuicLinkTransport.LoadFederationIdentity(<name>).Cert");
+Console.WriteLine("                       🔴 NOT CreateDevCert — that mints a fresh keypair per call,");
+Console.WriteLine("                       so its pin dies at the next restart and mTLS then refuses");
+Console.WriteLine("                       EVERY peer, which looks exactly like a dead transport.");
 Console.WriteLine("   peer pins         : IReadOnlyDictionary<peer, spkiPin>");
 Console.WriteLine("                       EMPTY DICTIONARY = admit nobody. This is the safe default");
 Console.WriteLine("                       and it is why a reachable listener is not an open one.");
