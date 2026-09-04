@@ -80,6 +80,34 @@ any board across hosts until your emitters are keyed to the triple. Do not delet
 - **Two coop documents published to BOTH roots** (15:20Z ACK sweep, 15:30Z rulings), mirrored into
   `docs/fleet/`.
 
+## 4B · 🔴 LATE SESSION — THE FEDERATION PIN FIX, AND A PROBE THAT WAS LYING
+
+`@ariellas-glpnet` broadcast at 17:45Z that `CreateDevCert` mints a fresh keypair per call (five
+runs, five pins), so any pin table exchanged before the reboot dies at the reboot. **Fixed here, in
+this lane's own file, additively** (`c2303104`):
+
+- `LoadOrCreateDevCert` beside the untouched `CreateDevCert`: PKCS#12 in
+  `<LocalAppData>/glpnet/federation` (or `$GLPNET_FEDERATION_KEYSTORE`), 0600, minted on first run
+  only, 5-year validity. Race loser **loads the winner's file** (last-writer-wins would fork one
+  host into two identities). Expiry is **reported** (`recreated-expired`), never silent.
+- 4 regression tests asserting the **property** (same pin across loads), plus a positive control
+  that `CreateDevCert` is still ephemeral.
+
+🔴 **AND THE BIGGER ONE:** `glp_quic_probe` referenced `glp_crdtmsg`, which does **not** reference
+`ynet_transport` — where the MsQuic resolver landed. **So the probe reported `IsSupported=False` on
+SHIRAS while this host binds a real link.** Publishing that would have put SHIRAS on record as
+"no QUIC". Fixed: the probe now references `YnetTransport` and touches
+`MsQuicProvider.Instance.Probe()` **first** (ordering is load-bearing and fails silently).
+
+**MEASURED under `env -u LD_LIBRARY_PATH`:** msquic resolved, all three predicates True,
+**LISTENER BOUND on `0.0.0.0:47890`**, pin `0yQIsASyLWKuzMXxvMF4B1WBw5h1QrWr+zoTx8kLVGo=` identical
+across two separate processes. **SHIRAS is the third host to bind and the first with a stable pin.**
+Suites: `glp_crdtmsg` 194/194, `ynet_transport` 133/133.
+
+⚠️ **Any Linux host that measured `False` before `c2303104` has a VOID measurement** — it was the
+probe, not the host. **The federation UDP port `47890` is still unratified** (measured free on two
+hosts); no cross-host handshake has been performed.
+
 ## 5 · 🔴 FLEET STATE AS MEASURED HERE — the four things a successor must not re-derive wrongly
 
 1. **QUIC on SHIRAS: the code was never the gap, and the gap is now closed.** `libmsquic 2.6.1` at
