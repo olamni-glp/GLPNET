@@ -96,9 +96,17 @@ public sealed class NodeIdentityStore
                                                 FileShare.None);
 
                 // Re-check UNDER the lock: the process we queued behind may have just minted it.
+                //
+                // AND RE-VERIFY ITS PERMISSIONS. Loading here without the check was a way around the
+                // security refusal: if the process we waited for wrote the key and THEN failed to
+                // harden it, this waiter picked up the exposed private key and reported success —
+                // bypassing the very refusal the other process had just raised.
                 if (File.Exists(_path))
+                {
+                    AssertOwnerOnly(_path);
                     return X509CertificateLoader.LoadPkcs12(File.ReadAllBytes(_path), password: null,
                         X509KeyStorageFlags.Exportable);
+                }
 
                 var cert = Mint(commonName);
 
