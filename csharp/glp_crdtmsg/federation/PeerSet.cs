@@ -107,7 +107,11 @@ public sealed class PeerSet
     {
         var entry = Find(presentedNodeId);
         if (entry is null) return AdmissionOutcome.NotInPeerSet;
-        return string.Equals(entry.Pin, presentedPin, StringComparison.OrdinalIgnoreCase)
+        // ORDINAL. A pin is base64, where case is SIGNIFICANT — "aB" and "Ab" are different bytes
+        // and therefore different keys. Comparing case-insensitively made this admit a pin the QUIC
+        // transport (which compares ordinally) would refuse, so the two layers could disagree about
+        // the same peer. Node ids are the hex values that get case-normalised, on the way in.
+        return string.Equals(entry.Pin, presentedPin, StringComparison.Ordinal)
             ? AdmissionOutcome.Admitted
             : AdmissionOutcome.PinMismatch;
     }

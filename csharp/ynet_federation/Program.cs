@@ -80,6 +80,20 @@ public static class Program
     private static int Status()
     {
         var cfg = FederationConfig.Load();
+
+        // VALIDATE BEFORE BUILDING THE PEER SET. A hand-edited config with a blank node id made
+        // ToPeerSet() throw before Validate() ever ran, so `status` printed a bare top-level error
+        // instead of the field-specific refusals it promises — for the one command an operator runs
+        // precisely to find out what is wrong.
+        var configProblems = cfg.Validate();
+        if (configProblems.Count > 0)
+        {
+            Console.WriteLine("configuration REFUSED:");
+            foreach (var p in configProblems) Console.WriteLine($"  ! {p}");
+            Console.WriteLine($"\npath: {FederationConfig.DefaultPath()}");
+            return 1;
+        }
+
         var peers = cfg.ToPeerSet();
         var now = DateTimeOffset.UtcNow;
 
@@ -171,6 +185,18 @@ public static class Program
                     "push_on_append" => cfg with { PushOnAppend = bool.Parse(a[3]) },
                     _ => throw new ArgumentException($"unknown key '{a[2]}'"),
                 };
+                // VALIDATE BEFORE PERSISTING. Saving first meant `config set enabled true` with no
+                // board root wrote an invalid configuration, recorded a reversal for it, printed
+                // REFUSED, and still EXITED 0 — leaving a daemon that cannot start behind a command
+                // that reported success.
+                var problems = next.Validate();
+                if (problems.Count > 0)
+                {
+                    Console.Error.WriteLine("configuration REFUSED — nothing was written:");
+                    foreach (var p in problems) Console.Error.WriteLine($"  ! {p}");
+                    return 1;
+                }
+
                 next.Save();
                 Ledger().Record($"config set {a[2]}={a[3]}", "restore the recorded prior config", "enable/adjust federation", prior);
 

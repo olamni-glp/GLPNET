@@ -717,14 +717,30 @@ public sealed class Round2RegressionTests
         Assert.Equal(ops.Select(o => o.OpId), batches.SelectMany(b => b).Select(o => o.OpId));
     }
 
-    /// <summary>An op larger than the batch limit still gets sent rather than stranded forever.</summary>
+    /// <summary>
+    /// An operation that cannot cross this transport is SKIPPED AND NAMED, not batched.
+    /// <para>
+    /// THIS TEST ASSERTED THE OPPOSITE UNTIL ROUND 9, on my reasoning that "the transport's own
+    /// guard is the backstop". It is not a backstop: the transport REJECTS the oversized frame, the
+    /// same frame is rebuilt at the next interval, and every operation queued behind it is stranded
+    /// too. Skipping costs one operation; the batch-it-anyway contract cost all of them.
+    /// </para>
+    /// </summary>
     [Fact]
-    public void AnOversizedSingleOpIsStillGivenItsOwnBatch()
+    public void AnUnsendableOpIsSkippedAndNamedRatherThanRetriedForever()
     {
         var huge = FederationOp.Create(new Dot("g", 1), "g", "board_post",
             JsonSerializer.SerializeToElement(new { body = new string('x', PullProtocol.MaxResponseBytes + 1024) }));
+        var ordinary = Op("g", 2);
 
-        Assert.Single(PullProtocol.BatchResponses(new[] { huge }));
+        var batches = PullProtocol.BatchResponses(new[] { huge, ordinary });
+
+        // The ordinary op behind it STILL CROSSES — that is the whole point.
+        Assert.Equal(new[] { ordinary.OpId }, batches.SelectMany(b => b).Select(o => o.OpId));
+
+        // And the skip is VISIBLE, not silent: an op that can never replicate is a fact an operator
+        // needs, and a board that quietly drops one converges to the wrong answer.
+        Assert.Contains(huge.OpId, PullProtocol.Oversized);
     }
 
     // ==========================================================================================

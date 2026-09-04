@@ -58,6 +58,13 @@ public static class PullProtocol
     /// </summary>
     public const int MaxResponseBytes = 8 * 1024 * 1024;
 
+    /// <summary>
+    /// Dots skipped because a single operation exceeds <see cref="MaxResponseBytes"/> and therefore
+    /// cannot cross this transport. COUNTED AND NAMED, never silently dropped — an operation that
+    /// can never be replicated is a fact an operator has to be able to see.
+    /// </summary>
+    public static readonly System.Collections.Concurrent.ConcurrentBag<Dot> Oversized = new();
+
     /// <summary>Build a pull request carrying this host's frontier.</summary>
     public static byte[] EncodeRequest(FederationFrontier frontier) =>
         System.Text.Encoding.UTF8.GetBytes(FrontierCodec.Encode(frontier));
@@ -89,6 +96,20 @@ public static class PullProtocol
         foreach (var op in ops)
         {
             int cost = System.Text.Encoding.UTF8.GetByteCount(op.ToCanonicalJson()) + 1; // + separator
+
+            // AN OPERATION THAT CANNOT CROSS IS SKIPPED, NOT RETRIED FOREVER.
+            //
+            // Giving an oversized op "its own batch" produced a frame the transport rejects, rebuilt
+            // identically at every interval — so it never crossed AND every op behind it was
+            // stranded. The board tail admits records up to 96 MiB while QUIC refuses above 64 MiB,
+            // so this is reachable from a local append, not only from a hostile peer. Skipping costs
+            // one operation; not skipping costs all of them.
+            if (cost > MaxResponseBytes)
+            {
+                Oversized.Add(op.OpId);
+                continue;
+            }
+
             if (current.Count > 0 && size + cost > MaxResponseBytes)
             {
                 batches.Add(current);

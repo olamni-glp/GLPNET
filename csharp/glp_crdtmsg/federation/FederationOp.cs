@@ -176,6 +176,16 @@ public sealed record FederationOp
             ? Convert.FromHexString(pEl.GetString()!)
             : Array.Empty<byte>();
 
+        // THE HASH IS CHECKED, NOT JUST CARRIED. Accepting any supplied bytes let malformed causal
+        // chain data into the durable fold in the default unverified-origin mode — the pred-hash is
+        // the day-one integrity chain over (opId, deps), so a value that does not recompute is not a
+        // weaker claim, it is a false one.
+        var expected = HashChain.PredHash(opId, deps);
+        if (pred.Length != 0 && !pred.AsSpan().SequenceEqual(expected))
+            throw new FormatException(
+                "pred_hash does not match HashChain.PredHash(op_id, deps) — the causal chain this "
+                + "operation asserts is not the one its own fields produce.");
+
         return new FederationOp
         {
             OpId = opId,

@@ -79,6 +79,16 @@ public sealed class FederationFold
 
     private bool ApplyLocked(FederationOp op)
     {
+        // THE FOLD BOUNDARY IS THE LAST LINE OF DEFENCE. FederationOp is a record with init-only
+        // properties, so a caller can bypass BOTH guarded factories with an object initialiser. A
+        // nonpositive counter reaching here is unrecoverable: FederationFrontier's contiguous run
+        // starts at 0, so it reports the dot as already covered and a lost push can never be
+        // repaired. Guarding only the constructors left a door open that the type system does not.
+        if (op.OpId.Counter < 1)
+            throw new ArgumentOutOfRangeException(nameof(op),
+                $"dot counter must be >= 1; got {op.OpId.Counter}. Every frontier reports a "
+                + "nonpositive counter as already-held, so this operation could never be reconciled.");
+
         if (_ops.TryGetValue(op.OpId, out var existing))
         {
             // A REDELIVERY IS THE SAME OPERATION. Two DIFFERENT operations sharing a dot are not a

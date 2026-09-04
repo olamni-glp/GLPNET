@@ -52,7 +52,25 @@ public sealed class ChangeLedger
             Prior = prior,
         };
         Directory.CreateDirectory(Path.GetDirectoryName(_path)!);
-        File.AppendAllText(_path, JsonSerializer.Serialize(entry) + Environment.NewLine);
+        // CROSS-PROCESS, like the board log. Two documented CLI processes record changes
+        // concurrently, and on Windows one of them took a sharing violation AFTER its config or key
+        // change had already been applied — leaving a change with no recorded reversal, which is
+        // precisely the FR-025 guarantee this file exists to provide.
+        byte[] bytes = System.Text.Encoding.UTF8.GetBytes(JsonSerializer.Serialize(entry) + "\n");
+        for (int attempt = 0; ; attempt++)
+        {
+            try
+            {
+                using var fs = new FileStream(_path, FileMode.Append, FileAccess.Write, FileShare.Read);
+                fs.Write(bytes, 0, bytes.Length);
+                fs.Flush(flushToDisk: true);
+                return;
+            }
+            catch (IOException) when (attempt < 50)
+            {
+                Thread.Sleep(10);
+            }
+        }
     }
 
     /// <summary>Every recorded change, oldest first.</summary>

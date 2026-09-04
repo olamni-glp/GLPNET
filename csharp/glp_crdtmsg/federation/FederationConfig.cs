@@ -110,7 +110,12 @@ public sealed record FederationConfig
         {
             // A loopback bind is THE failure mode that looks exactly like success: everything comes
             // up green and no peer can ever reach you (FR-001 / I-31).
-            if (IPAddress.TryParse(BindAddress, out var addr) && IPAddress.IsLoopback(addr))
+            // A NON-LITERAL BIND ADDRESS IS A REFUSAL, not a silently-skipped check. The loopback
+            // test simply evaluated false for an unparsable value, so Validate() called the config
+            // VALID and BindAsync later aborted startup with a bare format exception.
+            if (!IPAddress.TryParse(BindAddress, out var addr))
+                problems.Add($"bind_address: '{BindAddress}' is not a literal IP address — the listener cannot bind to it, and reporting this config valid defers the failure to startup");
+            else if (IPAddress.IsLoopback(addr))
                 problems.Add("bind_address: loopback bind is not peer-reachable — a listener bound to loopback looks healthy and admits nobody");
 
             // Without a board root, federation has nothing to attach to — and the previous fallback

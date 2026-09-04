@@ -41,8 +41,16 @@ public sealed class JsonlBoardLog : IBoardLog
         try
         {
             Directory.CreateDirectory(System.IO.Path.GetDirectoryName(_path)!);
-            await File.AppendAllTextAsync(_path, op.ToCanonicalJson() + Environment.NewLine, ct)
-                      .ConfigureAwait(false);
+
+            // FLUSH TO DISK. This method returning is what permits the push, so a power loss with
+            // the record still in the OS cache leaves the PEER holding an operation the ORIGIN never
+            // stored — the exact inversion FR-030 forbids. SchedulerBoardLog was fixed for this; the
+            // same guarantee has to hold on every IBoardLog, or it depends on which one is wired.
+            byte[] bytes = System.Text.Encoding.UTF8.GetBytes(op.ToCanonicalJson() + "\n");
+            using var fs = new FileStream(_path, FileMode.Append, FileAccess.Write,
+                                          FileShare.Read, bufferSize: 4096, useAsync: true);
+            await fs.WriteAsync(bytes, ct).ConfigureAwait(false);
+            fs.Flush(flushToDisk: true);
         }
         finally { _gate.Release(); }
     }
