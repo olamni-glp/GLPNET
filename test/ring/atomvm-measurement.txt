@@ -1,0 +1,100 @@
+== AtomVM subset measurement — T017 second half ==
+   host:    Linux 6.18.33.2-microsoft-standard-WSL2 x86_64
+   distro:  Ubuntu 26.04 LTS
+   date:    2026-09-04T05:47:34Z
+   target:  AtomVM v0.6.6
+
+-- step 1: resolve release assets (never a guessed URL) --
+   GET https://api.github.com/repos/atomvm/AtomVM/releases/tags/v0.6.6 -> HTTP 200  (133973 bytes)
+   tag: v0.6.6
+   assets: 64
+     - AtomVM-esp32-elixir-v0.6.6.img  (2197764 bytes)
+     - AtomVM-esp32-elixir-v0.6.6.img.sha256  (97 bytes)
+     - AtomVM-esp32-v0.6.6.img  (2064876 bytes)
+     - AtomVM-esp32-v0.6.6.img.sha256  (90 bytes)
+     - AtomVM-esp32c2-elixir-v0.6.6.img  (2201860 bytes)
+     - AtomVM-esp32c2-elixir-v0.6.6.img.sha256  (99 bytes)
+     - AtomVM-esp32c2-v0.6.6.img  (2068972 bytes)
+     - AtomVM-esp32c2-v0.6.6.img.sha256  (92 bytes)
+     - AtomVM-esp32c3-elixir-v0.6.6.img  (2201860 bytes)
+     - AtomVM-esp32c3-elixir-v0.6.6.img.sha256  (99 bytes)
+     - AtomVM-esp32c3-v0.6.6.img  (2068972 bytes)
+     - AtomVM-esp32c3-v0.6.6.img.sha256  (92 bytes)
+     - AtomVM-esp32c6-elixir-v0.6.6.img  (2201860 bytes)
+     - AtomVM-esp32c6-elixir-v0.6.6.img.sha256  (99 bytes)
+     - AtomVM-esp32c6-v0.6.6.img  (2068972 bytes)
+     - AtomVM-esp32c6-v0.6.6.img.sha256  (92 bytes)
+     - AtomVM-esp32h2-elixir-v0.6.6.img  (2201860 bytes)
+     - AtomVM-esp32h2-elixir-v0.6.6.img.sha256  (99 bytes)
+     - AtomVM-esp32h2-v0.6.6.img  (2068972 bytes)
+     - AtomVM-esp32h2-v0.6.6.img.sha256  (92 bytes)
+     - AtomVM-esp32p4-elixir-v0.6.6.img  (2193668 bytes)
+     - AtomVM-esp32p4-elixir-v0.6.6.img.sha256  (99 bytes)
+     - AtomVM-esp32p4-v0.6.6.img  (2060780 bytes)
+     - AtomVM-esp32p4-v0.6.6.img.sha256  (92 bytes)
+     - AtomVM-esp32s2-elixir-v0.6.6.img  (2197764 bytes)
+     - AtomVM-esp32s2-elixir-v0.6.6.img.sha256  (99 bytes)
+     - AtomVM-esp32s2-v0.6.6.img  (2064876 bytes)
+     - AtomVM-esp32s2-v0.6.6.img.sha256  (92 bytes)
+     - AtomVM-esp32s3-elixir-v0.6.6.img  (2201860 bytes)
+     - AtomVM-esp32s3-elixir-v0.6.6.img.sha256  (99 bytes)
+     - AtomVM-esp32s3-v0.6.6.img  (2068972 bytes)
+     - AtomVM-esp32s3-v0.6.6.img.sha256  (92 bytes)
+     - AtomVM-linux-arm32v5-v0.6.6  (3132224 bytes)
+     - AtomVM-linux-arm32v5-v0.6.6.sha256  (79 bytes)
+     - AtomVM-linux-arm32v7thl-v0.6.6  (2918996 bytes)
+     - AtomVM-linux-arm32v7thl-v0.6.6.sha256  (79 bytes)
+     - AtomVM-linux-arm64v8-v0.6.6  (4532056 bytes)
+     - AtomVM-linux-arm64v8-v0.6.6.sha256  (79 bytes)
+     - AtomVM-linux-i386-v0.6.6  (3443572 bytes)
+     - AtomVM-linux-i386-v0.6.6.sha256  (79 bytes)
+     - AtomVM-linux-riscv64-v0.6.6  (5497824 bytes)
+     - AtomVM-linux-riscv64-v0.6.6.sha256  (79 bytes)
+     - AtomVM-linux-x86_64-static-mbedtls-v0.6.6  (5068440 bytes)
+     - AtomVM-linux-x86_64-static-mbedtls-v0.6.6.sha256  (79 bytes)
+     - AtomVM-linux-x86_64-v0.6.6  (4508560 bytes)
+     - AtomVM-linux-x86_64-v0.6.6.sha256  (79 bytes)
+     - AtomVM-node-v0.6.6.js  (137307 bytes)
+     - AtomVM-node-v0.6.6.js.sha256  (88 bytes)
+     - AtomVM-node-v0.6.6.wasm  (671611 bytes)
+     - AtomVM-node-v0.6.6.wasm.sha256  (90 bytes)
+     - AtomVM-pico-v0.6.6.uf2  (1167360 bytes)
+     - AtomVM-pico-v0.6.6.uf2.sha256  (93 bytes)
+     - AtomVM-pico_w-v0.6.6.uf2  (1988096 bytes)
+     - AtomVM-pico_w-v0.6.6.uf2.sha256  (95 bytes)
+     - AtomVM-web-v0.6.6.js  (128877 bytes)
+     - AtomVM-web-v0.6.6.js.sha256  (87 bytes)
+     - AtomVM-web-v0.6.6.wasm  (671958 bytes)
+     - AtomVM-web-v0.6.6.wasm.sha256  (89 bytes)
+     - atomvmlib-v0.6.6.avm  (285016 bytes)
+     - atomvmlib-v0.6.6.avm.sha256  (92 bytes)
+     - atomvmlib-v0.6.6.uf2  (321536 bytes)
+     - atomvmlib-v0.6.6.uf2.sha256  (87 bytes)
+     - hello_world-v0.6.6.avm  (368 bytes)
+     - hello_world-v0.6.6.avm.sha256  (105 bytes)
+
+-- step 2: download https://github.com/atomvm/AtomVM/releases/download/v0.6.6/AtomVM-linux-x86_64-static-mbedtls-v0.6.6 --
+   HTTP 200, 5068440 bytes
+   file type: ELF 64-bit LSB pie executable, x86-64, version 1 (SYSV), dynamically linked, interpreter /lib64/ld-linux-x86-64.so.2, for GNU/Linux 3.2.0, BuildID[sha1]=a7ed6dd2f9dd6eb213aaf5dcf908ac93a88cfaca, with debug_info, not stripped
+   bare ELF executable -> /root/atomvm-work/AtomVM
+total 14996
+drwxr-xr-x 2 root root    4096 Sep  4 06:47 .
+drwx------ 5 root root    4096 Sep  4 06:43 ..
+-rwxr-xr-x 1 root root 5068440 Sep  4 06:47 AtomVM
+-rw-r--r-- 1 root root 5068440 Sep  4 06:47 atomvm.download
+-rw-r--r-- 1 root root 5068440 Sep  4 06:45 atomvm.tgz
+-rw-r--r-- 1 root root  133973 Sep  4 06:47 rel.json
+
+-- step 3: run it --
+   binary: /root/atomvm-work/AtomVM
+   /root/atomvm-work/AtomVM: invalid option -- '-'
+   0.6.6
+
+-- step 4: reproduce the dossier result BEFORE extending the list --
+   Required: a gleam_otp build must fail with 'module proc_lib cannot be resolved'.
+   If it does not reproduce, atomvm-unsupported.list must be RE-DERIVED, not extended.
+   (Requires a Gleam toolchain in this environment; see install-atomvm.md step 2.)
+   gleam not present in WSL — reproduction NOT ATTEMPTED, recorded as such.
+
+RESULT: AtomVM binary obtained and runnable; construct enumeration NOT extended.
+        The list remains the 0.6.6 lower bound. Next: install gleam+erlang here.
