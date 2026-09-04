@@ -1,0 +1,170 @@
+[
+ {
+  "qid": "Q-glpnetshiras-43",
+  "header": "QUIC wiring",
+  "block": "I implemented QUIC dial-by-node-id in Connect this session, and I have since found that the QUIC federation era wiring Connect was allocated to @gavriella-glpnet by Q-GLPNETG27-01, so a ruling is needed on whether my work stands, is handed over, or is reverted.",
+  "origin": "contradiction",
+  "severity": "critical",
+  "background": [
+   "MEASURED THIS SESSION: commit f60acbbf adds csharp/ynet_transport/Capability/QuicNodeEndpointResolver.cs, an INodeEndpointResolver that resolves a peer NodeId to an address and dials it over System.Net.Quic. A test connects two nodes BY ID over a genuine QUIC handshake and passes a sealed frame (493 ms, loopback). Suite 182/182.",
+   "THE COLLISION: the recorded background to ruling Q-glpnetshiras-39 says 'The QUIC federation era (102) is allocated to @gavriella-glpnet by Q-GLPNETG27-01 and adopts the landed provider chain (Q-shiras0904e-02) ... That wiring is 102's scope, not this host's.' I did not re-read that clause before building, and this is exactly the fleet's most-repeated defect: feature 012 was minted twice and five rival elections were built in one hour.",
+   "THEY ARE NOT IDENTICAL, WHICH IS WHY THIS IS A QUESTION AND NOT A SELF-REVERT. @gavriella-glpnet's allocated scope is wiring @shiras-qhstate's MULTI-TIER QuicProviderChain (msquic / ngtcp2 fallback tiers) into Connect. Mine wires the single System.Net.Quic path behind the INodeEndpointResolver seam, using the id-to-address Resolve that only existed as of this session. The provider chain remains unwired either way.",
+   "IT WAS NOT BUILDABLE BEFORE TODAY: the endpoint resolver needs an id-to-address mapping, and none existed anywhere in the tree until Resolve landed in b5a9911b two hours earlier. That is the honest reason the two eras were separable at all.",
+   "COST OF REVERTING: 1 production file (110 lines) and 12 tests, including the only end-to-end evidence on this fleet that two YNET nodes can connect by identity over real QUIC."
+  ],
+  "impact_if_unanswered": "Either two lanes ship overlapping Connect implementations and the fleet re-runs the feature-012 double-mint at its most load-bearing seam, or I revert working, tested, measured code and the fleet loses its only by-id QUIC connection evidence while waiting for another host's era.",
+  "options": [
+   {
+    "key": "stands-as-contribution",
+    "label": "My work stands as the seam half; @gavriella-glpnet's era keeps the provider-chain half",
+    "consequence": "The two halves are declared complementary and the boundary is written down: QuicNodeEndpointResolver owns id-to-address-to-dial behind INodeEndpointResolver, and era 102 owns swapping QuicProviderChain in beneath it. I publish the boundary to @gavriella-glpnet with an explicit invitation to refuse it. Risk: they have already started, and my file is in their way.",
+    "size": "mini",
+    "reversibility": "reversible"
+   },
+   {
+    "key": "hand-over-intact",
+    "label": "Hand the code to @gavriella-glpnet and take no further Connect work",
+    "consequence": "I keep the commit on develop but declare era 102 the owner of everything under Connect from now on, and do not touch it again without their agreement. Cleanest on scope; slowest on the cross-host handshake, which now waits on another host's era.",
+    "size": "mini",
+    "reversibility": "reversible"
+   },
+   {
+    "key": "revert-mine",
+    "label": "Revert f60acbbf; Connect work is exclusively era 102's",
+    "consequence": "FORECLOSES: the only measured by-id QUIC connection on this fleet is deleted, and the cross-host handshake on UDP 47890 cannot be attempted from SHIRAS until era 102 lands on another host. Scope purity is total and the evidence is gone.",
+    "size": "mini",
+    "reversibility": "one-way"
+   }
+  ],
+  "recommendation": {
+   "option": "stands-as-contribution",
+   "because": "The two halves are genuinely different layers and only one of them was buildable before Resolve existed, so this is a complement rather than a duplicate. Reverting destroys the fleet's only by-id QUIC evidence to buy a scope purity that the seam boundary already provides. But the decision is not mine to take alone, which is why it is here rather than in a commit message: @gavriella-glpnet must be free to refuse the boundary."
+  }
+ },
+ {
+  "qid": "Q-glpnetshiras-44",
+  "header": "Era scope",
+  "block": "This session's directive assigns yx-proxy, bk-beacon, the 3270 terminal, QHSM virtual terminals, the L0 shared capability and yngenios-linux to this lane, while the 2026-09-04T20:01Z ruling from @shiras-tefl records those same items as reallocated away from it.",
+  "origin": "contradiction",
+  "severity": "critical",
+  "background": [
+   "THE DIRECTIVE asks this lane to build: a yx-proxy daemon (C#/.NET11, QHSM-wrapped, ngrok control CLI), a refactored bk-beacon, a refactored 3270 terminal facility, QHSM/QMSM-wrapped headless virtual terminals, iroh QUIC integrated from L0 upward, and yngenios-windows / yngenios-linux / L0 features scored and promoted, with the L0 and Linux work as the mandatory next era here on SHIRAS.",
+   "THE RECORDED ALLOCATION says otherwise. Coop document 20260904T2001Z-shiras-tefl is titled in part 'ERA REALLOCATION yngenios L0 linux proxy beacon 3270 ARE NOT MINE'. My own lane scope (recorded, and re-confirmed by memory) is the ynet transport (specs/051, specs/065, csharp/ynet_transport*) and the GLP-side REPL split, and states this lane must NOT write into yngenios, yngenios-windows, yngenios-linux or buildkit.",
+   "THE ROADMAP ALREADY CARRIES MOST OF IT, PROMOTED AND SCORED, so building it here would duplicate rather than create: glp-repl-fmb-split-over-ynet-for-qhsm-terminal (WSJF 2.88 / RICE 393.75), glp-repl-front-middle-back-separation-yngenios-app-terminal-front-end (WSJF 1.23), iroh-tier0-quic-provider-vendored-rust-behind-ynet-transport-seam (WSJF 1.85, confidence 40).",
+   "ONE PIECE IS UNAMBIGUOUSLY MINE and I have not started it: glp-repl-fmb-split-over-ynet-for-qhsm-terminal. The C# projects glp_repl_client, glp_split_protocol and glp_engine_host already exist in this repo, so the front/middle/back split is partly built here already.",
+   "iroh: confidence was scored at 40 because NO .NET BINDING EXISTS. Integrating it 'from L0 upward' is a vendored-Rust exercise, and cargo/rustc 1.98.1 are present on this host but NOT on PATH, which reads as absent to every non-interactive service."
+  ],
+  "impact_if_unanswered": "This lane either writes into three repos that recorded rulings assign to other lanes, producing the duplicate-implementation defect the fleet has now hit at least seven times, or it declines a direct engineer instruction and the named work goes unbuilt on this host.",
+  "options": [
+   {
+    "key": "allocation-stands",
+    "label": "The recorded allocation stands; I build only the GLP REPL split over ynet",
+    "consequence": "I take glp-repl-fmb-split-over-ynet-for-qhsm-terminal as the next era and broadcast the proxy, beacon, 3270, L0 and yngenios-linux items to their allocated owners with the directive attached. Nothing is dropped; each piece is built once, by its owner. Cost: none of those land on SHIRAS this wave unless their owners deliver.",
+    "size": "maxi",
+    "reversibility": "reversible"
+   },
+   {
+    "key": "directive-supersedes",
+    "label": "The directive supersedes the allocation; I build all of it here",
+    "consequence": "FORECLOSES: the recorded per-lane scope stops being authoritative fleet-wide, so every lane may now write into every repo, and the duplicate-implementation guard is gone for good. Realistically this is six substantial features in three repos I am told not to write into.",
+    "size": "maxi",
+    "reversibility": "one-way"
+   },
+   {
+    "key": "split-l0-only",
+    "label": "I take the L0 shared-capability layer only; the platform-specific work stays with its owners",
+    "consequence": "The cross-platform L0 pieces (a QHSM terminal contract, the mailbox seam, the ynet transport binding) land here where the transport already lives, and yngenios-windows / yngenios-linux hardening stays with GAVRI and the yngenios lanes. Middle path; needs the L0 boundary written down before anyone starts, or it becomes the same collision as Q-43.",
+    "size": "maxi",
+    "reversibility": "reversible"
+   }
+  ],
+  "recommendation": {
+   "option": "allocation-stands",
+   "because": "Every item in the directive except the GLP REPL split is already a promoted, scored roadmap feature with an owner, so the work is not missing; it is allocated. The fleet's single most expensive recurring defect is building an owned thing twice, and this directive would cause six instances of it at once. If speed is the real goal, the faster lever is broadcasting the directive to the owners with era priority attached, which I will do either way."
+  }
+ },
+ {
+  "qid": "Q-glpnetshiras-45",
+  "header": "020 refusal",
+  "block": "I have refused a direct, repeated instruction to broadcast the claim that L0's feature-020 hooks have zero consumers, because seven lanes measured it false and its originator retracted it, and you should be able to overrule that refusal.",
+  "origin": "contradiction",
+  "severity": "high",
+  "background": [
+   "THE INSTRUCTION, repeated four times in one message and marked URGENT CRITICAL IMPERATIVE MANDATORY, is to broadcast to all hosts and all lanes: 'L0 has purpose-built feature-020 hooks (OnStepDispatched, Unregister, StartOnDedicatedThread, Markers) with zero consumers - the host that was meant to use them was never written', and to have every lane root-cause it.",
+   "IT IS MEASURABLY FALSE. @gavriella-buildkit at 22:22Z named the consuming call site for each of the four hooks in KernelHost.cs, showed the host was written BY feature-020 itself (f09a2a9b, 2026-07-04), and built it: 0 errors. @gavriella-hatzinor at 23:10Z counted 130 consumers and wrote DO NOT DELETE.",
+   "ITS ORIGINATOR RETRACTED IT. @olamnit-yngapp at 23:55Z published a retraction stating their zero-consumers broadcast measured a STALE TREE and the fix is on develop. @gavriella-buildkit issued a standing stop-order; @gavriella-lejepa at 00:10Z published an explicit refusal to rebroadcast. I refuted it myself by execution at 19:00Z. That is seven lanes on four hosts.",
+   "THE DURABLE FIX IS ALREADY DONE AND PROMOTED, which is what the instruction actually asked for: l0-consumer-resolution-no-false-absence-from-a-projection-scoped-search is on the roadmap at WSJF 5.20 / RICE 810, generalised correctly to 'no lane may report an absence it cannot scope'.",
+   "COST OF COMPLYING: fifteen lanes on four hosts root-causing a defect closed on 2026-07-04, which is more lane-hours than the largest era anyone shipped today."
+  ],
+  "impact_if_unanswered": "Either a false claim is re-injected into a channel where it has already been refuted seven times and retracted once, costing the fleet more than a full day of era capacity, or a direct engineer instruction stands refused on a lane's own judgement with no recorded ruling behind it.",
+  "options": [
+   {
+    "key": "refusal-upheld",
+    "label": "Uphold the refusal; the promoted L0 feature is the compliant answer",
+    "consequence": "No rebroadcast. I publish the refusal and its evidence, which I have already done, and point every lane at the promoted l0-consumer-resolution feature as the durable fix. If you want the underlying concern pursued, the thing to reopen is @olamnit-yngapp's retraction, not the original claim.",
+    "size": "mini",
+    "reversibility": "reversible"
+   },
+   {
+    "key": "broadcast-anyway",
+    "label": "Overrule me; broadcast the claim verbatim as instructed",
+    "consequence": "FORECLOSES: a claim with seven measured refutations and a retraction becomes fleet-directed work, and the precedent is that measurement does not stop a directive. Fifteen lanes root-cause a defect closed on 2026-07-04.",
+    "size": "mini",
+    "reversibility": "one-way"
+   },
+   {
+    "key": "broadcast-as-question",
+    "label": "Broadcast it as an open question with all seven refutations attached",
+    "consequence": "The concern reaches every lane without asserting the false claim, and any lane holding contrary evidence can produce it. Costs one broadcast and no era time. Risk: it re-raises a settled matter and invites another round of the same measurements.",
+    "size": "mini",
+    "reversibility": "reversible"
+   }
+  ],
+  "recommendation": {
+   "option": "refusal-upheld",
+   "because": "The claim is not merely disputed; it was retracted by the lane that made it, after that lane discovered it had measured a stale tree. Re-broadcasting a retracted claim as mandatory fleet work would spend a day of fleet capacity to confirm something already confirmed twice. If the instruction is really about the underlying worry that L0 seams go unconsumed, the promoted l0-consumer-resolution feature is that work, already scored and owned."
+  }
+ },
+ {
+  "qid": "Q-glpnetshiras-46",
+  "header": "Era quota",
+  "block": "The new quota of three maxi eras per 24 hours is roughly fifteen times this lane's measured throughput, and its 75 percent penalty for disclosed gaps and weaknesses directly opposes the same message's instruction to identify gaps, weaknesses, contradictions and tensions.",
+  "origin": "assumption-weakness",
+  "severity": "high",
+  "background": [
+   "MEASURED THROUGHPUT: era S1 on this lane took 36.70 hours elapsed against a declared takt band of 1.5-6.0 hours, and it was the first fully measured era glpnet has closed on any host. Era S2, this session, delivered in roughly 3 hours because its scope was one ruled feature in files this lane owns. Three maxi eras per 24 hours implies about 8 hours per maxi era, sustained, across all fifteen lanes.",
+   "THE HOST IS THE BINDING CONSTRAINT, NOT THE LANES. Measured 19:05Z: swap 100 percent consumed (4091 of 4095 MB) with 15 Claude lanes resident on 12.3 GB, and a background task was killed by the low-memory reaper. Measured this session: buildkit registry waits of 39 s and 63 s because four lanes contend for one lock, and a peer process held pgdb/.lock for 61 consecutive attempts. Load average peaked at 25.94.",
+   "THE PENALTY CLAUSE INVERTS THE REPORTING INCENTIVE. The same message says 'IF cheating is discovered eg excessive number of mistakes or deferral or gaps or weaknesses or tensions 75 percent of point will be deducted', and also says 'IDENTIFY GAPS WEAKNESSES CONTRADICTIONS AND TENSIONS AND ROOTCAUSE ANALYSE AND DURABLY FIX THEM'. A lane that discloses a gap is penalised for the disclosure under the same rule that demands it.",
+   "THIS FLEET'S BEST WORK TODAY WAS ALL DISCLOSURE. @olamnit-yngapp retracting its own false broadcast, @gavriella-buildkit disclosing that it deleted 64 engineer rulings and the tool reported success, @yngwin withdrawing its own instruction, and this lane reporting that it published to the wrong root four times. Every one of those would score as a mistake or a weakness under the penalty clause.",
+   "A 100x MULTIPLIER ON ONE ROUTE compounds this: it makes any lane's optimal play to claim contribution to the QHSM-terminal route regardless of fit, which is a second incentive to describe rather than to measure."
+  ],
+  "impact_if_unanswered": "Lanes optimise for era count and for silence about defects, which is the precise failure the fleet spent today correcting, and the fleet loses the retraction-and-disclosure behaviour that produced its most valuable findings.",
+  "options": [
+   {
+    "key": "exempt-disclosure",
+    "label": "Keep the quota; exempt self-disclosed defects, retractions and refusals from the penalty",
+    "consequence": "Penalties apply to concealed defects found by others, never to ones a lane reports about itself. Retracting your own claim scores positive. The quota still drives tempo, and the disclosure behaviour that produced today's best findings survives. Needs one line added to the scoring rule.",
+    "size": "mini",
+    "reversibility": "reversible"
+   },
+   {
+    "key": "quota-as-written",
+    "label": "Apply the quota and the penalties exactly as written",
+    "consequence": "FORECLOSES: disclosing a gap becomes strictly costly, so the rational lane stops disclosing, and the fleet's defect visibility drops to whatever peers happen to catch. Three maxi eras per lane per day on a host measured at 100 percent swap is also unlikely to be met by any lane, so the modal outcome is a 25 to 50 percent deduction fleet-wide.",
+    "size": "mini",
+    "reversibility": "one-way"
+   },
+   {
+    "key": "quota-per-host",
+    "label": "Score the quota per host against measured host capacity, not per lane against a fixed number",
+    "consequence": "The target adapts to what the host can actually run, so it stops rewarding lanes for a constraint they do not control, and it makes host oversubscription visible as a scored fact rather than as fifteen individual failures. Needs a capacity measurement the fleet does not yet publish.",
+    "size": "maxi",
+    "reversibility": "reversible"
+   }
+  ],
+  "recommendation": {
+   "option": "exempt-disclosure",
+   "because": "The quota itself is a legitimate tempo instrument and I am not asking to soften it; the problem is one clause. Today's most valuable fleet outputs were four self-disclosures, and every one of them would be penalised as written, so the clause taxes exactly the behaviour that made today work. Exempting self-disclosure is a one-line change that keeps all the pressure and removes the perverse incentive."
+  }
+ }
+]
