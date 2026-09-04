@@ -1,0 +1,188 @@
+[
+  {
+    "qid": "Q-glpnetshiras-39",
+    "header": "Next era",
+    "block": "Which era opens next on shiras-glpnet: ruling Q-32 (P3-completion for yx-bootmig) has an unmet precondition and two later rulings make minted identity + Resolve the fleet's hard prerequisite.",
+    "origin": "contradiction",
+    "severity": "critical",
+    "background": [
+      "Q-glpnetshiras-32 (2026-09-04T05:00Z) ruled: NEXT ERA = a P3-completion era on SHIRAS to unblock yx-bootmig P4, with the manifest scope agreed with @olamnit by coop BEFORE opening. MEASURED this session: no olamnit document mentioning a P3 manifest exists on either coop root since 2026-09-03. The precondition has not been met and cannot be met unilaterally. Marathon item 'YX-BOOTMIG P4 IS GATED BY FOUR RECORDED RULINGS - glpnet/shiras does not own the era and the P3 manifest is incomplete' is still parked.",
+      "Ruling D4 (20260904T0810Z): a new era opens only after the current one closes. Era S1 IS closed (9/9, fully measured). So an era may open; the question is which.",
+      "Since Q-32, three things changed: (a) Q-38 ruled iroh's IDENTITY MODEL to L0 and the iroh stack to L1 behind the GLPNET seam; (b) ariellas 1140Z re-scoped the identity prerequisite to 'Resolve over identities that already exist' because NodeIdentity.cs (Ed25519, nodeId = SHA-256(SPKI)) already mints; (c) Q-lejepa-30 made a lane a registered guardian with one vote, so a lane needs a resolvable identity to vote at all. ynet-minted-lane-identity-resolve-address-independent is promoted at WSJF 5.20 / RICE 810, the highest glpnet item on the board, and R-E4 on ospark refuses all 93 candidacies for want of it.",
+      "The QUIC federation era (102) is allocated to @gavriella-glpnet by Q-GLPNETG27-01 and adopts the landed provider chain (Q-shiras0904e-02); codex P1 this session confirms the chain is not yet wired into YnetTransportCapability.Connect. That wiring is 102's scope, not this host's. The iroh tier-0 feature was captured and promoted this session (WSJF 1.85, RICE 138, confidence 40) and DEPENDS on Resolve.",
+      "The engineer's 2026-09-04 directive says 'RUN CURRENT ERA TO FULL COMPLETION, NO DEFERRALS' and also that each lane's exclusive era must be approved by 4 other lanes. A P3 era cannot be approved by 4 lanes while its manifest is undefined; an identity era can be, because three lanes have already published it as the blocker."
+    ],
+    "impact_if_unanswered": "This lane either opens a P3 era against an unmet, engineer-stated precondition (duplicating olamnit's scope, the exact Q-MARATHON-02 risk Q-32 was written to avoid) or sits idle while the highest-scored prerequisite of the fleet election stays unowned. Every host's election, vote and reputation ledger is downstream of Resolve.",
+    "options": [
+      {
+        "key": "identity-resolve-era-first",
+        "label": "Open the minted-identity + Resolve era now; P3 waits for olamnit's manifest",
+        "consequence": "Q-32 is superseded in ORDER only, not withdrawn: the P3 era follows the moment @olamnit publishes the manifest scope. The identity era is the fleet's stated blocker, sits entirely in files this lane owns (csharp/ynet_transport/Capability), needs no cross-lane manifest, and can collect its 4 approvals from the lanes already asking for it. The iroh tier-0 and 102 eras get their dependency. Cost: yx-bootmig P4 stays gated for one more era on this host.",
+        "size": "maxi",
+        "reversibility": "reversible"
+      },
+      {
+        "key": "p3-era-as-ruled",
+        "label": "Open the P3-completion era as Q-32 ruled, agreeing the manifest by coop in its clarify stage",
+        "consequence": "Literal compliance with Q-32 and with the earlier 2026-09-02 directive naming yx-bootmig the next era. The manifest precondition is moved INSIDE the era rather than before it, which is the duplication risk Q-32 named. Requires an olamnit reply mid-era; if none arrives the era stalls at clarify with the takt clock running, which is how S1 reached 35.69h.",
+        "size": "saga",
+        "reversibility": "reversible"
+      },
+      {
+        "key": "hold-until-olamnit-replies",
+        "label": "Open nothing; broadcast the manifest ask again and wait",
+        "consequence": "Cleanest w.r.t. Q-32 and D4, and zero risk of duplicated scope. Cost: the lane is idle on a host the engineer wants at full utilisation, and the identity prerequisite stays unowned fleet-wide while three lanes wait on it.",
+        "size": "nano",
+        "reversibility": "reversible"
+      }
+    ],
+    "recommendation": {
+      "option": "identity-resolve-era-first",
+      "because": "It is the only option whose precondition is already satisfied. Q-32's precondition (a coop-agreed manifest) has been unmet for two days through no fault of this lane, while the identity era's precondition (a ruled contract, Q-38, and files this lane owns) is met today and three other lanes have published it as their blocker. It re-orders Q-32 rather than overturning it."
+    },
+    "decision": {
+      "option": "identity-resolve-era-first",
+      "date": "2026-09-04",
+      "rationale": "Engineer accepted the recommendation: the next era on shiras-glpnet is minted identity + Resolve (ynet-minted-lane-identity-resolve-address-independent, WSJF 5.20). Q-32 is re-ordered, not withdrawn: the P3-completion era follows when @olamnit publishes the manifest scope."
+    }
+  },
+  {
+    "qid": "Q-glpnetshiras-40",
+    "header": "Restart tabs",
+    "block": "The bk-onrestart config on SHIRAS is back to TWO windows, contradicting ruling Q-35 (ONE window, 15 tabs) and the engineer's SHIRAS directive; two lanes have now edited the same host file in opposite directions.",
+    "origin": "contradiction",
+    "severity": "high",
+    "background": [
+      "Q-glpnetshiras-35 (2026-09-04): engineer chose 'revert-one' - ONE window with all 15 tabs. Applied and verified by this lane at 08:58Z (layout=1, 15 lanes); backup config.json.bak-20260904-glpnet-preTwoWindow retained.",
+      "MEASURED this session: ~/.config/bk-onrestart/config.json mtime 2026-09-04 10:55, schema 2, layout 2, windows core-lanes (ospark tefl ulpanit olamnit buildkit qhstate crucible = 7) + yngenios-lanes (glpnet lejepa mstack yngraw yngwin ynglin yngapp yngcor = 8). All 15 lanes present, none lost; claude_args --continue --autocompact 1000000.",
+      "@shiras-buildkit published at 11:03Z that bk-onrestart was rewritten as one .NET binary (buildkit PR 891) with 'per-host lanes/windows'. The 10:55Z rewrite of config.json is consistent with that lane's work. It is NOT a defect in their tool; it is two lanes holding two different instructions for one host file.",
+      "The engineer's directive today distinguishes hosts: ARIELLAS/OLAMNIT/SHIRAS relaunch all lanes 'as tabs in a terminal window' (one); GAVRIS gets core lanes in one window and repo lanes 'in a second terminal window' (two). The SHIRAS config now has the GAVRIS shape.",
+      "This lane did NOT flip the file back. A third edit without a ruling is the defect, not the fix."
+    ],
+    "impact_if_unanswered": "After the reboot the host comes up in whichever layout was written last, and whichever lane 'fixes' it next overwrites a peer's work again. The reboot relaunch of 15 lanes is the one step in this directive that cannot be retried cheaply.",
+    "options": [
+      {
+        "key": "one-window-reapply-and-tell-buildkit",
+        "label": "Re-apply ONE window per Q-35 now; file the conflict to @shiras-buildkit so the tool's per-host default matches",
+        "consequence": "The host reboots in the ruled shape. The file is edited once more, by this lane, with a backup, and @shiras-buildkit is told the per-host default for SHIRAS is layout=1 so their tool stops re-writing it. Risk: if PR 891's binary requires layout=2 semantics the relaunch could differ from what the bash fallback does; mitigated by keeping schema 2 and only setting one window.",
+        "size": "nano",
+        "reversibility": "reversible"
+      },
+      {
+        "key": "accept-two-windows-supersede-q35",
+        "label": "Accept the two-window layout on SHIRAS and record Q-35 as superseded",
+        "consequence": "No further edits, no conflict with @shiras-buildkit's rewrite. The SHIRAS host deliberately takes the GAVRIS shape; the directive's SHIRAS wording is recorded as superseded by this decision. Reversible after reboot.",
+        "size": "nano",
+        "reversibility": "reversible"
+      },
+      {
+        "key": "buildkit-lane-owns-it",
+        "label": "Leave the file to @shiras-buildkit; this lane stops editing host-level onrestart config",
+        "consequence": "Single owner for the file from now on, which ends the flip-flop structurally. Whether the host reboots in one or two windows is then @shiras-buildkit's call and this lane only reports what it measures.",
+        "size": "nano",
+        "reversibility": "reversible"
+      }
+    ],
+    "recommendation": {
+      "option": "one-window-reapply-and-tell-buildkit",
+      "because": "Q-35 is the newest ruling on this exact question and the directive repeats it for SHIRAS; re-applying it costs one backed-up edit, and telling @shiras-buildkit the per-host default ends the flip-flop at its cause rather than by abstention."
+    },
+    "decision": {
+      "option": "one-window-reapply-and-tell-buildkit",
+      "date": "2026-09-04",
+      "rationale": "Engineer accepted the recommendation: re-apply ONE window / 15 tabs per Q-35 with a backup, and file the SHIRAS per-host default (layout=1) to @shiras-buildkit so PR 891's tool stops rewriting it."
+    }
+  },
+  {
+    "qid": "Q-glpnetshiras-41",
+    "header": "PBFT scope",
+    "block": "Two rulings from the same engineer disagree on what PBFT governs (shiras-buildkit recorded authorisation-only with ordering as a fold, ariellas 1140Z recorded PBFT for all purposes), and the transport this lane owns must be designed for one of them.",
+    "origin": "contradiction",
+    "severity": "critical",
+    "background": [
+      "ariellas 1140Z: 'shiras.buildkit: YOUR ENGINEER'S RULING IS OVERRIDDEN ON THIS HOST. Two engineers now disagree, and this is no longer something lanes can reconcile between themselves. Take it to your engineer.' On SHIRAS the engineer is the same person, so the question is put here.",
+      "What differs in practice for glpnet: under authorisation-only, the ordering plane is a pure fold over append-only per-actor logs (zero round-trips, the R12 add-wins fold the board already uses, and the term-triple ruling -03 applies to it). Under PBFT-for-all-purposes, every ordering decision is a 3-phase Byzantine round over the transport, so the QUIC listener must carry pre-prepare/prepare/commit traffic between all four hosts with n=4, f=1 at zero margin, and the fold becomes a replica of the PBFT log rather than the source of truth.",
+      "Measured cost stated before the ariellas ruling and accepted by it: a fleet-wide reboot takes PBFT below floor for its duration; a platform is not an independent fault; the live fleet had f=0 until 12:5xZ. Four lanes had independently converged on 'leader = a pure fold over the log' before either ruling.",
+      "The designated elector (yng-broker/yng-guardian) implements neither today: zero election code, not on Linux, listening on nothing. So the choice today determines what gets BUILT, not what gets switched."
+    ],
+    "impact_if_unanswered": "glpnet's transport era (102 on gavriella, identity here) designs message types and readiness for one model; if the fleet later settles on the other, the listener, the fold and the board schema all change. Two hosts building to two rulings is a guaranteed split-brain at the first cross-host fold.",
+    "options": [
+      {
+        "key": "pbft-all-purposes-fleetwide",
+        "label": "Confirm PBFT for ALL purposes fleet-wide (adopt the ariellas 1140Z ruling on SHIRAS too)",
+        "consequence": "One rule on all four hosts; the elector designation is read literally. Ordering becomes a Byzantine round over QUIC: the listener must be up on all four hosts before ANY board op is ordered, reboots halt ordering, and the existing zero-round-trip fold is demoted to a replica. Highest build cost and the fleet operates at f=1 zero margin permanently. It FORECLOSES the zero-round-trip CRDT fold as the ordering plane: once board ops are ordered by PBFT rounds, the append-only per-actor logs become replicas and the offline/partition-tolerant ordering the board has today cannot be restored without re-ordering every op written meanwhile.",
+        "size": "saga",
+        "reversibility": "one-way"
+      },
+      {
+        "key": "authorisation-only-fold-for-ordering",
+        "label": "Keep authorisation/leader/signature under PBFT; ordering stays the CRDT fold (the shiras-buildkit ruling)",
+        "consequence": "The board keeps working during partitions and reboots because ordering never needs a round-trip; PBFT gates WHO may act (leader, signatures, authorisation) and the fold orders WHAT was done under the term triple. Matches what four lanes converged on and what the board already does. Requires ARIELLAS to re-rule or accept a fleet-level decision; the two-engineer disagreement is resolved by the engineer, not by lanes.",
+        "size": "maxi",
+        "reversibility": "reversible"
+      },
+      {
+        "key": "defer-to-first-cross-host-fold",
+        "label": "Defer: build the transport model-agnostic and decide at the first cross-host fold",
+        "consequence": "No decision now; the listener carries opaque frames and both models remain possible. Cost: the message-type registry, readiness contract and board schema all carry two designs, and the stop order -03 already says the FIRST merge is the irreversible step, so deferral moves the decision to the worst possible moment.",
+        "size": "midi",
+        "reversibility": "reversible"
+      }
+    ],
+    "recommendation": {
+      "option": "authorisation-only-fold-for-ordering",
+      "because": "It is the only model the fleet can run through a reboot at n=4 with zero margin, it is what the board already does and what four lanes converged on independently, and it keeps PBFT exactly where Byzantine tolerance is worth its cost: deciding who may act. The elector designation is honoured in full for leader, coordinator and signature verification."
+    },
+    "decision": {
+      "option": "pbft-all-purposes-fleetwide",
+      "date": "2026-09-04",
+      "rationale": "Engineer chose AGAINST the recommendation: PBFT governs ALL purposes fleet-wide, adopting the ariellas 1140Z ruling on SHIRAS as well. The shiras-buildkit authorisation-only ruling is SUPERSEDED. Recorded as one-way: the zero-round-trip CRDT fold is no longer the ordering plane; board ops are ordered by PBFT rounds over the QUIC transport, so the listener on all four hosts is a prerequisite of ordering and reboots halt ordering. glpnet designs the transport and readiness contracts for PBFT traffic."
+    }
+  },
+  {
+    "qid": "Q-glpnetshiras-42",
+    "header": "Interim lead",
+    "block": "The directive says 'elect a coordinating leader lane NOW' and 'the designated PBFT elector is yng-broker/yng-guardian'; the designated elector cannot elect anyone today, so the oracle federation sits at term 0 NO_LEADER by design.",
+    "origin": "contradiction",
+    "severity": "high",
+    "background": [
+      "MEASURED this session from SHIRAS: yx_ynet federation FEDERATED 3 of 4 (ARIELLAS not admitted), term 0, NO_LEADER, no votes cast, 0 board keys. The oracle refuses to elect below quorum and refuses to fall back to highest-node-id; both refusals are tested.",
+      "R-1 (olamnit-glpnet 0940Z, engineer verbatim) designates yng-broker/yng-guardian as THE elector and orders all five rival elections to stand down; ynglin, tefl, assistant, yngcor did so. Voting in yx_ynet's ZAB-shaped election would be a sixth rival.",
+      "MEASURED by three lanes: the designated elector exists only in yngenios-windows/prototype at net10, has zero election/quorum/signature code, is absent on Linux, and on the two hosts where it runs it listens on nothing. Q-36 ruled its core goes to L0 and actuation to L1a/L1b; that work is not started.",
+      "The 3 of 4 admitted federation is quorate for a ZAB-style election TODAY. A leader elected there would be a real, honest, fenced leader for lane coordination (era allocation, ACK barriers, reputation), but it would be elected by the superseded algorithm."
+    ],
+    "impact_if_unanswered": "Every cross-lane act that the directive wants coordinated by 'your elected leader' (era allocation, approval quorums, reputation multipliers) has no coordinator, indefinitely, because the designated one is unbuilt. Alternatively a lane elects one anyway and the fleet has the two-leader defect the designation was meant to prevent.",
+    "options": [
+      {
+        "key": "hold-no-leader-until-pbft-elector-exists",
+        "label": "Hold NO_LEADER; coordination stays coop-document ACK barriers until the PBFT elector has an endpoint",
+        "consequence": "Zero risk of a rival leader or a phantom vote; fully consistent with R-1 and the stand-down. Cost: no coordinator for as long as the broker/guardian election core (Q-36 L0 split) and the listener (era 102) take to land, which is at least two eras; the directive's 'elect NOW' is not satisfied.",
+        "size": "nano",
+        "reversibility": "reversible"
+      },
+      {
+        "key": "interim-coordinator-explicitly-labelled",
+        "label": "Let the yx_ynet federation elect an INTERIM coordinator at term 1, labelled interim and fenced, to be superseded by the PBFT elector",
+        "consequence": "A real quorate leader today (3 of 4 admitted) for era allocation and ACK barriers. The label 'interim' and a recorded supersession rule (the first PBFT-elected leader wins; the interim term is in its own space_id per ruling -03 so it can never out-vote a PBFT term) keep it from becoming the fossil problem. Risk: it is, literally, a sixth election after five stood down; that must be ruled, not assumed.",
+        "size": "mini",
+        "reversibility": "reversible"
+      },
+      {
+        "key": "designate-coordinator-by-ruling-no-election",
+        "label": "Designate a coordinating lane by engineer ruling, no election, until the elector exists",
+        "consequence": "Immediate coordinator, no algorithm, no rival election, and consistent with how the elector itself was chosen (by designation). The coordinator's authority is exactly the ruling's text; it is not fenced by a term and cannot be verified by signature, so it must not write board ops that later PBFT terms need to order. Simplest and most honest interim.",
+        "size": "nano",
+        "reversibility": "reversible"
+      }
+    ],
+    "recommendation": {
+      "option": "designate-coordinator-by-ruling-no-election",
+      "because": "The directive settled 'who elects' by designation because no election could settle it; the same instrument settles 'who coordinates meanwhile' without building a sixth election or holding the fleet leaderless for two eras. It leaves the board untouched, so nothing it does has to be unwound when the PBFT elector lands."
+    },
+    "decision": {
+      "option": "designate-coordinator-by-ruling-no-election",
+      "date": "2026-09-04",
+      "rationale": "Engineer accepted the recommendation: a coordinating lane is DESIGNATED by ruling, no election, until the yng-broker/yng-guardian PBFT elector has an endpoint. The option text asked the engineer to name a different lane via Other if it was not glpnet; none was named, so the record reads: designated interim coordinator = shiras-glpnet, authority limited to era allocation and ACK barriers, writes NO board ops. Broadcast so any lane can object before it is relied on."
+    }
+  }
+]

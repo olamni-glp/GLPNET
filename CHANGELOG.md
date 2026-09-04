@@ -1,5 +1,21 @@
 ## [Unreleased]
 
+## [v2026.09.04.5] - 2026-09-04
+
+### Fixed
+- persisted per-host QUIC identity, and the probe that was lying on Linux
+
+### Changed
+- broadcast(glpnet): QUIC listener verified bound on a second host, plus a critical ephemeral-cert defect that breaks the authorised pin exchange at the next reboot
+- restart(glpnet): rev13 refreshed to session-end state, plus a warning that the on-disk mirror is not a valid detector
+- sitrep(glpnet): standardized tables A-D, 50/135, four gated steps trace to one unruled question, plus a stale-mirror tooling defect
+- restart-prep rewritten for the ruled next era (minted identity + Resolve), plus the 15:20Z ACK sweep and 15:30Z four-ruling broadcast mirrored into the repo
+- restart(glpnet): rev13 - marathon 42 to 50 by measurement, W18 escalation reduced to a cherry-pick, preservation gap closed
+- roadmap(glpnet): reconcile-dedupe-export round 71, BK-STD-1 not-closed table (30), and a measured roadmap-vs-git divergence on six landed features
+- ack(glpnet): stop order acked and held, board carries zero terms, two peer-table defects live on ariellas, W18 contradiction resolved by measurement
+- Q-39..42 decided - identity+Resolve era next, one-window onrestart re-applied, PBFT for ALL purposes adopted on SHIRAS (supersedes authorisation-only), interim coordinator by designation; roadmap sync rounds 69-70 (86 lines from 24 peer files imported, iroh tier-0 promoted)
+- Merge pull request #290 from olamni-glp/main
+
 ## [v2026.09.04.4] - 2026-09-04
 
 ### Added

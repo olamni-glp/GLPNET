@@ -1,0 +1,162 @@
+[
+  {
+    "qid": "Q-GLPNETA21-01",
+    "header": "Dev cert",
+    "block": "The authorised four-host SPKI pin exchange cannot be executed because every host's pin changes on every process start.",
+    "origin": "measurement",
+    "severity": "critical",
+    "background": [
+      "Ruling Q-GLPNETG27-04 (gavriella, 2026-09-04T16:20Z) authorises federation with 'CreateDevCert material and the four SPKI pins exchanged over the existing coop channel', and states exposure is bounded twice: unreachable off-LAN, and mTLS SPKI pinning independently refuses any unpinned dialer.",
+      "Measured on ARIELLAS 2026-09-04T17:35Z: glp_quic_probe run FIVE times printed FIVE different pins - WlZZENu7qj3+B0UZMBpDmeTA5HH1TieNZsRrTFE4wrA=, TVRmozIGINqMOjRG9KGXbCXRtn9erbPwLLSq6Mxusgw=, /2lW10pnLp9gSxHpQcNA7hHgO5MfJoI/leTGeRS0uxE=, QVRAFjC4kibLJOgMoyzvzEkJomi5p3AB8+lKGGI3rPw=, gX2eguTlEdgKeda/LgG2pbwyKG+P8KnLBkgd8EekuZM=.",
+      "Root cause read in source, not inferred: csharp/glp_crdtmsg/route/QuicLinkTransport.cs:95 CreateDevCert calls ECDsa.Create(nistP256) generating a fresh keypair per invocation, and the local at line 105 is literally named 'ephemeral'. There is no load-from-disk, no keystore, no reuse path.",
+      "CreateDevCert is honestly named and correct for its actual purpose - it is a TEST helper, used that way in QuicLinkTransportTests.cs. The defect is not in the helper; it is that the federation plan adopted a dev helper as the fleet's trust anchor.",
+      "Consequence is immediate and on the critical path: the fleet is about to reboot all four hosts. A pin table exchanged before that reboot is invalid for all four hosts the moment they come back up, and mTLS will then refuse every peer - which presents as a total federation failure that looks like a transport bug."
+    ],
+    "impact_if_unanswered": "The four-host pin exchange proceeds, all four hosts reboot, every pin becomes stale simultaneously, and the resulting universal mTLS refusal is misdiagnosed as a QUIC/transport failure - re-opening the 'no QUIC in this estate' conclusion that two independent probes have now falsified.",
+    "options": [
+      {
+        "key": "persist",
+        "label": "Add a load-or-create persisted key before any pin exchange",
+        "consequence": "CreateDevCert gains a sibling that reads a PKCS#12 from a per-host keystore path and only generates on first run. Pins become stable across restarts and reboots, so the exchanged table stays valid. Costs one small change in glp_crdtmsg plus a keystore location ruling.",
+        "size": "micro",
+        "reversibility": "reversible"
+      },
+      {
+        "key": "exchange-anyway",
+        "label": "Exchange ephemeral pins now and re-exchange after every restart",
+        "consequence": "Federation can be demonstrated today, but every host restart silently invalidates the whole table and requires a manual four-way re-exchange over the coop channel, which is asynchronous and not always mounted.",
+        "size": "nano",
+        "reversibility": "reversible"
+      },
+      {
+        "key": "real-pki",
+        "label": "Skip dev certs and stand up real issued certificates now",
+        "consequence": "Strongest end state, but it forecloses the cheap LAN-scoped demonstration the ruling deliberately authorised, and blocks federation behind a PKI decision that has not been scoped, costed or assigned to a lane.",
+        "size": "maxi",
+        "reversibility": "one-way"
+      }
+    ],
+    "recommendation": {
+      "option": "persist",
+      "because": "It is a micro-sized change that makes the ruling's own authorised plan actually work, whereas exchange-anyway ships a table guaranteed to be invalid within hours given a fleet-wide reboot is imminent; real-pki is the right long-term answer but foreclosing the authorised LAN demonstration to get there inverts the ruling's deliberate cost/benefit."
+    }
+  },
+  {
+    "qid": "Q-GLPNETA21-02",
+    "header": "Fed port",
+    "block": "This host cannot open the authorised inbound UDP rule because the federation port number was never published.",
+    "origin": "missing-requirement",
+    "severity": "high",
+    "background": [
+      "Ruling Q-GLPNETG27-04 authorises 'ONE inbound UDP allow rule, scoped to the federation port and to the Private profile / 192.168.0.0/24 only', and section 6.4 asks ariellas, olamnit and shiras to open it.",
+      "The ruling text names no port. gavriella's probe and this repo's glp_quic_probe README both use 0.0.0.0:47890 as the worked example, but an example in a README is not an allocated port.",
+      "A firewall rule is a security-relevant change to a host. Opening a guessed port is both an unauthorised exposure and, if wrong, a silent failure that will be misread as a transport fault rather than a configuration one.",
+      "Verified on ARIELLAS this session that the listener binds 0.0.0.0:47890 successfully, so the port is available here - availability is not the same as it being the agreed federation port."
+    ],
+    "impact_if_unanswered": "Three of four hosts cannot complete their section 6.4 compliance, so the four-host federation cannot be attempted at all, and the QUIC federation era on gavriella proceeds against peers that are provably unreachable inbound.",
+    "options": [
+      {
+        "key": "ratify-47890",
+        "label": "Ratify 47890 as the fleet federation port",
+        "consequence": "Every host opens one inbound UDP rule on 47890, Private profile and 192.168.0.0/24 only. Matches both existing probes, so no code or doc changes are needed anywhere.",
+        "size": "nano",
+        "reversibility": "reversible"
+      },
+      {
+        "key": "allocate-new",
+        "label": "Allocate a different port and record it in a fleet config",
+        "consequence": "A single declared source of truth for the port, but both probes and the README must be updated and re-verified on every host before any federation attempt.",
+        "size": "micro",
+        "reversibility": "reversible"
+      }
+    ],
+    "recommendation": {
+      "option": "ratify-47890",
+      "because": "Two independent codebases on two hosts already bind 47890 and it is verified free on ARIELLAS, so ratifying costs nothing and changes no code, whereas allocating a new port buys no security benefit on a LAN-scoped Private-profile rule and adds a re-verification pass on four hosts."
+    }
+  },
+  {
+    "qid": "Q-GLPNETA21-03",
+    "header": "Elect/hold",
+    "block": "The standing engineer directive to elect a coordinating leader now and the engineer ruling forbidding cross-host board folds cannot both be executed.",
+    "origin": "contradiction",
+    "severity": "high",
+    "background": [
+      "The standing directive instructs electing a coordinating leader lane across all 15 lanes using PAXOS/RAFT/ZAB/PBFT and wiring it into the oracle, and names yng-broker/yng-guardian as the designated PBFT leader elector for all purposes.",
+      "Engineer ruling Q-GLPNETG27-03, taken later the same day (16:20Z), is an explicit STOP ORDER: term := (space_id, era_counter, host_id), and no lane may fold a board across a host boundary until its fold is term-space-aware.",
+      "The mechanism is measured, not theoretical: the ynet board holds a leader_claim with term 5961694 where term = floor(unix_ts / 300), a wall-clock bucket, against BK-ELECT-1 on term 1. Every leader rule resolves by max-term and max-term is monotone, so the fold itself is the irreversible step.",
+      "This lane measured its own board 2026-09-04: ZERO term-bearing ops and ZERO leader_claim ops across all 25 op-logs under the glpnet sched root, so glpnet cannot originate the fossil - but a fold would still ingest a peer's.",
+      "yng-broker and yng-guardian ARE running on ARIELLAS (PIDs 6744 and 7136 measured this session), so the designated elector exists here; what is absent is a term-space-aware fold, not the elector."
+    ],
+    "impact_if_unanswered": "Either the directive is followed and a clock-derived term permanently wins the fleet leadership by 5,961,693 terms on a grow-only log where no later op can lower it, or the ruling is followed and the directive's election is indefinitely deferred with no stated completion condition.",
+    "options": [
+      {
+        "key": "rekey-then-elect",
+        "label": "Re-key folds to the ruled triple first, then elect",
+        "consequence": "Election is delayed by the re-keying work but happens over a substrate where a stale or clock-derived claim is non-comparable rather than dominant. The directive is satisfied in full, just sequenced behind the ruling.",
+        "size": "mini",
+        "reversibility": "reversible"
+      },
+      {
+        "key": "elect-now",
+        "label": "Elect immediately per the directive, accepting the fold",
+        "consequence": "Satisfies the directive today, but forecloses ever choosing a different term scheme: the first fold makes the clock claim permanently dominant on an append-only board where suppression is undetectable and the emitting code is already deleted.",
+        "size": "micro",
+        "reversibility": "one-way"
+      },
+      {
+        "key": "elect-scoped",
+        "label": "Elect within each host's own space_id only, no cross-host fold",
+        "consequence": "Gives each host a coordinating lane immediately with zero fold risk, but produces four independent leaders rather than the one fleetwide coordinator the directive asks for.",
+        "size": "micro",
+        "reversibility": "reversible"
+      }
+    ],
+    "recommendation": {
+      "option": "rekey-then-elect",
+      "because": "It is the only option that delivers the directive's actual goal - one fleetwide coordinator over one true board - whereas elect-now buys a coordinator today at the price of a permanently corrupt leadership ordering that no later op can repair, and elect-scoped delivers four leaders, which is the condition the directive exists to end."
+    }
+  },
+  {
+    "qid": "Q-GLPNETA21-04",
+    "header": "Ref pen",
+    "block": "Six marathon steps whose measurement work is complete cannot execute because ref-deletion ownership on this repo is unruled.",
+    "origin": "missing-requirement",
+    "severity": "medium",
+    "background": [
+      "Two lanes hold overlapping tidy-up workplans over one repo: this lane's marathon W01-W25 (121 pt) and a peer ledger on 083-repo-tidy-up (136 pt). Neither references the other and BOTH claim branch-deletion scope.",
+      "Measured 2026-09-04: origin now carries 15 heads. NINE are contained in origin/develop and therefore deletable; FOUR are not contained and must not be deleted - 059 (W18), 083-glptutorial-corpus-goldens (3 ahead), 101-goal-term-acceptance (6 ahead), 102-quic-federation-transport (4 ahead).",
+      "The workplan's recorded premise of '129 provably-contained origin refs' is stale by roughly 120 refs because a peer lane already executed most of the deletion and pushed 20 archive tags to origin.",
+      "Preservation is verified: every deleted branch is reachable from an archive tag ON ORIGIN, and this session closed the one remaining gap (two commits unique to the second clone, now bundled and tagged as archive/secondclone-main-20260904 = 1865b2f7).",
+      "W19 gates W20, W21, W23, W24 and W25, so one unruled question currently blocks six steps that have no remaining engineering work."
+    ],
+    "impact_if_unanswered": "Six marathon steps stay gated indefinitely with their measurement complete, and the two lanes remain able to delete the same refs concurrently with neither aware of the other.",
+    "options": [
+      {
+        "key": "split-by-visibility",
+        "label": "This lane owns host-local residue, the peer owns origin refs",
+        "consequence": "Each lane deletes only what it can actually see and verify - this lane the second clone and local branches, the peer the origin heads. No overlap, and both halves can proceed in parallel immediately.",
+        "size": "nano",
+        "reversibility": "reversible"
+      },
+      {
+        "key": "this-lane-all",
+        "label": "Give this lane the full deletion pen",
+        "consequence": "Unblocks all six steps here at once, but this lane cannot see the peer's in-flight work and may delete a ref the peer is mid-way through landing.",
+        "size": "nano",
+        "reversibility": "reversible"
+      },
+      {
+        "key": "peer-all",
+        "label": "Give the peer lane the full deletion pen",
+        "consequence": "Single owner with the most recent deletion context, but W19-W25 here become permanently blocked on another lane's schedule and this lane's completed measurement work goes unused.",
+        "size": "nano",
+        "reversibility": "reversible"
+      }
+    ],
+    "recommendation": {
+      "option": "split-by-visibility",
+      "because": "It matches the pen to what each lane can actually verify - only this host can see the second clone's unique commits, and only the peer has current origin-side context - whereas either single-owner option gives one lane authority over refs it cannot inspect, which is precisely how the two overlapping workplans arose."
+    }
+  }
+]

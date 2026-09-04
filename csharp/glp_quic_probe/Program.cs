@@ -27,6 +27,16 @@
 using System.Net;
 using System.Security.Cryptography.X509Certificates;
 using GlpRuntime.CrdtMsg.Route;
+using Ynet.Transport.Link;
+
+// 🔴 FIRST, AND THE ORDER IS LOAD-BEARING. QuicListener.IsSupported runs MsQuic's static
+// initialiser, and a DllImportResolver registered after that has NO effect. Touching
+// MsQuicProvider here forces the ynet_transport assembly to load — its [ModuleInitializer]
+// installs the resolver — BEFORE any System.Net.Quic type is read below.
+// Without this the probe reported IsSupported=False on SHIRAS while the very same host carries a
+// working libmsquic at ~/.local/lib and binds a real link. That false negative is precisely the
+// "there is no QUIC in this estate" conclusion two other probes have already falsified.
+var quicNative = MsQuicProvider.Instance.Probe();
 
 var bindArg = args.Length > 0 ? args[0] : "127.0.0.1:0";
 var parts = bindArg.Split(':');
@@ -37,6 +47,7 @@ Console.WriteLine("== glp_quic_probe — can this host bind a QUIC listener? =="
 Console.WriteLine($"   runtime   : .NET {Environment.Version}");
 Console.WriteLine($"   os        : {Environment.OSVersion}");
 Console.WriteLine($"   requested : {ip}:{port}" + (port == 0 ? "  (0 = let the OS choose)" : ""));
+Console.WriteLine($"   msquic    : {(quicNative.Supported ? "resolved" : "UNRESOLVED")} — {quicNative.Detail}");
 Console.WriteLine();
 
 // ---- 1. capability -------------------------------------------------------
@@ -62,9 +73,24 @@ if (!QuicLinkTransport.IsSupported)
 // pin-checks the DIALER's cert too. A listener without pins would admit anyone who can reach the
 // port, which is precisely the "mere reachability MUST NOT admit" property the transport's own
 // tests assert.
-X509Certificate2 cert = QuicLinkTransport.CreateDevCert("glpnet-probe");
+// 🔴 THE PIN PRINTED HERE IS PUBLISHED TO THE FLEET AND HELD BY PEERS, so it MUST survive a reboot.
+// It did not: CreateDevCert mints a fresh keypair per call, and @ariellas-glpnet measured five runs
+// on one host producing FIVE DIFFERENT PINS (2026-09-04T17:45Z). Every pin published from this probe
+// before that fix expired at the next restart, and mTLS would then have refused every peer — a
+// failure indistinguishable from a dead transport. The probe now reports this host's PERSISTED
+// federation identity. Pass --ephemeral for a pure bind test whose pin nobody will hold.
+bool ephemeral = args.Contains("--ephemeral");
+string certOrigin = "ephemeral";
+X509Certificate2 cert = ephemeral
+    ? QuicLinkTransport.CreateDevCert("glpnet-probe")
+    : QuicLinkTransport.LoadOrCreateDevCert(Environment.MachineName.ToLowerInvariant(), out certOrigin);
 string pin = QuicLinkTransport.SpkiPin(cert);
 Console.WriteLine($"   local cert SPKI pin : {pin}");
+Console.WriteLine(ephemeral
+    ? "   ⚠ EPHEMERAL (--ephemeral): this pin dies with the process. DO NOT PUBLISH IT."
+    : $"   identity            : PERSISTED ({certOrigin}) — stable across reboots, safe to publish");
+if (certOrigin == "recreated-expired")
+    Console.WriteLine("   🔴 the stored anchor had EXPIRED and was re-minted: THIS HOST'S PIN HAS CHANGED — re-publish it.");
 Console.WriteLine("   (a peer must carry this pin to be admitted; reachability alone is refused)");
 Console.WriteLine();
 
@@ -98,7 +124,7 @@ Console.WriteLine();
 Console.WriteLine("   bind endpoint     : IPEndPoint  — 0.0.0.0:<port> to accept from other hosts");
 Console.WriteLine("                       (127.0.0.1 binds loopback ONLY and cannot federate)");
 Console.WriteLine("   server certificate: X509Certificate2 with a private key");
-Console.WriteLine("                       QuicLinkTransport.CreateDevCert(<name>) for dev");
+Console.WriteLine("                       QuicLinkTransport.LoadOrCreateDevCert(<host>) — persisted, stable");
 Console.WriteLine("   peer pins         : IReadOnlyDictionary<peer, spkiPin>");
 Console.WriteLine("                       EMPTY DICTIONARY = admit nobody. This is the safe default");
 Console.WriteLine("                       and it is why a reachable listener is not an open one.");
