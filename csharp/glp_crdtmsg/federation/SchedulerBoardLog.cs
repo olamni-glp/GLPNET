@@ -30,6 +30,7 @@
 // discoverable substrate, no foreign lines in the lanes' live segments. `WriteMode.LaneSegment`
 // implements the symmetric behaviour for when that ruling is made; it is not the default.
 
+using System.Text;
 using System.Text.Json;
 using GlpRuntime.CrdtMsg.Crdt;
 
@@ -94,8 +95,29 @@ public sealed class SchedulerBoardLog : IBoardLog
         {
             string path = WritePath;
             Directory.CreateDirectory(Path.GetDirectoryName(path)!);
-            await File.AppendAllTextAsync(path, op.ToCanonicalJson() + Environment.NewLine, ct)
-                      .ConfigureAwait(false);
+
+            // CROSS-PROCESS, not just cross-thread. The semaphore above serialises this instance;
+            // `post` and `serve` are SEPARATE PROCESSES appending to the same file, which the
+            // runbook not only permits but instructs. On Windows two concurrent appends collide
+            // with a sharing violation (a legitimate post fails); where they do not, records can
+            // interleave and corrupt the append-only journal. So the write takes an exclusive
+            // handle and retries briefly on contention.
+            byte[] bytes = Encoding.UTF8.GetBytes(op.ToCanonicalJson() + "\n");
+            for (int attempt = 0; ; attempt++)
+            {
+                try
+                {
+                    using var fs = new FileStream(path, FileMode.Append, FileAccess.Write,
+                                                  FileShare.Read, bufferSize: 4096, useAsync: true);
+                    await fs.WriteAsync(bytes, ct).ConfigureAwait(false);
+                    await fs.FlushAsync(ct).ConfigureAwait(false);
+                    break;
+                }
+                catch (IOException) when (attempt < 50)
+                {
+                    await Task.Delay(10, ct).ConfigureAwait(false);
+                }
+            }
         }
         finally { _gate.Release(); }
     }

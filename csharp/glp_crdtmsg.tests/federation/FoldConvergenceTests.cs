@@ -21,7 +21,7 @@ namespace GlpRuntime.CrdtMsg.Tests.Federation;
 
 public sealed class FoldConvergenceTests
 {
-    private const string LiveEpoch = "ynet-epoch-2026-09";
+    private const string LiveEpoch = "ynet-epoch-7f3a91c2e04b5d68";   // no wall clock: FR-026 applies to fixtures too
     private static readonly JsonElement Body = JsonSerializer.SerializeToElement(new { note = "board state" });
 
     private static FederationOp Op(string peer, long ctr, Term? term = null) =>
@@ -130,13 +130,26 @@ public sealed class FoldConvergenceTests
             JsonSerializer.SerializeToElement(new { v = "original" }));
         fold.Apply(first);
 
-        // An op with the SAME id but different content must not overwrite the original.
+        // An op with the SAME id but different content must not overwrite the original — and must
+        // be REFUSED LOUDLY rather than silently ignored.
+        //
+        // Silently ignoring it preserved this host's value but made the FOLD ARRIVAL-ORDER
+        // DEPENDENT: a replica that saw the impostor first would keep "rewritten" forever, so two
+        // replicas holding the same op SET would render different bytes while both reported
+        // converged — the exact FR-012 guarantee this file exists to assert. A conflict is not a
+        // redelivery, and the only safe answer to one is to say so.
         var impostor = FederationOp.Create(new Dot("g", 1), "g", "board_post",
             JsonSerializer.SerializeToElement(new { v = "rewritten" }));
-        Assert.False(fold.Apply(impostor));
+        Assert.Throws<DotConflictException>(() => fold.Apply(impostor));
 
+        // FR-011 still holds: nothing was removed or rewritten.
         Assert.Contains("original", fold.Operations[0].ToCanonicalJson());
         Assert.DoesNotContain("rewritten", fold.ToCanonicalJson());
+        Assert.Equal(1, fold.Count);
+
+        // POSITIVE CONTROL: a genuine redelivery — same id, same bytes — is still a quiet no-op.
+        Assert.False(fold.Apply(first));
+        Assert.Equal(1, fold.Count);
     }
 
     // ---- SC-011: the pull backstop is load-bearing ---------------------------------------------

@@ -180,4 +180,45 @@ public static class FederationStatusProbe
             return false;
         }
     }
+
+    /// <summary>
+    /// Three-valued same-machine test: <see cref="Tri.Unknown"/> when the probe COULD NOT RUN.
+    /// <para>
+    /// The boolean form above returns false when interface enumeration throws — and false means
+    /// "different machine", i.e. an unmeasurable condition rendered as positive cross-host evidence.
+    /// That is an FR-021 violation on the exact path SC-001 depends on: it would let same-machine
+    /// evidence through the guard whose only job is to exclude it. Callers that feed the status
+    /// surface MUST use this.
+    /// </para>
+    /// </summary>
+    /// <param name="localAddresses">
+    /// How to enumerate this host's own addresses. Injectable ONLY so the failure branch is
+    /// reachable in a test: on a healthy host the real enumeration never throws, so a test written
+    /// against it cannot distinguish "returns Unknown on failure" from "never fails here" — and a
+    /// mutation reverting this fix to <c>Tri.No</c> survived exactly that way.
+    /// </param>
+    public static Tri SameMachineTri(System.Net.IPAddress local, System.Net.IPAddress remote,
+                                     Func<IEnumerable<System.Net.IPAddress>>? localAddresses = null)
+    {
+        if (System.Net.IPAddress.IsLoopback(remote)) return Tri.Yes;
+        if (local.Equals(remote)) return Tri.Yes;
+        try
+        {
+            var mine = (localAddresses ?? EnumerateLocalAddresses)().ToList();
+            // An EMPTY enumeration is not evidence of anything either: a host always has at least
+            // a loopback address, so zero results means the probe did not work.
+            if (mine.Count == 0) return Tri.Unknown;
+            return mine.Any(a => a.Equals(remote)) ? Tri.Yes : Tri.No;
+        }
+        catch
+        {
+            return Tri.Unknown;   // could not measure - NEVER "no, it is a different machine"
+        }
+    }
+
+    private static IEnumerable<System.Net.IPAddress> EnumerateLocalAddresses() =>
+        System.Net.NetworkInformation.NetworkInterface
+            .GetAllNetworkInterfaces()
+            .SelectMany(n => n.GetIPProperties().UnicastAddresses)
+            .Select(a => a.Address);
 }

@@ -21,7 +21,7 @@ namespace GlpRuntime.CrdtMsg.Tests.Federation;
 
 public sealed class StatusSurfaceTests
 {
-    private const string LiveEpoch = "ynet-epoch-2026-09";
+    private const string LiveEpoch = "ynet-epoch-7f3a91c2e04b5d68";   // no wall clock: FR-026 applies to fixtures too
     private static readonly JsonElement Body = JsonSerializer.SerializeToElement(new { });
 
     private static FederationConfig Config(bool enabled = true, params PeerConfig[] peers) => new()

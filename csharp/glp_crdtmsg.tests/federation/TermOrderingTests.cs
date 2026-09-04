@@ -18,7 +18,7 @@ namespace GlpRuntime.CrdtMsg.Tests.Federation;
 
 public sealed class TermOrderingTests
 {
-    private const string LiveEpoch = "ynet-epoch-2026-09";
+    private const string LiveEpoch = "ynet-epoch-7f3a91c2e04b5d68";   // no wall clock: FR-026 applies to fixtures too
     private static readonly JsonElement EmptyBody = JsonSerializer.SerializeToElement(new { });
 
     private static TermSpaceRegistry Live() => new(LiveEpoch);
@@ -211,7 +211,7 @@ public sealed class TermOrderingTests
             Op("olamnit",   1, new Term("ynet-epoch-2026-08", 2, "olamnit")),
         };
 
-        var afterMint = new FederationFold(new TermSpaceRegistry("ynet-epoch-2026-09"));
+        var afterMint = new FederationFold(new TermSpaceRegistry("ynet-epoch-7f3a91c2e04b5d68"));
         afterMint.ApplyAll(priorOps);
 
         // Readable and attributed - nothing was rewritten by the mint.
@@ -229,7 +229,7 @@ public sealed class TermOrderingTests
     public void AClockDerivedEpochIdIsRefused()
     {
         Assert.True(TermSpaceRegistry.LooksClockDerived("5961694"));
-        Assert.False(TermSpaceRegistry.LooksClockDerived("ynet-epoch-2026-09"));
+        Assert.False(TermSpaceRegistry.LooksClockDerived("ynet-epoch-7f3a91c2e04b5d68"));
     }
 
     /// <summary>An empty epoch id is refused — an unminted space cannot order anything.</summary>

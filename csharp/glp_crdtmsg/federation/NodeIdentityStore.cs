@@ -54,11 +54,46 @@ public sealed class NodeIdentityStore
             return X509CertificateLoader.LoadPkcs12(File.ReadAllBytes(_path), password: null,
                 X509KeyStorageFlags.Exportable);
 
-        var cert = Mint(commonName);
         Directory.CreateDirectory(Path.GetDirectoryName(_path)!);
-        File.WriteAllBytes(_path, cert.Export(X509ContentType.Pkcs12));
-        RestrictToOwner(_path);
-        return cert;
+
+        // FIRST-RUN MINTING IS A CROSS-PROCESS RACE, and it was unguarded.
+        //
+        // `serve`, `post` and `identity` can all start together on a fresh host — the runbook has
+        // the operator do exactly that. An unlocked exists-then-write let two processes each mint a
+        // DIFFERENT certificate, each return its own, and only one survive on disk. The loser then
+        // signed operations with a key no peer could verify, and this host's effective node identity
+        // differed between two commands run seconds apart. Both symptoms present as someone else's
+        // bug: forged-attribution refusals, and a peer that will not admit you.
+        //
+        // The lock file is a separate path, so it can be taken exclusively without conflicting with
+        // the key write itself.
+        string lockPath = _path + ".lock";
+        for (int attempt = 0; ; attempt++)
+        {
+            try
+            {
+                using var gate = new FileStream(lockPath, FileMode.OpenOrCreate, FileAccess.ReadWrite,
+                                                FileShare.None);
+
+                // Re-check UNDER the lock: the process we queued behind may have just minted it.
+                if (File.Exists(_path))
+                    return X509CertificateLoader.LoadPkcs12(File.ReadAllBytes(_path), password: null,
+                        X509KeyStorageFlags.Exportable);
+
+                var cert = Mint(commonName);
+
+                // Write to a temp file and move it into place, so a reader never sees a partial key.
+                string tmp = _path + ".tmp";
+                File.WriteAllBytes(tmp, cert.Export(X509ContentType.Pkcs12));
+                File.Move(tmp, _path, overwrite: false);
+                RestrictToOwner(_path);
+                return cert;
+            }
+            catch (IOException) when (attempt < 100)
+            {
+                Thread.Sleep(20);   // another process is minting; it will be there when we get in
+            }
+        }
     }
 
     private static X509Certificate2 Mint(string commonName)

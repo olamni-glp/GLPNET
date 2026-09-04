@@ -108,6 +108,28 @@ public sealed class TermSpaceRegistry
     /// counter. This is the shape the fossil had; refusing it at mint time is cheaper than
     /// discovering it after a monotone merge (FR-015, contract G3).
     /// </summary>
-    public static bool LooksClockDerived(string epochId) =>
-        epochId.Length >= 6 && epochId.All(char.IsDigit);
+    public static bool LooksClockDerived(string epochId)
+    {
+        if (string.IsNullOrWhiteSpace(epochId)) return false;
+
+        // The fossil's shape: an all-digit counter.
+        if (epochId.Length >= 6 && epochId.All(char.IsDigit)) return true;
+
+        // AND THE SHAPE THIS CODE ITSELF EMITTED. The mint command produced
+        // "ynet-epoch-2026-09-8240c4" and this guard passed it, because it only rejected all-digit
+        // strings. A guard that cannot catch its own caller's output is decorative. FR-026 forbids
+        // deriving the identifier from wall-clock time in ANY encoding, not just a unix counter.
+        foreach (var part in epochId.Split('-', '_', '.', ':'))
+        {
+            // A plausible calendar year, on its own or leading a yyyyMM / yyyyMMdd run.
+            if (part.Length is 4 && part.All(char.IsDigit)
+                && int.TryParse(part, out var y) && y is >= 1970 and <= 2999)
+                return true;
+
+            if (part.Length is 6 or 8 && part.All(char.IsDigit)
+                && int.TryParse(part[..4], out var y2) && y2 is >= 1970 and <= 2999)
+                return true;
+        }
+        return false;
+    }
 }

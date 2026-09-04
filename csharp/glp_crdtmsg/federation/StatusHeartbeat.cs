@@ -43,6 +43,16 @@ public sealed record StatusHeartbeat
     [JsonPropertyName("reasons")] public Dictionary<string, string> Reasons { get; init; } = new();
 
     /// <summary>
+    /// The named host-policy refusal, when the bind was blocked by one (FR-023).
+    /// <para>
+    /// Carried across the process boundary because `serve` EXITS on this failure telling the
+    /// operator to run `status` — and without it that command could only show unknown, so the one
+    /// failure this surface exists to name would be the one it could not.
+    /// </para>
+    /// </summary>
+    [JsonPropertyName("policy_refusal")] public PolicyRefusal? PolicyRefused { get; init; }
+
+    /// <summary>
     /// How long a published measurement stays credible. The serving process refreshes well inside
     /// this; a reader outside it treats the record as no measurement at all.
     /// </summary>
@@ -109,6 +119,7 @@ public sealed record StatusHeartbeat
         SameMachine = s.SameMachine?.ToString().ToLowerInvariant(),
         AdmittedParticipants = s.AdmittedParticipants,
         FoldOperations = foldOperations,
+        PolicyRefused = s.PolicyRefused,
         Reasons = new Dictionary<string, string>(s.Reasons),
     };
 
@@ -122,6 +133,7 @@ public sealed record StatusHeartbeat
         SameMachine = SameMachine is null ? null : ParseTri(SameMachine),
         BoundEndpoint = BoundEndpoint,
         AdmittedParticipants = AdmittedParticipants,
+        PolicyRefused = PolicyRefused,
         Reasons = new Dictionary<string, string>(Reasons),
     };
 

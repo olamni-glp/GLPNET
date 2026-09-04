@@ -277,7 +277,11 @@ public static class Program
             return 1;
         }
 
-        string epochId = $"ynet-epoch-{DateTimeOffset.UtcNow:yyyy-MM}-{Guid.NewGuid().ToString("n")[..6]}";
+        // NO WALL CLOCK IN THE IDENTIFIER. FR-026 forbids deriving it from time, and the previous
+        // form embedded the current year and month — the fossil term was born of exactly this habit
+        // (floor(unix_ts/300)). A random identifier orders nothing by magnitude, which is the point:
+        // term-spaces are compared for EQUALITY, never for which is later.
+        string epochId = $"ynet-epoch-{Guid.NewGuid():n}"[..24];
         if (TermSpaceRegistry.LooksClockDerived(epochId))
         {
             Console.Error.WriteLine("refusing a clock-derived epoch id — that is how the fossil term was born (FR-015).");
@@ -399,7 +403,7 @@ public static class Program
         // the status heartbeat (`status` is a separate process that could not see this one's
         // measurements — and, once it could, went stale between 60 s pull ticks).
         var pump = svc.RunPullLoopAsync(stop.Token);
-        var tail = svc.RunLogTailAsync(log.WritePath, stop.Token);
+        var tail = svc.RunBoardTailAsync(log.Root, log.WritePath, stop.Token);
         var beat = svc.RunStatusHeartbeatAsync(stop.Token);
 
         try

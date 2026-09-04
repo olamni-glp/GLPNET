@@ -17,7 +17,7 @@ namespace GlpRuntime.CrdtMsg.Tests.Federation;
 
 public sealed class AdmissionTests
 {
-    private const string LiveEpoch = "ynet-epoch-2026-09";
+    private const string LiveEpoch = "ynet-epoch-7f3a91c2e04b5d68";   // no wall clock: FR-026 applies to fixtures too
 
     private static PeerEntry Entry(string name, string nodeId, params string[] eps) =>
         new(name, nodeId, eps.Select(IPEndPoint.Parse).ToList(), "pin-" + nodeId);

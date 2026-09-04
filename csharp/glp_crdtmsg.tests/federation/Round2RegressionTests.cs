@@ -25,7 +25,7 @@ namespace GlpRuntime.CrdtMsg.Tests.Federation;
 
 public sealed class Round2RegressionTests
 {
-    private const string LiveEpoch = "ynet-epoch-2026-09";
+    private const string LiveEpoch = "ynet-epoch-7f3a91c2e04b5d68";   // no wall clock: FR-026 applies to fixtures too
     private static readonly JsonElement Body = JsonSerializer.SerializeToElement(new { });
 
     private static string NodeId(string seed) =>
@@ -491,17 +491,63 @@ public sealed class Round2RegressionTests
         var log = new InMemoryBoardLog();
         var svc = new FederationService(cfg, new RecordingLink("A"), fold, log);
 
-        var forged = FederationOp.Create(new Dot(aliceId, 1), aliceId, "claim", Body).SignedBy(mallory);
-        await Assert.ThrowsAsync<AttributionRefusedException>(() =>
-            svc.ReconcileAsync(new[] { forged }, new PeerCapabilities(true, LiveEpoch)));
+        AttributionRefusedException? reported = null;
+        svc.OnRefusal += ex => reported = ex;
 
+        var forged = FederationOp.Create(new Dot(aliceId, 1), aliceId, "claim", Body).SignedBy(mallory);
+        Assert.Equal(0, await svc.ReconcileAsync(new[] { forged }, new PeerCapabilities(true, LiveEpoch)));
+
+        // Refused, reported and COUNTED — but the batch is not aborted (see the stranding test).
         Assert.False(fold.Contains(forged.OpId));
         Assert.Equal(0, log.Count);
+        Assert.Equal(1, svc.RefusedOps);
+        Assert.NotNull(reported);
 
         // POSITIVE CONTROL: the genuine article over the same path is folded and stored.
         var genuine = FederationOp.Create(new Dot(aliceId, 2), aliceId, "claim", Body).SignedBy(alice);
         Assert.Equal(1, await svc.ReconcileAsync(new[] { genuine }, new PeerCapabilities(true, LiveEpoch)));
         Assert.Equal(1, log.Count);
+    }
+
+    /// <summary>
+    /// One refused operation must not strand every valid operation behind it.
+    /// <para>
+    /// Aborting the batch on a refusal was permanent: the refused op never enters the frontier, so
+    /// the peer resends it FIRST at every interval and nothing after it ever converges. A single
+    /// malformed entry could stop reconciliation for good.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public async Task ARefusedOpDoesNotStrandTheValidOpsBehindIt()
+    {
+        using var alice = QuicLinkTransport.CreateDevCert("alice");
+        using var mallory = QuicLinkTransport.CreateDevCert("mallory");
+        string aliceId = NodeIdentityStore.DeriveNodeId(alice);
+
+        var cfg = Cfg(new PeerConfig
+        {
+            Name = "alice", NodeId = aliceId, Endpoints = { "192.168.0.142:47890" },
+            Pin = NodeIdentityStore.PinFromNodeId(aliceId),
+            Spki = NodeIdentityStore.ExportSpki(alice),
+        });
+
+        var fold = NewFold();
+        var log = new InMemoryBoardLog();
+        var svc = new FederationService(cfg, new RecordingLink("A"), fold, log);
+
+        var forged = FederationOp.Create(new Dot(aliceId, 1), aliceId, "claim", Body).SignedBy(mallory);
+        var good1 = FederationOp.Create(new Dot(aliceId, 2), aliceId, "claim", Body).SignedBy(alice);
+        var good2 = FederationOp.Create(new Dot(aliceId, 3), aliceId, "claim", Body).SignedBy(alice);
+
+        // The forged op is FIRST in the batch — the position that used to abort everything after it.
+        int added = await svc.ReconcileAsync(new[] { forged, good1, good2 },
+                                             new PeerCapabilities(true, LiveEpoch));
+
+        Assert.Equal(2, added);
+        Assert.False(fold.Contains(forged.OpId));
+        Assert.True(fold.Contains(good1.OpId));
+        Assert.True(fold.Contains(good2.OpId));
+        Assert.Equal(1, svc.RefusedOps);
     }
 
     /// <summary>A published key that does not belong to the node id it is filed under is refused.</summary>
@@ -1132,6 +1178,9 @@ public sealed class RecordingLink : IFederationLink
     /// <summary>Every connection attempt is refused — the "peer unreachable" condition.</summary>
     public bool Broken { get; set; }
 
+    /// <summary>A specific exception to throw from a dial, for classifying identity vs reachability.</summary>
+    public Exception? ThrowOnConnect { get; set; }
+
     /// <summary>Connections succeed but sends fail — an established link that has since closed.</summary>
     public bool FailSends { get; set; }
 
@@ -1146,6 +1195,7 @@ public sealed class RecordingLink : IFederationLink
 
     public Task ConnectPeerAsync(string peer, IPEndPoint remote, CancellationToken ct = default)
     {
+        if (ThrowOnConnect is not null) throw ThrowOnConnect;
         if (Broken) throw new IOException("unreachable");
         Dialled.Add((peer, remote));
         return Task.CompletedTask;

@@ -79,8 +79,12 @@ public sealed class FederationService : IAsyncDisposable
     private readonly FederationFold _fold;
     private readonly PeerSet _peers;
     private readonly IBoardLog _log;
-    private readonly HashSet<string> _admitted = new(StringComparer.Ordinal);
-    private readonly Dictionary<string, PeerCapabilities> _peerCaps = new(StringComparer.Ordinal);
+    // CONCURRENT BY TYPE, not by convention. Four loops (receive, pull, board tail, heartbeat)
+    // run at once and all of these are read and mutated from more than one of them. A plain
+    // Dictionary faults when enumerated during a mutation, and a faulted background loop stops
+    // converging without saying so — the failure mode this whole feature exists to eliminate.
+    private readonly System.Collections.Concurrent.ConcurrentDictionary<string, byte> _admitted = new(StringComparer.Ordinal);
+    private readonly System.Collections.Concurrent.ConcurrentDictionary<string, PeerCapabilities> _peerCaps = new(StringComparer.Ordinal);
     private readonly IReadOnlyDictionary<string, string> _originKeys;
     private readonly TimeProvider _clock;
 
@@ -90,11 +94,16 @@ public sealed class FederationService : IAsyncDisposable
     /// that a peer has EVER completed mutual verification — a different fact, and the one the status
     /// surface reports.
     /// </summary>
-    private readonly HashSet<string> _connected = new(StringComparer.Ordinal);
+    private readonly System.Collections.Concurrent.ConcurrentDictionary<string, byte> _connected = new(StringComparer.Ordinal);
 
     private bool _bound;
     private bool _opCrossed;
-    private Tri? _sameMachine;   // null until a crossing is observed; see FederationStatus.SameMachine
+
+    // Per-peer, because "was that crossing on this machine?" is a question ABOUT A PEER. A single
+    // shared field answered it with whichever peer was dialled last (R3-05).
+    private readonly object _machineGate = new();
+    private readonly Dictionary<string, Tri> _sameMachineByPeer = new(StringComparer.Ordinal);
+    private readonly HashSet<string> _crossedFrom = new(StringComparer.Ordinal);
     private PolicyRefusal? _policyRefusal;
     private CancellationTokenSource? _pumpCts;
 
@@ -120,6 +129,15 @@ public sealed class FederationService : IAsyncDisposable
 
     /// <summary>How many folded operations could not have their origin proven. For the status surface.</summary>
     public int UnverifiedOps { get; private set; }
+
+    /// <summary>How many operations were REFUSED on attribution grounds. Counted, never hidden.</summary>
+    public int RefusedOps { get; private set; }
+
+    /// <summary>
+    /// Raised when an operation is refused mid-batch. The caller reports it; the batch continues,
+    /// because one bad operation must not strand every valid one behind it.
+    /// </summary>
+    public event Action<AttributionRefusedException>? OnRefusal;
 
     /// <summary>Where the serving process publishes its measured status, so a separate `status` can read it.</summary>
     public string? StatusHeartbeatPath { get; init; }
@@ -160,6 +178,11 @@ public sealed class FederationService : IAsyncDisposable
             // costs hours every time.
             _policyRefusal = refusal;
             _bound = false;
+            // PUBLISH IT. `serve` exits after a failed bind telling the operator to run `status` —
+            // and status is a different process. Without this the named FR-023 refusal died with
+            // the daemon and status showed unknown, or worse, a still-fresh healthy heartbeat from
+            // the previous run: the one failure mode this whole surface exists to name, unnameable.
+            PublishStatus();
             return false;
         }
     }
@@ -186,20 +209,31 @@ public sealed class FederationService : IAsyncDisposable
             try
             {
                 await _link.ConnectPeerAsync(entry.NodeId, ep, ct).ConfigureAwait(false);
-                _admitted.Add(entry.NodeId);
-                _connected.Add(entry.NodeId);
+                _admitted[entry.NodeId] = 0;
+                _connected[entry.NodeId] = 0;
                 // Declare our own capabilities so the peer's gate can admit us. A peer that never
                 // hears this refuses our pushes — which is the correct fail-closed direction.
                 await AnnounceCapabilitiesAsync(entry.NodeId, ct).ConfigureAwait(false);
-                _sameMachine = FederationStatusProbe.IsSameMachine(
-                    _link.ListenEndPoint?.Address ?? IPAddress.Any, ep.Address) ? Tri.Yes : Tri.No;
+                // KEYED BY PEER. A single field was overwritten by every successful dial, so with
+                // two peers an op from a same-machine one inherited the last remote peer's "No" and
+                // was reported as cross-host evidence — the precise thing FR-022 exists to prevent.
+                // Three-valued: a probe that could not run is Unknown, never a measured No.
+                lock (_machineGate)
+                    _sameMachineByPeer[entry.NodeId] = FederationStatusProbe.SameMachineTri(
+                        _link.ListenEndPoint?.Address ?? IPAddress.Any, ep.Address);
                 PublishStatus();
                 return AdmissionOutcome.Admitted;
             }
-            catch (System.Security.Authentication.AuthenticationException)
+            catch (Exception ex) when (IsIdentityFailure(ex))
             {
                 // FR-008: a pin mismatch and an unreachable host demand OPPOSITE responses, so they
                 // are never folded into one generic error.
+                //
+                // Catching only AuthenticationException missed the CONCRETE path: QuicLinkTransport
+                // throws CrdtMsgException when the far end's control hello claims a node id other
+                // than the one dialled. That fell through to the generic catch, was retried against
+                // the next address, and finally reported Unreachable — pointing the operator at the
+                // network when the fault was an identity mismatch, the exact opposite diagnosis.
                 return AdmissionOutcome.PinMismatch;
             }
             catch
@@ -208,6 +242,25 @@ public sealed class FederationService : IAsyncDisposable
             }
         }
         return AdmissionOutcome.Unreachable;
+    }
+
+    /// <summary>
+    /// Whether an exception is an IDENTITY failure rather than a reachability one. The transport
+    /// signals the two differently and they demand opposite operator responses (FR-008).
+    /// </summary>
+    private static bool IsIdentityFailure(Exception ex)
+    {
+        for (Exception? e = ex; e is not null; e = e.InnerException)
+        {
+            if (e is System.Security.Authentication.AuthenticationException) return true;
+            // The transport's own refusals: an unpinned peer, a pin that does not match, or a hello
+            // claiming a different name. All three are identity, none of them are reachability.
+            if (e is Envelope.CrdtMsgException or InvalidOperationException
+                && (e.Message.Contains("pin", StringComparison.OrdinalIgnoreCase)
+                    || e.Message.Contains("claims", StringComparison.OrdinalIgnoreCase)))
+                return true;
+        }
+        return false;
     }
 
     /// <summary>
@@ -234,14 +287,14 @@ public sealed class FederationService : IAsyncDisposable
         byte[] bytes = Encoding.UTF8.GetBytes(op.ToCanonicalJson());
         foreach (var entry in _peers.Entries)
         {
-            if (!_admitted.Contains(entry.NodeId)) continue;
+            if (!_admitted.ContainsKey(entry.NodeId)) continue;
             try { await _link.SendAsync(entry.NodeId, BoardBox, bytes, ct).ConfigureAwait(false); }
             catch
             {
                 // Mark the link down so the pull loop RE-DIALS it. Swallowing the failure and
                 // leaving the peer "connected" is what made a dropped link permanent: every later
                 // send went into a connection that no longer existed and failed the same way.
-                _connected.Remove(entry.NodeId);
+                _connected.TryRemove(entry.NodeId, out _);
             }
         }
     }
@@ -279,6 +332,12 @@ public sealed class FederationService : IAsyncDisposable
 
             case HelloProtocol.Box:
                 _peerCaps[inbound.FromPeer] = HelloProtocol.Decode(inbound.Bytes);
+                // ANSWER IT. The gate is fail-closed both ways, so a side that never declares its
+                // own capabilities has every push and pull response refused BY THE OTHER SIDE. When
+                // only one host can dial — which a peer entry with no endpoints deliberately allows
+                // — the dialer never learned the listener was term-space aware and federation was
+                // permanently one-way, with both surfaces reporting admitted peers.
+                await AnnounceCapabilitiesAsync(inbound.FromPeer, ct).ConfigureAwait(false);
                 return false;
 
             case AckProtocol.Box:
@@ -326,7 +385,7 @@ public sealed class FederationService : IAsyncDisposable
         _opCrossed = true;
         // The passive side learns of an op without learning where it came from. That is UNKNOWN,
         // not "no crossing observed" — and never silently No (FR-021/FR-022).
-        _sameMachine ??= Tri.Unknown;
+        RecordCrossing(inbound.FromPeer);
         PublishStatus();
         return isNew;
     }
@@ -433,13 +492,49 @@ public sealed class FederationService : IAsyncDisposable
     public PeerCapabilities? DeclaredCapabilitiesOf(string peerName) =>
         _peerCaps.TryGetValue(peerName, out var c) ? c : null;
 
+    /// <summary>
+    /// Note that an operation crossed, and from whom when that is known.
+    /// </summary>
+    private void RecordCrossing(string? fromPeer)
+    {
+        if (fromPeer is null) return;
+        var entry = _peers.Find(fromPeer) ?? _peers.Entries.FirstOrDefault(e => e.Name == fromPeer);
+        lock (_machineGate) _crossedFrom.Add(entry?.NodeId ?? fromPeer);
+    }
+
+    /// <summary>
+    /// The same-machine verdict over the peers an operation ACTUALLY crossed from.
+    /// <para>
+    /// CONSERVATIVE BY CONSTRUCTION: if ANY crossing came from a same-machine peer the answer is
+    /// Yes, because one same-machine crossing is enough to disqualify the evidence (FR-022). An
+    /// unmeasured or unattributed crossing is Unknown. Only when every crossing is measured and
+    /// remote is the answer No.
+    /// </para>
+    /// </summary>
+    private Tri SameMachineVerdict()
+    {
+        lock (_machineGate)
+        {
+            if (_crossedFrom.Count == 0) return Tri.Unknown;   // crossed, but from nobody we can name
+
+            bool anyUnknown = false;
+            foreach (var peer in _crossedFrom)
+            {
+                if (!_sameMachineByPeer.TryGetValue(peer, out var t)) { anyUnknown = true; continue; }
+                if (t == Tri.Yes) return Tri.Yes;              // one is enough to disqualify
+                if (t == Tri.Unknown) anyUnknown = true;
+            }
+            return anyUnknown ? Tri.Unknown : Tri.No;
+        }
+    }
+
     /// <summary>Record that a peer completed mutual verification, keyed by NODE ID (FR-007).</summary>
     private void MarkAdmitted(string peerName)
     {
         var entry = _peers.Find(peerName) ?? _peers.Entries.FirstOrDefault(e => e.Name == peerName);
         if (entry is null) return;
-        _admitted.Add(entry.NodeId);
-        _connected.Add(entry.NodeId);   // a frame just arrived on it, so the link is live
+        _admitted[entry.NodeId] = 0;
+        _connected[entry.NodeId] = 0;   // a frame just arrived on it, so the link is live
     }
 
     /// <summary>
@@ -461,7 +556,7 @@ public sealed class FederationService : IAsyncDisposable
             // But the link is marked DOWN, so the next interval re-dials rather than sending into
             // the same dead connection forever.
             var entry = _peers.Find(peerName) ?? _peers.Entries.FirstOrDefault(e => e.Name == peerName);
-            if (entry is not null) _connected.Remove(entry.NodeId);
+            if (entry is not null) _connected.TryRemove(entry.NodeId, out _);
         }
     }
 
@@ -492,7 +587,7 @@ public sealed class FederationService : IAsyncDisposable
                 // Stop at the first failure: the batches are a prefix sequence, so sending later
                 // ones past a gap would hand the peer a set it cannot use. Retried next interval.
                 var entry = _peers.Find(peerName) ?? _peers.Entries.FirstOrDefault(e => e.Name == peerName);
-                if (entry is not null) _connected.Remove(entry.NodeId);
+                if (entry is not null) _connected.TryRemove(entry.NodeId, out _);
                 return;
             }
         }
@@ -518,14 +613,14 @@ public sealed class FederationService : IAsyncDisposable
                 // pull went into a connection that no longer existed and failed silently. Restoring
                 // the network then repaired nothing until the process was restarted — in a loop
                 // whose entire purpose is to be the repair path (FR-028).
-                if (!_connected.Contains(entry.NodeId))
+                if (!_connected.ContainsKey(entry.NodeId))
                 {
                     try { await DialAsync(entry.NodeId, ct).ConfigureAwait(false); }
                     catch (OperationCanceledException) { return; }
                     catch { /* still unreachable; try again next interval */ }
                 }
 
-                if (!_connected.Contains(entry.NodeId)) continue;
+                if (!_connected.ContainsKey(entry.NodeId)) continue;
                 await RequestPullAsync(entry.NodeId, ct).ConfigureAwait(false);
             }
 
@@ -551,18 +646,37 @@ public sealed class FederationService : IAsyncDisposable
             throw new MergeRefusedException(verdict.Reason);
 
         int added = 0;
+        var refusals = new List<AttributionRefusedException>();
         foreach (var op in peerOps)
         {
             // Same admission and same ordering as the push path — attribution checked, durable
             // write, then visible. There is one way into the fold, not two with different rules.
-            if (await AdmitAndFoldAsync(op, ct).ConfigureAwait(false))
+            //
+            // A REFUSAL SKIPS ONE OPERATION, NOT THE REST OF THE BATCH. Aborting here stranded
+            // every later op behind the refused one: the refused op never enters the frontier, so
+            // the peer resends it FIRST at every interval, and nothing after it ever converges. One
+            // malformed entry would have been enough to stop reconciliation permanently.
+            try
             {
-                added++;
-                _opCrossed = true;
-                _sameMachine ??= Tri.Unknown;        // an op crossed, but the pull carries no address
+                if (await AdmitAndFoldAsync(op, ct).ConfigureAwait(false))
+                {
+                    added++;
+                    _opCrossed = true;
+                    RecordCrossing(null);            // an op crossed, but the pull carries no address
+                }
+            }
+            catch (AttributionRefusedException ex)
+            {
+                RefusedOps++;
+                refusals.Add(ex);
             }
         }
         if (added > 0) PublishStatus();
+
+        // Refusals are REPORTED, never swallowed — but after the valid work has been done.
+        if (refusals.Count > 0)
+            OnRefusal?.Invoke(refusals[0]);
+
         return added;
     }
 
@@ -600,7 +714,7 @@ public sealed class FederationService : IAsyncDisposable
             // and the reconciliation-pull path both learn of an op without learning where it came
             // from, and reporting that as "no crossing observed" beside "op received: yes" would be
             // the surface contradicting itself (FR-021).
-            SameMachine = _opCrossed ? (_sameMachine ?? Tri.Unknown) : null,
+            SameMachine = _opCrossed ? SameMachineVerdict() : null,
             PolicyRefused = _policyRefusal,
             Reasons = reasons,
             BoundEndpoint = _bound ? _link.ListenEndPoint?.ToString() : null,
@@ -624,11 +738,76 @@ public sealed class FederationService : IAsyncDisposable
     /// and the loop never appends — it only reads what another process made durable.
     /// </para>
     /// </summary>
-    public async Task RunLogTailAsync(string path, CancellationToken ct)
+    public Task RunLogTailAsync(string path, CancellationToken ct) =>
+        RunLogTailAsync(new[] { path }, ct);
+
+    /// <summary>
+    /// Watch SEVERAL logs — this host's federation log AND the live lane segments under the board
+    /// root.
+    /// <para>
+    /// Tailing only this host's own federation file meant `serve` replayed every actor's log at
+    /// startup and then went blind: a claim a real lane appended a minute later never entered the
+    /// running fold and was never pushed until the daemon restarted. The board is the thing that
+    /// changes; watching only the part of it this process writes is watching the wrong thing.
+    /// </para>
+    /// <para>
+    /// The set is re-globbed each tick, so a newly rotated segment or a newly active actor is picked
+    /// up without a restart.
+    /// </para>
+    /// </summary>
+    public async Task RunBoardTailAsync(string boardRoot, string ownPath, CancellationToken ct)
     {
-        long offset = 0;
-        try { if (File.Exists(path)) offset = new FileInfo(path).Length; }
+        var offsets = new Dictionary<string, long>(StringComparer.OrdinalIgnoreCase);
+        var period = TimeSpan.FromSeconds(1);
+
+        // Start at the END of what already exists: startup replay has folded it already.
+        foreach (var p in EnumerateBoardLogs(boardRoot, ownPath))
+        {
+            try { offsets[p] = File.Exists(p) ? new FileInfo(p).Length : 0; }
+            catch (IOException) { offsets[p] = 0; }
+        }
+
+        while (!ct.IsCancellationRequested)
+        {
+            try { await Task.Delay(period, _clock, ct).ConfigureAwait(false); }
+            catch (OperationCanceledException) { return; }
+
+            foreach (var p in EnumerateBoardLogs(boardRoot, ownPath))
+            {
+                // A file that appeared since the last tick starts at 0 so its contents are read.
+                long from = offsets.TryGetValue(p, out var o) ? o : 0;
+                var (lines, next) = ReadCompleteLinesFrom(p, from);
+                offsets[p] = next;
+
+                foreach (var text in lines) await FoldAndPushTailedLineAsync(text, ct).ConfigureAwait(false);
+            }
+        }
+    }
+
+    private static IEnumerable<string> EnumerateBoardLogs(string boardRoot, string ownPath)
+    {
+        var seen = new List<string> { ownPath };
+        try
+        {
+            seen.AddRange(BoardRoot.AllActorLogs(boardRoot));
+            string fedDir = Path.Combine(boardRoot, SchedulerBoardLog.FederationKindName);
+            if (Directory.Exists(fedDir))
+                seen.AddRange(Directory.EnumerateDirectories(fedDir)
+                    .SelectMany(d => Directory.EnumerateFiles(d, "*.jsonl")));
+        }
         catch (IOException) { }
+        catch (UnauthorizedAccessException) { }
+        return seen.Distinct(StringComparer.OrdinalIgnoreCase);
+    }
+
+    public async Task RunLogTailAsync(IReadOnlyList<string> paths, CancellationToken ct)
+    {
+        var offsets = new Dictionary<string, long>(StringComparer.OrdinalIgnoreCase);
+        foreach (var path in paths)
+        {
+            try { offsets[path] = File.Exists(path) ? new FileInfo(path).Length : 0; }
+            catch (IOException) { offsets[path] = 0; }
+        }
 
         var period = TimeSpan.FromSeconds(1);
         while (!ct.IsCancellationRequested)
@@ -636,43 +815,68 @@ public sealed class FederationService : IAsyncDisposable
             try { await Task.Delay(period, _clock, ct).ConfigureAwait(false); }
             catch (OperationCanceledException) { return; }
 
-            List<string> lines = new();
-            try
+            foreach (var path in paths)
             {
-                if (!File.Exists(path)) continue;
-                long length = new FileInfo(path).Length;
-
-                // A shorter file means it was replaced, not appended to. Re-read from the start
-                // rather than seeking past the end of the new content and going permanently blind.
-                if (length < offset) offset = 0;
-                if (length == offset) continue;
-
-                using var fs = new FileStream(path, FileMode.Open, FileAccess.Read,
-                                              FileShare.ReadWrite | FileShare.Delete);
-                fs.Seek(offset, SeekOrigin.Begin);
-                using var reader = new StreamReader(fs);
-                string? line;
-                while ((line = await reader.ReadLineAsync(ct).ConfigureAwait(false)) is not null)
-                    if (!string.IsNullOrWhiteSpace(line)) lines.Add(line);
-                offset = fs.Position;
-            }
-            catch (IOException) { continue; }   // mid-append; the next tick reads the whole line
-
-            foreach (var text in lines)
-            {
-                FederationOp op;
-                try { op = FederationOp.FromJson(text); }
-                catch (Exception ex) when (ex is JsonException or KeyNotFoundException or InvalidOperationException or FormatException)
-                {
-                    continue;   // a scheduler-native or partial line; not ours to push
-                }
-
-                if (!_fold.Apply(op)) continue;   // already known — nothing to announce
-                await PushAsync(op, ct).ConfigureAwait(false);
-                PublishStatus();   // the fold changed; a surface that does not say so is stale
+                var (lines, next) = ReadCompleteLinesFrom(path, offsets.TryGetValue(path, out var o) ? o : 0);
+                offsets[path] = next;
+                foreach (var text in lines) await FoldAndPushTailedLineAsync(text, ct).ConfigureAwait(false);
             }
         }
     }
+
+    /// <summary>Fold one tailed line and push it, ignoring anything that is not a federation op.</summary>
+    private async Task FoldAndPushTailedLineAsync(string text, CancellationToken ct)
+    {
+        FederationOp op;
+        try { op = FederationOp.FromJson(text); }
+        catch (Exception ex) when (ex is JsonException or KeyNotFoundException or InvalidOperationException or FormatException)
+        {
+            return;   // a scheduler-native or partial line; not ours to push
+        }
+
+        try { if (!_fold.Apply(op)) return; }        // already known — nothing to announce
+        catch (DotConflictException) { return; }     // a conflict is refused, never pushed onward
+
+        await PushAsync(op, ct).ConfigureAwait(false);
+        PublishStatus();   // the fold changed; a surface that does not say so is stale
+    }
+
+    /// <summary>
+    /// Read only COMPLETE lines from <paramref name="from"/>, returning the new offset. A trailing
+    /// unterminated fragment is left unread so the next poll sees the whole record.
+    /// </summary>
+    private static (IReadOnlyList<string> Lines, long Next) ReadCompleteLinesFrom(string path, long from)
+    {
+        var lines = new List<string>();
+        try
+        {
+            if (!File.Exists(path)) return (lines, from);
+            long length = new FileInfo(path).Length;
+
+            // A shorter file means it was replaced, not appended to. Re-read from the start rather
+            // than seeking past the end of the new content and going permanently blind.
+            if (length < from) from = 0;
+            if (length == from) return (lines, from);
+
+            using var fs = new FileStream(path, FileMode.Open, FileAccess.Read,
+                                          FileShare.ReadWrite | FileShare.Delete);
+            fs.Seek(from, SeekOrigin.Begin);
+            var buffer = new byte[length - from];
+            int read = fs.Read(buffer, 0, buffer.Length);
+            string text = Encoding.UTF8.GetString(buffer, 0, read);
+
+            int lastBreak = text.LastIndexOf('\n');
+            if (lastBreak < 0) return (lines, from);   // nothing COMPLETE yet; offset does not move
+
+            foreach (var line in text[..lastBreak].Split('\n'))
+                if (!string.IsNullOrWhiteSpace(line)) lines.Add(line.TrimEnd('\r'));
+
+            return (lines, from + Encoding.UTF8.GetByteCount(text[..(lastBreak + 1)]));
+        }
+        catch (IOException) { return (lines, from); }
+        catch (UnauthorizedAccessException) { return (lines, from); }
+    }
+
 
     /// <summary>
     /// Refresh the published measurement on its own schedule.

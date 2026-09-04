@@ -29,7 +29,7 @@ public sealed class CrossHostAcceptanceTests
 {
     private const string PeerEndpointVar = "YNET_FED_PEER_ENDPOINT";
     private const string PeerNodeIdVar = "YNET_FED_PEER_NODEID";
-    private const string LiveEpoch = "ynet-epoch-2026-09";
+    private const string LiveEpoch = "ynet-epoch-7f3a91c2e04b5d68";   // no wall clock: FR-026 applies to fixtures too
 
     private readonly ITestOutputHelper _out;
     public CrossHostAcceptanceTests(ITestOutputHelper o) => _out = o;
@@ -149,8 +149,12 @@ public sealed class CrossHostAcceptanceTests
             // of cross-host federation either, and must not satisfy SC-001.
             Assert.Equal(Tri.No, status.SameMachine);
 
-            // A crossing was OBSERVED, because the ack itself crossed.
-            Assert.Equal(Tri.Yes, status.OpReceivedFromPeer);
+            // NOT asserted here: `op received from peer`. An ACK is the peer attesting that it
+            // folded OUR operation; it is not an operation received FROM the peer, and _opCrossed
+            // means the latter. Asserting Yes here was UNSATISFIABLE and would have made SC-001
+            // permanently unmeasurable — a guard so strict it can never pass is not a guard, it is
+            // an outage. What SC-001 needs is the ack, which is asserted above.
+            Assert.True(svc.WasAckedByPeer(claim.OpId));
 
             // And the clarified window from ruling Q-GLPNETG28-03 — now measured to the REMOTE fold.
             Assert.True(seconds <= 5.0,

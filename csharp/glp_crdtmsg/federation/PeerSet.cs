@@ -86,11 +86,18 @@ public sealed class PeerSet
     {
         if (string.IsNullOrWhiteSpace(entry.NodeId))
             throw new ArgumentException("a peer entry must carry a node id — identity is not derived from address (FR-007)", nameof(entry));
-        _byNodeId[entry.NodeId] = entry;
+
+        // CANONICALISE TO LOWERCASE ON THE WAY IN. This map compares case-insensitively but the pin
+        // and SPKI tables it feeds are keyed ORDINALLY — as they must be, because the transport
+        // compares its dial key and hello value ordinally. Locally derived and hello-presented ids
+        // are lowercase, so an uppercase entry validated fine, sat in this map fine, and then missed
+        // every ordinal lookup: refused at the transport, and its attribution key silently lost.
+        var canonical = entry with { NodeId = entry.NodeId.Trim().ToLowerInvariant() };
+        _byNodeId[canonical.NodeId] = canonical;
     }
 
     public PeerEntry? Find(string nodeId) =>
-        _byNodeId.TryGetValue(nodeId, out var e) ? e : null;
+        nodeId is not null && _byNodeId.TryGetValue(nodeId.Trim().ToLowerInvariant(), out var e) ? e : null;
 
     /// <summary>
     /// Decide admission for a presented identity and pin. Called BEFORE any board data is exchanged
