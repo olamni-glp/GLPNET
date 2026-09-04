@@ -29,6 +29,20 @@ using System.Security.Cryptography.X509Certificates;
 namespace GlpRuntime.CrdtMsg.Federation;
 
 /// <summary>
+/// The federation private key could not be protected, so it was REMOVED rather than used.
+/// <para>
+/// A distinct type, deliberately: as a plain IOException it was caught by the minting retry loop,
+/// whose next iteration took the existing-file fast path and returned the unprotected key as a
+/// success. A security refusal and lock contention must not be indistinguishable to a catch clause.
+/// </para>
+/// </summary>
+public sealed class InsecureKeyPermissionsException : IOException
+{
+    public InsecureKeyPermissionsException(string message, Exception? inner = null)
+        : base(message, inner) { }
+}
+
+/// <summary>
 /// Mints once, loads thereafter. The node id survives restarts, which is the whole point.
 /// </summary>
 public sealed class NodeIdentityStore
@@ -51,8 +65,14 @@ public sealed class NodeIdentityStore
     public X509Certificate2 LoadOrMint(string commonName)
     {
         if (File.Exists(_path))
+        {
+            // VERIFY BEFORE LOADING. Checking permissions only on the mint path meant a key that
+            // became world-readable afterwards — or was written by an older build before this check
+            // existed — was loaded and used without complaint on every subsequent run.
+            AssertOwnerOnly(_path);
             return X509CertificateLoader.LoadPkcs12(File.ReadAllBytes(_path), password: null,
                 X509KeyStorageFlags.Exportable);
+        }
 
         Directory.CreateDirectory(Path.GetDirectoryName(_path)!);
 
@@ -88,6 +108,14 @@ public sealed class NodeIdentityStore
                 File.Move(tmp, _path, overwrite: false);
                 RestrictToOwner(_path);
                 return cert;
+            }
+            catch (InsecureKeyPermissionsException)
+            {
+                // NEVER retried. This exception is a SECURITY refusal, not lock contention — and
+                // the retry loop's next iteration would take the existing-file fast path and hand
+                // back the very unprotected key this refusal exists to withhold. Distinguishing the
+                // two by TYPE is the whole fix; catching IOException caught both.
+                throw;
             }
             catch (IOException) when (attempt < 100)
             {
@@ -169,31 +197,77 @@ public sealed class NodeIdentityStore
     /// </summary>
     private static void RestrictToOwner(string path)
     {
-        if (OperatingSystem.IsWindows()) return;   // NTFS inherits owner-only ACLs from the profile
-
-        try
+        if (!OperatingSystem.IsWindows())   // NTFS inherits owner-only ACLs from the profile
         {
-            File.SetUnixFileMode(path, UnixFileMode.UserRead | UnixFileMode.UserWrite);
+            try
+            {
+                File.SetUnixFileMode(path, UnixFileMode.UserRead | UnixFileMode.UserWrite);
+            }
+            catch (Exception ex)
+            {
+                try { File.Delete(path); } catch { /* the raise below is what matters */ }
+                throw new InsecureKeyPermissionsException(
+                    $"could not restrict '{path}' to owner-only permissions, so the federation private "
+                    + "key would be left readable by others. The key has been removed rather than "
+                    + "reported as successfully created.", ex);
+            }
         }
+
+        // VERIFIED THROUGH THE SAME PLACE the load path verifies, on every OS. Returning early on
+        // Windows skipped the check entirely, which also made the refusal unreachable in a test on
+        // the machine that has to ship it.
+        AssertOwnerOnly(path);
+    }
+
+    /// <summary>
+    /// Verify — do not assume — that a key on disk is owner-only, and REMOVE it if it is not.
+    /// <para>
+    /// <c>SetUnixFileMode</c> can succeed on a filesystem that does not honour it (a mounted share,
+    /// some container overlays), and an unenforced permission is not a permission. This runs on the
+    /// LOAD path too, so a key that became readable after it was minted — or was written by an older
+    /// build before this check existed — is caught rather than used silently on every later run.
+    /// </para>
+    /// </summary>
+    /// <summary>
+    /// Overrides the permission verdict, so the refusal path is reachable in a test.
+    /// <para>
+    /// The real check is Unix-only and returns immediately on Windows, so on this estate's hosts a
+    /// test written against it cannot distinguish "refuses an insecure key" from "never runs here".
+    /// A mutation removing the refusal SURVIVED for exactly that reason. Injecting the verdict is
+    /// the only way to assert the behaviour on the machine that has to ship it.
+    /// </para>
+    /// </summary>
+    internal static Func<string, bool>? PermissionsAreInsecureOverride;
+
+    private static void AssertOwnerOnly(string path)
+    {
+        if (PermissionsAreInsecureOverride is { } probe)
+        {
+            if (!probe(path)) return;
+            try { File.Delete(path); } catch { }
+            throw new InsecureKeyPermissionsException(
+                $"'{path}' is readable by others — the federation private key has been removed "
+                + "rather than used.");
+        }
+
+        if (OperatingSystem.IsWindows()) return;
+
+        UnixFileMode mode;
+        try { mode = File.GetUnixFileMode(path); }
         catch (Exception ex)
         {
-            try { File.Delete(path); } catch { /* the raise below is what matters */ }
-            throw new IOException(
-                $"could not restrict '{path}' to owner-only permissions, so the federation private "
-                + "key would be left readable by others. The key has been removed rather than "
-                + "reported as successfully created.", ex);
+            throw new InsecureKeyPermissionsException(
+                $"could not read the permissions of '{path}', so it cannot be confirmed private. "
+                + "Refusing to load a federation private key of unknown protection.", ex);
         }
 
-        // VERIFY, do not assume. SetUnixFileMode can succeed on a filesystem that does not honour
-        // it (a mounted share, some container overlays), and an unenforced permission is not one.
-        var mode = File.GetUnixFileMode(path);
         if ((mode & (UnixFileMode.GroupRead | UnixFileMode.OtherRead
-                     | UnixFileMode.GroupWrite | UnixFileMode.OtherWrite)) != 0)
-        {
-            try { File.Delete(path); } catch { }
-            throw new IOException(
-                $"'{path}' still reports mode {mode} after owner-only permissions were applied — the "
-                + "filesystem does not enforce them. The federation private key has been removed.");
-        }
+                     | UnixFileMode.GroupWrite | UnixFileMode.OtherWrite)) == 0)
+            return;
+
+        try { File.Delete(path); } catch { }
+        throw new InsecureKeyPermissionsException(
+            $"'{path}' reports mode {mode} — the federation private key is readable by others. "
+            + "It has been removed rather than used.");
     }
 }

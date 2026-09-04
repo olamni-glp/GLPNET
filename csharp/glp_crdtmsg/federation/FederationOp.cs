@@ -63,6 +63,17 @@ public sealed record FederationOp
     public static FederationOp Create(Dot opId, string origin, string kind, JsonElement body,
                                       Term? term = null, IReadOnlyList<Dot>? deps = null)
     {
+        // THE INVARIANT BELONGS AT CONSTRUCTION, not only at the decoder.
+        //
+        // Enforcing it in FromJson alone left three ways in: this factory, the scheduler-native
+        // adapter that calls it, and any local caller. A nonpositive counter is reported as
+        // ALREADY HELD by every frontier (whose contiguous run starts at 0), so an operation
+        // carrying one can never be recovered after a lost push.
+        if (opId.Counter < 1)
+            throw new ArgumentOutOfRangeException(nameof(opId),
+                $"dot counter must be >= 1; got {opId.Counter}. Every frontier reports a nonpositive "
+                + "counter as already-held, so such an operation could never be reconciled.");
+
         var d = deps ?? Array.Empty<Dot>();
         return new FederationOp
         {

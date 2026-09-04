@@ -44,6 +44,11 @@
 
   <ItemGroup>
     <InternalsVisibleTo Include="glp_crdtmsg.tests" />
+    <!-- The test ASSEMBLY is named after the project file (GlpCrdtMsg.Tests), not the
+         directory. The entry above names an assembly that does not exist, so internals were
+         never actually visible to the tests - a latent defect nothing had leaned on until a
+         test seam needed it. -->
+    <InternalsVisibleTo Include="GlpCrdtMsg.Tests" />
   </ItemGroup>
 
 </Project>

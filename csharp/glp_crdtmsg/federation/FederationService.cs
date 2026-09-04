@@ -80,6 +80,12 @@ public sealed class FederationService : IAsyncDisposable
     /// </summary>
     public const int MaxTailChunkBytes = 4 * 1024 * 1024;
 
+    /// <summary>
+    /// The largest single record the tail will assemble. Above the transport's own 64 MiB frame
+    /// guard, so anything that could legitimately have crossed the wire can also be tailed.
+    /// </summary>
+    public const long MaxTailRecordBytes = 96L * 1024 * 1024;
+
     private readonly FederationConfig _config;
     private readonly IFederationLink _link;
     private readonly FederationFold _fold;
@@ -372,7 +378,13 @@ public sealed class FederationService : IAsyncDisposable
                 return false;
 
             case HelloProtocol.Box:
-                bool firstHello = !_peerCaps.ContainsKey(inbound.FromPeer);
+                // ANSWER ANY DECLARATION THAT IS NOT ITSELF AN ANSWER.
+                //
+                // Suppressing on "have we seen this peer before" was scoped to the PROCESS, so when
+                // one peer restarted and the other did not, the survivor's cache still held it and
+                // never answered the fresh declaration — leaving the restarted peer's fail-closed
+                // gate refusing everything the survivor sent, permanently and silently.
+                bool needsAnswer = !HelloProtocol.IsReply(inbound.Bytes);
                 _peerCaps[inbound.FromPeer] = HelloProtocol.Decode(inbound.Bytes);
 
                 // ANSWER ONCE, AND ONLY THE FIRST DECLARATION.
@@ -386,8 +398,9 @@ public sealed class FederationService : IAsyncDisposable
                 // one-way link became an infinite loop, and both surfaces still looked healthy.
                 // Replying only to a peer's FIRST declaration terminates the exchange after exactly
                 // one round trip, which is all the gate needs.
-                if (firstHello)
-                    await AnnounceCapabilitiesAsync(inbound.FromPeer, ct).ConfigureAwait(false);
+                if (needsAnswer)
+                    await AnnounceCapabilitiesAsync(inbound.FromPeer, ct, isReply: true)
+                        .ConfigureAwait(false);
                 return false;
 
             case AckProtocol.Box:
@@ -477,23 +490,32 @@ public sealed class FederationService : IAsyncDisposable
     /// the log being tailed IS <c>_log</c>. The gate still runs; only the write is skipped.
     /// </para>
     /// </summary>
-    private bool AdmitAlreadyDurable(FederationOp op)
+    private async Task<bool> AdmitAlreadyDurableAsync(FederationOp op, CancellationToken ct)
     {
-        var attribution = OpAttribution.Check(op, KeyForOrigin(op.Origin));
-
-        if (attribution.Verdict is AttributionVerdict.Inconsistent or AttributionVerdict.SignatureInvalid)
-            throw new AttributionRefusedException(attribution);
-
-        if (attribution.Verdict == AttributionVerdict.UnverifiedOrigin)
+        // THE SAME CRITICAL SECTION AS THE LIVE PATHS.
+        //
+        // A separate lock here did not exclude them at all: a live push and a tailed line for one
+        // dot could BOTH observe it absent, and the live path could then append a duplicate — or a
+        // conflicting operation — into an append-only journal that has no delete. Two locks
+        // protecting one invariant is one lock too many.
+        await _admitGate.WaitAsync(ct).ConfigureAwait(false);
+        try
         {
-            if (RequireVerifiedAttribution) throw new AttributionRefusedException(attribution);
-            UnverifiedOps++;
+            var attribution = OpAttribution.Check(op, KeyForOrigin(op.Origin));
+
+            if (attribution.Verdict is AttributionVerdict.Inconsistent or AttributionVerdict.SignatureInvalid)
+                throw new AttributionRefusedException(attribution);
+
+            if (attribution.Verdict == AttributionVerdict.UnverifiedOrigin)
+            {
+                if (RequireVerifiedAttribution) throw new AttributionRefusedException(attribution);
+                UnverifiedOps++;
+            }
+
+            return _fold.Apply(op);
         }
-
-        lock (_admitSync) return _fold.Apply(op);
+        finally { _admitGate.Release(); }
     }
-
-    private readonly object _admitSync = new();
 
     private async Task<bool> AdmitAndFoldLockedAsync(FederationOp op, CancellationToken ct)
     {
@@ -584,12 +606,17 @@ public sealed class FederationService : IAsyncDisposable
     public PeerCapabilities LocalCapabilities => new(TermSpaceAware: true, _config.SpaceId);
 
     /// <summary>Tell a peer what this host supports, so its gate can admit us.</summary>
-    public async Task AnnounceCapabilitiesAsync(string peerName, CancellationToken ct = default)
+    /// <param name="isReply">
+    /// True when answering a peer's declaration. A reply is never answered again, which terminates
+    /// the exchange after exactly one round trip however many times either side restarts.
+    /// </param>
+    public async Task AnnounceCapabilitiesAsync(string peerName, CancellationToken ct = default,
+                                                bool isReply = false)
     {
         try
         {
             await _link.SendAsync(peerName, HelloProtocol.Box,
-                HelloProtocol.Encode(LocalCapabilities), ct).ConfigureAwait(false);
+                HelloProtocol.Encode(LocalCapabilities, isReply), ct).ConfigureAwait(false);
         }
         catch { /* the peer will refuse our pushes until it hears this; fail-closed is correct */ }
     }
@@ -987,7 +1014,7 @@ public sealed class FederationService : IAsyncDisposable
         // The gate still runs; only the write is skipped, because it already happened.
         try
         {
-            if (!AdmitAlreadyDurable(op)) return;
+            if (!await AdmitAlreadyDurableAsync(op, ct).ConfigureAwait(false)) return;
         }
         catch (AttributionRefusedException ex) { OnRefusal?.Invoke(ex); return; }
         catch (DotConflictException) { return; }   // a conflict is refused, never pushed onward
@@ -1062,7 +1089,33 @@ public sealed class FederationService : IAsyncDisposable
             string text = Encoding.UTF8.GetString(buffer, 0, read);
 
             int lastBreak = text.LastIndexOf('\n');
-            if (lastBreak < 0) return (lines, from);   // nothing COMPLETE yet; offset does not move
+            if (lastBreak < 0)
+            {
+                // NO NEWLINE IN A FULL CHUNK IS NOT "nothing complete yet" — it is a record longer
+                // than the chunk. Returning the original offset re-read the same bytes forever, so
+                // that record and EVERY LATER RECORD in the file stopped converging. Grow the read
+                // until a line ends or the record-size ceiling is hit.
+                // ONLY a FULL chunk with no newline means "the record is bigger than the chunk".
+                // A short read is just a writer mid-append — the normal case — and skipping that
+                // would discard exactly the operation the partial-line fix exists to preserve.
+                if (want < MaxTailChunkBytes || read < want) return (lines, from);
+                if ((long)want >= MaxTailRecordBytes) return (lines, from);
+
+                int grown = (int)Math.Min(MaxTailRecordBytes, length - from);
+                fs.Seek(from, SeekOrigin.Begin);
+                var big = new byte[grown];
+                int bigRead = fs.Read(big, 0, big.Length);
+                text = Encoding.UTF8.GetString(big, 0, bigRead);
+                lastBreak = text.LastIndexOf('\n');
+
+                if (lastBreak < 0)
+                {
+                    // Beyond the ceiling with still no line ending: SKIP the oversized record rather
+                    // than stall the whole tail on it. Advancing is the lesser harm — one record is
+                    // lost to the pull's repair path, instead of every record after it.
+                    return (lines, from + bigRead);
+                }
+            }
 
             foreach (var line in text[..lastBreak].Split('\n'))
                 if (!string.IsNullOrWhiteSpace(line)) lines.Add(line.TrimEnd('\r'));

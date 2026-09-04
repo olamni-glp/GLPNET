@@ -162,12 +162,36 @@ public static class HelloProtocol
     /// <summary>Box carrying a peer's declared capabilities.</summary>
     public const string Box = "hello";
 
-    public static byte[] Encode(PeerCapabilities caps) =>
+    /// <summary>
+    /// Encode a capability declaration. <paramref name="isReply"/> marks it as an ANSWER to another
+    /// hello, which is what terminates the exchange.
+    /// <para>
+    /// Without this marker the only way to avoid an infinite volley was to reply solely to a peer's
+    /// FIRST hello of the process — and that broke peer restart: the survivor's cache still held the
+    /// restarted peer, so it never answered the fresh declaration, and the restarted peer's
+    /// fail-closed gate then refused everything the survivor sent. Marking replies scopes the
+    /// suppression to the HANDSHAKE instead of the process, which is the correct scope.
+    /// </para>
+    /// </summary>
+    public static byte[] Encode(PeerCapabilities caps, bool isReply = false) =>
         System.Text.Encoding.UTF8.GetBytes(JsonSerializer.Serialize(new
         {
             term_space_aware = caps.TermSpaceAware,
             space_id = caps.AdvertisedSpaceId,
+            is_reply = isReply,
         }));
+
+    /// <summary>True if this hello is an answer to another, and so must not be answered again.</summary>
+    public static bool IsReply(byte[] bytes)
+    {
+        try
+        {
+            using var doc = JsonDocument.Parse(System.Text.Encoding.UTF8.GetString(bytes));
+            return doc.RootElement.TryGetProperty("is_reply", out var r)
+                   && r.ValueKind == JsonValueKind.True;
+        }
+        catch (JsonException) { return false; }
+    }
 
     public static PeerCapabilities Decode(byte[] bytes)
     {

@@ -81,26 +81,59 @@ public sealed class Round5RegressionTests
     /// infinite loop, and both status surfaces still looked healthy throughout.
     /// </summary>
     [Fact]
-    public async Task AHelloIsAnsweredExactlyOnceNoMatterHowManyArrive()
+    public async Task AReplyHelloIsNeverAnsweredAgainSoTheExchangeTerminates()
     {
         string id = NodeId("olamnit");
         var link = new RecordingLink("A");
         var svc = new FederationService(Cfg(Peer("olamnit", "olamnit", "192.168.0.136:47890")),
                                         link, NewFold(), new InMemoryBoardLog());
 
-        for (int i = 0; i < 5; i++)
-        {
-            link.PushInbound(new LinkInbound(id,
-                HelloProtocol.Encode(new PeerCapabilities(true, LiveEpoch)), HelloProtocol.Box));
-            await svc.ReceiveOneAsync();
-        }
+        // A peer's DECLARATION is answered — that is what fixed one-way federation.
+        link.PushInbound(new LinkInbound(id,
+            HelloProtocol.Encode(new PeerCapabilities(true, LiveEpoch)), HelloProtocol.Box));
+        await svc.ReceiveOneAsync();
 
-        // ONE reply, not five — and not an unbounded volley.
+        var reply = Assert.Single(link.Sent.Where(s => s.Box == HelloProtocol.Box));
+        Assert.True(HelloProtocol.IsReply(reply.Bytes));      // marked, so the peer will not answer it
+        Assert.True(HelloProtocol.Decode(reply.Bytes).TermSpaceAware);
+
+        // AND THE PEER'S ANSWER IS NOT ANSWERED. This is what terminates the exchange: replying to
+        // every hello made two daemons volley control frames forever.
+        link.PushInbound(new LinkInbound(id,
+            HelloProtocol.Encode(new PeerCapabilities(true, LiveEpoch), isReply: true), HelloProtocol.Box));
+        await svc.ReceiveOneAsync();
+
+        Assert.Single(link.Sent.Where(s => s.Box == HelloProtocol.Box));   // still ONE, not two
+    }
+
+    /// <summary>
+    /// A peer that RESTARTS must be answered again.
+    /// <para>
+    /// Suppressing on "have we seen this peer before" was scoped to the PROCESS: when one peer
+    /// restarted and the other did not, the survivor's cache still held it, so the fresh declaration
+    /// went unanswered and the restarted peer's fail-closed gate refused everything the survivor
+    /// sent — permanently, and with both surfaces reporting an admitted peer.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public async Task ARestartedPeersFreshDeclarationIsAnswered()
+    {
+        string id = NodeId("olamnit");
+        var link = new RecordingLink("A");
+        var svc = new FederationService(Cfg(Peer("olamnit", "olamnit", "192.168.0.136:47890")),
+                                        link, NewFold(), new InMemoryBoardLog());
+
+        link.PushInbound(new LinkInbound(id,
+            HelloProtocol.Encode(new PeerCapabilities(true, LiveEpoch)), HelloProtocol.Box));
+        await svc.ReceiveOneAsync();
         Assert.Single(link.Sent.Where(s => s.Box == HelloProtocol.Box));
 
-        // POSITIVE CONTROL: it did answer, so one-way federation is still fixed.
-        Assert.True(HelloProtocol.Decode(
-            link.Sent.Single(s => s.Box == HelloProtocol.Box).Bytes).TermSpaceAware);
+        // The peer restarts and declares again — a NEW declaration, not a reply.
+        link.PushInbound(new LinkInbound(id,
+            HelloProtocol.Encode(new PeerCapabilities(true, LiveEpoch)), HelloProtocol.Box));
+        await svc.ReceiveOneAsync();
+
+        Assert.Equal(2, link.Sent.Count(s => s.Box == HelloProtocol.Box));
     }
 
     // ---- R5-03: MY OWN FIX DOUBLE-APPENDED EVERY POST ------------------------------------------
@@ -151,6 +184,98 @@ public sealed class Round5RegressionTests
             Assert.Contains(link.Sent, s => s.Box == FederationService.BoardBox);
         }
         finally { try { Directory.Delete(root, true); } catch { } }
+    }
+
+    // ---- R6-04: a permission refusal must not be retried as lock contention --------------------
+
+    /// <summary>
+    /// The refusal was raised as a plain <c>IOException</c>, which the minting retry loop caught —
+    /// and its next iteration took the existing-file fast path and returned the UNPROTECTED key as
+    /// a success. A security refusal and lock contention must not look alike to a catch clause.
+    /// <para>
+    /// The real check is Unix-only, so on this host it never runs and a test written against it
+    /// would assert nothing. The verdict is injected so the refusal path is actually exercised.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public void AnInsecureKeyIsRefusedAndNotRetriedIntoSuccess()
+    {
+        string dir = Path.Combine(Path.GetTempPath(), "ynet_perm", Guid.NewGuid().ToString("n")[..8]);
+        string path = Path.Combine(dir, "node.key");
+        try
+        {
+            // THE MINT PATH, which is where the retry loop lives and where the defect was.
+            // Permissions are insecure from the outset, exactly as on a filesystem that will not
+            // honour them.
+            int mintProbes = 0;
+            NodeIdentityStore.PermissionsAreInsecureOverride = _ => { mintProbes++; return true; };
+            Assert.Throws<InsecureKeyPermissionsException>(
+                () => new NodeIdentityStore(path).LoadOrMint("host"));
+
+            // EXACTLY ONE ATTEMPT. Caught by the lock-contention retry the refusal was re-raised
+            // anyway — a hundred attempts later, having RE-MINTED AND RE-EXPOSED the key each time.
+            // The attempt count is the only thing separating "refused" from "retried into refusal".
+            Assert.Equal(1, mintProbes);
+            Assert.False(File.Exists(path));
+
+            // Now mint properly, with permissions considered fine.
+            NodeIdentityStore.PermissionsAreInsecureOverride = _ => false;
+            var store = new NodeIdentityStore(path);
+            Assert.NotNull(store.LoadOrMint("host"));
+            Assert.True(File.Exists(path));
+
+            // Now the key is insecure. Loading it must REFUSE — not retry into the fast path and
+            // hand back the very key the refusal exists to withhold.
+            int probes = 0;
+            NodeIdentityStore.PermissionsAreInsecureOverride = _ => { probes++; return true; };
+            Assert.Throws<InsecureKeyPermissionsException>(
+                () => new NodeIdentityStore(path).LoadOrMint("host"));
+
+            // EXACTLY ONE ATTEMPT. Asserting only the exception type does not discriminate: when the
+            // refusal is caught by the lock-contention retry it is re-raised anyway, just a hundred
+            // attempts later — and on each of those the key is re-minted and re-exposed. The
+            // probe COUNT is the only thing that separates "refused" from "retried into refusal".
+            Assert.Equal(1, probes);
+
+            // And the exposed key is GONE, not left on disk for the next process to pick up.
+            Assert.False(File.Exists(path));
+        }
+        finally
+        {
+            NodeIdentityStore.PermissionsAreInsecureOverride = null;
+            try { Directory.Delete(dir, true); } catch { }
+        }
+    }
+
+    // ---- R6-05: the counter invariant belongs at CONSTRUCTION, not only at the decoder ---------
+
+    /// <summary>
+    /// Enforcing it in <c>FromJson</c> alone left three ways in: the factory, the scheduler-native
+    /// adapter that calls it, and any local caller. A nonpositive counter is reported as ALREADY
+    /// HELD by every frontier, so such an operation can never be recovered after a lost push.
+    /// </summary>
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-5)]
+    public void ANonpositiveCounterIsRefusedAtConstruction(long counter) =>
+        Assert.Throws<ArgumentOutOfRangeException>(() =>
+            FederationOp.Create(new Dot("g", counter), "g", "board_post", Body));
+
+    /// <summary>The scheduler-native adapter goes through the factory, so it inherits the guard.</summary>
+    [Fact]
+    public void ASchedulerRowWithANonpositiveSeqIsNotAdapted()
+    {
+        using var doc = JsonDocument.Parse(
+            "{\"actor\":\"gavriella\",\"op_id\":\"gavriella:000000\",\"op_type\":\"claim\",\"seq\":0}");
+
+        // The adapter must not hand back an operation the frontier would call already-held.
+        Assert.ThrowsAny<Exception>(() => SchedulerBoardLog.AdaptSchedulerLine(doc.RootElement));
+
+        // POSITIVE CONTROL: a well-formed row still adapts.
+        using var ok = JsonDocument.Parse(
+            "{\"actor\":\"gavriella\",\"op_id\":\"gavriella:000007\",\"op_type\":\"claim\",\"seq\":7}");
+        Assert.Equal(new Dot("gavriella", 7),
+            SchedulerBoardLog.AdaptSchedulerLine(ok.RootElement)!.OpId);
     }
 
     // ---- R5-02: strict attribution refused this host's OWN operations --------------------------
