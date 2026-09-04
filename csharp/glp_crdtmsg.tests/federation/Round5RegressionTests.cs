@@ -186,6 +186,171 @@ public sealed class Round5RegressionTests
         finally { try { Directory.Delete(root, true); } catch { } }
     }
 
+    // ---- R12-03: a dial must not report a link that cannot carry board traffic -----------------
+
+    /// <summary>
+    /// The handshake result was DISCARDED, so a peer that never replied — or one that explicitly
+    /// declared <c>TermSpaceAware=false</c> — was still marked connected and reported Admitted.
+    /// Health then said Federating and pushes began, into a gate that could not admit any of them.
+    /// </summary>
+    [Fact]
+    public async Task APeerThatDeclaresItIsNotTermSpaceAwareIsNotTreatedAsUsable()
+    {
+        string id = NodeId("olamnit");
+        var link = new RecordingLink("A");
+        var svc = new FederationService(Cfg(Peer("olamnit", "olamnit", "192.168.0.136:47890")),
+                                        link, NewFold(), new InMemoryBoardLog())
+        {
+            DialHandshakeTimeout = TimeSpan.FromMilliseconds(200),
+        };
+
+        // The peer declares, and declares that it is NOT aware.
+        link.PushInbound(new LinkInbound(id,
+            HelloProtocol.Encode(new PeerCapabilities(TermSpaceAware: false, null), isReply: true),
+            HelloProtocol.Box));
+        await svc.ReceiveOneAsync();
+
+        await svc.DialAsync(id);
+
+        // Mutual verification DID happen, so it is admitted...
+        Assert.Equal(Tri.Yes, svc.Status().PeerAdmitted);
+        // ...but the link is NOT usable for board traffic, so health must not claim federation.
+        Assert.Equal(FederationHealth.DegradedLocalOnly, svc.Health);
+    }
+
+    /// <summary>POSITIVE CONTROL: an AWARE peer's dial does yield a usable, federating link.</summary>
+    [Fact]
+    public async Task AnAwarePeerYieldsAUsableLink()
+    {
+        string id = NodeId("olamnit");
+        var link = new RecordingLink("A");
+        var svc = new FederationService(Cfg(Peer("olamnit", "olamnit", "192.168.0.136:47890")),
+                                        link, NewFold(), new InMemoryBoardLog())
+        {
+            DialHandshakeTimeout = TimeSpan.FromMilliseconds(200),
+        };
+
+        link.PushInbound(new LinkInbound(id,
+            HelloProtocol.Encode(new PeerCapabilities(true, LiveEpoch), isReply: true), HelloProtocol.Box));
+        await svc.ReceiveOneAsync();
+
+        Assert.Equal(AdmissionOutcome.Admitted, await svc.DialAsync(id));
+        Assert.Equal(FederationHealth.Federating, svc.Health);
+    }
+
+    // ---- R12-04: capabilities must not outlive the transport session ---------------------------
+
+    /// <summary>
+    /// If a peer restarts and reconnects before a local send notices the old connection failed,
+    /// <c>_peerCaps</c> still held its PREVIOUS declaration. QUIC box streams are independently
+    /// ordered, so the new session could deliver a board frame before its hello and be admitted on
+    /// the old session's word — defeating the per-session fail-closed gate exactly when it matters.
+    /// </summary>
+    /// <remarks>
+    /// 🔴 THIS TEST DOES NOT YET DISCRIMINATE. Reverting the fix (removing the _peerCaps clear on a
+    /// fresh session) leaves it GREEN, so it does not prove the behaviour it names. The fix itself
+    /// is sound and reviewed; the test is not, and saying so is better than counting it as coverage.
+    /// A green test that survives its own mutant is exactly the false-green this era exists to
+    /// remove — see the four others in this file that had to be rewritten for the same reason.
+    /// TODO: drive a real second session rather than inferring one from a failed send.
+    /// </remarks>
+    [Fact]
+    public async Task AReconnectingPeerMustDeclareAgainBeforeItsBoardDataIsAdmitted()
+    {
+        string id = NodeId("olamnit");
+        var link = new RecordingLink("A");
+        var svc = new FederationService(Cfg(Peer("olamnit", "olamnit", "192.168.0.136:47890")),
+                                        link, NewFold(), new InMemoryBoardLog());
+
+        // Session 1: it declares, and a board op is accepted.
+        link.PushInbound(new LinkInbound(id,
+            HelloProtocol.Encode(new PeerCapabilities(true, LiveEpoch), isReply: true), HelloProtocol.Box));
+        await svc.ReceiveOneAsync();
+        Assert.NotNull(svc.DeclaredCapabilitiesOf(id));
+
+        // The link drops.
+        link.FailSends = true;
+        await svc.AppendAndPushAsync(Op(NodeId("gavriella"), 1));
+        link.FailSends = false;
+
+        // Session 2 delivers a BOARD frame first — before any hello. The stale "aware: true" must
+        // not admit it.
+        var op = Op(id, 5);
+        link.PushInbound(new LinkInbound(id,
+            Encoding.UTF8.GetBytes(op.ToCanonicalJson()), FederationService.BoardBox));
+
+        await Assert.ThrowsAsync<MergeRefusedException>(() => svc.ReceiveOneAsync());
+    }
+
+    // ---- R12-07: the LOCAL append path must be attribution-checked ------------------------------
+
+    /// <summary>
+    /// <c>AppendAndPushAsync</c> applied no attribution gate, so a local caller could supply
+    /// mismatched identity fields and have the operation PERMANENTLY appended and folded — while
+    /// every peer's gate rejected the identical operation. Guaranteed divergence, with the poison in
+    /// an append-only journal that has no delete.
+    /// </summary>
+    [Fact]
+    public async Task ALocallyAppendedOpWithContradictoryAttributionIsRefused()
+    {
+        var fold = NewFold();
+        var log = new InMemoryBoardLog();
+        var svc = new FederationService(Cfg(), new RecordingLink("A"), fold, log);
+
+        // op_id.peer says alice, origin says bob — every PEER refuses this.
+        var contradictory = FederationOp.Create(new Dot("alice", 1), "bob", "board_post", Body);
+
+        await Assert.ThrowsAsync<AttributionRefusedException>(
+            () => svc.AppendAndPushAsync(contradictory));
+
+        Assert.Equal(0, log.Count);                       // NOTHING durable
+        Assert.False(fold.Contains(contradictory.OpId));  // and nothing visible
+
+        // POSITIVE CONTROL: a consistent local op is appended and folded as before.
+        var ok = Op("gavriella-node", 1);
+        await svc.AppendAndPushAsync(ok);
+        Assert.Equal(1, log.Count);
+        Assert.True(fold.Contains(ok.OpId));
+    }
+
+    // ---- R12-01: the adapter must carry a scheduler record's TERM ------------------------------
+
+    /// <summary>
+    /// A scheduler `leader_claim` carries leadership data. Dropping it made the fold classify REAL
+    /// leadership records as NotLeadershipBearing and exclude them from <c>WinningTerm</c> entirely.
+    /// <para>
+    /// THE LIVE FOSSIL IS A SCHEDULER RECORD — term 5961694 = floor(unix_ts/300). An adapter that
+    /// discards terms makes the one operation the STOP ORDER exists for invisible to the very
+    /// machinery built to contain it.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public void ASchedulerLeaderClaimKeepsItsTermAndLandsInTheLegacySpace()
+    {
+        using var doc = JsonDocument.Parse(
+            "{\"actor\":\"gavriella\",\"op_id\":\"gavriella:000009\",\"op_type\":\"leader_claim\","
+            + "\"seq\":9,\"term\":5961694}");
+
+        var op = SchedulerBoardLog.AdaptSchedulerLine(doc.RootElement);
+        Assert.NotNull(op);
+
+        // The term SURVIVES the adaptation.
+        Assert.NotNull(op!.Term);
+        Assert.Equal(5961694, op.Term!.Value.EraCounter);
+
+        // And a bare pre-term-space number belongs to the LEGACY space (FR-027): retained and
+        // attributed, incomparable to any live term — never dropped, never coerced into the live one.
+        Assert.Equal(TermSpace.LegacyId, op.Term!.Value.SpaceId);
+
+        var fold = NewFold();
+        fold.Apply(op);
+        Assert.Equal(OrderingDisposition.UnorderedLegacy, fold.DispositionOf(op));
+
+        // THE PROPERTY THAT MATTERS: the fossil is present and does NOT win.
+        Assert.True(fold.Contains(op.OpId));
+        Assert.Null(fold.WinningTerm());
+    }
+
     // ---- R6-04: a permission refusal must not be retried as lock contention --------------------
 
     /// <summary>
@@ -274,7 +439,7 @@ public sealed class Round5RegressionTests
         // POSITIVE CONTROL: a well-formed row still adapts.
         using var ok = JsonDocument.Parse(
             "{\"actor\":\"gavriella\",\"op_id\":\"gavriella:000007\",\"op_type\":\"claim\",\"seq\":7}");
-        Assert.Equal(new Dot("gavriella", 7),
+        Assert.Equal(new Dot("sched:gavriella", 7),
             SchedulerBoardLog.AdaptSchedulerLine(ok.RootElement)!.OpId);
     }
 

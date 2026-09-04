@@ -903,8 +903,12 @@ public sealed class Round2RegressionTests
             Assert.Equal(2, ops.Count);
             Assert.Equal(2, log.AdaptedLines);
             Assert.Equal(0, log.UnreadableLines);
-            Assert.Equal(new Dot("gavriella", 1), ops[0].OpId);
-            Assert.Equal("gavriella", ops[0].Origin);
+            // NAMESPACED. A scheduler record's identity is (actor, seq) — a per-board identity, NOT
+            // the NodeId the federation contract names. The prefix says what this identity actually
+            // is instead of claiming a NodeId the record never carried, and stops a scheduler dot
+            // colliding with a federation one.
+            Assert.Equal(new Dot("sched:gavriella", 1), ops[0].OpId);
+            Assert.Equal("sched:gavriella", ops[0].Origin);
             Assert.Equal("claim", ops[0].Kind);
             // The original record is carried VERBATIM — nothing is rewritten (FR-011).
             Assert.Equal("wp-a", ops[0].Body.GetProperty("wp_id").GetString());
@@ -932,7 +936,7 @@ public sealed class Round2RegressionTests
 
             var ops = await new SchedulerBoardLog(root, "gavriella").ReadAllAsync();
             Assert.Equal(3, ops.Count);
-            Assert.Equal(new[] { "ariellas", "gavriella", "olamnit" },
+            Assert.Equal(new[] { "sched:ariellas", "sched:gavriella", "sched:olamnit" },
                          ops.Select(o => o.Origin).OrderBy(x => x));
         }
         finally { try { Directory.Delete(root, true); } catch { } }

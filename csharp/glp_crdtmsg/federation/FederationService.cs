@@ -296,8 +296,27 @@ public sealed class FederationService : IAsyncDisposable
                 // the 60-second pull — blowing the 5-second steady-state target for the ordinary
                 // case of "dial, then post", which is exactly what the runbook tells an operator to
                 // do. Awaiting our own write proves only that we wrote.
-                await WaitForPeerCapabilitiesAsync(entry.NodeId, DialHandshakeTimeout, ct)
-                    .ConfigureAwait(false);
+                // THE RESULT IS USED, NOT DISCARDED — and "declared" is not the same as "usable".
+                //
+                // Ignoring it meant a peer that never replied, OR one that explicitly declared
+                // TermSpaceAware=false, was still marked connected and reported Admitted: health
+                // said Federating and pushes began, while the peer's merge gate could not admit any
+                // of them. The dial reported success for a link that could not carry board traffic.
+                if (DialHandshakeTimeout > TimeSpan.Zero)
+                {
+                    await WaitForPeerCapabilitiesAsync(entry.NodeId, DialHandshakeTimeout, ct)
+                        .ConfigureAwait(false);
+
+                    if (DeclaredCapabilitiesOf(entry.NodeId) is not { TermSpaceAware: true })
+                    {
+                        // Reachable and pinned, but not usable for board traffic yet. It stays
+                        // ADMITTED (mutual verification did happen) and out of _connected, so the
+                        // pull loop re-dials it rather than pushing into a gate that will refuse.
+                        _connected.TryRemove(entry.NodeId, out _);
+                        PublishStatus();
+                        return AdmissionOutcome.Admitted;
+                    }
+                }
                 // KEYED BY PEER. A single field was overwritten by every successful dial, so with
                 // two peers an op from a same-machine one inherited the last remote peer's "No" and
                 // was reported as cross-host evidence — the precise thing FR-022 exists to prevent.
@@ -375,6 +394,24 @@ public sealed class FederationService : IAsyncDisposable
         await _admitGate.WaitAsync(ct).ConfigureAwait(false);
         try
         {
+            // THE LOCAL PATH IS CHECKED TOO.
+            //
+            // It applied NO attribution gate, so a local caller could supply mismatched OpId.PeerName,
+            // Origin or Term.HostId and have the operation PERMANENTLY appended and folded here —
+            // while every peer's gate rejected the identical operation. Guaranteed divergence, with
+            // the poison in an append-only journal that has no delete. A gate every remote path
+            // enforces and the local one does not is a gate with a door beside it.
+            var localAttribution = OpAttribution.Check(op, KeyForOrigin(op.Origin));
+            if (localAttribution.Verdict is AttributionVerdict.Inconsistent
+                                         or AttributionVerdict.SignatureInvalid)
+                throw new AttributionRefusedException(localAttribution);
+
+            if (localAttribution.Verdict == AttributionVerdict.UnverifiedOrigin)
+            {
+                if (RequireVerifiedAttribution) throw new AttributionRefusedException(localAttribution);
+                RequireVerifiableTerm(op, localAttribution);
+            }
+
             if (_fold.Contains(op.OpId))
             {
                 var held = _fold.Operations.FirstOrDefault(o => o.OpId.Equals(op.OpId));
@@ -818,6 +855,17 @@ public sealed class FederationService : IAsyncDisposable
         var entry = _peers.Find(peerName) ?? _peers.Entries.FirstOrDefault(e => e.Name == peerName);
         if (entry is null) return;
         _admitted[entry.NodeId] = 0;
+
+        // A FRESH CONNECTION INVALIDATES THE PREVIOUS SESSION'S DECLARATION.
+        //
+        // If a peer restarted and reconnected before a local send noticed the old connection had
+        // failed, _peerCaps still held its previous "TermSpaceAware = true". QUIC box streams are
+        // independently ordered, so the NEW session could deliver a board frame before its hello and
+        // be admitted on the OLD session's word — defeating the per-session fail-closed gate exactly
+        // when it matters. Seeing traffic from a peer we did not consider connected is that signal.
+        if (!_connected.ContainsKey(entry.NodeId))
+            _peerCaps.TryRemove(entry.NodeId, out _);
+
         _connected[entry.NodeId] = 0;   // a frame just arrived on it, so the link is live
     }
 
@@ -906,6 +954,22 @@ public sealed class FederationService : IAsyncDisposable
 
                 if (!_connected.ContainsKey(entry.NodeId)) continue;
                 await RequestPullAsync(entry.NodeId, ct).ConfigureAwait(false);
+
+                // RE-DIAL IN THE SAME TICK THAT DETECTED THE STALENESS.
+                //
+                // A stale entry survives until a send fails, and RequestPullAsync marks it down —
+                // but the loop then waited a FULL INTERVAL before re-dialling. At the default 60 s
+                // that puts recovery around 120 s away before the handshake and transfer are even
+                // counted, which alone exceeds the documented convergence bound.
+                if (!_connected.ContainsKey(entry.NodeId))
+                {
+                    try { await DialAsync(entry.NodeId, ct).ConfigureAwait(false); }
+                    catch (OperationCanceledException) { return; }
+                    catch { /* still unreachable; the next tick tries again */ }
+
+                    if (_connected.ContainsKey(entry.NodeId))
+                        await RequestPullAsync(entry.NodeId, ct).ConfigureAwait(false);
+                }
             }
 
             PublishStatus();   // keeps the separate `status` command's reading fresh

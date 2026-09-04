@@ -166,7 +166,7 @@ public sealed class Round4RegressionTests
             var pushed = link.Sent.Where(s => s.Box == FederationService.BoardBox).ToList();
             Assert.NotEmpty(pushed);
             var op = FederationOp.FromJson(Encoding.UTF8.GetString(pushed[0].Bytes));
-            Assert.Equal(new Dot("olamnit", 42), op.OpId);
+            Assert.Equal(new Dot("sched:olamnit", 42), op.OpId);
             Assert.Equal("claim", op.Kind);
             Assert.Equal("wp-x", op.Body.GetProperty("wp_id").GetString());   // carried VERBATIM
         }

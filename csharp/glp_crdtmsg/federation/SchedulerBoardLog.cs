@@ -191,6 +191,22 @@ public sealed class SchedulerBoardLog : IBoardLog
     }
 
     /// <summary>
+    /// The dot/origin identity for a scheduler-native record: <c>sched:&lt;actor&gt;</c>.
+    /// <para>
+    /// NAMESPACED DELIBERATELY. A scheduler record is identified by <c>(actor, seq)</c>, which is a
+    /// per-board identity, not the Ed25519 NodeId the federation attribution contract names. Using
+    /// the bare actor name meant a scheduler dot could collide with a federation dot, and two hosts
+    /// carrying the same actor name would collapse different operations onto one dot — a conflict
+    /// the frontier then reports as already held.
+    /// </para>
+    /// <para>
+    /// The prefix is honest about what this identity IS. It says "this came from the scheduler board
+    /// as actor X", which is true and checkable, instead of claiming a NodeId the record never had.
+    /// </para>
+    /// </summary>
+    public static string SchedulerDotPeer(string actor) => "sched:" + actor;
+
+    /// <summary>
     /// Adapt a scheduler-native op into the federated view. The original line is carried VERBATIM as
     /// the body, so nothing about the lane's record is lost, reinterpreted, or written back changed.
     /// </summary>
@@ -218,6 +234,36 @@ public sealed class SchedulerBoardLog : IBoardLog
         string kind = r.TryGetProperty("op_type", out var kEl) && kEl.ValueKind == JsonValueKind.String
             ? kEl.GetString()! : "sched_op";
 
-        return FederationOp.Create(new Dot(actor, seq), actor, kind, r.Clone());
+        // CARRY THE TERM. A scheduler `leader_claim` carries leadership data, and dropping it made
+        // the fold classify REAL leadership records as NotLeadershipBearing — excluding them from
+        // WinningTerm entirely and bypassing the legacy/live/unknown handling FR-013, FR-027 and
+        // FR-031 require. The live fossil (term 5961694) is a scheduler record; if the adapter
+        // discards terms, the one op the STOP ORDER exists for becomes invisible to it.
+        Term? term = null;
+        if (r.TryGetProperty("term", out var tEl))
+        {
+            if (tEl.ValueKind == JsonValueKind.Object)
+            {
+                if (tEl.TryGetProperty("era_counter", out var ec) && ec.ValueKind == JsonValueKind.Number
+                    && ec.TryGetInt64(out long counter))
+                {
+                    term = new Term(
+                        tEl.TryGetProperty("space", out var sp) && sp.ValueKind == JsonValueKind.String
+                            ? sp.GetString()! : TermSpace.LegacyId,
+                        counter,
+                        SchedulerDotPeer(actor));
+                }
+            }
+            else if (tEl.ValueKind == JsonValueKind.Number && tEl.TryGetInt64(out long bare))
+            {
+                // A BARE NUMBER — the pre-term-space shape, which is what the fossil actually is.
+                // It belongs to the LEGACY space by FR-027: retained, attributed, and incomparable
+                // to any live term rather than dropped or coerced into the live one.
+                term = new Term(TermSpace.LegacyId, bare, SchedulerDotPeer(actor));
+            }
+        }
+
+        return FederationOp.Create(new Dot(SchedulerDotPeer(actor), seq),
+                                   SchedulerDotPeer(actor), kind, r.Clone(), term);
     }
 }

@@ -111,8 +111,23 @@ public sealed class NodeIdentityStore
                 var cert = Mint(commonName);
 
                 // Write to a temp file and move it into place, so a reader never sees a partial key.
+                // CREATE IT PRIVATE, THEN WRITE. Under a typical 022 umask File.WriteAllBytes
+                // creates the unencrypted PFX as 0644 and it was only hardened AFTER the move, so
+                // another local account could read the private key during that window — and a
+                // concurrent LoadOrMint could observe the broadly-readable file and delete it.
+                // Permissions have to exist before the secret does.
                 string tmp = _path + ".tmp";
-                File.WriteAllBytes(tmp, cert.Export(X509ContentType.Pkcs12));
+                using (var fs = new FileStream(tmp, FileMode.Create, FileAccess.Write, FileShare.None))
+                {
+                    if (!OperatingSystem.IsWindows())
+                        File.SetUnixFileMode(tmp, UnixFileMode.UserRead | UnixFileMode.UserWrite);
+
+                    byte[] pfx = cert.Export(X509ContentType.Pkcs12);
+                    fs.Write(pfx, 0, pfx.Length);
+                    fs.Flush(flushToDisk: true);
+                }
+
+                RestrictToOwner(tmp);              // verify BEFORE it is visible under its real name
                 File.Move(tmp, _path, overwrite: false);
                 RestrictToOwner(_path);
                 return cert;
