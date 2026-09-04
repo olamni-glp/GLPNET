@@ -1,0 +1,47 @@
+# test/ring/atomvm-unsupported.list — AtomVM's unsupported constructs (feature 101, T017).
+#
+# 🔴 THIS IS A LOWER BOUND, NOT AN EXHAUSTIVE SUBSET. Read the provenance before trusting it.
+#
+# Engineer ruling Q-GLPNETS17-01 (2026-09-04): adopt the measured dossier boundary AND install
+# AtomVM to measure exhaustively — BOTH, both critical. This file is the first half. The second
+# half (an actual AtomVM toolchain on a reachable host) is staged in
+# test/ring/install-atomvm.md and is NOT yet done; until it is, every entry below is sourced
+# from a measurement taken on ONE AtomVM version on ONE host, and the absence of an entry is
+# NOT evidence that a construct is supported.
+#
+# PROVENANCE — why this is measurement and not a guess (research.md R3 forbade guessing):
+#   docs/research/gleam-atomvm/dossier.md §3, §4.3 records a spike that actually RAN
+#   AtomVM 0.6.6 (AtomVM-linux-x86_64-static-mbedtls-v0.6.6, host build, no embedded HW):
+#     * a gleam_otp actor build CRASHED with "module proc_lib cannot be resolved";
+#     * the raw erlang:spawn + gleam_erlang Subjects variant RAN, byte-identical to Erlang.
+#   That is an observed failure and an observed success, not documentation.
+#
+# FORMAT: <construct>\t<reason>
+# The construct string is matched against import paths and FFI targets by
+# test/ring/check_atomvm_subset.sh, which refuses at BUILD time naming the construct (C3).
+
+proc_lib	AtomVM 0.6.6 does not resolve the proc_lib module; observed crash "module proc_lib cannot be resolved" (dossier §3)
+gleam_otp	routes through proc_lib — the actor build is the case that produced the observed crash (dossier §4.3)
+gleam/otp	the Gleam import path for gleam_otp; same proc_lib dependency
+gleam/erlang/process.spawn	gleam_erlang's own process.spawn routes through proc_lib; use raw erlang:spawn + gleam_erlang Subjects instead (dossier §4.3)
+gen_server	an OTP behaviour built on proc_lib
+gen_statem	an OTP behaviour built on proc_lib
+gen_event	an OTP behaviour built on proc_lib
+supervisor	an OTP behaviour built on proc_lib
+
+# ---------------------------------------------------------------------------
+# NOT LISTED, AND DELIBERATELY SO — these are the limits of what was measured:
+#
+#   * Only AtomVM 0.6.6 was exercised. A later or earlier AtomVM may differ in both
+#     directions.
+#   * Only the constructs the spike's smoke test happened to touch were exercised. AtomVM's
+#     BEAM/OTP subset is documented upstream as substantially narrower than full OTP (ETS,
+#     several stdlib modules, parts of the process API). NONE of that was measured here, so
+#     none of it appears above — listing it would be exactly the guess R3 forbade.
+#   * Sequential BEAM code (a WAM-style bytecode interpreter) was assessed as fine on AtomVM;
+#     only the SPAWN primitive needed the raw form. That is an assessment in the dossier, and
+#     the one part of it that was actually executed is the spawn result recorded above.
+#
+# Consequence for the gate: a PASS from check_atomvm_subset.sh means "none of the constructs
+# we have measured as unsupported are present". It does NOT mean "this will run on AtomVM".
+# The report says so, and the aggregate still refuses on the unread ring.

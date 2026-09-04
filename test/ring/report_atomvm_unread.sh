@@ -62,7 +62,7 @@ if [ "$TOOLCHAIN" = "present" ] || [ "${MAUI_HITS:-0}" -gt 0 ]; then
     exit 2
 fi
 
-REASON="AtomVM toolchain absent on this host (no atomvm/packbeam) and the MAUI Blazor Hybrid host is target-side, absent from this repo; T017 construct enumeration unmeasured"
+REASON="AtomVM toolchain absent on this host (no atomvm/packbeam) and the MAUI Blazor Hybrid host is target-side, absent from this repo; the C3 construct list is a LOWER BOUND measured on AtomVM 0.6.6 only (Q-GLPNETS17-01), so no corpus run has been attempted on this ring"
 
 REPORT="$OUT/atomvm.report"
 {

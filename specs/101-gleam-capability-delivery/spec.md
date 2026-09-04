@@ -99,7 +99,7 @@ afterwards — verifiably, not by inspection.
 | **FR-001** | The shared capability is expressed as a **contract with zero third-party runtime dependencies**, with exactly one realization per runtime held to it. Inherits `008` FR-017. |
 | **FR-002** | Ring admission is decided by **measured contract consumption, never by a name**. Inherits `008` FR-018. |
 | **FR-003** | The BEAM realization targets the **workstation** ring (Windows + Linux daemon family). |
-| **FR-004** | The AtomVM realization targets the **app** ring, and **refuses loudly and by name** on any construct outside AtomVM's supported subset. |
+| **FR-004** | The AtomVM realization targets the **app** ring, and **refuses loudly and by name, at build time**, on any construct in the **recorded unsupported set**. That set is `test/ring/atomvm-unsupported.list`; every entry MUST be an observation with its provenance, and the set MUST declare whether it is exhaustive. Today it is **a lower bound measured on AtomVM 0.6.6 only** (ruling `Q-GLPNETS17-01`), so a passing gate asserts *no recorded-unsupported construct is present* — **not** *this runs on AtomVM* — and MUST say so on every pass. Amended 2026-09-04 (analyze finding A2): the original wording said "any construct outside AtomVM's supported subset", which claimed a completeness no measurement here supports. |
 | **FR-005** | The Dart runtime, the Flutter app and the `.glp` corpus are **retained in glpnet and never copied** — per the 2026-09-02 rulings and glpnet's own single-source-of-truth policy. |
 | **FR-006** | Every parity/conformance result carries its **denominator** and names what it did not run. A silent-empty result is a failure. |
 | **FR-007** | Every excused case (blocked / gap / fork) carries a **reason**. An exclusion with no reason is indistinguishable from a case nobody ran. |
@@ -137,6 +137,41 @@ afterwards — verifiably, not by inspection.
   `attempted = agreed + diverged + excused` holds exactly.
 
 ---
+
+## Clarifications
+
+Recorded from engineer rulings. The `clarify` stage was marked complete on 2026-09-02 without this
+section existing — `buildkit-builder status` reported the drift, and this closes it. Each entry
+names the ruling that decided it, so the decision is traceable rather than folded silently into the
+requirements.
+
+### Session 2026-09-03 — `Q-GLPNETS16`
+
+- **Q-GLPNETS16-03 · Is 101 the delivery feature, given six existing Gleam-port features?**
+  → *keep-101-bind-the-six*: 101 remains the delivery feature **and** the six unbound Gleam port
+  ids are to be bound. Explicitly ruled: **no Gleam/GLP compliance loopholes** — the ring split does
+  not become a route to exempt either runtime from the language's rules.
+
+### Session 2026-09-04 — `Q-GLPNETS17` (validated against BK-QUESTION v2)
+
+- **Q-GLPNETS17-01 · Where does the AtomVM unsupported-construct enumeration come from?**
+  → **BOTH** *adopt-the-measured-dossier-boundary* **AND** *install-AtomVM-and-measure*, both ruled
+  critical. Consequence: `test/ring/atomvm-unsupported.list` is adopted now from the spike that
+  actually ran AtomVM 0.6.6 (observed `module proc_lib cannot be resolved`), and is labelled
+  **a lower bound, not the subset**; the exhaustive measurement is staged in
+  `test/ring/install-atomvm.md` and remains open. A pass from the C3 gate therefore means *no
+  measured-unsupported construct is present*, **not** *this will run on AtomVM* — and the gate
+  prints that limit on every pass.
+- **Q-GLPNETS17-02 · On what basis may era 101 close, when the aggregate can never go green here?**
+  → *close-on-scope-bounded-aggregate*: the era closes when every ring measurable on this host is
+  green and every ring that is not is **UNREAD with a named, re-measured reason**. **The aggregate
+  guard is not weakened** — it continues to refuse a full-delivery claim (C4-R / SC-006). The close
+  criterion is the scope-bounded verdict, recorded as *"BEAM ring delivered and verified; AtomVM
+  ring gated on target-side host, tracked as a named follow-up"*.
+- **Q-GLPNETS17-03 · The six unbound pipeline ids, whose printed remedy refuses itself.**
+  → *record-cosmetic-suppress-noise*: recorded as closed-and-unbindable by design and raised to the
+  buildkit lane as a defect in `link`. A reconcile whose only complaint is those six counts as
+  in-sync.
 
 ## Assumptions
 

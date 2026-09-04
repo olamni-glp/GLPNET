@@ -60,10 +60,10 @@ this feature's own parent task list.
 
 ## Phase 4: US2 — the app (AtomVM) ring · **P2**
 
-- [ ] **T017** [US2] Enumerate AtomVM's unsupported constructs. **NOT MEASURED today** — research R3
+- [x] **T017** [US2] Enumerate AtomVM's unsupported constructs. **NOT MEASURED today** — research R3
       leaves this open deliberately and it must not be guessed. Seed: `gleam_otp` is already excluded
       for `proc_lib`.
-- [ ] **T018** [US2] Implement `glp/ring/atomvm.gleam` with a **build-time** refusal naming the
+- [x] **T018** [US2] Implement `glp/ring/atomvm.gleam` with a **build-time** refusal naming the
       offending construct (C3). A runtime rejection does not satisfy FR-004.
 - [x] **T019** [US2] Report host-side conformance as **UNREAD with a named reason** — the MAUI Blazor
       Hybrid host is target-side and absent here (`maui` = 0 occurrences in glpnet).
@@ -88,7 +88,7 @@ this feature's own parent task list.
 T001..T003            → everything
 T004..T011  (guards)  → BEFORE T012..T021        # tests first, and each proven able to fail
 T012 → T013 → T014 → T015 → T016                 # US1, sequential
-T017 → T018 → T019                               # US2, blocked on T017 which is UNMEASURED
+T017 → T018 → T019                               # US2, unblocked by Q-GLPNETS17-01 (list = lower bound)
 T020 → T021                                      # US3
 T022                                             # FR-005 retention guard, independent
 ```
@@ -101,7 +101,23 @@ T022                                             # FR-005 retention guard, indep
 - **The QHSM-wrapped Dart reference implementation** — engineer-declared future, workstation-only,
   oracle-class work; explicitly out of scope.
 
-## 🔴 T017 / T018 — BLOCKED, needs the engineer (measured 2026-09-03)
+## ✅ T017 / T018 — RESOLVED by engineer ruling `Q-GLPNETS17-01` (2026-09-04)
+
+**Ruling: options 1 AND 2, both critical.** Half one is DONE; half two is staged and still open.
+
+- **Done** — the enumeration is adopted from measured evidence: the spike that ran AtomVM 0.6.6
+  and observed `module proc_lib cannot be resolved` (`docs/research/gleam-atomvm/dossier.md`
+  §3/§4.3). It lives in `test/ring/atomvm-unsupported.list` (8 constructs) and is enforced at
+  BUILD time, naming the construct, by `test/ring/check_atomvm_subset.sh` (C3/FR-004).
+  `glp/ring/atomvm.gleam` is the realization. Guarded both directions by
+  `test/ring/test_atomvm_subset.sh` — 4/4 green.
+- 🔴 **Still open** — the list is a **LOWER BOUND measured on 0.6.6 only**, not the subset. The
+  exhaustive measurement needs a real AtomVM: WSL2 core was installed on GAVRIELLA 2026-09-04,
+  the distro and a reboot are pending, and the runbook is `test/ring/install-atomvm.md`.
+  A C3 pass means *no measured-unsupported construct is present*, NOT *this runs on AtomVM* —
+  the gate prints that on every pass.
+
+### Historical — why it was blocked (measured 2026-09-03)
 
 **T017 cannot be measured on this host, and must not be guessed.** Two independent absences:
 

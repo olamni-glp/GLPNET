@@ -25,6 +25,8 @@ test_report_shape.sh
 test_aggregate.sh
 test_mutation.sh
 test_platform_conditional.sh
+test_atomvm_subset.sh
+test_list_single_source.sh
 test_retention.sh
 "
 

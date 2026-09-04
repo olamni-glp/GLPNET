@@ -7,13 +7,14 @@
 # (Flutter app), programs/ (the .glp corpus). Those are RETAINED as the oracle.
 # glpnet resynthesizes; it does not copy.
 #
-# generated: 2026-09-03T19:56:21Z
+# generated: 2026-09-04T05:30:58Z
 
 # --- L0 contract (runtime-free; enforced by check_contract_purity.sh) ---
 glp_gleam/src/glp/contract/ring_descriptor.gleam
 glp_gleam/src/glp/contract/surface.gleam
 
 # --- ring realizations (each may depend on exactly one runtime) ---
+glp_gleam/src/glp/ring/atomvm.gleam
 glp_gleam/src/glp/ring/beam.gleam
 glp_gleam/src/glp/ring/ring.gleam
 

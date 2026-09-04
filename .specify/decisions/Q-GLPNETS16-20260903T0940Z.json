@@ -1,0 +1,187 @@
+[
+  {
+    "qid": "Q-GLPNETS16-01",
+    "header": "Reboot",
+    "block": "A live peer codexreview (PID 37900) holds the machine-global registry lock, so it is not safe to reboot and four report sections are unavailable.",
+    "origin": "measurement",
+    "severity": "critical",
+    "background": [
+      "MEASURED 2026-09-03T09:35Z on GAVRIELLA via Get-CimInstance (NOT Git-Bash ps, which under-reports Windows PIDs and has called a live process dead in this fleet before): PID 37900 is python.exe running `buildkit-codexreview.exe --review-only --max-cycles 1 --scope app --base origin/main`, started 10:28:34, with child buildkit-codexreview.exe PID 44824 and node.exe PID 45224.",
+      "That process holds the MACHINE-GLOBAL registry lock at C:/Users/gavri/AppData/Local/buildkit/deploy-home/registry (pgdb/.lock). BK-REPORT-v1 retried 61 times over 30.3s; PID 37900 held it on ALL 61 attempts and was still running at the end. The report classifies this itself as 'CONTENTION with a live process, not a stuck lock. Do NOT kill it; it may be a peer's long test run.'",
+      "Consequence measured: sections 2 PROGRESS, 3 STATUS, 4 SITREP, 5 TAKT and the marathon half of 6 NEXT all returned UNAVAILABLE. Section 1 ROADMAP rendered fine (21 epics / 124 features / 30 open / 94 closed, reconciles exactly). So 1 of 6 sections is present -- consistent with the standing note that section-count is not a signature of the report being broken.",
+      "Fleet precedent, board file 20260823T181231Z: 'BROADCAST ALL LANES HAZARD - buildkit calls a LIVE peer lock STUCK, do not kill.' And inbox/gavriella SAFETY-20260817T211500Z from ariellas: 'DO NOT REMOVE pgdb-lock MANUALLY - a LIVE lock looks STALE - I nearly corrupted a peer discharge.'",
+      "Separately and independently: the yx-bootmig era run mrun-eae934194c04 refuses at exit 3 (version skew, created by Marathon 2026.8.31.1 vs installed 2026.8.26.2), and Q-ERASTAGE-03 forbids tagging an era whose stages are unrecordable. So 'close era' is blocked by two causes that a reboot does not fix."
+    ],
+    "impact_if_unanswered": "Rebooting now kills a peer's codexreview mid-run and loses its cycle. Waiting blocks the marathon sitrep you asked for. Either way the era cannot close until the version skew is cleared, which needs a command I am not permitted to run.",
+    "options": [
+      {
+        "key": "wait-for-37900",
+        "label": "Wait for PID 37900 to exit, then re-run the report and reboot",
+        "consequence": "The peer's review completes and is not lost. Marathon sections become readable and the sitrep you asked for can actually be produced. Cost is unbounded wall-clock: a --max-cycles 1 review is usually minutes, but I have no completion estimate and will not invent one. I re-poll and signal the moment it clears.",
+        "size": "nano",
+        "reversibility": "reversible"
+      },
+      {
+        "key": "reboot-now-accept-loss",
+        "label": "Reboot NOW and accept losing that review run",
+        "consequence": "Immediate. The codexreview cycle is lost and must be re-run; if it belongs to another lane, that lane loses work it may believe is in flight. A reboot ALSO clears any genuinely wedged lock -- and olamnit's 20260902T142731Z board post records exactly that remedy for a zombie holder on their host. It does NOT clear the marathon version skew. FORECLOSES: the in-flight codexreview cycle and its findings are unrecoverable once the process dies - the run is not checkpointed, so it restarts from zero, and if it belongs to a peer lane that lane loses work it believes is in flight.",
+        "size": "nano",
+        "reversibility": "one-way"
+      },
+      {
+        "key": "reboot-after-quiesce-broadcast",
+        "label": "Post a reboot-readiness poll to the board, wait for lane ACKs, then reboot",
+        "consequence": "Matches the fleet's own precedent (the 20260811 reboot-readiness poll sequence, 14 lanes, ACK-required). Safest for peers and produces an auditable record. Slowest: the 20260811 poll ran ~2h and still needed an operator override at 13 of 14.",
+        "size": "mini",
+        "reversibility": "reversible"
+      }
+    ],
+    "recommendation": {
+      "option": "wait-for-37900",
+      "because": "It is the only option that does not destroy work, and the wait is probably short -- --max-cycles 1 is the cheapest review shape. It also directly buys the thing you asked for: the marathon PROGRESS/STATUS/SITREP/TAKT sections are unavailable ONLY because of this lock, so waiting converts four UNAVAILABLE sections into real output. Choose reboot-now only if you know PID 37900 is your own abandoned run."
+    },
+    "decision": {
+      "option": "wait-for-37900",
+      "date": "2026-09-03",
+      "rationale": "Engineer ruling 2026-09-03: BOTH options 1 and 3 - wait for PID 37900 to exit AND post a reboot-readiness quiesce broadcast to the board first. Do not destroy a peer's in-flight review; follow the fleet's own 20260811 poll precedent for the reboot itself."
+    }
+  },
+  {
+    "qid": "Q-GLPNETS16-02",
+    "header": "Push block",
+    "block": "Push, merge, release and deploy are refused by the session permission layer rather than by buildkit, so those instructions cannot be honoured in-session.",
+    "origin": "contradiction",
+    "severity": "critical",
+    "background": [
+      "MEASURED this session: `git push -u origin 101-gleam-capability-delivery` was denied by the Claude Code auto-mode classifier. `buildkit-deploy latest all` was denied the same way earlier. A broad filesystem enumeration was also denied.",
+      "These are NOT buildkit refusals and NOT policy gates in the repo. The commit itself succeeded (d2f39be2, 10 files, staged by name); only the network/administrative half is blocked.",
+      "Consequence: 'commit all push all merge all', 'pull latest', '/bk-release', and clearing the marathon version skew are all unreachable from inside this session, no matter how the work is sequenced.",
+      "Independently, /bk-release has nothing eligible even if I could run it: your bar is 'completed, fully implemented AND codex reviewed'. 101 has 1 of 22 tasks done. 078 is implemented but carries 7 OPEN findings (3 HIGH) from the live review 20260901T110734Z. And Q-GLPNETS15-04 holds glpnet at tier NONE with feat|fix count 0. Nothing qualifies on any of the three counts."
+    ],
+    "impact_if_unanswered": "The 101 branch stays local and unshared; the era record stays unwritable; and any instruction to push/merge/release silently cannot be honoured, which is worse than refusing it openly.",
+    "options": [
+      {
+        "key": "you-run-them",
+        "label": "You run the blocked commands yourself with the ! prefix",
+        "consequence": "Zero change to session policy. You type `! git push -u origin 101-gleam-capability-delivery` and `! buildkit-deploy latest all`; output lands in this conversation and I continue from it. Per-command, so nothing is granted beyond what you actually type.",
+        "size": "nano",
+        "reversibility": "reversible"
+      },
+      {
+        "key": "add-permission-rules",
+        "label": "Add Bash permission rules so I can push and deploy unattended",
+        "consequence": "I can complete push/merge/release/deploy in-session from now on, including across future restarts. Widens standing authority: I would be able to push and deploy without a prompt, and a wrong push is not trivially reversible on a shared branch. Best paired with a rule scoped to `git push origin <branch>` rather than blanket git.",
+        "size": "mini",
+        "reversibility": "reversible"
+      },
+      {
+        "key": "defer-until-eligible",
+        "label": "Leave it blocked; revisit when something is actually releasable",
+        "consequence": "Costs nothing now, because nothing is release-eligible anyway. But the 101 branch remains only on this disk, so a disk loss or a reboot mishap loses today's specify/plan/tasks/analyze work -- which is the one concrete risk given you are about to reboot.",
+        "size": "nano",
+        "reversibility": "reversible"
+      }
+    ],
+    "recommendation": {
+      "option": "you-run-them",
+      "because": "It unblocks exactly the two commands that matter before a reboot -- pushing 101 so today's work survives off this disk, and the deploy that clears the marathon skew -- without granting standing push authority you did not ask to grant. If you expect to keep issuing multi-stage chains like this one across restarts, add-permission-rules is the better long-run answer, but it should be a deliberate grant, not a side effect of tonight's urgency."
+    },
+    "decision": {
+      "option": "you-run-them",
+      "date": "2026-09-03",
+      "rationale": "Engineer ruling 2026-09-03: engineer runs the blocked commands with the ! prefix; no standing push/deploy authority granted."
+    }
+  },
+  {
+    "qid": "Q-GLPNETS16-03",
+    "header": "Gleam dupe",
+    "block": "Feature 101 may duplicate the intent of a live Gleam roadmap row and six unbound Gleam pipeline ids that bind nothing.",
+    "origin": "contradiction",
+    "severity": "high",
+    "background": [
+      "MEASURED after linking 101: `buildkit-roadmap reconcile` reports 16/22 pipeline ids bound, 6 unbound -- and ALL SIX are Gleam workstream features: 031-gleam-port-spike, 036-glp-gleam-baseline-program, 039-m2-0-verify-erlang-monitor-atomvm, 049-wave1-guard-link-acceptance, 050-full-gleam-combined, 060-wave3-full-gleam-chain.",
+      "The roadmap also carries live row `full-scope-gleam-glp-implementation` at rank 43, state ANALYZED, WSJF 2.00 / RICE 738.46, epic 'Full Gleam implementation', flagged BLOCKED. Per the retired-COOP thread act-olamnit-20260728-002, olamnit already merged your 059 slug into wave-3-consolidated-full-gleam-chain as an umbrella dupe and explicitly invited a nack if 059 must stay separate. That nack was never sent -- the thread is still OPEN after five weeks.",
+      "`buildkit-roadmap dedupe --dry-run` scanned 123 live features across id-stem and title strategies and found NO duplicate groups -- so the tooling does not see 101 as a duplicate. But dedupe matches on id-stem and title, and 101's title shares no stem with 'full-scope-gleam-glp-implementation'. Absence of a tooling match is not evidence of distinct intent.",
+      "What IS distinct, measured: 101's subject is the RING SPLIT (contract-at-L0 + per-ring realization) forced by the L1a/L1b sibling rule -- a delivery-architecture concern that did not exist as a requirement until FR-017 was written on 2026-09-03. The six unbound ids are the PORT itself (spike, baseline, monitor, guards, combined, chain)."
+    ],
+    "impact_if_unanswered": "Either the Gleam workstream now has two competing homes and effort splits across them, or six legitimately-completed port features stay invisible to every roadmap read because they bind nothing -- and a feature that binds nothing can never be moved to closed.",
+    "options": [
+      {
+        "key": "keep-101-bind-the-six",
+        "label": "Keep 101 as the delivery feature; bind the six port ids to their roadmap rows",
+        "consequence": "101 owns the ring split (new requirement, no existing row covers it); the six port features get spec_paths and become closeable. Six `buildkit-roadmap link --feature <slug> --spec-path specs/<dir>` calls, each needing the right slug -- and 74 of 124 roadmap features carry no spec_path at all, so some of the six may have no row to bind to and would need capturing first.",
+        "size": "mini",
+        "reversibility": "reversible"
+      },
+      {
+        "key": "fold-101-into-full-scope",
+        "label": "Fold 101 into full-scope-gleam-glp-implementation as the delivery phase",
+        "consequence": "One Gleam home, no competing rows. But full-scope is ANALYZED and BLOCKED at rank 43, so the ring-split work inherits a blocked parent and a low rank despite being the thing your directive actually asked for. The 101 spec/plan/tasks/contracts already written would move under it.",
+        "size": "mini",
+        "reversibility": "reversible"
+      },
+      {
+        "key": "supersede-full-scope-with-101",
+        "label": "Supersede full-scope-gleam-glp-implementation with 101",
+        "consequence": "101 becomes the single Gleam row and inherits the workstream. Discards the analysis and ranking already invested in full-scope, and would strand whatever the six port ids represent. `supersede` is non-destructive and revivable, but the roadmap narrative gets harder to read.",
+        "size": "nano",
+        "reversibility": "reversible"
+      }
+    ],
+    "recommendation": {
+      "option": "keep-101-bind-the-six",
+      "because": "The two things are genuinely different subjects and the evidence supports that: 101 exists because of a ring-placement contradiction that no pre-existing row anticipated, while the six unbound ids are the port itself and are already built. Folding them together would hide a delivery-architecture requirement inside a blocked port epic. The real defect here is not 101 -- it is that six completed Gleam features bind nothing and are therefore uncloseable, and that is worth fixing on its own merits."
+    },
+    "decision": {
+      "option": "keep-101-bind-the-six",
+      "date": "2026-09-03",
+      "rationale": "Engineer ruling 2026-09-03: BOTH options 1 and 2 - keep 101 as the delivery feature AND bind the six unbound Gleam port ids AND place 101 under the Full Gleam implementation epic rather than standalone, so there is ONE coherent Gleam home. Explicit added requirement: ensure there are no Gleam-implementation and GLP compatibility/compliance loopholes - i.e. no Gleam work item and no GLP conformance obligation may fall between 101, full-scope and the six port features."
+    }
+  },
+  {
+    "qid": "Q-GLPNETS16-04",
+    "header": "Swept work",
+    "block": "A concurrent session swept my yx-bootmig files into feature 010's commits, leaving the content intact but the provenance wrong.",
+    "origin": "contradiction",
+    "severity": "medium",
+    "background": [
+      "MEASURED 2026-09-03T00:30Z in D:/BSTDEV/research/yngenios: commit b648fa3 'feat(010): clarify' swept in P3-LAYER2-gavriella-20260902.md and both P3-RULES-PROPOSED json files; commit 7eb5bd7 'feat(010): plan' swept in ANALYZE-008-gavriella-20260903.md, scope-manifest.json, spec.md and tasks.md. Timestamps 00:23 and 00:28; I observed a clean tree at 00:30 that had been dirty minutes earlier.",
+      "All content survives -- verified in HEAD: FR-017 and FR-018 present, the T005 correction present, p2_blocker superseded. This is a provenance defect, not a data-loss defect.",
+      "Cause is the `git add -A` hazard CLAUDE.md explicitly forbids: 'Commit only files you worked on this session. No git add -A / git add .'. The 010 session staged everything in the tree.",
+      "That session is LIVE and was running the same pipeline chain you gave me -- clarify at 00:23, plan at 00:28 -- on feature 010. It has since ticked T016-T025 in the 008 tasks.md, so it is actively working the yx-bootmig task list too."
+    ],
+    "impact_if_unanswered": "The yx-bootmig P3 delineation is recorded in git as part of feature 010's clarify and plan stages. Anyone reading 008's history later will not find it, and anyone auditing 010 will find work that is not 010's.",
+    "options": [
+      {
+        "key": "leave-it-note-it",
+        "label": "Leave the commits; record the provenance error in 008's own artifacts",
+        "consequence": "No git surgery, no risk to a live session. The mis-attribution stays in history but is documented where a later reader of 008 will actually look. Cheapest and safest; history stays slightly wrong forever.",
+        "size": "nano",
+        "reversibility": "reversible"
+      },
+      {
+        "key": "unpick-and-recommit",
+        "label": "Rewrite those two commits to separate 008 from 010",
+        "consequence": "History becomes accurate. But it rewrites commits authored by a session that is still running, on a branch it holds -- a near-certain conflict, and CLAUDE.md forbids me reverting or resetting another session's work without your express permission. Would need that session stopped first. FORECLOSES: once those rewritten commits are pushed, the original SHAs are gone from the shared history and the 010 session's local branch diverges irreconcilably from what it has already built on.",
+        "size": "midi",
+        "reversibility": "one-way"
+      },
+      {
+        "key": "coordinate-with-that-session",
+        "label": "Tell the 010 session to stop using add -A, and split future work at source",
+        "consequence": "Fixes the cause rather than the symptom, and prevents the next occurrence -- which matters because that session is still running and still sweeping. Does not repair the two existing commits.",
+        "size": "nano",
+        "reversibility": "reversible"
+      }
+    ],
+    "recommendation": {
+      "option": "leave-it-note-it",
+      "because": "The content is intact and the cost of the error is a confusing history, not a broken artifact. Rewriting commits under a live session risks real damage to fix a cosmetic problem, and I will not reset another session's work without your explicit instruction. Pair it with coordinate-with-that-session if you intend to keep two sessions in that repo, because the sweep will otherwise happen again -- it already has once today."
+    },
+    "decision": {
+      "option": "leave-it-note-it",
+      "date": "2026-09-03",
+      "rationale": "Engineer ruling 2026-09-03: leave the swept commits, record the provenance error in 008's own artifacts."
+    }
+  }
+]
