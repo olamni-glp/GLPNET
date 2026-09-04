@@ -11,13 +11,24 @@
 
 **`/bk-codexreview`, run FIVE times on the same branch with identical settings, returned:**
 
-| round | findings | P1 | recurrences of the previous round |
-|---|---:|---:|---|
-| 1 | 1 | 1 | — |
-| 2 | **14** | 11 | 0 |
-| 3 | **17** | 11 | **0** |
-| 4 | **12** | 8 | **0** |
-| 5 | *running at session end* | | |
+| round | findings | P1 | recurrences | in the PREVIOUS round's fixes |
+|---|---:|---:|---|---|
+| 1 | 1 | 1 | — | — |
+| 2 | **14** | 11 | 0 | — |
+| 3 | **17** | 11 | **0** | several |
+| 4 | **12** | 8 | **0** | 3 of 12 |
+| 5 | **14** | 8 | **0** | 2 of 14 |
+| 6 | **5** | 4 | **0** | 4 of 5 |
+| 7 | **8** | 7 | **0** | 5 of 8 |
+| 8 | *running at session end* | | | |
+
+**SEVEN ROUNDS: 1, 14, 17, 12, 14, 5, 8.** The yield fell to 5 and then went back UP to 8, so the
+engineer's two-consecutive-low-yield bar is **NOT MET** and era 102 is **NOT SHIPPABLE** on this
+evidence. That is the honest state, and it is the single most important line in this file.
+
+🔴 **THE STRUCTURAL FINDING: A FIX IS A CODE CHANGE AND CARRIES THE SAME DEFECT RATE.** From round 4
+onward, most of each round's findings were in the PREVIOUS round's fixes. Round 7 was five of eight.
+Fixing does not converge for free; the round that reviews the fixes is not optional.
 
 **Every round found ZERO recurrences — every fix held — and a fresh crop of defects nobody
 had seen, several of them introduced by the previous round's remediation.**
