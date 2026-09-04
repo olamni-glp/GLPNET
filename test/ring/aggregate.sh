@@ -30,6 +30,22 @@ while [ $# -gt 0 ]; do
     esac
 done
 
+# Codex review 20260904T055230Z (P2): `--require` was a free-form override, so `--require beam`
+# produced a GREEN aggregate with AtomVM absent — a public flag that bypasses C4-R. The mandatory
+# ring set is a property of the feature (both sibling rings, 008 FR-017), not a caller's choice.
+# Narrowing it is refused; the flag survives only so a caller can name a SUPERSET for a future
+# third ring.
+MANDATORY_RINGS="beam atomvm"
+for m in $MANDATORY_RINGS; do
+    case " $REQUIRE " in
+        *" $m "*) ;;
+        *) echo "aggregate: REFUSED — '--require $REQUIRE' omits the mandatory ring '$m'." >&2
+           echo "  Both sibling rings are always required; an aggregate that can be narrowed to the" >&2
+           echo "  rings that happen to be built is exactly the masking C4-R/SC-006 forbids." >&2
+           exit 2 ;;
+    esac
+done
+
 [ -n "$REPORTS" ] || { echo "aggregate: --reports <dir> is required" >&2; exit 2; }
 [ -d "$REPORTS" ] || { echo "aggregate: no such reports directory: $REPORTS" >&2; exit 2; }
 [ -f "$PARSER" ]  || { echo "aggregate: missing $PARSER" >&2; exit 2; }
@@ -59,6 +75,20 @@ for ring in $REQUIRE; do
     fi
 
     get() { sed -n "s/^$1:[[:space:]]*//p" "$f" | tr -d '\r' | tail -1; }
+
+    # Codex review 20260904T055230Z (P1): the aggregate trusted the FILENAME and never checked
+    # the report's own mandatory `ring:` field. Copying a green beam.report to atomvm.report
+    # therefore produced a GREEN aggregate with no AtomVM result in existence — the exact lie
+    # C4-R/SC-006 exists to prevent, achieved by `cp`. The identity must come from the content.
+    declared="$(get ring)"
+    if [ "$declared" != "$ring" ]; then
+        MALFORMED="$MALFORMED $ring"
+        echo "  $ring: RING IDENTITY MISMATCH — $ring.report declares 'ring: ${declared:-<missing>}'"
+        echo "      A report is identified by its content, not its filename. Refusing rather than"
+        echo "      counting one ring's result as another's."
+        continue
+    fi
+
     att="$(get attempted)"; agr="$(get agreed)"; div="$(get diverged)"; exc="$(get excused)"
     TOT_ATT=$((TOT_ATT + att)); TOT_AGR=$((TOT_AGR + agr))
     TOT_DIV=$((TOT_DIV + div)); TOT_EXC=$((TOT_EXC + exc))

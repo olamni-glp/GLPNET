@@ -57,6 +57,15 @@ for m, v in sorted(bad.items()):
     chain = " -> ".join(v.get("path_to_taint", [m]))
     why = "; ".join(v.get("reasons", [])) or "via " + chain
     print(f"{m}\t{why}\t{chain}")
+# Codex review 20260904T055230Z (P2): a contract module the analyzer could not READ (bad
+# permissions, invalid encoding) landed in not_read[] and was then simply not looked at here,
+# so the gate printed "C1-R OK". Purity cannot be established for a module nobody read - an
+# unread contract module must REFUSE, not become a silent pass.
+for e in d.get("not_read", []):
+    m = e.get("module", "?")
+    if m.startswith("glp/contract/"):
+        why = e.get("reason", "?")
+        print(m + "\tUNREADABLE - purity cannot be established: " + str(why) + "\t(not read)")
 '
 )"
 

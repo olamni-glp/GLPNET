@@ -77,10 +77,19 @@ DIVERGE="$(sed -n 's/.*diverge=\([0-9]*\).*/\1/p' "$LOG" | tail -1)"
 BLOCKED="$(sed -n 's/.*blocked=\([0-9]*\).*/\1/p' "$LOG" | tail -1)"
 TOTAL="$(sed -n 's/^total:[[:space:]]*\([0-9]*\).*/\1/p' "$LOG" | tail -1)"
 
-AGREE="${AGREE:-0}"; DIVERGE="${DIVERGE:-0}"; BLOCKED="${BLOCKED:-0}"; TOTAL="${TOTAL:-0}"
-ATTEMPTED=$((AGREE + DIVERGE + BLOCKED))
+# Codex review 20260904T055230Z (P2): the corpus denominator also carries gap/fork and
+# missing-golden outcomes, but excused was derived from BLOCKED alone. The moment an expected
+# gap/fork existed, this report could claim `not_run: none` while silently omitting those cases
+# and their reasons - and with the old parser that still produced a GREEN report.
+GAPFORK="$(grep -oE 'gap/fork=[0-9]+' "$LOG" | tail -1 | cut -d= -f2)"
+OOS="$(grep -oE '^out_of_scope:[[:space:]]*[0-9]+' "$LOG" | tail -1 | grep -oE '[0-9]+$')"
 
-echo "  corpus rc=$CORPUS_RC  total=$TOTAL agree=$AGREE diverge=$DIVERGE blocked=$BLOCKED"
+AGREE="${AGREE:-0}"; DIVERGE="${DIVERGE:-0}"; BLOCKED="${BLOCKED:-0}"; TOTAL="${TOTAL:-0}"
+GAPFORK="${GAPFORK:-0}"; OOS="${OOS:-0}"
+EXCUSED=$((BLOCKED + GAPFORK + OOS))
+ATTEMPTED=$((AGREE + DIVERGE + EXCUSED))
+
+echo "  corpus rc=$CORPUS_RC  total=$TOTAL agree=$AGREE diverge=$DIVERGE blocked=$BLOCKED gap/fork=$GAPFORK out_of_scope=$OOS"
 echo "  (full log: $LOG)"
 echo ""
 
@@ -91,12 +100,12 @@ REPORT="$OUT/beam.report"
     echo "attempted: $ATTEMPTED"
     echo "agreed: $AGREE"
     echo "diverged: $DIVERGE"
-    echo "excused: $BLOCKED"
-    if [ "$BLOCKED" -gt 0 ]; then
+    echo "excused: $EXCUSED"
+    if [ "$EXCUSED" -gt 0 ]; then
         i=0
-        while [ "$i" -lt "$BLOCKED" ]; do
+        while [ "$i" -lt "$EXCUSED" ]; do
             echo "excused[$i].case: see $LOG"
-            echo "excused[$i].reason: classified in test/parity/expected.list as blocked or expected-divergence"
+            echo "excused[$i].reason: classified in test/parity/expected.list as blocked, expected-divergence (gap/fork) or out-of-scope; see the log for the per-case reason"
             i=$((i + 1))
         done
     fi

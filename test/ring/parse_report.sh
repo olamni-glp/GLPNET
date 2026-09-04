@@ -73,6 +73,19 @@ if is_num "${ATTEMPTED:-x}" && is_num "${AGREED:-x}" && is_num "${DIVERGED:-x}" 
     if is_num "${DENOM:-x}" && [ "$ATTEMPTED" -gt "$DENOM" ]; then
         err "attempted=$ATTEMPTED exceeds denominator=$DENOM — more cases were run than exist"
     fi
+    # Codex review 20260904T055230Z (P1): checking only attempted > denominator left the
+    # under-run direction wide open. `denominator: 206 / attempted: 1 / agreed: 1 /
+    # not_run: none` passed, and the aggregate then marked that ring GREEN while silently
+    # dropping 205 declared cases. Every denominator case must be exercised or explicitly
+    # accounted for (FR-006, SC-007) — so the shortfall must be named in not_run[], never
+    # left to be inferred from an arithmetic gap nobody computes.
+    if is_num "${DENOM:-x}" && [ "$ATTEMPTED" -lt "$DENOM" ]; then
+        SHORT=$((DENOM - ATTEMPTED))
+        case "${NOT_RUN%% *}" in
+            ''|none)
+                err "attempted=$ATTEMPTED is $SHORT short of denominator=$DENOM, but not_run says '${NOT_RUN:-<empty>}' — $SHORT declared case(s) are unaccounted for. A report may run fewer cases than it declares ONLY if it names what it did not run (FR-006/SC-007)" ;;
+        esac
+    fi
 fi
 
 # FR-007 — every excused case carries a reason.

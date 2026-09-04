@@ -27,6 +27,7 @@ test_mutation.sh
 test_platform_conditional.sh
 test_atomvm_subset.sh
 test_list_single_source.sh
+test_codexreview_fixes.sh
 test_retention.sh
 "
 

@@ -80,3 +80,11 @@ glp/runtime/suspension
 glp/runtime/terms
 glp/runtime/unify
 glp/split/wire
+
+# Codex review 20260904T055230Z (P1): the surface listed implementation modules but OMITTED the
+# contract package itself - so the real ring modules, whose only contract import IS
+# glp/contract/ring_descriptor, consumed "zero listed modules" and were refused, while an
+# unrelated subtree importing one internal parser module could be admitted as a realization.
+# The contract package is the surface a realization is held to; it belongs here.
+glp/contract/ring_descriptor
+glp/contract/surface

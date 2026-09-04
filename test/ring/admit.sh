@@ -33,6 +33,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 SURFACE="$SCRIPT_DIR/contract-surface.list"
 ANALYSIS="$SCRIPT_DIR/T012-import-analysis.json"
+ANALYZER="$SCRIPT_DIR/analyze_imports.py"
+MEASURED_ON="unknown"
 
 SUBTREE=""; TARGET="l0"; JUSTIFICATION=""
 while [ $# -gt 0 ]; do
@@ -76,22 +78,37 @@ for svc in kv mailbox network; do
 done
 
 # --- evidence (b): runtime freedom, from the T012 measurement ---------------
+# Codex review 20260904T055230Z (P1): runtime freedom was read from the COMMITTED whole-tree
+# glp_gleam analysis regardless of which subtree was being offered. A genuine L0 subtree
+# carrying kv/mailbox/network would be refused because 29 unrelated glp_gleam modules are
+# tainted, and the script could never establish the REQUESTED subtree's actual dependencies.
+# Measure the subtree that was asked about.
 TAINTED="unmeasured"
-if [ -f "$ANALYSIS" ]; then
-    for c in python3 python; do
-        command -v "$c" >/dev/null 2>&1 && {
-            TAINTED="$( "$c" -c '
+PY_BIN=""
+for c in python3 python; do command -v "$c" >/dev/null 2>&1 && { PY_BIN="$c"; break; }; done
+if [ -n "$PY_BIN" ] && [ -f "$ANALYZER" ]; then
+    SUB_JSON="$( "$PY_BIN" "$ANALYZER" --root "$DIR" --json 2>/dev/null )"
+    if [ -n "$SUB_JSON" ]; then
+        TAINTED="$( printf '%s' "$SUB_JSON" | "$PY_BIN" -c '
+import json,sys
+try:
+    d=json.load(sys.stdin); print(len(d.get("runtime_tainted",{})))
+except Exception:
+    print("unmeasured")' 2>/dev/null )"
+        MEASURED_ON="$DIR (measured now)"
+    fi
+fi
+if [ "$TAINTED" = "unmeasured" ] && [ -f "$ANALYSIS" ] && [ -n "$PY_BIN" ]; then
+    TAINTED="$( "$PY_BIN" -c '
 import json,sys
 d=json.load(open(sys.argv[1],encoding="utf-8"))
 print(len(d.get("runtime_tainted",{})))' "$ANALYSIS" 2>/dev/null )"
-            break
-        }
-    done
+    MEASURED_ON="whole glp_gleam tree (FALLBACK - not the requested subtree)"
 fi
 
 echo "  measured:"
 echo "    L0 service set present:${SERVICE_HITS:- none}   missing:${SERVICE_MISSING:- none}"
-echo "    runtime-tainted modules: $TAINTED"
+echo "    runtime-tainted modules: $TAINTED   [scope: $MEASURED_ON]"
 echo ""
 
 case "$TARGET" in
@@ -130,6 +147,20 @@ case "$TARGET" in
 
   beam|atomvm)
     [ -f "$SURFACE" ] || { echo "admit: missing $SURFACE — ring admission cannot be measured, and MUST NOT be assumed" >&2; exit 2; }
+    # Codex review 20260904T055230Z (P1): `beam` and `atomvm` executed the IDENTICAL branch, so
+    # any subtree consuming one listed module could be admitted to either sibling ring — an
+    # AtomVM-only realization could be admitted as BEAM. That destroys the one-realization-per-
+    # runtime separation the whole feature rests on (LATTICE line 27). Require a realization
+    # module actually named for the target ring.
+    RING_MOD="$(find "$DIR" -name "${TARGET}.gleam" 2>/dev/null | head -1)"
+    if [ -z "$RING_MOD" ]; then
+        echo "REFUSED: '$SUBTREE' for ring '$TARGET'"
+        echo "  reason: it carries no realization module named '${TARGET}.gleam'. A subtree that"
+        echo "          merely consumes the contract is not a realization OF THIS RING — admitting"
+        echo "          it to either sibling would collapse the one-realization-per-runtime rule."
+        exit 1
+    fi
+    echo "  target realization: $RING_MOD"
     # A realization is a subtree that consumes the contract and is NOT the tree the
     # contract was measured from. Self-admission is refused explicitly.
     if [ "$(cd "$DIR" && pwd -P)" = "$(cd "$REPO_ROOT/glp_gleam" && pwd -P)" ]; then

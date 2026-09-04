@@ -121,13 +121,39 @@ log "-- step 4: reproduce the dossier result BEFORE extending the list --"
 log "   Required: a gleam_otp build must fail with 'module proc_lib cannot be resolved'."
 log "   If it does not reproduce, atomvm-unsupported.list must be RE-DERIVED, not extended."
 log "   (Requires a Gleam toolchain in this environment; see install-atomvm.md step 2.)"
+# Codex review 20260904T055230Z (P1): this step previously performed no build, no packaging and
+# no AtomVM invocation, then exited 0 — the documented command could report the advertised
+# "0 measured" status without reproducing anything. That is precisely the silent-empty result
+# this feature forbids. The reproduction lives in wsl-reproduce-dossier.sh and is now INVOKED,
+# with its exit status propagated.
 command -v gleam >/dev/null 2>&1 || {
-    log "   gleam not present in WSL — reproduction NOT ATTEMPTED, recorded as such."
+    log "   gleam not present in WSL — reproduction cannot be attempted."
     log ""
-    log "RESULT: AtomVM binary obtained and runnable; construct enumeration NOT extended."
-    log "        The list remains the 0.6.6 lower bound. Next: install gleam+erlang here."
-    exit 0
+    log "INCOMPLETE: AtomVM binary obtained and runnable, but the construct enumeration was NOT"
+    log "            verified. Exiting NON-ZERO: a measurement that did not happen must never"
+    log "            report success. Install gleam+erlang (wsl-setup-toolchain.sh) and re-run."
+    exit 1
 }
+
+REPRO="$(dirname "$0")/wsl-reproduce-dossier.sh"
+if [ ! -f "$REPRO" ]; then
+    log "   reproduction script missing at $REPRO"
+    log "INCOMPLETE: cannot verify the list's provenance. Exiting non-zero."
+    exit 1
+fi
+log "   invoking the reproduction: $REPRO"
+tr -d '' < "$REPRO" > /tmp/_repro.sh && bash /tmp/_repro.sh
+REPRO_RC=$?
+log "   reproduction rc=$REPRO_RC"
+if [ "$REPRO_RC" -ne 0 ]; then
+    log ""
+    log "RESULT: the dossier result did NOT reproduce. atomvm-unsupported.list must be"
+    log "        RE-DERIVED, not extended. Exiting non-zero."
+    exit 1
+fi
+log ""
+log "RESULT: reproduction PASSED — the list's provenance holds on this host."
+exit 0
 
 log ""
 log "RESULT: see above. No entry was auto-appended to atomvm-unsupported.list —"

@@ -43,8 +43,18 @@ fs_is_case_sensitive() {
     return 0            # distinct => case-sensitive
 }
 
-CASE_SENSITIVE="unknown"
-if fs_is_case_sensitive; then CASE_SENSITIVE="yes"; else CASE_SENSITIVE="no"; fi
+# Codex review 20260904T055230Z (P2): `if fs_is_case_sensitive; then yes; else no; fi` collapsed
+# the probe's THREE outcomes into two — return 2 ("could not create the probe directory", i.e.
+# could not measure) was mapped to "no", and the test then SKIPPED as though case-insensitivity
+# had been observed. The `unknown` branch below was therefore unreachable exactly when the
+# premise could not be measured, which is the FR-009 defect this file exists to guard against.
+# Capture the status explicitly instead.
+fs_is_case_sensitive
+case "$?" in
+    0) CASE_SENSITIVE="yes" ;;
+    1) CASE_SENSITIVE="no" ;;
+    *) CASE_SENSITIVE="unknown" ;;
+esac
 echo "  (measured: repo filesystem case-sensitive = $CASE_SENSITIVE)"
 
 # ---------------------------------------------------------------------------

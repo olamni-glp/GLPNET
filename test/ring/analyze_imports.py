@@ -37,6 +37,46 @@ IMPORT_RE = re.compile(r"^\s*import\s+([a-zA-Z0-9_/]+)", re.MULTILINE)
 FFI_RE = re.compile(r"@external\s*\(\s*erlang", re.MULTILINE)
 ERLANG_IMPORT_RE = re.compile(r"^\s*import\s+gleam/erlang", re.MULTILINE)
 
+# Codex review 20260904T055230Z (P1): recognising ONLY `gleam/erlang` + Erlang FFI meant that
+# adding any other third-party runtime package to gleam.toml and importing it from a contract
+# module would classify that module runtime-free — a successfully-building third-party runtime
+# dependency straight through C1-R. So runtime-freedom is now decided by an ALLOW-LIST of
+# first-party and stdlib prefixes: anything else is a third-party dependency by default.
+#
+# Deny-by-default is the only safe direction here. A deny-list has to enumerate every runtime
+# package that will ever exist; an allow-list only has to enumerate the two that are ours.
+FIRST_PARTY_PREFIXES = ("glp/", "glp_")
+STDLIB_PREFIXES = ("gleam/",)          # gleam_stdlib — pure, no runtime of its own
+
+# 🔴 PACKAGE NAME != IMPORT PREFIX, and assuming otherwise is how the first version of this
+# fix failed its own positive control. Three different Hex packages all publish modules under
+# `gleam/`:
+#     gleam_stdlib -> gleam/list, gleam/string, ...   (pure)
+#     gleam_erlang -> gleam/erlang/...                (the BEAM binding)
+#     gleam_otp    -> gleam/otp/...                   (OTP behaviours, proc_lib)
+# So a prefix allow-list on "gleam/" waves both runtime packages straight through. The runtime
+# ones are therefore named explicitly, and this tuple must grow whenever a runtime-bearing
+# package is added to gleam.toml. `test_codexreview_fixes.sh` holds a positive control that
+# fails if gleam/otp ever stops being caught.
+RUNTIME_STDLIB_EXCEPTIONS = ("gleam/erlang", "gleam/otp")
+
+
+def third_party_runtime_imports(imports, first_party):
+    """Imports that are neither first-party modules nor pure stdlib."""
+    out = []
+    for imp in sorted(imports):
+        if imp in first_party:
+            continue
+        if imp.startswith("gleam/erlang"):
+            continue  # counted separately by ERLANG_IMPORT_RE, with a clearer reason
+        if imp.startswith(RUNTIME_STDLIB_EXCEPTIONS):
+            out.append(imp)   # gleam/otp — a runtime package wearing a stdlib-shaped path
+            continue
+        if imp.startswith(FIRST_PARTY_PREFIXES) or imp.startswith(STDLIB_PREFIXES):
+            continue
+        out.append(imp)
+    return out
+
 
 def module_name(path: pathlib.Path, src: pathlib.Path) -> str:
     return path.relative_to(src).with_suffix("").as_posix()
@@ -74,6 +114,16 @@ def scan(src: pathlib.Path):
             reasons.append("declares @external(erlang, ...) FFI")
         if reasons:
             direct[name] = reasons
+
+    # Second pass for the allow-list check: it needs the full first-party module set, which is
+    # only known once every file has been scanned.
+    first_party = set(imports)
+    for name, imps in imports.items():
+        extra = third_party_runtime_imports(imps, first_party)
+        if extra:
+            direct.setdefault(name, []).append(
+                "imports third-party package(s) outside gleam_stdlib: " + ", ".join(extra)
+            )
 
     return imports, direct, unreadable
 

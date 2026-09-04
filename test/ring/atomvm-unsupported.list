@@ -3,10 +3,26 @@
 # 🔴 THIS IS A LOWER BOUND, NOT AN EXHAUSTIVE SUBSET. Read the provenance before trusting it.
 #
 # Engineer ruling Q-GLPNETS17-01 (2026-09-04): adopt the measured dossier boundary AND install
-# AtomVM to measure exhaustively — BOTH, both critical. This file is the first half. The second
-# half (an actual AtomVM toolchain on a reachable host) is staged in
-# test/ring/install-atomvm.md and is NOT yet done; until it is, every entry below is sourced
-# from a measurement taken on ONE AtomVM version on ONE host, and the absence of an entry is
+# AtomVM to measure exhaustively — BOTH, both critical.
+#
+# ✅ BOTH HALVES ARE DONE FOR THE FOUNDING OBSERVATION. AtomVM 0.6.6 was installed on THIS host
+# on 2026-09-04 (WSL2 Ubuntu 26.04, Gleam 1.17.0, Erlang OTP 27) and the dossier's result was
+# INDEPENDENTLY REPRODUCED — see test/ring/atomvm-measurement.txt, produced by
+# test/ring/wsl-reproduce-dossier.sh:
+#
+#   probe A (gleam_otp)  → "Unable to open proc_lib.beam / module proc_lib cannot be resolved",
+#                          stacktrace at gleam@otp@actor.start/1.  REPRODUCED.
+#   probe B (raw spawn)  → ran: "Return value: nil" + <<"probe_raw_ok">>.  CONTROL HELD.
+#
+# BOTH directions were required before anything here could be trusted: both failing would have
+# meant a broken harness, both passing would have meant the constraint had evaporated. Two
+# earlier runs were correctly REFUSED by that rule — first a Gleam version skew, then a
+# packaging artifact ("module gleam@otp@actor cannot be resolved") that looked like a subset
+# violation but was only a missing dependency beam. This is evidence, not a restatement.
+#
+# 🔴 STILL A LOWER BOUND. Only the proc_lib family has been observed. AtomVM's subset is
+# documented upstream as narrower still (ETS, several stdlib modules, parts of the process API);
+# none of that has been exercised here, so none of it is listed. The absence of an entry is
 # NOT evidence that a construct is supported.
 #
 # PROVENANCE — why this is measurement and not a guess (research.md R3 forbade guessing):

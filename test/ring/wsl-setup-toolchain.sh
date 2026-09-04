@@ -9,6 +9,11 @@
 # quoting chain mangles nested quotes; two attempts died on it before this file existed.
 
 set -u
+# Codex review 20260904T055230Z (P2): without pipefail, `apt-get install ... | tail -5` reported
+# tail's status, so a failed install still reached the final echo and exited 0 — automation would
+# then proceed to an AtomVM measurement with Erlang or Gleam absent. The summary below is now a
+# GATE, not a printout.
+set -o pipefail
 LOG="${LOG:-/tmp/wsl-toolchain.log}"
 exec > >(tee -a "$LOG") 2>&1
 
@@ -73,5 +78,16 @@ for t in erl erlc gleam rebar3; do
         echo "   $t: ABSENT"
     fi
 done
+MISSING=""
+for t in erl erlc gleam; do
+    command -v "$t" >/dev/null 2>&1 || MISSING="$MISSING $t"
+done
 echo ""
+if [ -n "$MISSING" ]; then
+    echo "FAILED — required tool(s) absent after install:$MISSING"
+    echo "  Exiting non-zero so no caller proceeds to a measurement that cannot be made."
+    echo "log: $LOG"
+    exit 1
+fi
+echo "OK — erl, erlc and gleam are all present."
 echo "log: $LOG"
