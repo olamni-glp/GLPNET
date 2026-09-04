@@ -450,15 +450,30 @@ public static class Program
         }
 
         Console.Write(svc.Status().Render());
+
+        using var stop = new CancellationTokenSource();
+        Console.CancelKeyPress += (_, e) => { e.Cancel = true; stop.Cancel(); };
+
+        // THE RECEIVE PUMP STARTS BEFORE THE DIALS.
+        //
+        // `_peerCaps` is populated ONLY by ReceiveOneAsync, so dialing first meant every startup
+        // dial waited its full five seconds for a reply that could not yet be read, ignored the
+        // false result, and returned Admitted anyway. The fix for the capability race added five
+        // seconds of startup delay PER PEER and left the race exactly where it was — the worst of
+        // both, and invisible because the dial still reported Admitted.
+        var receive = Task.Run(() => ReceiveLoopAsync(svc, stop.Token));
+
         foreach (var p in cfg.Peers)
         {
-            var outcome = await svc.DialAsync(p.NodeId);
-            Console.WriteLine($"dial {p.Name,-12}: {outcome}");
+            var outcome = await svc.DialAsync(p.NodeId, stop.Token);
+            bool declared = svc.DeclaredCapabilitiesOf(p.NodeId) is not null;
+            Console.WriteLine($"dial {p.Name,-12}: {outcome}"
+                + (outcome == AdmissionOutcome.Admitted && !declared
+                   ? "  (no capability reply yet — pushes to it are refused until it declares)"
+                   : ""));
         }
 
         Console.WriteLine($"\nserving. push_on_append={cfg.PushOnAppend}, pull every {cfg.PullIntervalSeconds}s. Ctrl-C to stop.");
-        using var stop = new CancellationTokenSource();
-        Console.CancelKeyPress += (_, e) => { e.Cancel = true; stop.Cancel(); };
 
         // Four loops, and each exists because something it does was previously claimed and not
         // done: the receive loop, the pull leg (the interval was printed while nothing read it),
@@ -469,11 +484,29 @@ public static class Program
         var tail = svc.RunBoardTailAsync(log.Root, log.WritePath, stop.Token);
         var beat = svc.RunStatusHeartbeatAsync(stop.Token);
 
+        try { await receive; } catch (OperationCanceledException) { }
+
+        try { await pump; } catch (OperationCanceledException) { }
+        try { await tail; } catch (OperationCanceledException) { }
+        try { await beat; } catch (OperationCanceledException) { }
+        return 0;
+    }
+
+
+    /// <summary>
+    /// The inbound frame loop, EXTRACTED so it can run concurrently with the startup dials.
+    /// <para>
+    /// The capability replies those dials wait for arrive on this loop, so running it after the
+    /// dials made every dial wait its full timeout for a reply that could not yet be read.
+    /// </para>
+    /// </summary>
+    private static async Task ReceiveLoopAsync(FederationService svc, CancellationToken stop)
+    {
         try
         {
             while (!stop.IsCancellationRequested)
             {
-                try { await svc.ReceiveOneAsync(stop.Token); }
+                try { await svc.ReceiveOneAsync(stop); }
                 catch (Exception ex) when (ex is System.Text.Json.JsonException
                                                  or KeyNotFoundException
                                                  or FormatException
@@ -512,11 +545,6 @@ public static class Program
             }
         }
         catch (OperationCanceledException) { }
-
-        try { await pump; } catch (OperationCanceledException) { }
-        try { await tail; } catch (OperationCanceledException) { }
-        try { await beat; } catch (OperationCanceledException) { }
-        return 0;
     }
 
     // ---- revert ------------------------------------------------------------------------------

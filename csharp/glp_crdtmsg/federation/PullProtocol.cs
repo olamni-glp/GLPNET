@@ -116,7 +116,12 @@ public static class PullProtocol
             // divergence, introduced by the fix for permanent replica divergence.
             //
             // An over-correction is still a defect.
-            if (cost > MaxWireBytes)
+            // MEASURED AS IT WILL ACTUALLY BE ENCODED. `cost` is the op plus a separator, but a
+            // singleton response is "[" + op + "]" — two bytes larger. At exactly MaxWireBytes the
+            // old test accepted a frame one byte over the transport guard, which AnswerPullAsync
+            // then failed repeatedly, stopping before every later operation.
+            int singletonCost = cost - 1 + 2;
+            if (singletonCost > MaxWireBytes)
             {
                 Oversized.Add(op.OpId);
                 continue;

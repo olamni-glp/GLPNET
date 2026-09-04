@@ -156,6 +156,29 @@ public sealed class FederationService : IAsyncDisposable
 
     private readonly Dictionary<string, string> _localKeys = new(StringComparer.Ordinal);
 
+    /// <summary>
+    /// The shared unverified-origin rule, applied by EVERY ingestion path.
+    /// <para>
+    /// A leadership-bearing operation is refused without a verified origin whatever the strictness
+    /// setting: term ordering is monotone, so one unsigned op naming the live space with a maximal
+    /// era counter installs a permanent winner that no later correction removes.
+    /// </para>
+    /// <para>
+    /// This lived inline in ONE path. The tail and startup replay kept the relaxed rule, so a
+    /// persisted or externally-tailed unsigned op with a maximal term entered the fold and won —
+    /// after every restart. A security invariant enforced on one of three doors is not enforced.
+    /// </para>
+    /// </summary>
+    private void RequireVerifiableTerm(FederationOp op, AttributionResult attribution)
+    {
+        if (op.Term is null) return;
+        throw new AttributionRefusedException(new AttributionResult(
+            AttributionVerdict.UnverifiedOrigin,
+            $"operation from '{op.Origin}' carries a TERM but its origin cannot be verified — "
+            + "publish that peer's spki. A leadership-bearing operation is monotone: accepting one "
+            + "unverified can install a permanent winner that no later correction removes."));
+    }
+
     /// <summary>The origin key for a node id: a configured peer's, or this host's own.</summary>
     private string? KeyForOrigin(string? origin)
     {
@@ -284,6 +307,13 @@ public sealed class FederationService : IAsyncDisposable
                         _link.ListenEndPoint?.Address ?? IPAddress.Any, ep.Address);
                 PublishStatus();
                 return AdmissionOutcome.Admitted;
+            }
+            catch (OperationCanceledException)
+            {
+                // CANCELLATION IS NOT AN ENDPOINT FAILURE. Swallowing it here let a dial abandoned
+                // during shutdown fall through to "try the next address" and finally report
+                // Unreachable — a measured claim about a peer, produced by a decision to stop.
+                throw;
             }
             catch (Exception ex) when (IsIdentityFailure(ex))
             {
@@ -557,6 +587,7 @@ public sealed class FederationService : IAsyncDisposable
             if (attribution.Verdict == AttributionVerdict.UnverifiedOrigin)
             {
                 if (RequireVerifiedAttribution) throw new AttributionRefusedException(attribution);
+                RequireVerifiableTerm(op, attribution);
                 UnverifiedOps++;
             }
 
@@ -697,6 +728,7 @@ public sealed class FederationService : IAsyncDisposable
     public async Task<bool> WaitForPeerCapabilitiesAsync(string peer, TimeSpan timeout,
                                                          CancellationToken ct = default)
     {
+        ct.ThrowIfCancellationRequested();
         if (timeout <= TimeSpan.Zero) return _peerCaps.ContainsKey(peer);
 
         // REAL TIME, NOT THE INJECTED CLOCK.
@@ -710,8 +742,10 @@ public sealed class FederationService : IAsyncDisposable
         while (DateTimeOffset.UtcNow < deadline)
         {
             if (_peerCaps.ContainsKey(peer)) return true;
-            try { await Task.Delay(TimeSpan.FromMilliseconds(25), ct).ConfigureAwait(false); }
-            catch (OperationCanceledException) { return _peerCaps.ContainsKey(peer); }
+            // CANCELLATION PROPAGATES. Converting it into "here is what I happen to have cached"
+            // let DialAsync mark a peer connected and return Admitted during a shutdown — reporting
+            // a link established by a dial the caller had already abandoned.
+            await Task.Delay(TimeSpan.FromMilliseconds(25), ct).ConfigureAwait(false);
         }
         return _peerCaps.ContainsKey(peer);
     }
@@ -1179,7 +1213,20 @@ public sealed class FederationService : IAsyncDisposable
                 OnRefusal?.Invoke(new AttributionRefusedException(attribution));
                 continue;
             }
-            if (attribution.Verdict == AttributionVerdict.UnverifiedOrigin) UnverifiedOps++;
+            if (attribution.Verdict == AttributionVerdict.UnverifiedOrigin)
+            {
+                try { RequireVerifiableTerm(op, attribution); }
+                catch (AttributionRefusedException ex)
+                {
+                    // A leadership-bearing op with an unverifiable origin is refused on REPLAY too —
+                    // otherwise every restart re-admitted the permanent winner this rule exists to
+                    // keep out.
+                    RefusedOps++;
+                    OnRefusal?.Invoke(ex);
+                    continue;
+                }
+                UnverifiedOps++;
+            }
 
             try { if (_fold.Apply(op)) folded++; }
             catch (DotConflictException) { RefusedOps++; }
