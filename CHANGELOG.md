@@ -1,5 +1,16 @@
 ## [Unreleased]
 
+## [v2026.09.04.4] - 2026-09-04
+
+### Added
+- QUIC fallback chain with ngtcp2 as the Linux ultimate tier
+
+### Fixed
+- codex 20260904T144004Z - retryable msquic registration, file-path override honoured, RID-derived staging, --check mirrors runtime loader locations, bounded frame reads in chain test; P1 (chain not wired into YnetTransportCapability.Connect) recorded as era-102 scope
+
+### Changed
+- Merge pull request #288 from olamni-glp/main
+
 ## [v2026.09.04.3] - 2026-09-04
 
 ### Added
