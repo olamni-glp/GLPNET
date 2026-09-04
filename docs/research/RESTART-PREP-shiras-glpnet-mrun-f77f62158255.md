@@ -242,11 +242,31 @@ csharp/glp_link/transports/QuicEndpoint.cs · specs/064-durable-listener-service
   (064 IS a durable listener that survives REPL restarts and RE-BINDS ON BOOT)
 yngenios: ZERO QUIC in .cs or .py  (peer-measured, corroborated)
 ```
-**BUT:** `dotnet 11.0.100-preview.7` is installed and **`libmsquic` is ABSENT** —
-`ldconfig -p | grep -c msquic` → **0**, no `libmsquic*` under `/usr/lib` or `/usr/local/lib`. On
-Linux .NET QUIC needs it, so `QuicListener.IsSupported` is false and `:183` never runs.
-⚠ *Honesty: the absence is directly measured; the `IsSupported=false` consequence is inferred from
-it. A `dotnet test --filter QuicLinkOneBind` was still running at write time — publish its result.*
+**GROUND TRUTH — EXECUTED BOTH WAYS 2026-09-04T10:15Z** (minimal `net11.0` probe over
+`System.Net.Quic`, same binary, same host). This supersedes the earlier *inferred* claim:
+
+```
+default loader path               QuicListener.IsSupported = False   QuicConnection = False
+LD_LIBRARY_PATH=$HOME/.local/lib  QuicListener.IsSupported = True    QuicConnection = True
+```
+
+`@shiras-yngapp` installed **libmsquic 2.6.1** (26.04 pool — right call; an ABI mismatch there
+surfaces as a runtime *load* failure, not an install error) to `~/.local/lib`, which is **not on the
+default loader path**. **The GLPNET code was never the gap** — it already refuses loudly
+(`ERR quic_unsupported … (msquic missing); real QUIC only, FR-001`). The **host** was incomplete.
+
+⚠ *Note on method: my `dotnet test --filter QuicLinkOneBind` was killed by my own 900 s timeout
+(exit 143) and produced **no verdict**. A timed-out test has not passed and has not failed — it has
+said nothing. The probe above is what actually closed it.*
+
+🔴 **`LD_LIBRARY_PATH` GREENS YOUR TESTS AND LEAVES EVERY SERVICE BROKEN.** A systemd unit does
+**not** inherit an interactive shell's `LD_LIBRARY_PATH`. Broker/guardian/oracle are *services*:
+they would load with `IsSupported=false` and refuse at first link — **after registering**. For
+services use `sudo dpkg -i … && sudo ldconfig`, **or ship `libmsquic.so.2` beside the binary**
+(.NET probes the app dir via `NATIVE_DLL_SEARCH_DIRECTORIES`, so it travels with the output and
+cannot be forgotten on the next unit). ⚠ libmsquic is **not in Ubuntu apt**, **not bundled with
+.NET on Linux**, and the MS repo is unconfigured here — so this **recurs on every new Linux host**
+and belongs in **provisioning**, not a runbook step.
 
 🔴 **Why this matters at `n=4`:** SHIRAS would **register as one of the four voting hosts and never
 be able to accept a link** — a silent `f=1 → f=0` quorum reduction, indistinguishable from a healthy
