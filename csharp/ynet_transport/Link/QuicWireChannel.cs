@@ -53,13 +53,20 @@ public sealed class QuicWireChannel : IWireChannel
     // ---- server role ----
 
     /// <summary>Bind a QUIC listener on loopback (port 0 = pick a free port; read LocalEndPoint).</summary>
-    public static async Task<QuicListener> BindListenerAsync(int port = 0, CancellationToken ct = default)
+    public static Task<QuicListener> BindListenerAsync(int port = 0, CancellationToken ct = default)
+        => BindListenerAsync(new IPEndPoint(IPAddress.Loopback, port), ct);
+
+    /// <summary>
+    /// Bind a QUIC listener on an arbitrary local endpoint (port 0 = pick a free port). The routable
+    /// overload a broker/guardian/oracle listener needs — loopback is not reachable from a peer host.
+    /// </summary>
+    public static async Task<QuicListener> BindListenerAsync(IPEndPoint local, CancellationToken ct = default)
     {
         RequireSupported("listen");
         var cert = MakeEphemeralCert();
         return await QuicListener.ListenAsync(new QuicListenerOptions
         {
-            ListenEndPoint = new IPEndPoint(IPAddress.Loopback, port),
+            ListenEndPoint = local,
             ApplicationProtocols = new List<SslApplicationProtocol> { Alpn },
             ConnectionOptionsCallback = (_, _, _) => ValueTask.FromResult(new QuicServerConnectionOptions
             {
@@ -89,12 +96,16 @@ public sealed class QuicWireChannel : IWireChannel
     // ---- client role ----
 
     /// <summary>Dial a peer's QUIC endpoint on loopback and open the bidirectional stream.</summary>
-    public static async Task<QuicWireChannel> ConnectAsync(int port, CancellationToken ct = default)
+    public static Task<QuicWireChannel> ConnectAsync(int port, CancellationToken ct = default)
+        => ConnectAsync(new IPEndPoint(IPAddress.Loopback, port), ct);
+
+    /// <summary>Dial an arbitrary peer QUIC endpoint and open the bidirectional stream.</summary>
+    public static async Task<QuicWireChannel> ConnectAsync(IPEndPoint remote, CancellationToken ct = default)
     {
         RequireSupported("connect");
         var connection = await QuicConnection.ConnectAsync(new QuicClientConnectionOptions
         {
-            RemoteEndPoint = new IPEndPoint(IPAddress.Loopback, port),
+            RemoteEndPoint = remote,
             DefaultStreamErrorCode = 0,
             DefaultCloseErrorCode = 0,
             IdleTimeout = TimeSpan.FromMinutes(30),
