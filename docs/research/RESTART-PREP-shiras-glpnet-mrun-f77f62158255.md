@@ -63,30 +63,22 @@ the next phase. The `over` verdict on the era is an artefact of that, **not** sl
 are FIVE.** `flow/__main__.py:1109` (`→done`) and `:1446` (generic verb) were missed. Patching only
 three leaves the interval uncloseable.
 
-## 3 · 🔴 THE ONE THING BLOCKING THIS LANE — a single permission
+## 3 · ✅ THE MERGE BLOCKER IS **CLEARED**. PR MERGED, RELEASE CUT.
 
-**Measured 2026-09-04 on CI that was 5/5 GREEN at the exact tip:**
+The permission was granted (`Q-37`) and everything behind it executed:
 
-| operation | result |
+| | |
 |---|---|
-| `git pull --ff-only` | ✅ **WORKS** — the old "denied" record was **STALE** |
-| `git push` | ✅ **WORKS** — five pushes this session |
-| `gh pr merge 279 --merge` | ❌ **STILL REFUSED** by the Claude Code auto mode classifier |
+| **PR #279** | ✅ **MERGED** `2026-09-04T09:00:39Z` |
+| **yx-bootmig `[SUPERSEDED]` correction** | ✅ **ON `develop`** — `grep -c SUPERSEDED` on `origin/develop` → **1** (was **0** for three days) |
+| **Release** | ✅ **`v2026.09.04.2`** cut, PR **#285** **MERGED** `09:05:34Z` |
+| **Branch `100-cpm-central-package-management`** | fully merged, **0 ahead of develop** |
 
-**The lane did NOT route around it** by merging locally and pushing `develop` — that accomplishes
-the denied action under another name.
+**25 commits were enumerated before the cut, not inferred** (codex P1-3 required this): all of them
+this lane's own docs, rulings, roadmap rounds and codex remedies — no unrelated code.
 
-**Consequences, both of them real:**
-1. **PR #279 cannot land**, so the committed `[SUPERSEDED]` yx-bootmig correction stays invisible to
-   every peer: `git show origin/develop:.claude/skills/yx-bootmig/SKILL.md | grep -c SUPERSEDED` → **0**.
-2. **`buildkit release` cannot run either** — it merges a PR to `main`. So the Q-34 decision to
-   supersede the S6 release hold **cannot be executed**, even though it is decided.
-
-> ### ⏩ THE ONE ENGINEER ACTION THAT UNBLOCKS BOTH
-> ```
-> /permissions   → add:   Bash(gh pr merge:*)
-> ```
-> Recorded as ruling **`Q-glpnetshiras-31`** and backlog item **S31**.
+⚠ **Local checkout is now on `develop`.** The old feature branch is merged and finished; a
+successor should branch fresh from `develop` rather than reuse it.
 
 ## 4 · DECIDED THIS SESSION — cite, never re-ask
 
@@ -148,18 +140,23 @@ the boot PATH, **no** launch behaviour. Its `EXIT 0` is a **FALSE GREEN**.
 boot with no graphical session and **FAILED** (`0/15`, `status=1/FAILURE`), and the desktop autostart
 brought **15/15** back 16 minutes later — **via LOGIN**.
 
-### 🔴 NEW TOPOLOGY — TWO WINDOWS, applied and verified 2026-09-04T07:55Z
+### TOPOLOGY — **ONE window, 15 tabs** (settled by ruling `Q-35`)
 
-The engineer changed the reboot topology from one window to **two**. **Applied on this host**
-(`~/.config/bk-onrestart/config.json`, backed up first as `.bak-20260904-glpnet-preTwoWindow`):
+Two successive directives disagreed: an earlier one split the fleet 7 + 8 across two windows, the
+later one listed all 15 in a single window. I applied the split, **asked**, and the engineer ruled
+**revert to one window** — the latest instruction wins. **Applied and verified 2026-09-04T08:58Z**
+(`~/.config/bk-onrestart/config.json`; backup `.bak-20260904-glpnet-preTwoWindow` retained):
 
 ```
-layout=2 window(s)   terminal=xfce4-terminal
-WINDOW 1 (7): ospark · ulpanit(lang/hatzinor) · tefl · buildkit · crucible · olamnit · qhstate
-WINDOW 2 (8): glpnet · lejepa · yngraw(research/yngenios) · mstack · yngcor · yngapp · ynglin · yngwin
-TOTAL 15 lanes — membership is exactly as directed; ORDER WITHIN each window was renormalised
-by the helper and does not match the directive's listing order. Membership is what sets tabs.
+layout=1 window(s)   terminal=xfce4-terminal
+WINDOW 1 (15): ospark · ulpanit(lang/hatzinor) · tefl · buildkit · crucible · glpnet · lejepa ·
+               olamnit · qhstate · yngraw(research/yngenios) · mstack · yngcor · yngapp ·
+               ynglin · yngwin
+TOTAL 15 — none lost in either direction of the change.
 ```
+⚠ **This file is HOST-level and every lane on SHIRAS depends on it.** If you see it disagree with a
+directive, **ask before flipping it** — two lanes alternating on a shared config during a reboot is
+the one race the fleet cannot afford.
 
 **Verified by `launch --dry-run`, and this run proved more than a no-op** — because `mstack` is
 down, the launcher actually planned a real tab: `window1: 0 tab(s) window2: 1 tab(s)`, emitting the
@@ -230,13 +227,69 @@ size — they counted different directories.**
 ✅ **FIXED this session:** `buildkit-roadmap sync --coop-inbox /mnt/gavri/d/coop` → *"coop mirror OK
 (explicit)"*. That gap had been reported as "not configured" since round 65.
 
+## 6D · 🔴 QUIC — GLPNET SHIPS THE LISTENER, BUT IT CANNOT BIND ON THIS HOST
+
+Engineer ask: *"ensure GLPNET can configure a working QUIC IP listener for the broker, guardian and
+oracle."* **Measured answer: the code exists and is complete; the HOST is missing a package.**
+
+```
+csharp/glp_crdtmsg/route/QuicLinkTransport.cs:179  ListenAsync(IPEndPoint bind, ...)
+                                             :183  QuicListener.ListenAsync(new QuicListenerOptions{...})
+                                             :207  ListenEndPoint => _listener?.LocalEndPoint
+                                             :264  AcceptConnectionAsync
+                                             :86   IsSupported gate   :460  loud unavailable message
+csharp/glp_link/transports/QuicEndpoint.cs · specs/064-durable-listener-service-box  14/14 tasks, 0 open
+  (064 IS a durable listener that survives REPL restarts and RE-BINDS ON BOOT)
+yngenios: ZERO QUIC in .cs or .py  (peer-measured, corroborated)
+```
+**GROUND TRUTH — EXECUTED BOTH WAYS 2026-09-04T10:15Z** (minimal `net11.0` probe over
+`System.Net.Quic`, same binary, same host). This supersedes the earlier *inferred* claim:
+
+```
+default loader path               QuicListener.IsSupported = False   QuicConnection = False
+LD_LIBRARY_PATH=$HOME/.local/lib  QuicListener.IsSupported = True    QuicConnection = True
+```
+
+`@shiras-yngapp` installed **libmsquic 2.6.1** (26.04 pool — right call; an ABI mismatch there
+surfaces as a runtime *load* failure, not an install error) to `~/.local/lib`, which is **not on the
+default loader path**. **The GLPNET code was never the gap** — it already refuses loudly
+(`ERR quic_unsupported … (msquic missing); real QUIC only, FR-001`). The **host** was incomplete.
+
+⚠ *Note on method: my `dotnet test --filter QuicLinkOneBind` was killed by my own 900 s timeout
+(exit 143) and produced **no verdict**. A timed-out test has not passed and has not failed — it has
+said nothing. The probe above is what actually closed it.*
+
+🔴 **`LD_LIBRARY_PATH` GREENS YOUR TESTS AND LEAVES EVERY SERVICE BROKEN.** A systemd unit does
+**not** inherit an interactive shell's `LD_LIBRARY_PATH`. Broker/guardian/oracle are *services*:
+they would load with `IsSupported=false` and refuse at first link — **after registering**. For
+services use `sudo dpkg -i … && sudo ldconfig`, **or ship `libmsquic.so.2` beside the binary**
+(.NET probes the app dir via `NATIVE_DLL_SEARCH_DIRECTORIES`, so it travels with the output and
+cannot be forgotten on the next unit). ⚠ libmsquic is **not in Ubuntu apt**, **not bundled with
+.NET on Linux**, and the MS repo is unconfigured here — so this **recurs on every new Linux host**
+and belongs in **provisioning**, not a runbook step.
+
+🔴 **Why this matters at `n=4`:** SHIRAS would **register as one of the four voting hosts and never
+be able to accept a link** — a silent `f=1 → f=0` quorum reduction, indistinguishable from a healthy
+smaller fleet. And there are **two independent routes** to that state: missing `libmsquic`, and
+`LazyQuicComposition` deferring the cert load to first use (correct for a REPL, **wrong for a quorum
+member**). **My ruling on the seam:** membership must be asserted by an **actual successful bind at
+registration**, both failure modes must fire **then** and not at first use, and **"listener down"
+must report as a QUORUM CHANGE**. A quorum that cannot tell *member absent* from *member present but
+deaf* is not a quorum. And **a QUIC endpoint is not a lane id** — a listener gives an address, not
+an identity; it must land together with minted identity or it is address-as-identity in the
+transport layer.
+
 ## 7 · WHAT'S NEXT — in this marathon, and beyond
 
-**In the run** (`next:` currently points at S3, which Q-33 **parked** — do not re-derive it):
-1. **Unblock §3** — one `/permissions` grant, then merge #279 and cut the release Q-34 authorises.
-2. **Open the next era: P3 completion** (Q-32, reaffirmed by ruling **D4**) — coop-agree manifest
-   scope with `@olamnit` first. **Then** the ynet minted-identity feature, which the fleet is
-   blocked on.
+**In the run** (`next:` points at S3, which `Q-33` **parked** — do not re-derive it):
+1. **Open the next era: P3 completion** (`Q-32`, reaffirmed by ruling **D4**: a new era opens only
+   after the current one closes — and S1 **has** closed). Coop-agree manifest scope with `@olamnit`
+   before opening.
+2. **Then `ynet-minted-lane-identity`** (WSJF 5.20 / RICE 810) — the fleet election is blocked on it:
+   `R-E4` refuses all 93 candidacies, and `@buildkit` measured the board itself as a three-way fork
+   with `root_id` unpinned.
+3. **Install `libmsquic` on SHIRAS** — one package, and it converts a declared-but-deaf elector into
+   a real one (§6D).
 
 **Beyond** — roadmap round 66, **27 features not closed** (18 `promoted` · 5 `specified` ·
 2 `implemented` · 2 `analyzed`); full table in the sitrep. Derived build order starts:
