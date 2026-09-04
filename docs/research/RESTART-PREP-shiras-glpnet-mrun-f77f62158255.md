@@ -3,191 +3,175 @@
 
 # RESTART PREP — shiras / glpnet · run `mrun-f77f62158255`
 
-    written:  2026-09-03T16:10Z, AMENDED 2026-09-04T05:00Z (supersedes the 2026-09-02T16:00Z rev)
+    written:  2026-09-04T05:50Z   (REWRITTEN WHOLE — supersedes the 2026-09-03T16:10Z revision,
+                                   which codex found internally inconsistent in three places)
     host:     SHIRAS (Linux)   repo: olamni-glp/GLPNET
     branch:   100-cpm-central-package-management
-              🔴 DO NOT TRUST A COMMIT HASH WRITTEN HERE -- this file is amended in place
-              and its header has already gone stale once (it named b77cf573 after 9d99478f had
-              landed). Read the tip with `git log --oneline -1` and `git status`; that is the
-              only in-sync claim this document is allowed to make.
-    run:      mrun-f77f62158255 [open]  feature=glpnet-shiras-tidyup-and-scheduler-rootcause
+    run:      mrun-f77f62158255 [open]   era S1 CLOSED 9/9
     resume:   type exactly  →  resume marathon
-    status:   ✅ SAFE TO RESTART.   ⚠️ SAFE TO REBOOT **ONLY IF YOU LOG BACK IN** — see §6.
+    status:   ✅ SAFE TO RESTART.   ⚠️ REBOOT: SAFE ONLY IF YOU LOG BACK IN — and read §6 FIRST,
+                                     one lane is ALREADY DOWN before any reboot.
 
 > **POINTER, not a ledger.** The roadmap + buildkit pipeline state are the source of truth.
-> Re-locate objectively: `buildkit-roadmap next` → in-progress? → pipeline/WIP position.
-> Never resume from a summary.
+> Re-locate objectively. **Never resume from a summary.**
+>
+> 🔴 **DO NOT TRUST A COMMIT HASH WRITTEN IN THIS FILE.** Its header named a stale commit once
+> already. Read the tip with `git log --oneline -1`; that is the only in-sync claim allowed here.
 
 ---
 
 ## 1 · First three commands on resume
 
 ```bash
-bk-heavy-lock --timeout 3600 -- buildkit-marathon status
-bk-heavy-lock --timeout 3600 -- buildkit-marathon backlog
+bk-heavy-lock --timeout 3600 -- buildkit-marathon status --feature glpnet-shiras-tidyup-and-scheduler-rootcause
+bk-heavy-lock --timeout 3600 -- buildkit-marathon backlog --feature glpnet-shiras-tidyup-and-scheduler-rootcause
 bk-heavy-lock --timeout 3600 -- /home/shira/.local/share/bkvenv/bin/python \
-    .specify/standards/bk_report_v1.py all \
-    --feature glpnet-shiras-tidyup-and-scheduler-rootcause
+    .specify/standards/bk_report_v1.py all --feature glpnet-shiras-tidyup-and-scheduler-rootcause
 ```
 
-🔴 Three rules, each learned by breaking it:
-1. **Wrap every heavy buildkit call in `bk-heavy-lock`.** Waits this session: 0s, 17s, 48s, 291s,
-   349s, 599s. Normal — it queues instead of colliding.
-2. **BK-REPORT needs the bkvenv python, NOT `python3`** (`sys.executable` → `ModuleNotFoundError`).
+🔴 Four rules, each learned by breaking it:
+1. **Wrap every heavy buildkit call in `bk-heavy-lock`.** Waits measured this session: 5s, 26s,
+   40s, 51s, 59s, 65s, 353s, **471s**. Four other lanes contend for one registry. It queues; it is
+   not stuck. Never kill a holder.
+2. **BK-REPORT needs the bkvenv python, NOT `python3`.**
 3. **Report order is FIXED:** ROADMAP → PROGRESS → STATUS → SITREP → TAKT → NEXT.
+4. **`step-start` / `checkpoint` take the `mstep-…` ID, NOT the stage name.** `--step clarify`
+   fails with `no step 'clarify' in run`. Get IDs from the run mirror at
+   `~/.local/share/buildkit/deploy-home/targets/b0ada634764e/marathon-mrun-f77f62158255.md`.
 
-## 2 · WHERE THE ERA STANDS — S1, and it is now MEASURABLE
+## 2 · WHERE THE ERA STANDS — **S1 IS CLOSED. 9/9. FULLY MEASURED.**
 
-`steps: 1/9 complete` · `next: start clarify` · takt `specify ELAPSED 0.03h`, `1/9 measurable`.
-**First measured era stage for glpnet on any host** (fleet report had glpnet at 0%).
+```
+takt: 9/9 steps measurable (9 declared phase, 0 derived)
+specify 0.03h · clarify 25.60h · plan 8.85h · tasks 0.20h · analyze 0.03h
+implement 0.02h · codexreview 0.85h · ship 0.97h · close 0.15h
+ERA ELAPSED 35.69h (band 1.5-6.0h -> over)
+```
 
-**Both root causes are PROVED. Do not re-derive them.**
+**This is the first fully-measured era for glpnet on any host** (the fleet report had glpnet at 0%).
+⚠ **Read the two big numbers honestly:** `clarify` 25.60h and `plan` 8.85h are **overnight
+wall-clock**, not effort — a checkpoint stamps the next step's start, so an idle night lands inside
+the next phase. The `over` verdict on the era is an artefact of that, **not** slow work.
 
-**Q-19 — era stages were never MINTED, not lost.**
-- Ladder (`marathon/takt.py:current_era_actuals`) is built from run STEPS.
-- `step_start`/`checkpoint` need a **pre-existing** step (`marathon/checkpoint.py:29-34`).
-- Only minting path is `expand --item --steps` (`marathon/intake.py:67`).
-- All nine stage templates (2,513 lines) have **`grep -c marathon` = 0**.
-- PROOF: `step-start --step specify` → `{"error": "no step 'specify' in run …", "exit_code": 1}`.
-- **REMEDY, already applied here:** `expand` → `steps 0/0 → 0/9`. Any lane can do this today.
+**Both root causes were PROVED and must NOT be re-derived:**
+- **Q-19** — era stages were never **MINTED**, not lost. `expand --item --steps` is the only
+  minting path. Remedy already applied here.
+- **S1** — transition writers omit `phase`; `board_phase_seconds` (`marathon/takt.py:747`) skips a
+  phase-less op **by design**, and its docstring says so. **The reader was never the defect.**
 
-**S1 — all three transition writers omit `phase`;** `board_phase_seconds` skips a phase-less op.
-`readiness.py:126-136` · `onboard.py:285-292` · `flow/__main__.py:866-870`.
-`flow/__main__.py:890` passes `phase="implement"` but to `_takt_emit`, a **different sink**.
-Only `allocate_writer.py:472` sets `record["phase"]`. Ruling Q-29 = **file to @buildkit**, no cross-lane edit.
-🔴 **CORRECTION 2026-09-03T19:40Z (clarify stage, run `mrun-f77f62158255`): THE FILING WAS NEVER WRITTEN.** The earlier "Filed to @buildkit" here — and the Q-29 decision rationale "filed to @buildkit in COOP ACK section 6" — are both FALSE. Measured: `grep -rl` over
-`/mnt/biwin/D_DRIVE/coop` for `readiness.py` | `onboard.py` | `board_phase_seconds` returns **zero** `.md` hits, and section 6 of `ACK-SWEEP-20260903T1016Z-shiras-buildkit` is "FULFILMENT — windows 3.12 shard 4", not the S1 phase filing. The S1 era's `implement` stage is therefore **NOT discharged**. Captured as backlog item S30 (`mitem-01a068c5-147f-7599-925a-82bdc0646639`).
+**CORRECTED DURING THE ERA — the finding grew:** S1 said **three** phase-omitting writers. **There
+are FIVE.** `flow/__main__.py:1109` (`→done`) and `:1446` (generic verb) were missed. Patching only
+three leaves the interval uncloseable.
 
-**Remaining S1 stages:** clarify → plan → tasks → analyze → implement → codexreview → ship → close.
-Its `implement` is **filing**, not patching — the code is buildkit's, ruling `Q-ERASTAGE-03`.
+## 3 · 🔴 THE ONE THING BLOCKING THIS LANE — a single permission
 
-## 3 · NEXT ERA — `/yx-bootmig`, engineer directive 2026-09-02/03
+**Measured 2026-09-04 on CI that was 5/5 GREEN at the exact tip:**
 
-> Replicate OLAMNIT assistant capability, fully tested **headful AND headless**, without corrupting
-> the YNGENIOS multilayer separation. Marked mandatory/critical/urgent.
+| operation | result |
+|---|---|
+| `git pull --ff-only` | ✅ **WORKS** — the old "denied" record was **STALE** |
+| `git push` | ✅ **WORKS** — five pushes this session |
+| `gh pr merge 279 --merge` | ❌ **STILL REFUSED** by the Claude Code auto mode classifier |
 
-**Normative form of "don't corrupt the layers"** (`yngenios/docs/architecture/LATTICE.md`):
-L1a and L1b are **SIBLINGS and MUST NOT share** — anything both need belongs in **L0**; L0 is
-**byte-exact verbatim source**, hash-verified against `L0/MANIFEST.sha256`, **algorithmic core
-only** (zero platform actions, zero third-party runtime deps); **L3 is never referenced upward**;
-**there is no L4 ring** (Amendment 1.1 — legacy packaging shorthand, DEC-PUBLISH-1).
+**The lane did NOT route around it** by merging locally and pushing `develop` — that accomplishes
+the denied action under another name.
 
-**Capability is locatable** in the olamnit repo (roadmap id `olamnit-assistant`):
-`specs/005-headless-claude-code-shell-host` · `specs/019-headless-agent-terminal` ·
-`specs/061-wasm-shell-console-agent-poc` · `docs/headless-agent-terminal.md`.
+**Consequences, both of them real:**
+1. **PR #279 cannot land**, so the committed `[SUPERSEDED]` yx-bootmig correction stays invisible to
+   every peer: `git show origin/develop:.claude/skills/yx-bootmig/SKILL.md | grep -c SUPERSEDED` → **0**.
+2. **`buildkit release` cannot run either** — it merges a PR to `main`. So the Q-34 decision to
+   supersede the S6 release hold **cannot be executed**, even though it is decided.
 
-**TWO BLOCKING SAFETY INPUTS — accepted, do not re-litigate**
-(gavriella SOURCE-HANDOFF 20260902T1845Z):
-1. **olamnit carries a PARALLEL L0-class core** — 51 `L0/YngeniOS.Contracts` vs 50
-   `Olamnit.Contracts`, **empty name intersection**. The hazard is the ABSENCE of a collision, so
-   **no gate fires**. Ruling **`Q-YXBOOTMIG-P3-01` = RESYNTHESIS against L0**;
-   `Olamnit.Contracts`/`Kernel`/`Core` **do NOT travel** and must not seed an L1 contract.
-2. **fail-OPEN ring classifier** promoted **224 files** into L0 by DEFAULT (367 vs 143 fail-closed;
-   223 UNPLACED). "No platform signal" is **not** evidence of L0 admissibility.
+> ### ⏩ THE ONE ENGINEER ACTION THAT UNBLOCKS BOTH
+> ```
+> /permissions   → add:   Bash(gh pr merge:*)
+> ```
+> Recorded as ruling **`Q-glpnetshiras-31`** and backlog item **S31**.
 
-**STILL GATED — P4 cannot open yet:** `scope-manifest.json` is `"complete": false`
-(`layer_2_content_predicate` NOT COMPUTABLE). **No P3 manifest ⇒ no P4** (FR-2). P2 landed
-2026-09-01 with headline **`bound = 0`** cross-repo edges over all five sources.
-P4 is **one era per source→target pair** under Q-15 — a programme, not one era.
+## 4 · DECIDED THIS SESSION — cite, never re-ask
 
-## 4 · ENGINEER RULINGS THIS SESSION — cite, never re-ask
-
-`.specify/questions/Q-glpnetshiras-20260903T1100Z.json` — **BK-STD-2 conformant, 4/4 decided.**
+`.specify/questions/Q-glpnetshiras-20260904T0500Z.json` — **BK-STD-2 conformant, 4/4 decided.**
 
 | qid | ruling |
 |---|---|
-| **Q-27** | **P4: olamnit RULES (Q-ERAOWN-01 stands), SHIRAS EXECUTES** — only measured host with all four targets on disk |
-| **Q-28** | **BK-STD-2 wins over CLAUDE.md** — carve-out added; `AskUserQuestion` required for engineer questions |
-| **Q-29** | **File the S1 fix to @buildkit**, do not patch a shared checkout |
-| **Q-30** | **Add measured per-host notes to the skill; keep refusal logic** |
+| **Q-31** | **Test the merge gate.** Tested: pull/push work, `gh pr merge` refused → escalated (§3) |
+| **Q-32** | **NEXT ERA = a P3-completion era on SHIRAS** to unblock yx-bootmig P4; agree manifest scope with `@olamnit` by coop **before** opening it (removes the Q-MARATHON-02 duplication risk) |
+| **Q-33** | **S3 PARKED** pending `@buildkit`'s ACK of the filing — **not** discharged, because the code is still unfixed fleet-wide |
+| **Q-34** | **The S6 release hold is SUPERSEDED** by the engineer's newer instruction; S6 discharged. Execution blocked by §3 |
 
-Carried: Q-09 · Q-10/Q-21 (**blocked, §5**) · Q-11 · Q-12 · Q-13 · Q-14 ✅ · Q-15 · Q-16 · Q-17 ·
-Q-18→Q-24 · Q-19 ✅ **DISCHARGED §2** · Q-20 ✅ · Q-22 ✅ **DISCHARGED** · Q-23 · Q-25 · Q-26.
+Carried and still valid: Q-09 · Q-11..Q-18 · Q-20 ✅ · Q-22 ✅ · Q-23 · Q-25 · Q-26 · Q-27 · Q-28 ·
+Q-29 ✅ **EXECUTED** · Q-30.
 
-## 5 · THE ONE LIVE BLOCKER — this lane cannot merge or pull
+## 5 · WHAT THIS ERA ACTUALLY DELIVERED (all published, all peer-reachable)
 
-`gh pr merge 279 --merge` · `git merge` · `git pull --ff-only` → **all three DENIED by the
-permission classifier again on 2026-09-03.** `git push` **works** (two pushes today).
-Q-21 decided *widen-rule* on 2026-09-02 and **the agent cannot apply it** — self-granting merge
-permission is exactly what the classifier exists to stop.
+- `coop/FILING-20260903T1954Z-shiras-buildkit-…` — five phase-omitting sites, commit-pinned lines,
+  the two-sink near-miss, three asks with one deliberately left open for the owning lane.
+- `coop/ACK-SWEEP-20260904T0445Z-shiras-glpnet-…` — **first sweep in nine days**, 20 documents,
+  `@buildkit`'s `line-57` question answered by measurement (**glpnet's copy is TRACKED**, so their
+  published "zero repo-fixable rows" is **one**).
+- **Two codex passes, 13 findings, all remediated** (`b9929b23`, `db4ce9a1`). Pass 2 independently
+  corroborated the false-filing record found in `clarify`.
+- **Roadmap round 66**: reconcile/import/reconcile/dedupe/export/sync all `rc=0` — 21 epics /
+  122 features / 4030 journal lines, **0 refused, no OOM**.
 
-**NEEDS THE ENGINEER, ONCE.** In the Claude Code prompt:
+**🔴 THE CORRECTION THIS ERA EXISTS TO CARRY:** ruling Q-29 and the previous revision of THIS FILE
+both recorded the S1 fix as *"filed to @buildkit"*. **It never was.** No coop document mentioned
+`readiness.py` or `board_phase_seconds` until 2026-09-03T19:54Z. **Finding a fix is not filing it,
+and a decision record asserting an artefact is not evidence the artefact exists.**
 
-    /permissions   → add:  Bash(gh pr merge:*)   Bash(git merge:*)   Bash(git pull:*)
+## 6 · 🔴 REBOOT — RE-MEASURED, AND ONE LANE IS ALREADY DOWN
 
-Until then this lane's contract ends at a green PR and a peer merges (as for #259/#264/#267/#274).
-**PR #279 is still OPEN.** Nothing qualifies for `/bk-release`: the only `implemented` feature
-(`qr-link-provisioning`, 067) is stranded off trunk, and this lane cannot merge to create a
-release-worthy `develop`.
+```
+live claude sessions: 14   (pgrep -u $(id -u) -x claude | wc -l)
+declared lanes:       15   (~/.config/bk-onrestart/config.json, schema 2, one-window)
+MISSING:              mstack   (/mnt/biwin/D_DRIVE/BSTDEV/tools/MSTACK — repo present, no session)
+```
 
-## 6 · 🔴 REBOOT — MEASURED, AND THE ANSWER CHANGED
+⚠ **`mstack` died BEFORE any reboot.** Any post-reboot "15/15" check is therefore measuring a
+recovery, not a steady state — and if you verify against a remembered 15 you will read a reboot
+that *fixed* mstack as a reboot that changed nothing.
 
-**Old record said the risk was `Linger=no`. That is now `Linger=yes` — and it was never the
-real cause.** Measured on the 2026-09-02T17:17:29 boot:
+**Both boot paths have moved since the last revision — re-measure, do not inherit:**
 
-| path | fired | result |
-|---|---|---|
-| `bk-onrestart.service` (systemd) | 17:17:41, **12 s after boot** | opened tabs, **0/15 claude after 60 s**, `status=1/FAILURE` |
-| autostart `.desktop` (login +45 s) | ~17:34 | **15/15 up** — terminal PID 8369 started **17:35:03** |
+| path | state now |
+|---|---|
+| `bk-onrestart.service` (systemd user) | `enabled`, `active (exited)` since **05:29 today**, with new drop-ins `10-path.conf` / `20-install.conf` / `30-harden.conf` — the PATH hazard recorded earlier **may now be fixed**, but that is **UNVERIFIED at boot** |
+| `Linger` | `yes` |
+| autostart `.desktop` | present, rewritten **05:16 today** |
+| launcher `bk-onrestart.sh` | rewritten **04:49 today** (35KB, was 19KB) |
 
-**The systemd unit fires before any graphical session exists**, so it cannot succeed. The fleet
-came back **16 minutes later via the desktop autostart**, i.e. **via LOGIN**. Contributing hazard:
-the systemd user PATH is `/usr/local/sbin:…:/snap/bin` and **does not contain `~/.local/bin`**,
-where `claude` actually lives (`/home/shira/.local/bin/claude`); a login shell finds it, that
-environment does not.
+🔴 **A DRY RUN IS NOT BOOT VALIDATION** (codex P2-5). With all lanes up the launcher takes its
+`nothing to do` branch immediately: it exercises **no** terminal startup, **no** `claude` lookup on
+the boot PATH, **no** launch behaviour. Its `EXIT 0` is a **FALSE GREEN**.
 
-⚠ **The `0/15` was a TRUE negative, not a verifier artifact** — `pgrep -u $(id -u) -x claude`
-returns **15** right now, so the counting method is sound.
+**The only real evidence remains the 2026-09-02T17:17 boot**, where the systemd unit fired 12s after
+boot with no graphical session and **FAILED** (`0/15`, `status=1/FAILURE`), and the desktop autostart
+brought **15/15** back 16 minutes later — **via LOGIN**.
 
 ### Reboot verdict
 
-✅ **SAFE TO REBOOT — provided you log back in.** All 15 lanes are registered with distinct names
-and resolving paths; guard 6 prevents double-launch; resume args are
-`claude --continue --autocompact 1000000` (**never summarising**).
+✅ **SAFE TO REBOOT — provided you LOG BACK IN.** Resume args are
+`claude --continue --autocompact 1000000` (**never summarising**); a guard prevents double-launch.
+❌ **If the host reboots to a login screen and nobody logs in, NOTHING resumes.**
+⚠ Today's systemd/launcher rewrites are **untested at boot** — this reboot is also their first real test.
 
-❌ **If the host reboots to a login screen and nobody logs in, NOTHING resumes** — the systemd
-path is broken, so linger does not save you.
-
-**Clean-env dry-run — 🔴 A CONFIGURATION CHECK ONLY. IT DOES NOT VALIDATE THE BOOT PATH.**
-(corrected 2026-09-04, codex finding P2-5.) With all 15 lanes already up the launcher takes its
-`nothing to do` branch immediately, so this command exercises **no** terminal startup, **no**
-`claude` lookup on the boot PATH, and **no** launch behaviour whatsoever. Reading its EXIT 0 as
-reboot-safety is a FALSE GREEN — it is the same shape of false-clean this lane has now filed twice.
-What it does prove: the config parses, the 15 lanes are declared, and the launcher hardcodes its
-own lake root rather than inheriting one.
-
-```bash
-env -u BUILDKIT_TAKT_LAKE -u BUILDKIT_TAKT_LAKE_FLEET \
-  bash ~/.local/share/buildkit/deploy-home/onrestart/bk-onrestart.sh launch --dry-run
-```
-→ `all 15 lane(s) already up - nothing to do.` EXIT 0 — **the no-op branch, see above.** The
-launcher **hardcodes** `BUILDKIT_TAKT_LAKE=/mnt/biwin/D_DRIVE/_takt-lake` rather than inheriting it,
-so the old §5.1 inherited-env trap is **CLOSED** (the Q-14 fix propagated). That much is readable
-from the script itself and does not depend on the dry run.
-
-**The only evidence that the boot path actually works is the 2026-09-02T17:17 boot measurement in
-the table above** — where the systemd unit FAILED and the desktop autostart brought 15/15 back 16
-minutes later, via LOGIN. Nothing since has re-tested it.
-
-**The 15 lanes, in launch order:** ospark · tefl · ulpanit (`lang/hatzinor`) · olamnit · buildkit ·
-qhstate · crucible · glpnet · lejepa · mstack · yngraw (`research/yngenios`) · yngwin · ynglin ·
+**The 15 lanes:** ospark · tefl · ulpanit (`lang/hatzinor`) · olamnit · buildkit · qhstate ·
+crucible · **glpnet** · lejepa · **mstack (DOWN)** · yngraw (`research/yngenios`) · yngwin · ynglin ·
 yngapp · yngcor.
 
-## 7 · Repo + round state at write time
+## 7 · WHAT'S NEXT — in this marathon, and beyond
 
-```
-branch   100-cpm-central-package-management @ b77cf573   (pushed, in sync with origin)
-round 65 reconcile: already in sync · import: 81 new files, 124 new lines, 0 foreign refused
-         dedupe: 121 live features scanned · export: 21 epics / 122 features / 4030 journal lines
-         sync --round 65: rc=0, published to the authoritative sink (committable, peer-reachable)
-         NO OOM this round — the round-64 materialise-HEAD OOM did NOT recur
-takt     canonical /mnt/biwin/D_DRIVE/_takt-lake, 1,079 files, 0 orphans (Q-22 discharged)
-PRs      #279 OPEN, awaiting a peer merge
-```
+**In the run** (`next:` currently points at S3, which Q-33 **parked** — do not re-derive it):
+1. **Unblock §3** — one `/permissions` grant, then merge #279 and cut the release Q-34 authorises.
+2. **Open the next era: P3 completion** (Q-32) — coop-agree manifest scope with `@olamnit` first.
 
-**Open gap noted, not fixed:** `sync` reports *"publish: coop mirror not configured — no inbox
-configured; pass `--coop-inbox` or set `$BUILDKIT_COOP_INBOX`"*, so the round is **not** mirrored
-to the coop channel automatically.
+**Beyond** — roadmap round 66, **27 features not closed** (18 `promoted` · 5 `specified` ·
+2 `implemented` · 2 `analyzed`); full table in the sitrep. Derived build order starts:
+`verification-receipts…` → `bk-onrestart-per-host…` → `glptutorial-corpus-goldens…` →
+`occurs-checked-substitution…` → `madglp-writer-reader…`.
+
+⚠ **Open defect, unfixed:** `reconcile` reports **73/122 features carry no `spec_path` and can never
+bind by basename**; 18 of the 27 not-closed features are among them.
 
 ---
 
