@@ -94,17 +94,40 @@ public sealed partial class NodeIdentity
         var minted = Generate(algorithm);
         var pkcs8 = minted.ExportPkcs8PrivateKey();
 
+        // 🔴 WRITE-THEN-RENAME, not write-in-place. A crash midway through an in-place write leaves a
+        // TRUNCATED .nodekey, which the next load reads as corrupt and re-mints — i.e. a power cut
+        // during first use would change this lane's node id. The temp file is unique, so it never
+        // collides; the move is atomic and NON-overwriting, so a first-use race still resolves to ONE
+        // key with the loser loading the winner's (FR-102-2). Both properties at once, which
+        // CreateNew-and-write and rename-over-the-top each give only half of.
+        var temp = path + "." + Environment.ProcessId.ToString() + "-" + Guid.NewGuid().ToString("N")[..8] + ".tmp";
+
         try
         {
-            using var fs = new System.IO.FileStream(path, FileMode.CreateNew, FileAccess.Write, FileShare.None);
+            var options = new FileStreamOptions
+            {
+                Mode = FileMode.CreateNew,
+                Access = FileAccess.Write,
+                Share = FileShare.None,
+            };
+            // Set the mode AT CREATION: chmod-after-create leaves a window, however brief, in which a
+            // file destined to hold a private key exists under the ambient umask.
             if (!OperatingSystem.IsWindows())
-                File.SetUnixFileMode(path, UnixFileMode.UserRead | UnixFileMode.UserWrite); // holds a private key
-            fs.Write(pkcs8);
+                options.UnixCreateMode = UnixFileMode.UserRead | UnixFileMode.UserWrite;
+
+            using (var fs = new System.IO.FileStream(temp, options))
+            {
+                fs.Write(pkcs8);
+                fs.Flush(flushToDisk: true); // the rename must not beat the bytes to disk
+            }
+
+            File.Move(temp, path, overwrite: false);
         }
         catch (IOException) when (File.Exists(path))
         {
-            // Another process created it between File.Exists and here. THEIRS WINS — a second id for
-            // one lane is the exact fork this method exists to prevent.
+            // Another process got there first. THEIRS WINS — a second id for one lane is the exact
+            // fork this method exists to prevent.
+            TryDelete(temp);
             if (TryLoadPkcs8(path, out var winner))
             {
                 minted.Dispose();
@@ -113,12 +136,24 @@ public sealed partial class NodeIdentity
             }
             throw; // the winner wrote something unreadable: surface it rather than fork the identity
         }
+        catch
+        {
+            TryDelete(temp); // never leave key material in a stray temp file
+            throw;
+        }
         finally
         {
             CryptographicOperations.ZeroMemory(pkcs8);
         }
 
         return minted;
+    }
+
+    private static void TryDelete(string path)
+    {
+        try { File.Delete(path); }
+        catch (IOException) { /* best effort: a stray temp is bad, a throw here would be worse */ }
+        catch (UnauthorizedAccessException) { }
     }
 
     /// <summary>PKCS#8 DER of the private key — the on-disk form, algorithm-agnostic.</summary>

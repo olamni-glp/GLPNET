@@ -132,6 +132,32 @@ public sealed class MintedLaneIdentityTests : IDisposable
         Assert.True(StaticNodeAddressResolverProbe.IsWellFormed(reminted.NodeId));
     }
 
+    // The crash artifact a write-in-place would leave: a VALID PREFIX of a real key. It must read as
+    // corrupt (and be re-minted loudly), never as a usable half-key.
+    [Fact]
+    public void Truncated_key_file_is_corrupt_not_a_usable_half_key()
+    {
+        using (var seed = NodeIdentity.LoadOrMint("shiras.glpnet", out _, _dir)) { Assert.NotNull(seed); }
+
+        var keyFile = Directory.GetFiles(_dir, "*.nodekey").Single();
+        var whole = File.ReadAllBytes(keyFile);
+        Assert.True(whole.Length > 8);
+        File.WriteAllBytes(keyFile, whole[..(whole.Length / 2)]);
+
+        using var reminted = NodeIdentity.LoadOrMint("shiras.glpnet", out var origin, _dir);
+        Assert.Equal(IdentityOrigin.RemintedCorrupt, origin);
+        Assert.True(StaticNodeAddressResolverProbe.IsWellFormed(reminted.NodeId));
+    }
+
+    // Key material must never be left behind in a temp file the write-then-rename uses.
+    [Fact]
+    public void Minting_leaves_no_stray_temp_file_holding_key_material()
+    {
+        using var seed = NodeIdentity.LoadOrMint("shiras.glpnet", out _, _dir);
+        Assert.Single(Directory.GetFiles(_dir));
+        Assert.Empty(Directory.GetFiles(_dir, "*.tmp"));
+    }
+
     // A4 — it holds a private key.
     [Fact]
     public void Key_file_is_owner_only_on_posix()
