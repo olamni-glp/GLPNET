@@ -89,9 +89,99 @@ public sealed class QuicLinkTransport : IBoxLinkTransport, IAsyncDisposable
     public static string SpkiPin(X509Certificate2 cert) => GlpRuntime.Link.Transports.QuicTransport.SpkiPin(cert);
 
     /// <summary>
-    /// A self-signed ECDSA P-256 dev cert (server+client EKU), PFX round-tripped so the private key is
-    /// in a form MsQuic/SChannel accepts — the dev trust material peer-link.md's pin gate anchors on.
+    /// The FEDERATION trust anchor: a dev cert loaded from a per-host keystore, generated only on
+    /// first run — so this host's SPKI pin is STABLE ACROSS REBOOTS.
     /// </summary>
+    /// <remarks>
+    /// 🔴 WHY THIS EXISTS, and why <see cref="CreateDevCert"/> must NOT be used for federation.
+    /// <c>CreateDevCert</c> mints a fresh P-256 keypair on every call (its local is named
+    /// <c>ephemeral</c> and means it). That is correct for a test, and fatal as a fleet trust anchor:
+    /// @ariellas-glpnet ran the probe five times on one host, changing nothing, and got FIVE
+    /// DIFFERENT PINS (2026-09-04T17:45Z). A pin table exchanged before a reboot is invalid for every
+    /// host the moment they come back, and mTLS then refuses EVERY peer — which is indistinguishable
+    /// from a dead transport, and would re-open a question two probes have already settled.
+    /// The defect was never in <c>CreateDevCert</c>; it was adopting a TEST helper as the anchor.
+    ///
+    /// Concurrency: the keystore is written CreateNew, so if two lanes start together the loser of
+    /// the race loads the winner's file rather than overwriting it — both end up on ONE pin, which is
+    /// the whole point. Never "last writer wins" here: that silently re-forks the identity.
+    ///
+    /// Expiry is REPORTED, never silent. A regenerated pin is a fleet-visible event: the caller gets
+    /// <paramref name="origin"/> = "created" or "recreated-expired" and must re-publish its pin.
+    /// </remarks>
+    /// <param name="commonName">the stable per-host identity, e.g. the host name</param>
+    /// <param name="origin">"loaded" | "created" | "recreated-expired" — for the caller to log/publish</param>
+    /// <param name="keystorePath">override; default $GLPNET_FEDERATION_KEYSTORE, else LocalAppData/glpnet/federation</param>
+    public static X509Certificate2 LoadOrCreateDevCert(string commonName, out string origin, string? keystorePath = null)
+    {
+        var dir = keystorePath
+            ?? Environment.GetEnvironmentVariable("GLPNET_FEDERATION_KEYSTORE")
+            ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                            "glpnet", "federation");
+        Directory.CreateDirectory(dir);
+
+        // The CN is user-supplied and lands in a path; keep it to a filesystem-safe stem.
+        var stem = string.Concat(commonName.Select(c => char.IsLetterOrDigit(c) || c is '-' or '_' ? c : '_'));
+        var path = Path.Combine(dir, stem + ".pfx");
+
+        if (File.Exists(path))
+        {
+            var existing = X509CertificateLoader.LoadPkcs12(File.ReadAllBytes(path), null,
+                X509KeyStorageFlags.Exportable);
+            if (existing.NotAfter > DateTime.Now.AddDays(1))
+            {
+                origin = "loaded";
+                return existing;
+            }
+            existing.Dispose();   // expired (or expiring within a day): mint a new one, LOUDLY
+            origin = "recreated-expired";
+        }
+        else
+        {
+            origin = "created";
+        }
+
+        // A federation anchor is pinned by SPKI, not chained, so a long life costs nothing and every
+        // expiry is a fleet-wide pin rotation. 30 days (CreateDevCert's) would rotate monthly.
+        using var ec = ECDsa.Create(ECCurve.NamedCurves.nistP256);
+        var req = new CertificateRequest($"CN={commonName}", ec, HashAlgorithmName.SHA256);
+        req.CertificateExtensions.Add(new X509BasicConstraintsExtension(false, false, 0, true));
+        req.CertificateExtensions.Add(new X509KeyUsageExtension(
+            X509KeyUsageFlags.DigitalSignature | X509KeyUsageFlags.KeyEncipherment, true));
+        req.CertificateExtensions.Add(new X509EnhancedKeyUsageExtension(
+            new OidCollection { new Oid("1.3.6.1.5.5.7.3.1"), new Oid("1.3.6.1.5.5.7.3.2") }, false));
+        var now = DateTimeOffset.UtcNow;
+        using var minted = req.CreateSelfSigned(now.AddMinutes(-1), now.AddYears(5));
+        var pfx = minted.Export(X509ContentType.Pfx);
+
+        try
+        {
+            using var fs = new FileStream(path, FileMode.CreateNew, FileAccess.Write, FileShare.None);
+            if (!OperatingSystem.IsWindows())
+                File.SetUnixFileMode(path, UnixFileMode.UserRead | UnixFileMode.UserWrite);  // it holds a private key
+            fs.Write(pfx);
+        }
+        catch (IOException) when (File.Exists(path))
+        {
+            // Another process created it between our File.Exists check and here. THEIRS WINS — a
+            // second pin for one host is the exact fork this method exists to prevent.
+            origin = "loaded";
+            return X509CertificateLoader.LoadPkcs12(File.ReadAllBytes(path), null,
+                X509KeyStorageFlags.Exportable);
+        }
+
+        return X509CertificateLoader.LoadPkcs12(pfx, null, X509KeyStorageFlags.Exportable);
+    }
+
+    /// <summary>
+    /// An EPHEMERAL self-signed ECDSA P-256 dev cert (server+client EKU), PFX round-tripped so the
+    /// private key is in a form MsQuic/SChannel accepts.
+    /// </summary>
+    /// <remarks>
+    /// 🔴 A FRESH KEYPAIR ON EVERY CALL, so the SPKI pin CHANGES EVERY TIME. Correct for a test that
+    /// wants two unrelated identities; WRONG as a federation trust anchor —
+    /// use <see cref="LoadOrCreateDevCert"/> for anything whose pin another host holds.
+    /// </remarks>
     public static X509Certificate2 CreateDevCert(string commonName)
     {
         using var ec = ECDsa.Create(ECCurve.NamedCurves.nistP256);
