@@ -24,8 +24,9 @@
 ////     and C# silently coerced it to nil and ANSWERED THE GOAL, so `[a|foo]` returned
 ////     byte-identically to `[a|[]]`. This port was the only runtime that never produced
 ////     that wrong answer, and Dart/C# have now been brought up to this behaviour rather
-////     than the reverse. The MEANING of an improper tail remains undecided and remains
-////     §1.14 (Udi); only the wording changed, to name the term the programmer typed.
+////     than the reverse. RULED 2026-09-04 (Q-101-02): the refusal is not a placeholder for a
+////     pending decision — an improper tail in a goal term is PERMANENTLY INVALID and this
+////     refusal IS the specification. Scope is goal terms only; FR-012 is unchanged.
 ////
 //// STILL DEFERRED, surfaced LOUDLY (never a wrong result): the conjunction path. Feature
 //// 101 FR-008a makes this a DECLARED, TESTED divergence rather than a silent one —
@@ -282,7 +283,8 @@ fn build_list_tail(
     // Gleam already refused here and was the ONLY runtime that never returned a
     // wrong answer for this shape — Dart and C# discarded the tail and answered.
     // The refusal stays; only the wording changes, to name what was typed (FR-006).
-    // The MEANING of an improper tail is still undecided and still §1.14 (Udi).
+    // RULED 2026-09-04 (Q-101-02): an improper tail in a GOAL TERM is permanently
+    // invalid and this refusal IS the specification. No longer an open §1.14 question.
     other ->
       Error(
         "goal-boot: list tail is neither a list nor a variable: "

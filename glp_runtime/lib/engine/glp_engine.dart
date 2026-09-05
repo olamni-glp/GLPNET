@@ -1286,8 +1286,13 @@ class GlpEngine {
       // FR-005: previously `tailTerm = rt.ConstTerm(null)`, which SILENTLY
       // discarded an improper tail and ran the goal against a DIFFERENT term
       // than the one typed — `[a|foo]` returned exactly what `[a|[]]` returned.
-      // A wrong answer, not an error. Refuse instead; assigning a meaning to an
-      // improper tail is a §1.14 question and is deliberately not decided here.
+      // A wrong answer, not an error. Refuse instead.
+      //
+      // RULED 2026-09-04 (engineer ruling Q-101-02, "refusal is the answer"): an improper
+      // tail in a GOAL TERM is permanently invalid, and this refusal IS the specification.
+      // It was previously recorded as an open §1.14 question awaiting Udi; it is now closed
+      // and was deliberately NOT referred. Scope is the goal-term front end only — FR-012
+      // is unchanged and nothing about clause heads, guards or bodies is decided here.
       throw GoalTermError(
           'list tail is neither a list nor a variable: '
           '${_describeGoalTerm(tail)} — the goal was not run. '
@@ -1367,8 +1372,13 @@ class GlpEngine {
       // FR-005: previously `tailTerm = rt.ConstTerm(null)`, which SILENTLY
       // discarded an improper tail and ran the goal against a DIFFERENT term
       // than the one typed — `[a|foo]` returned exactly what `[a|[]]` returned.
-      // A wrong answer, not an error. Refuse instead; assigning a meaning to an
-      // improper tail is a §1.14 question and is deliberately not decided here.
+      // A wrong answer, not an error. Refuse instead.
+      //
+      // RULED 2026-09-04 (engineer ruling Q-101-02, "refusal is the answer"): an improper
+      // tail in a GOAL TERM is permanently invalid, and this refusal IS the specification.
+      // It was previously recorded as an open §1.14 question awaiting Udi; it is now closed
+      // and was deliberately NOT referred. Scope is the goal-term front end only — FR-012
+      // is unchanged and nothing about clause heads, guards or bodies is decided here.
       throw GoalTermError(
           'list tail is neither a list nor a variable: '
           '${_describeGoalTerm(tail)} — the goal was not run. '

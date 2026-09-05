@@ -1460,8 +1460,12 @@ public sealed class GlpEngine
             // FR-005: previously `tailTerm = new RtConstTerm(null)`, which SILENTLY discarded an
             // improper tail and ran the goal against a DIFFERENT term than the one typed —
             // `[a|foo]` returned exactly what `[a|[]]` returned. A wrong answer, not an error.
-            // Refuse instead; assigning a MEANING to an improper tail is a §1.14 question and
-            // is deliberately not decided here.
+            // Refuse instead.
+            //
+            // RULED 2026-09-04 (engineer ruling Q-101-02, "refusal is the answer"): an improper
+            // tail in a GOAL TERM is permanently invalid, and this refusal IS the specification.
+            // Previously recorded as an open §1.14 question awaiting Udi; now closed, and
+            // deliberately NOT referred. Goal-term front end only — FR-012 unchanged.
             throw new GoalTermError(
                 "list tail is neither a list nor a variable: " +
                 $"{GoalTermDescribe.Describe(tail)} — the goal was not run. " +
@@ -1563,8 +1567,12 @@ public sealed class GlpEngine
             // FR-005: previously `tailTerm = new RtConstTerm(null)`, which SILENTLY discarded an
             // improper tail and ran the goal against a DIFFERENT term than the one typed —
             // `[a|foo]` returned exactly what `[a|[]]` returned. A wrong answer, not an error.
-            // Refuse instead; assigning a MEANING to an improper tail is a §1.14 question and
-            // is deliberately not decided here.
+            // Refuse instead.
+            //
+            // RULED 2026-09-04 (engineer ruling Q-101-02, "refusal is the answer"): an improper
+            // tail in a GOAL TERM is permanently invalid, and this refusal IS the specification.
+            // Previously recorded as an open §1.14 question awaiting Udi; now closed, and
+            // deliberately NOT referred. Goal-term front end only — FR-012 unchanged.
             throw new GoalTermError(
                 "list tail is neither a list nor a variable: " +
                 $"{GoalTermDescribe.Describe(tail)} — the goal was not run. " +

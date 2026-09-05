@@ -425,8 +425,12 @@ suite fails and names it (feature 101, SC-005).
 - ~~**Improper list tail in a goal**~~ — **PREVIOUSLY UNRECORDED, FIXED 2026-09-04.** Dart and
   C# **silently coerced an improper tail to nil and reported success**: `first_item([send(1,a)|foo], Y).`
   returned byte-identically to `[send(1,a)|[]]`. **A wrong answer, not an error.** Now refused
-  with a message naming the term typed. The *meaning* of an improper tail remains a §1.14
-  question for Udi and is deliberately undecided. Pinned by **V-6/V-7**.
+  with a message naming the term typed. **RULED 2026-09-04 (`Q-101-02`, "refusal is the
+  answer"): an improper tail in a GOAL TERM is PERMANENTLY INVALID — the refusal is the
+  specification, not a placeholder.** This entry previously recorded it as an open §1.14
+  question awaiting Udi; it was deliberately **not** referred, and is closed. Scope is the
+  goal-term front end only: **FR-012 is unchanged** and nothing about what clause heads,
+  guards or bodies accept was decided. Pinned by **V-6/V-7**.
   (Gleam was the only runtime that never returned a wrong answer for either defect — it
   refused both loudly and had already flagged them §1.14.)
 

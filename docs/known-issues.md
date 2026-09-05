@@ -446,8 +446,14 @@ deliberate MVP boundary recorded here (Constitution VIII traceability):
   require them byte-identical. Verified as a real detector, not a vacuous one — with the C# change
   reverted and rebuilt, V-20 fails and prints the divergence, V-22 fails, and V-23 fails on the
   leaked class name.
-  **The *meaning* of an improper tail is deliberately undecided** — assigning one is a §1.14 matter
-  for Udi. This change only stops the system substituting a different term than the one typed.
+  **RULED 2026-09-04, engineer ruling `Q-101-02` ("refusal is the answer") — CLOSED, and deliberately
+  NOT referred to Udi.** An improper tail in a **goal term** is **permanently invalid**; the refusal
+  message is the specification rather than a placeholder for a pending decision. The considered and
+  rejected alternative was to refer it under §1.14 and keep refusing meanwhile; it was rejected because
+  the refusal already prevents the harm, so a referral would have bought correctness of the record at
+  the price of an item open indefinitely on availability. **Scope is the goal-term front end only —
+  FR-012 is unchanged**, and nothing about what clause heads, guards or bodies accept was decided.
+  This change also stops the system substituting a different term than the one typed.
   **Gleam was the only runtime that never returned a wrong answer here**: it refused both this and the
   `_` shapes loudly and had already recorded them as deliberately-mirrored gaps flagged §1.14.
 - **QUIC-unsupported host fails a `"quic"` link loud, never downgrades (feature 050)** — the genuine
