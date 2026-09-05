@@ -22,7 +22,10 @@
 CR_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
 CR_GLP="$(cygpath -m "$CR_ROOT" 2>/dev/null || echo "$CR_ROOT")"
 CR_GLEAM_DIR="$CR_ROOT/glp_gleam"
-CR_CSREPL="$CR_GLP/out/csharp/glp_repl/bin/Debug/net10.0/glp_repl.exe"
+# TFM comes from the csproj, never a literal (test/lib/tfm.sh explains why this was
+# pinned to net10.0 in seven places and what that cost).
+. "$(dirname "${BASH_SOURCE[0]}")/../../lib/tfm.sh"
+CR_CSREPL="$(glp_repl_exe "$CR_GLP")" || { echo "lib.sh: cannot resolve the C# REPL target framework from out/csharp/glp_repl/glp_repl.csproj - refusing rather than falling back to a stale binary" >&2; exit 2; }
 CR_RESULTS="$CR_ROOT/test/parity/cross_runtime/results"
 CR_LINKDIR="programs/tests/link"
 

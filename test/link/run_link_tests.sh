@@ -18,7 +18,10 @@ set -u
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 # The C# REPL exe is a Windows binary; give it Windows-style (forward-slash) paths.
 GLP="$(cygpath -m "$ROOT" 2>/dev/null || echo "$ROOT")"
-REPL="$GLP/out/csharp/glp_repl/bin/Debug/net10.0/glp_repl.exe"
+# TFM comes from the csproj, never a literal (test/lib/tfm.sh explains why this was
+# pinned to net10.0 in seven places and what that cost).
+. "$(dirname "${BASH_SOURCE[0]}")/../lib/tfm.sh"
+REPL="$(glp_repl_exe "$GLP")" || { echo "run_link_tests.sh: cannot resolve the C# REPL target framework from out/csharp/glp_repl/glp_repl.csproj - refusing rather than falling back to a stale binary" >&2; exit 2; }
 RESULTS="$ROOT/test/link/results"
 LINKDIR="$GLP/programs/tests/link"
 

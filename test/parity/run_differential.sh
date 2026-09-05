@@ -17,7 +17,10 @@ REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 PROG="$1"; GOAL="$2"
 
 DART="${DART:-$(command -v dart 2>/dev/null || echo /c/src/flutter/bin/cache/dart-sdk/bin/dart)}"
-CSREPL="$REPO_ROOT/out/csharp/glp_repl/bin/Debug/net10.0/glp_repl.exe"
+# TFM comes from the csproj, never a literal (test/lib/tfm.sh explains why this was
+# pinned to net10.0 in seven places and what that cost).
+. "$(dirname "${BASH_SOURCE[0]}")/../lib/tfm.sh"
+CSREPL="$(glp_repl_exe "$REPO_ROOT")" || { echo "run_differential.sh: cannot resolve the C# REPL target framework from out/csharp/glp_repl/glp_repl.csproj - refusing rather than falling back to a stale binary" >&2; exit 2; }
 
 to_repl_path() { if command -v cygpath >/dev/null 2>&1; then cygpath -m "$1"; else printf '%s' "$1"; fi; }
 
