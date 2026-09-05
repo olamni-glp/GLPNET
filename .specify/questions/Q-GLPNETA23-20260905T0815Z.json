@@ -46,6 +46,11 @@
     "recommendation": {
       "option": "wp02-rekey-roster-bar",
       "because": "It is the only candidate a standing engineer ruling names as the critical path, and it is the half of WP-02 that is measurably not done on this host; the other three either duplicate shipped work or sit off the critical path."
+    },
+    "decision": {
+      "option": "wp02-rekey-roster-bar",
+      "date": "2026-09-05",
+      "rationale": "Engineer ruled interactively 2026-09-05T08:55Z: the era opens on the WP-02 rekey - peers keyed by node_id, roster deduped by resolved target, quorum bar stated with n and f. Consistent with standing ruling Q-gsbk14-01 naming WP-02 the critical path for glpnet on every host."
     }
   },
   {
@@ -87,6 +92,11 @@
     "recommendation": {
       "option": "supersede-085",
       "because": "The delivered half is measurable on this host today and the undelivered half belongs to the lane that owns the installed launcher; superseding keeps every requirement on a live feature without building a competing launcher."
+    },
+    "decision": {
+      "option": "supersede-085",
+      "date": "2026-09-05",
+      "rationale": "Engineer ruled interactively 2026-09-05T08:55Z: 085 is superseded by the buildkit lane's config-driven bk-onrestart already installed on this host; residual (launcher convergence, C# reimplementation, four-host activation) rides the promoted oracle-elastic-lane-pool feature and a buildkit-lane feature. Nothing deleted; lineage kept."
     }
   },
   {
@@ -128,6 +138,11 @@
     "recommendation": {
       "option": "engineer-runs-three",
       "because": "Each action is one already-ruled command, the deletions are covered by verified archive tags, and no other option lets the second-host QUIC proof be measured today."
+    },
+    "decision": {
+      "option": "engineer-runs-three",
+      "date": "2026-09-05",
+      "rationale": "Engineer ruled interactively 2026-09-05T08:55Z: the engineer runs the three privileged one-command actions (elevated UDP 47890 rule, the nine ruled ref deletions, the local tag correction). Each is already ruled; archive tags verified on origin make the deletions recoverable."
     }
   },
   {
@@ -176,6 +191,11 @@
     "recommendation": {
       "option": "base-on-v1-0",
       "because": "It is the only draft on the shared standards root with a complete clause-by-clause traceability map, it already reserves the slots peers need, and a designated base costs one ruling while every alternative costs the fleet another cycle."
+    },
+    "decision": {
+      "option": "base-on-v1-0",
+      "date": "2026-09-05",
+      "rationale": "Engineer ruled interactively 2026-09-05T08:55Z: FLEET-T24-ACTION-PLAN-TEMPLATE-v1.0 on the shared _standards root is the single base; the tefl, lejepa and buildkit drafts fold in as section 13 amendments by their authors, with any clause v1.0 lacks recorded in Annex B."
     }
   }
 ]
