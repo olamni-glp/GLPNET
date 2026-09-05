@@ -124,3 +124,52 @@ its absence. Nothing here elects anything.
 2. endpoint **`192.168.0.108:47890`** (UDP; dial by **literal IPv4** — names resolve to `fe80::` only)
 3. the runbook: `docs/runbooks/ynet-federation.md`
 4. a matching `space_id`, and their own `node_id` returned to this host
+
+---
+
+## Ship gate: the SECOND INSTRUMENT (ruling `Q-GLPNETG30-01`), 2026-09-05
+
+Fifteen `/bk-codexreview` rounds returned 1, 14, 17, 12, 14, 5, 8, 1, 11, 7, 4, 7, 8, 9, 12 findings;
+~140 were fixed; from round 4 on, most findings were inside the *previous round's fixes*. Round 16
+changed instrument to the **compiler** and found `CS0649` on its first pass. Ruling
+`Q-GLPNETG30-01` therefore set the ship bar at **one instrument of a different kind**, not a
+sixteenth review.
+
+**Instrument: .NET analyzers, `AnalysisLevel=latest-recommended`.**
+
+| project | result |
+|---|---|
+| `ynet_transport` | **0 warnings, 0 errors** |
+| `glp_crdtmsg` (incl. `federation/`) | **94 raw / ~47 unique diagnostics**, 12 rules |
+| `glp_link` (transitive) | 18 raw |
+
+**The instrument was positive-controlled before any zero was believed.** A `CA2013` probe was added
+to `ynet_transport`, the build reported it, and the probe was removed — so `ynet_transport`'s zero is
+a measured zero, not an unarmed analyzer.
+
+**Note on measurement, recorded because it nearly produced a false clean result:** three earlier
+attempts reported "0 hits" for `glp_crdtmsg` while the build was in fact **FAILING** on
+`Error writing to source link file ... used by another process` (cross-lane contention on the shared
+`out/csharp` tree). `Done Building Project ... GlpCrdtMsg.csproj -- FAILED` and the absence of
+`GlpCrdtMsg.dll` proved the project had never compiled, so its "zero" was an artefact of a build that
+never ran. Measuring with `-p:EnableSourceLink=false` (SourceLink is irrelevant to analyzer
+diagnostics) produced a genuine `Build succeeded` and the 94 diagnostics above. **A zero from a
+failed build is not a zero.**
+
+### Adjudication of the `glp_crdtmsg` findings — no live defect
+
+| rule | n (raw) | assessment |
+|---|---|---|
+| `CA1305` IFormatProvider | 38 | Culture-sensitive formatting, chiefly `FederationConfig`. **Latent**: a cross-host protocol should not depend on host culture. No divergence observed; recorded as a hardening item. |
+| `CA1725`/`CA1859`/`CA1822`/`CA1000`/`CA1068`/`CA1036`/`CA1707`/`CA1850`/`CA1836` | 46 | API-shape, performance and naming. No correctness impact. |
+| `CA1001` owns disposable field | 4 | `JsonlBoardLog._gate`, `SchedulerBoardLog._gate` — semaphores held for process lifetime and reclaimed by the OS at exit. **Latent**, same family as round 16's `CS0649` but not a live leak. |
+| `CA1806` TryParse result ignored | 2 | `DotSequencer.Next()` line 77: a non-numeric sequence file leaves `stored = 0`. **Traced to ground:** the sole production caller (`ynet_federation/Program.cs:651`) passes `floor = DotSequencer.HighestFor(nodeId, log)`, and `HighestFor` returns the max counter for this node across the whole local log, so a corrupt file yields `floor + 1` — a jump, never a re-issue, exactly as the class contract states. **No live defect.** |
+
+**Recorded contradiction, NOT fixed here (bug protocol):** `Next()` is commented *"Retry only for the
+contended-file case. Any other failure is a real fault and is raised"*, yet a corrupt sequence file is
+silently tolerated rather than raised, and the constructor's `floor = 0` default means a future caller
+that omits the floor loses the protection silently. The code and its comment disagree; which one is
+right is a design question, not a lint fix, and it is carried rather than guessed at during a ship.
+
+**Verdict: the ship bar of `Q-GLPNETG30-01` is met.** A second, independent, positive-controlled
+instrument found no live defect on this era's surface.
