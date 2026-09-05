@@ -136,7 +136,6 @@ public sealed class FederationService : IAsyncDisposable
     private readonly Dictionary<string, Tri> _sameMachineByPeer = new(StringComparer.Ordinal);
     private readonly HashSet<string> _crossedFrom = new(StringComparer.Ordinal);
     private PolicyRefusal? _policyRefusal;
-    private CancellationTokenSource? _pumpCts;
 
     public FederationService(FederationConfig config, IFederationLink link, FederationFold fold,
                              IBoardLog log, TimeProvider? clock = null)
@@ -1488,10 +1487,23 @@ public sealed class FederationService : IAsyncDisposable
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
     }
 
+    /// <summary>
+    /// Disposes the link. It does NOT stop the four long-running loops — the daemon owns those
+    /// through the <c>stop</c> token it passes to <see cref="RunPullLoopAsync"/>,
+    /// <see cref="RunBoardTailAsync"/>, <see cref="RunStatusHeartbeatAsync"/> and the receive loop,
+    /// and it awaits all four before returning (<c>ynet_federation/Program.cs</c>).
+    /// <para>
+    /// This method previously opened with <c>_pumpCts?.Cancel(); _pumpCts?.Dispose();</c> against a
+    /// field NOTHING EVER ASSIGNED. Both statements were unconditional no-ops, so the method read as
+    /// if it owned loop shutdown while owning none of it — the same declared-but-unconsumed shape
+    /// this lane broadcast fleet-wide as <c>declared-unconsumed-guard</c>, found here in its own
+    /// code. The compiler had been reporting it as CS0649 the whole time and the warning was not
+    /// promoted, so nothing failed. It is promoted now (see GlpCrdtMsg.csproj) and this class of
+    /// defect can no longer be introduced silently.
+    /// </para>
+    /// </summary>
     public async ValueTask DisposeAsync()
     {
-        _pumpCts?.Cancel();
-        _pumpCts?.Dispose();
         await _link.DisposeAsync().ConfigureAwait(false);
     }
 }
