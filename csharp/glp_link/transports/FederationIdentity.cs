@@ -52,9 +52,61 @@ namespace GlpRuntime.Link.Transports;
 /// <param name="Created">True iff this call MINTED a keypair — a first run, or an explicit
 /// rotation. False iff it loaded material that already existed. It is NOT a "first run" flag on
 /// its own: a rotating caller already knows it asked to rotate.</param>
+/// <remarks>
+/// 🔴 <b>THE KEY IS THE ONLY SOURCE OF TRUTH FOR THE PIN.</b> <c>Pin == base64(SHA-256(SPKI(key)))</c>,
+/// so it is DERIVED on every read and never believed from disk. The <c>.fingerprint</c> file is an
+/// operator-readable <b>cache</b>: it is refreshed when it drifts and reported when it was wrong,
+/// but it is never trust material and a disagreement with it never refuses a start (ruling
+/// <c>Q-glpnetshiras-48</c>). Storing a value that is computable from another value is what let two
+/// non-atomic writes wedge a cold start; deriving removes the possibility rather than the window.
+///
+/// <para>🔴 <b>TWO IDENTITIES, ONE HOST — and they are not interchangeable.</b> Everything on this record
+/// derives from the host's <b>TLS certificate</b>: it anchors the QUIC transport and is what an SPKI
+/// pin pins. It is <b>not</b> the identity <c>YnetSession</c> authenticates a peer by — that is the
+/// independent <c>NodeIdentity</c> Ed25519 keypair, whose <c>nodeId = H(pubkey)</c> is what a peer
+/// resolves, votes on and files board ops under.
+///
+/// <para>Putting a certificate-derived id into <c>INodeAddressResolver</c> gets a genuine connection
+/// refused with <c>IdentityMismatch</c>, and this SPKI cannot verify that lane's board signatures at
+/// all. That is the fleet's recurring <i>id-class</i> defect (a value that verifies, is signed by its
+/// rightful holder, and still names the wrong thing) at a FOURTH site — so the two are named apart
+/// here rather than left to a reader's discipline.</para>
+/// </remarks>
+/// <summary>What the on-disk <c>.fingerprint</c> cache was holding when the identity was loaded.</summary>
+/// <remarks>
+/// 🔴 The cache is NOT trust material and disagreeing with it is not an error state. The pin is
+/// <c>base64(SHA-256(SPKI))</c> of the key, so the key IS the pin — see the class remarks.
+/// </remarks>
+public enum PinCacheState
+{
+    /// <summary>The cache agreed with the key. Nothing to report.</summary>
+    Fresh,
+
+    /// <summary>No cache existed; it was written from the key. Normal on first read and mid-race.</summary>
+    Rederived,
+
+    /// <summary>🔴 The cache DISAGREED and was overwritten from the key. This host's published pin
+    /// is not what the cache said — say so out loud and re-publish.</summary>
+    Refreshed,
+}
+
 public sealed record FederationIdentity(
     X509Certificate2 Cert, string Pin, string PfxPath, bool Created)
 {
+    /// <summary>How the <c>.fingerprint</c> cache stood when this identity was loaded.</summary>
+    public PinCacheState PinCache { get; init; } = PinCacheState.Fresh;
+
+    /// <summary>What a disagreeing cache was holding, for the operator's report. Null unless
+    /// <see cref="PinCache"/> is <see cref="PinCacheState.Refreshed"/>.</summary>
+    public string? StaleCachedPin { get; init; }
+
+    /// <summary>Plain-language reading of a disagreement (interrupted rotation vs. a pin published
+    /// for a key this host does not hold). Null unless the cache disagreed.</summary>
+    public string? PinCacheDiagnosis { get; init; }
+
+    /// <summary>True when the caller must RE-PUBLISH this host's pin — the cache was wrong.</summary>
+    public bool RequiresRepublication => PinCache == PinCacheState.Refreshed;
+
     /// <summary>
     /// The same 32 bytes as <see cref="Pin"/>, in lowercase HEX rather than base64 — the fleet's
     /// <c>node_id</c>. Published because @gavriella-glpnet measured (2026-09-04T19:30Z) an operator
@@ -62,8 +114,18 @@ public sealed record FederationIdentity(
     /// and the refusal presented as a pin mismatch — a configuration bug wearing a security event's
     /// clothes.** Exposing both encodings from ONE derivation is how that stops being possible.
     /// </summary>
-    public string NodeId => Convert.ToHexString(
+    public string TlsNodeId => Convert.ToHexString(
         SHA256.HashData(Cert.PublicKey.ExportSubjectPublicKeyInfo())).ToLowerInvariant();
+
+    /// <summary>
+    /// 🔴 <b>Do not use as a YNET node id.</b> Retained only so existing callers fail LOUDLY at
+    /// compile time rather than silently keep publishing a TLS hash into an id space that refuses
+    /// it. See <see cref="TlsNodeId"/> and the class remarks.
+    /// </summary>
+    [Obsolete("This is the TLS CERTIFICATE's id, not the YNET node id. Use TlsNodeId for the "
+        + "transport anchor, or NodeIdentity.NodeId for the identity YnetSession authenticates. "
+        + "Entering this value into INodeAddressResolver refuses every genuine peer.", error: true)]
+    public string NodeId => TlsNodeId;
 
     /// <summary>
     /// The full SubjectPublicKeyInfo, base64. **A pin is a hash and therefore cannot verify a
@@ -71,7 +133,16 @@ public sealed record FederationIdentity(
     /// including the leadership tie-break, which is monotone and unfixable after a CRDT merge.
     /// Publish this beside the pin so an op's claimed author can actually be checked.
     /// </summary>
-    public string Spki => Convert.ToBase64String(Cert.PublicKey.ExportSubjectPublicKeyInfo());
+    public string TlsSpki => Convert.ToBase64String(Cert.PublicKey.ExportSubjectPublicKeyInfo());
+
+    /// <summary>
+    /// 🔴 <b>Cannot verify a lane's board signatures.</b> This is the TLS certificate's public key;
+    /// ops are signed with the independent <c>NodeIdentity</c> keypair. Kept as a compile-time error
+    /// so the substitution is caught at the call site instead of at a peer's refusal.
+    /// </summary>
+    [Obsolete("This is the TLS CERTIFICATE's SPKI, not the YNET signing key. Use TlsSpki for the "
+        + "transport anchor, or NodeIdentity.PublicKeySpki to verify signatures.", error: true)]
+    public string Spki => TlsSpki;
 
     /// <summary>Env var overriding the keystore DIRECTORY (a deployment/test seam, not a default).</summary>
     public const string KeystoreEnvVar = "GLPNET_FEDERATION_KEYSTORE";
@@ -92,7 +163,16 @@ public sealed record FederationIdentity(
             return Path.GetFullPath(overridden.Trim());
         var baseDir = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
         if (string.IsNullOrWhiteSpace(baseDir))
-            baseDir = Path.Combine(Path.GetTempPath(), "glpnet-home");
+            // 🔴 NOT a temp fallback. This key is the anchor for an SPKI pin that other hosts hold
+            // for years; parking it under the OS temp directory means a reap policy this fleet does
+            // not control silently invalidates every exchanged pin, and mTLS then refuses every peer
+            // — indistinguishable from a dead transport, with nothing in the code having changed.
+            // An unusable environment is a configuration error and is reported as one.
+            throw new InvalidOperationException(
+                "no durable home for the federation identity: LocalApplicationData is empty on this "
+                + "host (typical of a headless service account). Set $" + KeystoreEnvVar
+                + " to an ABSOLUTE, persistent directory. Refusing a temporary-directory fallback: "
+                + "every SPKI pin published from it would expire at the next temp sweep.");
         return Path.Combine(baseDir, "glpnet", "federation");
     }
 
@@ -142,9 +222,8 @@ public sealed record FederationIdentity(
             throw new FileNotFoundException(
                 $"federation identity missing: '{pfxPath}' — fail-closed, no ephemeral fallback "
                 + "(an ephemeral cert would present a pin no peer holds).", pfxPath);
-        if (!File.Exists(fingerprintPath))
-            throw new FileNotFoundException(
-                $"federation SPKI pin missing: '{fingerprintPath}' — fail-closed.", fingerprintPath);
+        // An ABSENT sidecar is a cold cache, not a missing secret: the pin is re-derived below. This
+        // is also exactly the window a concurrent starter observes between the two atomic renames.
 
         var cert = X509CertificateLoader.LoadPkcs12(
             File.ReadAllBytes(pfxPath), null, X509KeyStorageFlags.Exportable);
@@ -163,20 +242,34 @@ public sealed record FederationIdentity(
                 + "every peer until all of them updated. Rotate deliberately (rotate: true), then "
                 + "RE-PUBLISH the new pin to the fleet before restarting the service.");
 
-        var stored = File.ReadAllText(fingerprintPath).Trim();
-        if (stored.Length == 0)
-            throw new InvalidOperationException(
-                $"federation SPKI pin file '{fingerprintPath}' is empty — fail-closed.");
-
+        // 🔴 DERIVED, NEVER READ (ruling Q-glpnetshiras-48). The pin is base64(SHA-256(SPKI)) of the
+        // key we just loaded, so it is a PURE FUNCTION of the key and the key is the only source of
+        // truth. Reading it from a second file created a second truth that could drift from the
+        // first, and it did: two files written non-atomically wedged a concurrent cold start in 2 of
+        // 20 measured runs, refusing to boot on trust material that was never actually wrong.
+        // Deriving removes the class of defect instead of narrowing its window.
         var computed = QuicTransport.SpkiPin(cert);
-        if (!string.Equals(computed, stored, StringComparison.Ordinal))
-            throw new InvalidOperationException(
-                $"federation trust material is inconsistent: cert SPKI pin '{computed}' != fingerprint "
-                + $"file '{stored}' ({pfxPath} vs {fingerprintPath}). Refused: publishing one and "
-                + "presenting the other is precisely how a pin table goes silently dead. "
-                + DiagnoseMismatch(pfxPath, fingerprintPath));
 
-        return new FederationIdentity(cert, computed, pfxPath, Created: false);
+        var stored = File.Exists(fingerprintPath) ? File.ReadAllText(fingerprintPath).Trim() : "";
+        if (string.Equals(computed, stored, StringComparison.Ordinal))
+            return new FederationIdentity(cert, computed, pfxPath, Created: false);
+
+        // The cache is cold or stale. Refresh it from the key and REPORT — never refuse. A stale
+        // cache cannot make a correct key wrong; what it CAN do is mislead an operator reading the
+        // file, so the drift is surfaced rather than silently repaired.
+        var state = stored.Length == 0 ? PinCacheState.Rederived : PinCacheState.Refreshed;
+        var diagnosis = state == PinCacheState.Refreshed
+            ? DiagnoseMismatch(pfxPath, fingerprintPath)
+            : null;
+
+        WriteSidecar(fingerprintPath, computed, replace: true);
+
+        return new FederationIdentity(cert, computed, pfxPath, Created: false)
+        {
+            PinCache = state,
+            StaleCachedPin = state == PinCacheState.Refreshed ? stored : null,
+            PinCacheDiagnosis = diagnosis,
+        };
     }
 
     /// <summary>
@@ -226,29 +319,84 @@ public sealed record FederationIdentity(
         using var minted = req.CreateSelfSigned(now.AddMinutes(-1), now.Add(Lifetime));
         var pfxBytes = minted.Export(X509ContentType.Pfx);
 
+        // 🔴 File.Move(overwrite: false) IS NOT AN ATOMIC EXCLUSIVE CLAIM. On this runtime it is a
+        // check-then-rename, so two concurrent callers can BOTH pass the existence check and both
+        // rename — the second silently clobbering the first. Measured: 16 concurrent first-starts
+        // returned TWO DISTINCT identities, i.e. two callers each believed they had minted the
+        // host's identity and the file held only one of them. Every peer pinned from the loser's
+        // return value would have been pinning a key this host does not hold.
+        //
+        // FileMode.CreateNew IS atomic and exclusive (O_EXCL on POSIX, CREATE_NEW on Windows), so
+        // the claim is taken on a separate marker file and only the claim's winner writes the key.
+        var claimPath = pfxPath + ".claim";
+        if (!rotate && !TryClaim(claimPath))
+            return AdoptTheWinner(pfxPath, fpPath, claimPath); // lost the race — adopt, never mint
+
         var tempPfx = pfxPath + ".tmp-" + Guid.NewGuid().ToString("N");
-        WritePrivate(tempPfx, pfxBytes);
         try
         {
-            // rotate is a deliberate operator act on a quiet host, so it replaces; a first run must
-            // never replace, because losing that race means someone else's pin is already published.
-            File.Move(tempPfx, pfxPath, overwrite: rotate);
-        }
-        catch (IOException) when (!rotate && File.Exists(pfxPath))
-        {
-            TryDelete(tempPfx);
-            return LoadAfterEnsuringSidecar(pfxPath, fpPath); // lost the race — adopt the winner
+            WritePrivate(tempPfx, pfxBytes);
+            // Safe to overwrite: the claim above guarantees this caller is the only writer. The
+            // write-then-rename is kept for DURABILITY (no truncated key after a power cut), which
+            // is a different property from exclusivity and needs its own mechanism.
+            File.Move(tempPfx, pfxPath, overwrite: true);
         }
         catch
         {
             TryDelete(tempPfx);
+            if (!rotate) TryDelete(claimPath); // release the claim so the next start can retry
             throw;
         }
 
         var cert = X509CertificateLoader.LoadPkcs12(pfxBytes, null, X509KeyStorageFlags.Exportable);
         var pin = QuicTransport.SpkiPin(cert);
         WriteSidecar(fpPath, pin, replace: true);
+        // Released only now, so a loser that is still waiting sees the claim disappear ONLY after
+        // the key is on disk and readable.
+        TryDelete(claimPath);
         return new FederationIdentity(cert, pin, pfxPath, Created: true);
+    }
+
+    /// <summary>
+    /// Take an exclusive claim, or return false. <see cref="FileMode.CreateNew"/> is the only
+    /// portable primitive here that is genuinely atomic — it maps to <c>O_CREAT|O_EXCL</c> on POSIX
+    /// and <c>CREATE_NEW</c> on Windows, both of which the kernel serialises. Everything built out
+    /// of "does it exist? then act" has a window between the two halves.
+    /// </summary>
+    private static bool TryClaim(string claimPath)
+    {
+        try
+        {
+            using var _ = new FileStream(claimPath, new FileStreamOptions
+            {
+                Mode = FileMode.CreateNew, Access = FileAccess.Write, Share = FileShare.None,
+            });
+            return true;
+        }
+        catch (IOException) { return false; }   // someone else holds it
+        catch (UnauthorizedAccessException) { return false; }
+    }
+
+    /// <summary>
+    /// A caller that lost the claim waits for the winner to publish, then adopts it. It must NEVER
+    /// mint: minting here is precisely how one host ends up with two identities.
+    /// </summary>
+    private static FederationIdentity AdoptTheWinner(string pfxPath, string fpPath, string claimPath)
+    {
+        var deadline = DateTime.UtcNow.AddSeconds(30);
+        while (!File.Exists(pfxPath) && DateTime.UtcNow < deadline)
+            Thread.Sleep(15);
+
+        if (File.Exists(pfxPath))
+            return LoadAfterEnsuringSidecar(pfxPath, fpPath);
+
+        // The claim is held but no key ever appeared: the holder died between claiming and writing.
+        // Refuse with an instruction rather than minting a second identity behind its back.
+        throw new InvalidOperationException(
+            $"federation identity '{pfxPath}' is CLAIMED but was never published: '{claimPath}' is "
+            + "held and no key appeared within 30s. The process that claimed it died between taking "
+            + "the claim and writing the key. Refusing to mint a replacement, because that is how "
+            + $"one host acquires two identities. Delete '{claimPath}' and start again.");
     }
 
     /// <summary>
@@ -320,6 +468,12 @@ public sealed record FederationIdentity(
             if (OperatingSystem.IsWindows())
                 RestrictToCurrentUser(path);
             stream.Write(bytes, 0, bytes.Length);
+            // 🔴 Flush to STABLE STORAGE before the caller renames this temp file into place and
+            // reports the identity as created. Closing a stream only hands the bytes to the page
+            // cache: after an abrupt power loss the rename can survive while the contents do not,
+            // leaving a PFX that is present, zero-length or truncated, and unreadable — so the host
+            // cannot reproduce the pin it already published. Durability first, then the name.
+            stream.Flush(flushToDisk: true);
         }
     }
 

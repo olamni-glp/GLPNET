@@ -1,0 +1,16 @@
+[Unit]
+Description=M6 QHSM/QMSM YNET receiver client - lane shiras-glpnet
+Documentation=https://github.com/olamni-research/qhstate specs/093-m6-l0-qhsm-ynet-receiver-client
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/mnt/biwin/D_DRIVE/BSTDEV/research/crucible/glp/GLPNET
+ExecStart=/mnt/biwin/D_DRIVE/BSTDEV/research/crucible/glp/GLPNET/scripts/ynet-m6-run.sh run
+Restart=always
+RestartSec=5
+Environment=DOTNET_ROOT=/home/shira/.dotnet
+Environment=PATH=/home/shira/.dotnet:/usr/local/bin:/usr/bin:/bin
+
+[Install]
+WantedBy=default.target

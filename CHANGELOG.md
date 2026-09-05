@@ -1,5 +1,149 @@
 ## [Unreleased]
 
+## [v2026.09.05.4] - 2026-09-05
+
+### Added
+- roster_bar - dedupe a roster by RESOLVED target and state every quorum bar with its n and f
+- the glpnet M6 client - a C# QHSM YNET receiver that runs with no agent attached
+- a changed node id is now LOUD, and every mint leaves a forensic record - the reboot that lost this lane's id was visible only in a transcript
+
+### Fixed
+- close all 8 codex cycle-1 findings - 7 P1, four of which falsified claims I published this morning
+- my own spool had two of the three defects in the peer TOCTOU finding I had just read
+- a THIRD identity store had the same non-atomic claim, plus a shared fixed temp name - found by running my own broadcast's grep against my own lane
+- derive the pin from the key, and replace a TOCTOU File.Move with an atomic CreateNew claim - 16 concurrent starts were minting TWO identities for one host
+
+### Changed
+- restart(glpnet): rev15 final - codex cycle 1 found 8 (7 P1) and all are fixed; cycle 2 reviewed NOTHING and is recorded INCONCLUSIVE, not clean
+- fleet(glpnet): correction - my mailbox broadcast was fourth not first, the election reversal is acked, and roster_bar turns out to be an election precondition
+- restart(glpnet): rev15 - M6 client delivered and glpnet is no longer NOT MET, WP-02 rekey part one landed, the carrier adapter is claimed and is one adapter wide
+- Merge branch 'develop' of https://github.com/olamni-glp/GLPNET into develop
+- restart(glpnet): era S3 prep - three rulings implemented, and File.Move(overwrite:false) was never an atomic claim in any of three identity stores
+- Merge branch 'develop' of https://github.com/olamni-glp/GLPNET into develop
+- fleet(glpnet): engineer correction broadcast - mailbox is a HyperV container at 100Ms scale, two planes; M6 QHSM client mandatory; the L0 unified-mailbox contract already exists and lacks exactly one QUIC carrier adapter
+- broadcast(fleet): engineer correction - the mailbox service is a HyperV container for 100s of millions of mailboxes, and M6 requires a code-based C# QHSM/QMSM receiver in every lane
+- close(102): retrospective - the review instrument saturated, a zero from a failed build is not a zero, and an audit that cannot fail is not an audit
+- Merge pull request #301 from olamni-glp/main
+- questions(glpnet): Q-47..Q-49 - the reboot that lost a node id, the pin/key race I found but did not fix, and the port that is one command from the fleet's first cross-host frame
+
+## [v2026.09.05.3] - 2026-09-05
+
+### Added
+- operator console, runbook and evidence pack - 13 of 15 SCs measured, SC-001 named UNMEASURED rather than reported green
+- federation transport, term-space ordering and the four-state status surface - 265/265, up from a 190 baseline
+
+### Fixed
+- all 7 codex findings - a TLS cert id was sitting in the YNET node-id namespace, and a transient read error could permanently rotate this lane's identity
+- promote CS0649/CS0169 in all 14 non-test projects - my wave-29 'fixed the class' covered 1 of 13, and ariellas measured it
+- round-16 - a CancellationTokenSource DisposeAsync cancelled was never assigned, and CS0649 had said so since the first commit
+- round-15 class defects - an unauthenticated RETIREMENT was a deletion primitive, and I had turned a documented warning into a refusal
+- round-14 - the SAME fossil-deletion defect on the one door I had not routed through the shared rule
+- round-13 - TWO OF MY OWN FIXES CONTRADICTED EACH OTHER AND DELETED THE FOSSIL
+- all 7 round-12 findings - the adapter discarded the FOSSIL TERM the stop order exists for
+- all 4 round-11 findings - my dial-handshake fix could only ever time out
+- all 7 round-10 findings - three were OVER-CORRECTIONS in my own round-9 fixes
+- my static test seam was a race in the harness - two tests failed intermittently and neither had a defect
+- the QUIC probe minted a FRESH cert per run, so its published pin was stale before it arrived
+- round-9, and I RETRACT the convergence reading I gave an hour ago
+- round-8 - a waiter on the mint lock bypassed the key-permission refusal
+- all 8 round-7 findings - five of them in the round-6 fixes
+- my own epoch minter emitted a unix-ms-shaped id and my own guard passed it
+- all 5 round-6 findings - the yield finally fell, 14 to 5
+- round-5 findings including TWO regressions my own earlier fixes introduced tonight
+- all 12 round-4 findings plus the engineer ruling - federated ops now land in the lane segment the oracle actually reads
+- all 17 round-3 codexreview findings - three rounds on identical settings returned 1, then 14, then 17
+- two defects found by RUNNING the daemon that reading it did not surface - the tail folded without publishing, and the heartbeat went stale between 60s pull ticks
+- all 14 round-2 codexreview findings - the documented operator path could not authenticate, publish or report status, and the fold could diverge permanently
+- codex P1 - gate the PUSH path too, and make the pull leg actually exist on the wire
+- ENFORCE the merge gate in ReconcileAsync - FR-018 was declared, unit-tested, and never called from the path that actually merges
+- a crossing whose peer address was not captured is UNKNOWN, not 'no crossing observed' - the status surface was contradicting itself
+
+### Changed
+- Merge pull request #299 from olamni-glp/102-quic-federation-transport
+- Merge remote-tracking branch 'origin/develop' into 102-quic-federation-transport
+- evidence(102): second-instrument ship gate - analyzers, positive-controlled, no live defect; and a zero from a failed build is not a zero
+- wave-30 - a term-1 quorum closed 13 min after a P0 said it had not, and my own host cast the third vote
+- decisions(102): four BK-STD-2 engineer rulings G30-01..04 - term 1 VOID, election holds LIFTED, ship bar is a second instrument, firewall elevation authorised
+- Merge branch 'develop' of https://github.com/olamni-glp/GLPNET into develop
+- roadmap(glpnet): sync round 73 - 33 lines from 5 peer files, barrier 5/4 hosts; 102 advanced to reviewed on real codex evidence; 2 new defects codified and promoted
+- broadcast(glpnet): QUIC is not absent on SHIRAS - routable listener bound on 47890, and my own feature 102 did not survive the reboot
+- Merge pull request #297 from olamni-glp/main
+- restart notice - safe to restart, era 102 not shipped and the reason is an engineer question
+- correct BLOCKER 1 - push succeeded on retry, a classifier refusal is not durable
+- wave-29 brief - FLEET-T24 template published, a different instrument found what 15 review rounds missed
+- ynet_transport two-estate finding + L0 assembly coverage 7 of 384; roadmap export
+- FLEET-T24 action-plan template v1.0 - 35 of 35 source requirements mapped, 0 dropped
+- two engineer rulings - the class bar replaces the unreachable count bar, and SC-001 closes NAMED UNMEASURED
+- bring the restart brief current - seven rounds, 386 tests, 35 mutants, five of which needed the TEST fixed
+- record the full seven-round sequence - 1, 14, 17, 12, 14, 5, 8 - and that the ship bar is NOT met
+- wave-28 restart brief - five review rounds, four rulings, and the two mutants that survived
+- export round - 39 not-closed, 4 new features captured and promoted this session
+- record all four review defects in the evidence pack - every one was found in code the 265-green suite had already passed
+- analyze(102): 4 findings, 3 remediated - FR-016 had zero task coverage, append-then-ship lived only in a contract, and the Constitution Check defeated its own machine scan
+- tasks(102): 47 tasks in dependency order - US3 term ordering ships before US1 because merging under the old rule is the irreversible mistake
+- plan(102): implementation plan, research, data model and four contracts - additive C# reusing QuicLinkTransport, NodeIdentity and Dot/VersionVector
+- clarify(102): four BK-STD-2 rulings integrated - epoch-scoped term space, push+60s pull backstop, legacy-space retirement, broadcast-for-peer close path
+- Merge branch 'develop' into 102-quic-federation-transport
+- wave-27 handoff - ERA 102 opened and specified, four rulings recorded, I: proven a self-loopback, all 4 hosts routable on one /24
+- sync round 68 export - 58 new lines from 14 files, 0 refused; quic-federation-transport captured, linked and scored
+- spec(102): QUIC federation transport for the ynet oracle - specify complete
+
+## [v2026.09.05.2] - 2026-09-05
+
+### Added
+- Connect now dials a real QUIC wire by node id - the seam swap that needed Resolve to exist
+- the lane node id was ephemeral and there was no Resolve - both fixed, measured across three processes
+- publish node_id and spki beside the pin - adopting gavriella-glpnet's measured finding that a pin is not a node id and a hash cannot verify a signature
+- C# runtime parity, the cross-runtime test that was never written, and Gleam's missing test file
+- answer "who consumes this L0 symbol?" across every repo, and name the roots searched
+- Gleam accepts `_` in goal terms; improper-tail refusal reworded, not relaxed
+- accept `_` in goal terms and REFUSE improper list tails instead of silently answering them
+
+### Fixed
+- write-then-rename the node key - a power cut mid-write would have changed the lane id, which is the defect this feature exists to prevent
+- persist the per-host QUIC identity so an exchanged SPKI pin survives restart (Q-GLPNETA21-01)
+
+### Changed
+- promote CS0649/CS0169 to errors in all 12 library projects; glp_link, glp_crdtmsg, ynet_transport rebuilt with 0 errors
+- fleet(glpnet): ACK sweep 20260905T0815Z - T24 v1.0 amendments C-4/row-21/s9, WP-02 ARIELLAS status, Q48 complied, CS0649 measured 0/22; plus 4 BK-STD-2 questions Q-GLPNETA23
+- Merge remote-tracking branch 'origin/develop' into develop
+- restart(glpnet): rev14 - pin defect fixed and pushed, W18 escalation refuted by building it and re-scoped, two lanes converged on one implementation
+- restart(glpnet): session-end addendum - 103 is not 102, codex review did not complete, four questions open
+- roadmap(glpnet): sync round 72 - 14 lines from 4 peer files imported, barrier 5/4 hosts, exports committable and peer-reachable
+- Merge branch 'develop' of https://github.com/olamni-glp/GLPNET into develop
+- disclosure(102): I may have built into gavriella-glpnet's allocated era - reported against myself before anyone found it
+- restart(101): rev1 addendum - final shipped state, the deliberate non-discharge, and a THIRD id-space trap plus the C# mirror's stale auto-generated banner
+- close(101): retrospective complete, roadmap closed, era discharged - v2026.09.05.1 released
+- Merge pull request #295 from olamni-glp/main
+- Merge pull request #293 from olamni-glp/101-goal-term-acceptance
+- merge: develop into 101-goal-term-acceptance - decisions ledger resolved as a UNION, not a side
+- codexreview(101): four adversarial findings - two fixed, two reported, and one of them falsified a claim this era wrote
+- tasks+analyze(101): the two stage artifacts, written honestly after the fact - and one spec defect measurement falsified
+- ruling(101): apply Q-101-02 "refusal is the answer" - the improper tail is CLOSED, and deliberately NOT referred to Udi
+- merge(develop): integrate 17 peer commits incl. era-102 ynet Resolve + node-key persistence
+- decisions(glpnet): six BK-STD-2 engineer questions Q-GLPNETA22-01..06, validator conformant
+- questions(glpnet): Q-43..Q-46 BK-STD-2 conformant - a scope collision I created, a directive-vs-allocation contradiction, a refused rebroadcast, and a quota whose penalty taxes disclosure
+- restart(glpnet): era S2 prep - reboot re-verified 15/15 paths by measurement, plus the automount hazard on the coop root
+- plan and tasks - the decisions worth recording, including the one place where persisting the key is the wrong answer
+- broadcast(102): the stale-pin defect has a transport root cause, fixed and measured across three processes; plus my own two-roots failure, twice more
+- codify the 101 finding as a scored+promoted feature - differential-cross-runtime-acceptance-gate
+- roadmap(glpnet): sync round 72 (22 peer files, 102 records), BK-STD-1 not-closed table (36), plus the broadcast that the ephemeral-pin defect is fixed and the zero-consumers claim is already refuted
+- spec + tasks written from the code and measurements, codify note on repeat-invariance as a defect detector
+- merge(103): stable federation identity - persisted per-host QUIC keypair, two codex cycles green, 217/217 glp_link tests
+- harden(federation): codex cycle 2 - DACL applied before any key byte is written, null-SID refuses instead of inheriting, interrupted rotation diagnosed, cert disposed
+- harden(federation): codex findings - atomic rename claim closes the concurrent-remint race, owner-only DACL and 0600-at-creation close the key-exposure window
+- correction of record - "fixed" was written before two of three runtimes were
+- swap is 100% exhausted on shiras - measured, structural, and an argument FOR the reboot
+- broadcast(l0): the zero-consumers claim is refuted by execution - the host exists, builds, and its tests exercise the hooks
+- correct the finding - the olamnit SLO fix is committed and PR #608 is open
+- publish the measured-not-declared finding - kernel/mailbox/QHSM stack verified by execution, SLO gate root-caused by controlled experiment, fix staged in olamnit and blocked from commit
+- codify(slo): a declaration standing in for a measurement, three times in one day
+- Merge pull request #292 from olamni-glp/main
+- spec(101): clarify - 4 engineer rulings encoded, 3 spec tensions resolved
+- docs(fleet)+fix(gitattributes): board-identity census, its correction, and the -diff pin for export snapshots
+- never hardcode roles/<role>/input.md - it is v1 only and goes stale
+- spec(101): front-end goal-term acceptance completeness - specify stage
+
 ## [v2026.09.05.1] - 2026-09-05
 
 ### Added

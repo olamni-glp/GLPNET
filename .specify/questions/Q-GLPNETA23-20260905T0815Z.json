@@ -1,0 +1,201 @@
+[
+  {
+    "qid": "Q-GLPNETA23-01",
+    "header": "Next era",
+    "block": "Four different durable sources name four different next eras for glpnet on ARIELLAS, and a full specify-to-close era cannot start until one is chosen.",
+    "origin": "contradiction",
+    "severity": "critical",
+    "background": [
+      "MEASURED 2026-09-05T07:40Z: `buildkit-roadmap next` recommends `front-end-goal-term-acceptance-completeness` (rank 21, promoted), but its code is already merged: `test/run_all_tests.sh` Section V (V-1..V-23) is on develop and commit c6236b3d is an ancestor of origin/develop, so that recommendation is a roadmap-state defect, not work.",
+      "`.specify/feature.json` points at `specs/085-onrestart-fleet-resume` (state specified, spec.md only, no plan or tasks), while the at-logon task `BK-OnRestart` on this host already runs a config-driven launcher (`~/.bk-onrestart/config.json` with layoutByHost and 15 lanes) built by the buildkit lane.",
+      "RESTART rev14 (07:00Z) names `port-059-gleam-link-layer-tests` (promoted, unstarted) as W18's replacement and the rekey (`Q-GLPNETA22-06`, ruled rekey-then-elect) as item 3, with the roster dedupe and the n/f quorum bar not built.",
+      "Engineer ruling `Q-gsbk14-01` (gavriella.buildkit, 06:25Z) holds all election prototyping and says verbatim: `@glpnet, every host - WP-02 is yours and it is blocked by nothing`, where WP-02 is the working QUIC listener for broker, guardian, admin and oracle.",
+      "On ARIELLAS the WP-02 listener half is already measured: binds on 0.0.0.0:47890, identity persisted (21 tests), two codex cycles; what remains is the UDP firewall rule (elevation), a second-host dial transcript, and the roster dedupe by resolved UNC target with the quorum bar stated as n and f."
+    ],
+    "impact_if_unanswered": "Without a ruling the lane either starts an era the roadmap already shipped, duplicates the buildkit lane's launcher, or leaves the ruled critical path (WP-02) untouched while the fleet waits on transport; every hour on the wrong era is an hour the ruled critical path does not move.",
+    "options": [
+      {
+        "key": "wp02-rekey-roster-bar",
+        "label": "WP-02 rekey roster bar",
+        "consequence": "Open the era on the rekey: peers keyed by node_id, roster deduplicated by resolved UNC target (H: and I: are one target here, I: is a loopback on GAVRIELLA, the round-72 barrier said 5/4 hosts), quorum bar stated with n and f using ceil((n+f+1)/2) with an n=5 vector so the three rival bars are distinguishable. Touches buildkit's sync barrier and tefl's BK-QUORUM-1, so it is coordinated over COOP, not built unilaterally.",
+        "size": "midi",
+        "reversibility": "reversible"
+      },
+      {
+        "key": "port-059-gleam-tests",
+        "label": "Port 059 Gleam tests",
+        "consequence": "Open the era rev14 named: port 059's link-layer tests onto develop's actor-style link_runtime. Self-contained in glp_gleam, no cross-lane edits, but it is not on the ruled critical path and leaves WP-02 idle on this host.",
+        "size": "midi",
+        "reversibility": "reversible"
+      },
+      {
+        "key": "085-onrestart",
+        "label": "Continue 085 onrestart",
+        "consequence": "Run 085 from plan to close as feature.json says. Risk: it re-implements what the buildkit lane's config-driven bk-onrestart already ships on this host, unless Q-GLPNETA23-02 rules the residual scope first.",
+        "size": "maxi",
+        "reversibility": "reversible"
+      },
+      {
+        "key": "roadmap-next-101",
+        "label": "Follow roadmap next",
+        "consequence": "Open the era the roadmap recommends. Its implementation is already merged and reviewed, so the era would consist of advancing roadmap state and closing; cheapest, but it delivers no new capability and leaves the contradiction in the roadmap's recommendation unfixed.",
+        "size": "micro",
+        "reversibility": "reversible"
+      }
+    ],
+    "recommendation": {
+      "option": "wp02-rekey-roster-bar",
+      "because": "It is the only candidate a standing engineer ruling names as the critical path, and it is the half of WP-02 that is measurably not done on this host; the other three either duplicate shipped work or sit off the critical path."
+    },
+    "decision": {
+      "option": "wp02-rekey-roster-bar",
+      "date": "2026-09-05",
+      "rationale": "Engineer ruled interactively 2026-09-05T08:55Z: the era opens on the WP-02 rekey - peers keyed by node_id, roster deduped by resolved target, quorum bar stated with n and f. Consistent with standing ruling Q-gsbk14-01 naming WP-02 the critical path for glpnet on every host."
+    }
+  },
+  {
+    "qid": "Q-GLPNETA23-02",
+    "header": "085 scope",
+    "block": "Feature 085 (bk-onrestart per-host configurable fleet resume) is the pinned feature of this repo, but its User Story 1 appears to be delivered by the buildkit lane's launcher already installed on this host, so its residual scope needs a ruling before any plan is written.",
+    "origin": "assumption-weakness",
+    "severity": "high",
+    "background": [
+      "085's spec (2026-08-23) asks that a host describes itself in a profile and no shared script is edited; measured 2026-09-05: `~/.bk-onrestart/config.json` on ARIELLAS carries `layoutByHost` for five hosts and a 15-lane list with paths and groups, and `bk-onrestart set-layout` plus a 21-check `selftest` were reported by shiras on 2026-09-04.",
+      "The at-logon task on this host executes mstack's `post-reboot-restart.ps1 -WaitForMounts -Layout Tabs`, not glpnet's `scripts/onrestart-launch.ps1`, so glpnet's copy is a third launcher that never fires (memory: onrestart-wired-script-is-not-the-repos).",
+      "The engineer's 2026-09-05 directive separately requires the `/bk-onrestart` C# reimplementation to be complete, deployed and activated on all four hosts within two eras, which is a buildkit-lane deliverable, not a glpnet one.",
+      "A captured glpnet feature `oracle-elastic-lane-pool-launcher-convergence` already names 085 as its vehicle for converging the launchers behind a capacity-gated slot roster."
+    ],
+    "impact_if_unanswered": "Planning 085 as specified risks a fourth launcher and an era spent on delivered scope, while closing it silently would drop the launcher-convergence and C#-reimplementation requirements the directive still carries.",
+    "options": [
+      {
+        "key": "supersede-085",
+        "label": "Supersede 085",
+        "consequence": "Record 085 as superseded by buildkit's config-driven bk-onrestart, carry the residual (launcher convergence, C# reimplementation, four-host activation) on the captured elastic-lane-pool feature and on a buildkit-lane feature, and unpin feature.json. Nothing is deleted; the roadmap keeps the lineage.",
+        "size": "micro",
+        "reversibility": "reversible"
+      },
+      {
+        "key": "continue-085",
+        "label": "Continue 085 as written",
+        "consequence": "Plan and implement 085 in glpnet. Delivers the spec but overlaps a launcher another lane owns and installs, so every host would carry two config-driven launchers until one is retired.",
+        "size": "maxi",
+        "reversibility": "reversible"
+      },
+      {
+        "key": "merge-into-lane-pool",
+        "label": "Merge into lane pool",
+        "consequence": "Merge 085 into `oracle-elastic-lane-pool-launcher-convergence` as one feature and re-specify around the oracle-arbitrated slot roster. Keeps one glpnet vehicle but grows a midi into a saga.",
+        "size": "saga",
+        "reversibility": "reversible"
+      }
+    ],
+    "recommendation": {
+      "option": "supersede-085",
+      "because": "The delivered half is measurable on this host today and the undelivered half belongs to the lane that owns the installed launcher; superseding keeps every requirement on a live feature without building a competing launcher."
+    },
+    "decision": {
+      "option": "supersede-085",
+      "date": "2026-09-05",
+      "rationale": "Engineer ruled interactively 2026-09-05T08:55Z: 085 is superseded by the buildkit lane's config-driven bk-onrestart already installed on this host; residual (launcher convergence, C# reimplementation, four-host activation) rides the promoted oracle-elastic-lane-pool feature and a buildkit-lane feature. Nothing deleted; lineage kept."
+    }
+  },
+  {
+    "qid": "Q-GLPNETA23-03",
+    "header": "Privileges",
+    "block": "Three ruled or measured actions cannot be executed by this lane because they need elevation or are refused by the session's command classifier, and W19 to W23 wait on one of them.",
+    "origin": "measurement",
+    "severity": "high",
+    "background": [
+      "UDP 47890 was ratified (`Q-GLPNETA22-04`) but `New-NetFirewallRule` returned Access is denied; measured 2026-09-05T08:00Z this session is not elevated and no `GLPNET YNET*` rule exists.",
+      "Nine remote refs were ruled deletable (`Q-GLPNETA22-02`) and are archive-tagged on origin, but `git push origin --delete` is refused by the classifier; `origin/101-goal-term-acceptance` has since been deleted by a peer, and its commit c6236b3d is measured contained in develop, so nothing was lost.",
+      "Local tag `v2026.06.10.1` points at 1f1323ef (the v2026.06.08.1 release merge) while origin's points at 49ec33af (PR #31, the real 06.10 release); the local ref is the wrong one, and the fix `git tag -f` was refused by the classifier this session, so `git push --tags` keeps failing here.",
+      "None of the three is work; each is one command that a person with the right privilege runs once."
+    ],
+    "impact_if_unanswered": "W19 to W23 stay blocked, every QUIC dial into ARIELLAS is dropped at the host firewall so the second-host proof cannot be measured, and tag pushes keep failing on a stale local ref.",
+    "options": [
+      {
+        "key": "engineer-runs-three",
+        "label": "Engineer runs three commands",
+        "consequence": "Run, elevated, the firewall rule; then the ref deletion; then `git tag -f v2026.06.10.1 49ec33aff84b1aacf94cf444a8fc4b7bb3aeb2a0` in this clone. Unblocks W19-W23 and the dial measurement within minutes; the deletions are recoverable from the verified archive tags.",
+        "size": "nano",
+        "reversibility": "reversible"
+      },
+      {
+        "key": "grant-lane-permission",
+        "label": "Grant lane permission",
+        "consequence": "Add settings rules allowing `git push --delete` and `git tag -f` for this lane; the firewall rule still needs elevation the lane cannot obtain. Faster next time, but widens what an autonomous session may do to shared refs.",
+        "size": "nano",
+        "reversibility": "reversible"
+      },
+      {
+        "key": "record-and-wait",
+        "label": "Record and wait",
+        "consequence": "Leave all three as recorded blocks with today's date. Costs nothing now; W19-W23 and the second-host dial stay unmeasured for as long as the wait lasts.",
+        "size": "nano",
+        "reversibility": "reversible"
+      }
+    ],
+    "recommendation": {
+      "option": "engineer-runs-three",
+      "because": "Each action is one already-ruled command, the deletions are covered by verified archive tags, and no other option lets the second-host QUIC proof be measured today."
+    },
+    "decision": {
+      "option": "engineer-runs-three",
+      "date": "2026-09-05",
+      "rationale": "Engineer ruled interactively 2026-09-05T08:55Z: the engineer runs the three privileged one-command actions (elevated UDP 47890 rule, the nine ruled ref deletions, the local tag correction). Each is already ruled; archive tags verified on origin make the deletions recoverable."
+    }
+  },
+  {
+    "qid": "Q-GLPNETA23-04",
+    "header": "T24 base",
+    "block": "The directive asks for one fleet template for the 24-hour tactical plan; four drafts now exist on the coop board from four lanes, and each asks every lane to amend it, so contributions are being split four ways.",
+    "origin": "contradiction",
+    "severity": "medium",
+    "background": [
+      "Measured on `\\\\192.168.0.108\\GAVRI_D\\coop` 2026-09-05T07:30Z: gavriella-glpnet `FLEET-T24-ACTION-PLAN-TEMPLATE-v1.0.md` (38.5 KB, 35/35 clauses mapped in Annex B, verbatim source in Annex A) in `_standards`; gavriella-lejepa `FTAP-24H v1` (41.8 KB) in `_standards`; gavriella-tefl `BK-STD-3 v0.1 DRAFT` (19.6 KB) in the glpnet channel; gavriella-buildkit `.specify/program/FLEETWIDE-TACTICAL-24-HOUR-ACTION-PLAN.template.md` (566 lines) in the buildkit repo.",
+      "All four were produced under the same no-summarisation constraint from the same source and all four request amendments from every lane; none has engineer approval and the template's own §12 makes engineer approval a ratification step.",
+      "The v1.0 draft already carries the three standing corrections (C-1 f020 refuted, C-2 no valid election, C-3 no campaigning) and leaves §4 row 21, §2.5 C-4 and §13 open for peers, which is the shape that lets other drafts fold in as amendments rather than rivals.",
+      "This lane has written no fifth draft; its contribution is filed as amendments to v1.0 in today's ACK sweep."
+    ],
+    "impact_if_unanswered": "Peer amendments land on four different documents, ratification and the BEACON rendering (OBJ-BEACON-SHOW) have no single input, and the fleet repeats the multiple-implementation failure it has measured on features 012 and 020.",
+    "options": [
+      {
+        "key": "base-on-v1-0",
+        "label": "Base on glpnet v1.0",
+        "consequence": "Designate `_standards/FLEET-T24-ACTION-PLAN-TEMPLATE-v1.0.md` as the single base; the tefl, lejepa and buildkit drafts are folded in as §13 amendments by their authors, with any clause they carry that v1.0 lacks recorded in Annex B. One document reaches ratification and BEACON.",
+        "size": "micro",
+        "reversibility": "reversible"
+      },
+      {
+        "key": "base-on-buildkit-wp",
+        "label": "Base on buildkit WP template",
+        "consequence": "Designate buildkit's work-package template as the base because buildkit owns the pipeline standards; the other three fold in. Equally workable, but that draft lives in a repo rather than on the shared `_standards` root, so non-buildkit lanes read it second-hand.",
+        "size": "micro",
+        "reversibility": "reversible"
+      },
+      {
+        "key": "3rtask-merge",
+        "label": "Mechanical 3rtask merge",
+        "consequence": "Run a /bk-3rtask merge over all four drafts to produce one document with attributed clauses. Most defensible provenance, costs one lane a full cycle before any amendment can land.",
+        "size": "midi",
+        "reversibility": "reversible"
+      },
+      {
+        "key": "keep-four",
+        "label": "Keep four in parallel",
+        "consequence": "Let all four evolve until ratification and choose then. No coordination cost now; amendments stay split and ratification is deferred by construction.",
+        "size": "nano",
+        "reversibility": "reversible"
+      }
+    ],
+    "recommendation": {
+      "option": "base-on-v1-0",
+      "because": "It is the only draft on the shared standards root with a complete clause-by-clause traceability map, it already reserves the slots peers need, and a designated base costs one ruling while every alternative costs the fleet another cycle."
+    },
+    "decision": {
+      "option": "base-on-v1-0",
+      "date": "2026-09-05",
+      "rationale": "Engineer ruled interactively 2026-09-05T08:55Z: FLEET-T24-ACTION-PLAN-TEMPLATE-v1.0 on the shared _standards root is the single base; the tefl, lejepa and buildkit drafts fold in as section 13 amendments by their authors, with any clause v1.0 lacks recorded in Annex B."
+    }
+  }
+]

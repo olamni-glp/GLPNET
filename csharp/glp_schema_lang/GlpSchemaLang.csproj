@@ -24,6 +24,7 @@
     <RootNamespace>GlpRuntime.SchemaLang</RootNamespace>
     <AssemblyName>glp_schema_lang</AssemblyName>
     <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <WarningsAsErrors>$(WarningsAsErrors);CS0649;CS0169</WarningsAsErrors>
   </PropertyGroup>
 
   <ItemGroup>

@@ -1,0 +1,35 @@
+<!--
+  SPDX-FileCopyrightText: Copyright (c) 2026 by Marcelle Kress von Wendland, The Olamni Research Group and Bancstreet Capital Partners Ltd, London, UK
+  SPDX-License-Identifier: MIT
+
+  ynet-federation — the operator console for feature 102 (T041).
+
+  WHY A SEPARATE PROJECT. FR-002 and FR-019 need operator-facing surfaces that a class library
+  cannot provide, and keeping the console separate keeps glp_crdtmsg free of Main-shaped concerns.
+
+  HOW IT IS RUN. Via `dotnet run`, under the already-signed dotnet host. Smart App Control is ON and
+  ENFORCING on GAVRIELLA and has been measured blocking a freshly-built unsigned APPHOST with
+  0x800711C7 — the managed code is fine, the apphost is what the policy refuses. FR-023 makes the
+  program report that refusal by name if it is ever hit. Turning the protection off was DECLINED as
+  one-way by ruling Q-GLPNETG27-02; the durable fix is code-signing in `buildkit ship`, tracked
+  separately.
+-->
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net11.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>Ynet.Federation</RootNamespace>
+    <AssemblyName>ynet_federation</AssemblyName>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <WarningsAsErrors>$(WarningsAsErrors);CS0649;CS0169</WarningsAsErrors>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\glp_crdtmsg\GlpCrdtMsg.csproj" />
+  </ItemGroup>
+
+</Project>

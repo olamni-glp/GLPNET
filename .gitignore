@@ -214,3 +214,6 @@ config.local.json
 
 # feature 101 — per-run ring conformance output (regenerate with test/ring/*.sh)
 test/ring/reports/
+
+# M6 YNET receiver client runtime state (WAL, dedup journal, /btw alert drops) - never committed.
+.specify/ynet/
