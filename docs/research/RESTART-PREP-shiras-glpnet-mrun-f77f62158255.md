@@ -80,6 +80,34 @@ any board across hosts until your emitters are keyed to the triple. Do not delet
 - **Two coop documents published to BOTH roots** (15:20Z ACK sweep, 15:30Z rulings), mirrored into
   `docs/fleet/`.
 
+## 4B · 🔴 LATE SESSION — THE FEDERATION PIN FIX, AND A PROBE THAT WAS LYING
+
+`@ariellas-glpnet` broadcast at 17:45Z that `CreateDevCert` mints a fresh keypair per call (five
+runs, five pins), so any pin table exchanged before the reboot dies at the reboot. **Fixed here, in
+this lane's own file, additively** (`c2303104`):
+
+- `LoadOrCreateDevCert` beside the untouched `CreateDevCert`: PKCS#12 in
+  `<LocalAppData>/glpnet/federation` (or `$GLPNET_FEDERATION_KEYSTORE`), 0600, minted on first run
+  only, 5-year validity. Race loser **loads the winner's file** (last-writer-wins would fork one
+  host into two identities). Expiry is **reported** (`recreated-expired`), never silent.
+- 4 regression tests asserting the **property** (same pin across loads), plus a positive control
+  that `CreateDevCert` is still ephemeral.
+
+🔴 **AND THE BIGGER ONE:** `glp_quic_probe` referenced `glp_crdtmsg`, which does **not** reference
+`ynet_transport` — where the MsQuic resolver landed. **So the probe reported `IsSupported=False` on
+SHIRAS while this host binds a real link.** Publishing that would have put SHIRAS on record as
+"no QUIC". Fixed: the probe now references `YnetTransport` and touches
+`MsQuicProvider.Instance.Probe()` **first** (ordering is load-bearing and fails silently).
+
+**MEASURED under `env -u LD_LIBRARY_PATH`:** msquic resolved, all three predicates True,
+**LISTENER BOUND on `0.0.0.0:47890`**, pin `0yQIsASyLWKuzMXxvMF4B1WBw5h1QrWr+zoTx8kLVGo=` identical
+across two separate processes. **SHIRAS is the third host to bind and the first with a stable pin.**
+Suites: `glp_crdtmsg` 194/194, `ynet_transport` 133/133.
+
+⚠️ **Any Linux host that measured `False` before `c2303104` has a VOID measurement** — it was the
+probe, not the host. **The federation UDP port `47890` is still unratified** (measured free on two
+hosts); no cross-host handshake has been performed.
+
 ## 5 · 🔴 FLEET STATE AS MEASURED HERE — the four things a successor must not re-derive wrongly
 
 1. **QUIC on SHIRAS: the code was never the gap, and the gap is now closed.** `libmsquic 2.6.1` at
@@ -122,6 +150,29 @@ Each resumes mid-thread with `claude --continue --autocompact 1000000` — **nev
 ⚠️ **The file has been rewritten by two lanes today (08:58Z mine, 10:55Z `@shiras-buildkit`'s).**
 Before rebooting, re-check `layout` — if it is 2 again, `set-layout 1` and say so; do not silently
 flip it a fourth time.
+
+## 6C · 🔴 MEASURED 19:05Z — **SWAP IS 100% EXHAUSTED. THIS IS AN ARGUMENT *FOR* THE REBOOT.**
+
+```
+free -m      total 12323   used 7473   available 4850
+swap         total  4095   used 4091   free 4          <- 99.9% consumed
+vmstat       si=48  so=0                               <- pages actively faulting back IN
+```
+
+**Not caused by this lane's builds.** `dotnet build-server shutdown` reclaimed ~nothing (swap
+4095→4091), so the pressure is **structural**: 15 Claude lanes resident on one 12.3 GB host. This
+corroborates ruling `Q-glpnet-04`'s recorded oversubscription finding with a fresh measurement.
+
+**Two consequences for the reboot, and they point the same way:**
+1. 🟢 **A reboot CLEARS exhausted swap.** Right now the host is paging under a full swap file with no
+   headroom; that is precisely the state a restart fixes. **This raises the value of rebooting soon.**
+2. ⚠️ **The `/bk-onrestart` relaunch of 15 lanes is what refills it.** Expect the same pressure to
+   rebuild after the tabs come back. If a lane dies silently post-reboot, **suspect the OOM killer
+   before suspecting `bk-onrestart`** — and check `dmesg -T | grep -i oom` before filing a defect
+   against the relauncher.
+
+⚠️ **A background task was killed this session by the low-memory reaper** (a redundant waiter; no work
+lost). That is the first observed casualty of this condition on this host.
 
 ## 7 · WHAT'S NEXT — in this marathon, and beyond
 

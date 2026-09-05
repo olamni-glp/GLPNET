@@ -152,6 +152,17 @@ public sealed record FederationIdentity(
             throw new InvalidOperationException(
                 $"federation identity '{pfxPath}' has no private key — it must sign its own handshake.");
 
+        // An EXPIRED anchor is refused, not re-minted (converged with @gavriella-glpnet's independent
+        // implementation, which re-minted). Re-minting is a rotation; a rotation invalidates every
+        // peer's table; a rotation nobody asked for, arriving on a timer, is this feature's own
+        // failure mode wearing a clock. Refusing turns it into one loud instruction instead.
+        if (cert.NotAfter <= DateTime.Now)
+            throw new InvalidOperationException(
+                $"federation identity '{pfxPath}' EXPIRED at {cert.NotAfter:O}. Refusing to mint a "
+                + "replacement automatically: that would change this host's published pin and refuse "
+                + "every peer until all of them updated. Rotate deliberately (rotate: true), then "
+                + "RE-PUBLISH the new pin to the fleet before restarting the service.");
+
         var stored = File.ReadAllText(fingerprintPath).Trim();
         if (stored.Length == 0)
             throw new InvalidOperationException(

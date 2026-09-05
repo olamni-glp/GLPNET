@@ -15,6 +15,12 @@
 
   <ItemGroup>
     <ProjectReference Include="..\glp_crdtmsg\GlpCrdtMsg.csproj" />
+    <!-- ynet_transport carries the MsQuic DllImportResolver. WITHOUT it this probe reports
+         IsSupported=False on every Linux host whose libmsquic is off the default loader path — a
+         FALSE NEGATIVE, and the fleet publishes "no QUIC here" from it. This is an app, not a unit
+         test, so the "don't drag native deps into test builds" objection in GlpCrdtMsg.csproj does
+         not apply. -->
+    <ProjectReference Include="..\ynet_transport\YnetTransport.csproj" />
   </ItemGroup>
 
 </Project>
