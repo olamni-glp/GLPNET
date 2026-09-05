@@ -19,7 +19,10 @@ set -u
 # Drills own a fresh file WAL; a shared pglite journal must never be touched by tests.
 unset COLAB_PG_CONN
 SB_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-CSREPL="$SB_ROOT/out/csharp/glp_repl/bin/Debug/net10.0/glp_repl.exe"
+# TFM comes from the csproj, never a literal (test/lib/tfm.sh explains why this was
+# pinned to net10.0 in seven places and what that cost).
+. "$(dirname "${BASH_SOURCE[0]}")/../lib/tfm.sh"
+CSREPL="$(glp_repl_exe "$SB_ROOT")" || { echo "resume_drill.sh: cannot resolve the C# REPL target framework from out/csharp/glp_repl/glp_repl.csproj - refusing rather than falling back to a stale binary" >&2; exit 2; }
 REG="$SB_ROOT/glpservice/resume.json"
 WAL="$SB_ROOT/glpservice/wal"
 BASELINE="$SB_ROOT/test/service_box/baseline_startup.txt"

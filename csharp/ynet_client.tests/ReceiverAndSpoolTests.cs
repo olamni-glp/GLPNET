@@ -442,6 +442,36 @@ public sealed class ReceiverAndSpoolTests : IDisposable
         Assert.False(noOutbound.Send(Msg("out-2")));   // no plane: false, not a pretend success
     }
 
+    // REGRESSION, 2026-09-05. WaitForNotifications used to test `queue empty AND not busy`, which
+    // has a window: the pump takes the item (queue empties) BEFORE it marks itself busy. An observer
+    // sampling in that window was told the work was done when it had not been attempted, and read a
+    // null LastHookAttempt. It failed roughly one run in three and only under a hook that fails.
+    //
+    // Repeated because a race that fires one time in three is not disproved by one green run. Each
+    // iteration asserts the SAME thing the flaky test asserted, so a regression reappears here.
+    [Fact]
+    public void WaitForNotifications_returning_true_means_the_hook_was_actually_attempted()
+    {
+        for (var i = 0; i < 40; i++)
+        {
+            var (machine, plane, spool) = Build(hook: "this-command-does-not-exist-ynet-client-test");
+            using var _m = machine;
+
+            plane.Deliver(Msg($"race-{i}"));
+            machine.PumpOnce();
+
+            Assert.True(machine.WaitForNotifications(TimeSpan.FromSeconds(20)));
+
+            // The whole point: a true from the wait is evidence the attempt COMPLETED.
+            Assert.NotNull(machine.LastHookAttempt);
+            Assert.Equal(HookOutcome.Failed, machine.LastHookAttempt!.Outcome);
+
+            // The spool directory is shared across iterations, so this grows by exactly one each
+            // time — the failing hook must still never lose an alert.
+            Assert.Equal(i + 1, spool.Undrained().Count);
+        }
+    }
+
     private sealed class FakeOutbound(List<YnetMessage> sink, bool accept) : IYnetOutbound
     {
         public bool Send(YnetMessage message)

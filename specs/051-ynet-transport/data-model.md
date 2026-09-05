@@ -30,6 +30,29 @@ working-data cluster (Constitution VI-b) via one additive, idempotent, single-he
 - **Rules**: self-certified — `signature` MUST verify against `signer_node_id`'s pubkey; a record
   whose signature fails is rejected regardless of the serving DHT hop (FR-006). Embedded S-Kademlia,
   curated overlay — never a public DHT.
+- **Rules — signer↔key binding (engineer ruling `Q-olg15-08`, 2026-09-05, ratifying the fix for the
+  `Q-olg15-02` P1).** A valid signature proves **who** wrote a record; it never proves **where** they
+  may write it. **Every** `record_kind` MUST bind its `key` to its signer, and a record whose key is
+  not so bound MUST be refused by store, lookup and verify alike:
+
+  | `record_kind` | the key its signer may write under |
+  |---|---|
+  | `reachability` | `<signer_node_id>` exactly |
+  | `key_to_record` | `<signer_node_id>` + `/` + `<name>`, with `<name>` non-empty — a signer-owned namespace |
+  | *any kind not listed above* | **none — refused** |
+
+  `signer_node_id` is 64 lowercase hex characters, so `/` can never occur inside one and the split is
+  unambiguous.
+
+  🔴 **The unlisted-kind row is normative and is a refusal, not an omission.** A `record_kind` added
+  later without a binding rule in this table MUST fail closed. This is the requirement that stops the
+  `Q-olg15-02` defect recurring: that defect existed precisely because a *second* kind inherited a
+  binding written for the *first*.
+
+  *History, retained because it is the evidence for the rule:* before this ruling the binding was
+  guarded by `Kind == Reachability`, so an attacker-signed `key_to_record` under a victim's node-id
+  key self-certified, was stored and was served. Measured before the change: `key_to_record` had
+  **zero production producers**, so binding every kind broke nothing.
 
 ## Relay node / admission cache (persisted)
 - **Fields**: `relay_node_id`, `admission_macaroon_ref` (056-owned decision), `relay_mechanism`

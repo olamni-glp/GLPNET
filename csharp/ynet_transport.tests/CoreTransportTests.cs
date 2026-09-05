@@ -316,6 +316,41 @@ public class SignedRecordTests
         Assert.False(spoof.VerifySelfCertified()); // key != H(signer pubkey) -> rejected
     }
 
+    // ---- Q-olg15-02 CLOSED (was DEFECT PROBE, shiras-qhstate 20260905T0240Z ACK-COMPLIANCE) ----
+    // Fleet finding: "delete node_id and the signature still verifies" — a signer that can be erased
+    // or substituted. GLPNET has no erasable node_id field (SignerNodeId is DERIVED from the
+    // signed-against SPKI), so that exact attack has no field to delete. This probe measured the
+    // SUBSTITUTION half of the same defect class, and it USED TO PASS.
+    //
+    // Engineer ruling Q-olg15-02 (2026-09-05): bind every kind, refuse unbound. The assert below is
+    // the inversion the probe's own comment called for.
+
+    [Fact]
+    public void KeyToRecord_signed_by_one_key_under_another_key_is_refused()
+    {
+        using var victim = NodeIdentity.Generate();
+        using var attacker = NodeIdentity.Generate();
+        var victimKey = System.Text.Encoding.ASCII.GetBytes(victim.NodeId.Value);
+
+        // attacker signs a KeyToRecord stored under the VICTIM's key, with the attacker's own key
+        var spoof = SignedRecord.Create(
+            attacker, victimKey, RecordKind.KeyToRecord, "evil-payload"u8.ToArray(), Now, TimeSpan.FromHours(1));
+
+        Assert.False(spoof.VerifySelfCertified());             // the binding now covers this kind
+        Assert.NotEqual(victim.NodeId, spoof.SignerNodeId);    // and the author is not the key owner
+    }
+
+    // The signature still proves authorship — the fix constrains WHERE a signer may write, it does
+    // not weaken WHO signed. A signer writing in its own namespace still verifies.
+    [Fact]
+    public void KeyToRecord_in_the_signers_own_namespace_still_verifies()
+    {
+        using var owner = NodeIdentity.Generate();
+        var rec = SignedRecord.CreateKeyToRecord(owner, "svc/broker", "addr"u8.ToArray(), Now, TimeSpan.FromHours(1));
+        Assert.True(rec.VerifySelfCertified(Now));
+        Assert.Equal(owner.NodeId, rec.SignerNodeId);
+    }
+
     // codexreview: an expired record must not verify when a clock is supplied.
     [Fact]
     public void Expired_record_is_rejected_when_clock_supplied()

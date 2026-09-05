@@ -44,23 +44,46 @@ public sealed class HookNotifier : IDisposable
     /// <summary>Queue one announcement. Never blocks the caller.</summary>
     public void Enqueue(PendingAlert alert)
     {
+        // Count the item OUTSTANDING before it is queued. Counting after would reopen the very gap
+        // this counter exists to close (see WaitForIdle).
+        Interlocked.Increment(ref _outstanding);
         if (_queue.IsAddingCompleted || !_queue.TryAdd(alert))
+        {
+            Interlocked.Decrement(ref _outstanding);
             Interlocked.Increment(ref _dropped);
+        }
     }
 
-    /// <summary>Block until the queue drains or the timeout expires. For tests and shutdown.</summary>
+    /// <summary>
+    /// Block until every queued announcement has been ATTEMPTED, or the timeout expires.
+    ///
+    /// 🔴 This used to test <c>_queue.Count == 0 &amp;&amp; !_busy</c>, and that has a window in which it
+    /// returns true having waited for nothing: the pump takes an item (Count drops to 0) and has not
+    /// yet set <c>_busy</c>. An observer sampling between those two statements sees an idle notifier
+    /// while the notification has not been attempted at all, so <see cref="Last"/> is still null or
+    /// stale when the caller reads it. Measured as an intermittent failure of
+    /// <c>A_FAILING_hook_does_not_lose_the_message</c> — roughly one run in three, 2026-09-05.
+    ///
+    /// A single outstanding counter, incremented BEFORE the enqueue and decremented only AFTER the
+    /// handler returns, has no such window: the item is counted continuously from before it is
+    /// visible to the pump until after its effect is published. A "done" from this method is now
+    /// evidence that the work happened.
+    /// </summary>
     public bool WaitForIdle(TimeSpan timeout)
     {
         var deadline = DateTime.UtcNow + timeout;
         while (DateTime.UtcNow < deadline)
         {
-            if (_queue.Count == 0 && !_busy) return true;
+            if (Interlocked.Read(ref _outstanding) == 0) return true;
             Thread.Sleep(5);
         }
-        return _queue.Count == 0 && !_busy;
+        return Interlocked.Read(ref _outstanding) == 0;
     }
 
-    private volatile bool _busy;
+    /// <summary>Announcements queued but not yet attempted. Zero is the only idle state.</summary>
+    public long Outstanding => Interlocked.Read(ref _outstanding);
+
+    private long _outstanding;
 
     private void Pump()
     {
@@ -68,7 +91,6 @@ public sealed class HookNotifier : IDisposable
         {
             foreach (var alert in _queue.GetConsumingEnumerable())
             {
-                _busy = true;
                 try
                 {
                     Attempted++;
@@ -76,18 +98,30 @@ public sealed class HookNotifier : IDisposable
                 }
                 finally
                 {
-                    _busy = false;
+                    // AFTER Last is published, so an observer that sees zero outstanding can read it.
+                    Interlocked.Decrement(ref _outstanding);
                 }
             }
         }
         catch (ObjectDisposedException)
         {
-            // shutdown
+            AbandonOutstanding(); // shutdown
         }
         catch (InvalidOperationException)
         {
-            // adding completed while enumerating; shutdown
+            AbandonOutstanding(); // adding completed while enumerating; shutdown
         }
+    }
+
+    /// <summary>
+    /// The pump is gone, so anything still counted will never be attempted. Release the counter and
+    /// count those announcements as dropped — a waiter must not block on work that cannot happen,
+    /// and the drop must appear in the number that reports drops. The ALERTS remain in the spool.
+    /// </summary>
+    private void AbandonOutstanding()
+    {
+        var abandoned = Interlocked.Exchange(ref _outstanding, 0);
+        if (abandoned > 0) Interlocked.Add(ref _dropped, abandoned);
     }
 
     public void Dispose()
