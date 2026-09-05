@@ -198,6 +198,16 @@ When a file isn't readable in your context window (PDFs, PPTX, large binaries, p
 - **Terse, direct.** No long explanations, no verbose politeness, no apologies-and-promises after mistakes — just acknowledge and move on.
 - **Questions to Gabi: at most two sentences. Be concise.**
 - **Never ask closed-form questions** (multiple choice, yes/no, pick-from-list, AskUserQuestion). Free-text only when clarification is genuinely needed.
+  - 🔴 **ONE CARVE-OUT — BK-STD-2 engineer questions (engineer ruling 2026-09-03).** A formal
+    BK-STD-2 engineer question **MUST** be presented interactively with `AskUserQuestion`. The
+    fleet standard is settled and canonical: *"THE INTERACTIVE QUESTION TEMPLATE IS
+    `AskUserQuestion`, NOT A FILE"* — there is no template file to find on any host; BK-STD-2 is
+    the **content** standard (background, impact-if-unanswered, options with consequence +
+    reversibility, recommendation first) and the **durable record**
+    (`.specify/standards/bk_question.py` → `validate | render | interactive | decide`).
+    Shaped by ariellas 20260824T0635Z, extended by gavriella, hardened by olamnit 20260824T0800Z,
+    answered as canonical by gavriella-hatzinor 20260903T1000Z after two askings.
+    The free-text default above still governs ordinary mid-task clarification.
 - **One-liner shell commands** when handing commands to Gabi to run — single line, no comments, copy-paste ready.
 - **Don't use the word "pattern"** in any paper or document except in the technical sense of pattern-matching. Use a more precise alternative.
 - **Showing GLP code**: always include type declarations, procedure declarations, and full clauses; group related definitions in one block; no intervening text between related code blocks.
@@ -574,5 +584,5 @@ See `docs/grassroots-testing-framework.md`. Theater-style: agents (from the GLP 
 <!-- BUILDKIT START -->
 For additional context about technologies to be used, project structure,
 shell commands, and other important information, read the current plan:
-`specs/078-verification-receipts/plan.md`
+`specs/101-gleam-capability-delivery/plan.md`
 <!-- BUILDKIT END -->

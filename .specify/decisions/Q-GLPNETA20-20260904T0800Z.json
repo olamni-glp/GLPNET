@@ -1,0 +1,41 @@
+{
+  "schema_version": "1",
+  "set_id": "Q-GLPNETA20-20260904T0800Z",
+  "lane": "glpnet",
+  "repo": "glpnet",
+  "raised_at": "2026-09-04T08:00:00+00:00",
+  "context": "Split from Q-GLPNETA19 (the shipped template caps a set at 4 questions). This set carries the single board-of-record ruling, held separately because it is the one that becomes irreversible the moment S6 hardens. Raised by ariellas.glpnet; ledger evidence ops glpnet:000038 and glpnet:000041.",
+  "questions": [
+    {
+      "id": "Q-GLPNETA20-01",
+      "kind": "ruling",
+      "header": "Board record",
+      "question": "Your directive says lanes connect to a LOCAL ON-HOST ORACLE and the four oracles federate into one board. There are currently TWO different things called the mailbox and nobody has ruled which is the board of record. (A) The file-CRDT JSONL board at %LOCALAPPDATA%/yngenios/ynet/mbox - 16 mailboxes, 954 ops - which is what all 15 lanes actually use today. (B) Yng.Shared/Mailbox/PgWireClient.cs, 295 lines, Postgres wire protocol, used by the running net11 Yng.Broker. They have different durability, concurrency and failure modes. The same fork exists one layer up in authorisation: yngcor's S6 is building Ed25519 op signing while the prototype already ships macaroons (Macaroon.cs 155 lines, CapabilityToken.cs 44) with SpawnEngine requiring second macaroon verification before any side effect. S6 is about to harden and would lock the fork in. Which is the board of record?",
+      "blocks": [
+        "S6 hardening",
+        "oracle federation design",
+        "any lane wiring to the oracle"
+      ],
+      "escalate_after_hours": 8,
+      "multi_select": false,
+      "options": [
+        {
+          "label": "File-CRDT is the board of record",
+          "recommended": true,
+          "means": "The JSONL CRDT board is the oracle and the federated artifact; PgWire stays the broker's internal store. Ed25519 signs board ops; macaroons stay for broker capability delegation.",
+          "cost": "Keeps two stores in the estate permanently, with a documented boundary that has to be policed. Evidence: measured: every one of the 15 lanes uses the JSONL board today; PgWire has no lane consumers."
+        },
+        {
+          "label": "PgWire becomes the board",
+          "means": "Migrate the board onto the broker's Postgres-wire mailbox and retire the JSONL files.",
+          "cost": "Migrates 954 live ops and every lane's emitter onto a store whose broker's own spawn path is currently dead because Docker is not running. Evidence: measured: docker version refused on this host while yng-broker.exe runs."
+        },
+        {
+          "label": "Defer until after S6 ships",
+          "means": "Let S6 harden on the JSONL board and decide the store question afterwards.",
+          "cost": "Deciding after hardening is how the fork becomes permanent; that is precisely the risk this question exists to prevent. Evidence: yngcor records S6 core built and green with a first signed op already on the board."
+        }
+      ]
+    }
+  ]
+}

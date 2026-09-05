@@ -44,6 +44,118 @@
 - docs(fleet)+fix(gitattributes): board-identity census, its correction, and the -diff pin for export snapshots
 - never hardcode roles/<role>/input.md - it is v1 only and goes stale
 - spec(101): front-end goal-term acceptance completeness - specify stage
+## [v2026.09.04.5] - 2026-09-04
+
+### Fixed
+- persisted per-host QUIC identity, and the probe that was lying on Linux
+
+### Changed
+- broadcast(glpnet): QUIC listener verified bound on a second host, plus a critical ephemeral-cert defect that breaks the authorised pin exchange at the next reboot
+- restart(glpnet): rev13 refreshed to session-end state, plus a warning that the on-disk mirror is not a valid detector
+- sitrep(glpnet): standardized tables A-D, 50/135, four gated steps trace to one unruled question, plus a stale-mirror tooling defect
+- restart-prep rewritten for the ruled next era (minted identity + Resolve), plus the 15:20Z ACK sweep and 15:30Z four-ruling broadcast mirrored into the repo
+- restart(glpnet): rev13 - marathon 42 to 50 by measurement, W18 escalation reduced to a cherry-pick, preservation gap closed
+- roadmap(glpnet): reconcile-dedupe-export round 71, BK-STD-1 not-closed table (30), and a measured roadmap-vs-git divergence on six landed features
+- ack(glpnet): stop order acked and held, board carries zero terms, two peer-table defects live on ariellas, W18 contradiction resolved by measurement
+- Q-39..42 decided - identity+Resolve era next, one-window onrestart re-applied, PBFT for ALL purposes adopted on SHIRAS (supersedes authorisation-only), interim coordinator by designation; roadmap sync rounds 69-70 (86 lines from 24 peer files imported, iroh tier-0 promoted)
+- Merge pull request #290 from olamni-glp/main
+
+## [v2026.09.04.4] - 2026-09-04
+
+### Added
+- QUIC fallback chain with ngtcp2 as the Linux ultimate tier
+
+### Fixed
+- codex 20260904T144004Z - retryable msquic registration, file-path override honoured, RID-derived staging, --check mirrors runtime loader locations, bounded frame reads in chain test; P1 (chain not wired into YnetTransportCapability.Connect) recorded as era-102 scope
+
+### Changed
+- Merge pull request #288 from olamni-glp/main
+
+## [v2026.09.04.3] - 2026-09-04
+
+### Added
+- prove a board op crosses QUIC and the fold converges exactly once
+- prove glpnet can bind a real QUIC listener - the estate's inter-host transport is UNRUN, not missing
+
+### Changed
+- Merge branch 'develop' of https://github.com/olamni-glp/GLPNET into develop
+- four BK-STD-2 engineer rulings - term space is a namespaced triple (stop order), code-sign not WDAC, QUIC federation era, scoped UDP rule authorised
+- Q-38 decided - iroh identity model to L0, iroh stack to L1 behind the GLPNET seam; and Q-35/36/37 records
+- ACK ERA REQ - probe re-run BOUND, I: is a self-loopback so GAVRI is not a 4th host, all 4 hosts routable on one /24
+- Merge branch 'develop' of https://github.com/olamni-glp/GLPNET into develop
+- QUIC ground truth EXECUTED both ways - IsSupported False on default path, True with libmsquic on it; and LD_LIBRARY_PATH greens tests while leaving every service broken
+- merge blocker CLEARED - PR 279 merged, v2026.09.04.2 released, yx-bootmig fix now ON develop; one-window topology per Q-35; QUIC ships but libmsquic is absent on this host
+- Merge branch 'develop' of https://github.com/olamni-glp/GLPNET into develop
+- merge peer roadmap exports
+- Merge branch 'develop' of https://github.com/olamni-glp/GLPNET into develop
+- Merge pull request #286 from olamni-glp/main
+
+## [v2026.09.04.2] - 2026-09-04
+
+### Added
+- rounds 67-68 - two engineer-directed features scored+promoted (ynet minted lane identity WSJF 5.2 RICE 810, GLP REPL front/middle/back), 124 features, and the coop mirror FIXED to publish to the SHARED root
+- capture+score+promote GLP REPL front/middle/back split over the ynet transport contract
+
+### Fixed
+- pass-2 remedies - the P2 gate is a CONJUNCTION not an or, the GAVRIELLA retraction citation is UNVERIFIABLE here so it is recorded not adopted, and release-this-branch-only was never executable by buildkit release
+- apply all 5 codex findings - bound=0 is not evidence of absence, the Q-29 completion claim was false, SHIRAS is no longer unmeasured, and the reboot dry-run is a config check NOT boot validation
+- the S1 filing to @buildkit was NEVER written - correct my own false claim, clarify stage of mrun-f77f62158255
+- supersede the INVERTED P2 callgraph-node-key instruction, name the real ingest-layer root cause
+
+### Changed
+- Merge pull request #279 from olamni-glp/100-cpm-central-package-management
+- engineer directives + ruling D1-D4, the TWO-WINDOW reboot topology applied and verified, the three-coop-roots warning, and the two promoted features
+- roadmap export r67+ and merge of ariellas/glpnet fleet broadcasts
+- Merge branch 'develop' of https://github.com/olamni-glp/GLPNET into develop
+- ack(glpnet): receipt + itemised compliance, independent corroboration of qhstate lease finding, self-correction on board federation
+- broadcast(glpnet): federation before election, carrier already exists, and a self-reported mis-emission
+- broadcast(glpnet): S4 carrier claimed, era reqs with ACK, and an undeclared GPL-3.0 QP/C blocker under the whole route
+- era close-out - roadmap sync round 67 published, ruling Q-GLPNETS17-03 recorded, codify notes captured
+- Merge pull request #284 from olamni-glp/main
+- rewrite the restart pointer whole - era S1 CLOSED 9/9 fully measured, the merge gate re-measured (pull works, gh pr merge does NOT), and mstack is down BEFORE any reboot
+- round 66 - reconcile/import/reconcile/dedupe/export/sync all rc=0, 21 epics / 122 features / 4030 journal lines, 0 refused, no OOM
+- record the MEASURED merge-gate outcome - pull and push work, gh pr merge is STILL DENIED, and the lane did not route around it
+- restart+reboot prep - reboot gate RE-MEASURED, the systemd path FAILS at boot and the desktop autostart is what actually resumes the fleet
+- round 65 sync + BK-STD-2 rulings Q-glpnetshiras-27..30 all decided; per-host yx-bootmig corrections and the BK-STD-2 carve-out
+- S1 era specify - prove Q-19 and S1 root causes, mint the nine era stages, record the yx-bootmig next-era directive
+- round 64 (reconcile/import/reconcile/dedupe/export/sync all RC=0, 0 dedupe groups over 122 live, 21 epics/123 features/3902 journal lines, barrier 5/4) + six BK-STD-2 engineer questions Q-glpnetshiras-21..26 ALL DECIDED. ROOT CAUSE of this session's degraded report found and it was MINE: bk-heavy-lock has existed on this host since 2026-09-01 and I ran BK-REPORT unserialised, losing PROGRESS+SITREP+marathon-NEXT to registry contention - not a tool defect. Q-25 settles the Q-19 subject: S1 scheduler-dispatch-leaks is the hand-instrumented era, not roadmap rank 21. Q-22 REVERSES my own P1: takt_lake.py:330 makes D:/_takt-lake canonical so today's repoint was the FIX and the REBOOT REPAIRS the split - correction filed to coop 20 min after the claim. Also records two live defects in sync-64 output: 'malformed journal record' is a MISDIAGNOSIS of a PGLite OOM (the DETAIL line says so), and the barrier counts the retired slug 'gavriellas' as a host, reading 5/4
+- restart+reboot prep for run mrun-f77f62158255, resumable with 'resume marathon'. REBOOT GATE MEASURED SAFE: dry-run exits 0, 15/15 lanes registered with distinct names and resolving paths, 15/15 session stores present and touched today so guard 1 is satisfied and claude --continue will resume rather than silently start an empty session, unit has [Install], timer enabled, autostart enabled, and the launcher now exports the takt lake roots (the Q-14 fix propagated). ONE RESIDUAL RISK RECORDED: Linger=no, so resume is tied to LOGIN not boot - a reboot stopping at a login screen relaunches nothing until someone logs in. Also records that BK-REPORT must be run with the bkvenv python, not python3, or every section returns ModuleNotFoundError
+- record engineer rulings Q-glpnetshiras-17..20 and untrack the 20MB import-refusal ledger per Q-20. ROOT CAUSE of the recurring push failure found: the path was ALREADY listed in .gitignore at line 184 yet the file was still TRACKED - a .gitignore entry never untracks an already-tracked file - so it kept appearing in every diff, grew to 20MB (one import added 567812 lines) and failed pushes at HTTP 408. git rm --cached is the actual fix. Also rules: step 2 lamport-clock re-addressed to the buildkit lane as a release obligation (this install has NO lclock code at all); the registry lock wait to become configurable; and the next era to be hand-instrumented to find why six era stages beyond the Q-08 defect never persist
+- round 63 - reconcile x2 in sync, import (1 new file, 2 already-applied, 16 foreign correctly refused, 0 untagged), dedupe 0 groups over 122 live, export 21 epics / 123 features / 3902 journal lines. The regenerable 20MB .import-refused.json delta is again NOT carried: it failed the push at HTTP 408 last round and it rebuilds on every import
+
+## [v2026.09.04.1] - 2026-09-04
+
+### Added
+- T017 second half - AtomVM 0.6.6 obtained and RUNNING via WSL2; the dossier's build name does not exist as a release asset
+- T017 T018 complete per ruling Q-GLPNETS17-01 - AtomVM subset gate refuses by name at build time; analyze A1-A3 remediated, incl. a single-source guard for a list my own doc claimed was not duplicated
+- T014 T016 T019 T021 T022 - BEAM ring green 206/206 with Dart absent from PATH, AtomVM recorded UNREAD, aggregate refuses; all 6 guard suites green, T017/T018 blocked on absent toolchain
+- T012 T013 T015 T020 - measured the contract boundary (71/100 runtime-free) and built the C1-R gate, C4 parser, cross-ring aggregate and C2 admission; 5 of 6 guard suites now green
+- T002-T011+T022 - ring delivery guards, written first and each able to fail; the suite caught a token-matching defect in its own C1-R detector on run one
+- specify+plan+tasks+analyze for Gleam capability delivery, and T001 - gleam.toml understated the tree by 10x
+
+### Fixed
+- remediate codex review 20260904T055230Z - 6 false-green holes closed, each with a positive control reproducing the attack
+- codexreview 20260902T160854Z P2 - a ledger row alone does not discharge rule 3; a consumer reading the ORIGINAL question file still sees a live ruling. Q-GLPNETS15-03 and Q-GLPNETA16-12 now carry superseded_by objects naming the superseding qid, date, reason and retrospective effect. Both sets re-validate BK-STD-2 conformant (4 and 12 questions)
+
+### Changed
+- Merge pull request #282 from olamni-glp/101-gleam-capability-delivery
+- WSL toolchain setup script for the AtomVM measurement, plus the pending roadmap export from session 16
+- rev11 - host-contention round, 4 engineer rulings, era claim re-anchored, 7 traps incl. two GLPNET trees, security open items
+- decisions(Q-glpnet-20260903T1300Z): 4 engineer rulings - push permission, pump to lejepa as 16th era, identity fix before reboot, pool+DIMM both
+- codify(cross-lane): host-contention round win note - 881MB heap floor null result, transport verdict, five self-retractions
+- rev10 - record that TAKT section 5 was NOT measured this session (both attempts killed still-running at 2308s and 990s CPU, zero bytes written) so the next session reads unmeasured rather than zero; add the sequencing note - run the report detached FIRST, before the roadmap round, since started late it cannot finish and started alongside the round it stalls on the catalog; and warn that the bk_report_v1 processes left on this host belong to OTHER lanes and must not be reaped
+- rev10 - rev9's era-1 plan is SUPERSEDED (078 conceded to gavriella-glpnet under Q-GLPNETA17-01; era 1 is now 079, codexreview first); the at-logon task fires the MSTACK script not this repo's, so dry-running our copy proves nothing about the reboot - both dry-run green, 15/15 lanes, 0 refused, Tabs; the engine is ambient 2026.8.18.2 off a stale chore branch with the registry unreachable; bk_question.py decide silently drops the set wrapper; coop writes need the UNC form because the drive-letter path is classifier-blocked
+- fix(bk-report-v1)+decisions: engineer ruling Q-GLPNETA17-04 grants a NARROW exception to Q-GLPNETS15-03 for line-buffered output ONLY - the report accumulated all six sections and printed once at exit, so a run at 1372s CPU over 85+ minutes had written zero bytes and a slow takt-lake scan was indistinguishable from a wedged process; emitted bytes unchanged. Plus Q-GLPNETA17-01..04 decided (078 conceded to gavriella-glpnet, era opens on 079, takt keeps method=unavailable with a mandatory coverage ratio) and 6 ledger rows incl. two BK-STD-3 supersession records
+- questions(BK-STD-2): Q-GLPNETA17-01..04 - the 078 ownership collision raised not resolved per BK-STD-3 rule 6, the next-era choice now that A16-12's ship-and-close premise is falsified, whether an unmetered takt row satisfies the per-phase token standing order, and the 70-minute unobservable SITREP generator this lane is under ruling not to patch; validator conformant, 4 questions
+- round 67 - reconcile/import/reconcile/dedupe/export/sync; 21 epics/123 features/4048 journal lines, 0 dedupe groups, coop mirror published explicitly to I:/coop; reconcile still reports 9 unbound pipeline ids and 74/123 features with no spec_path
+- rulings Q-GLPNETS15-01..04 taken - takt repair is reclassify-both-copy owned by @buildkit (re-runnable filter over kind=stage AND all of kind=token, into kind=tokens, local root as well as fleet root, COPY never move); 078 is tests-first because a fix validated by a test proven unable to fail is not evidence; bk_report_v1.py is shiras's to publish and nobody else's to author; release HOLDS at tier=NONE with feat|fix count 0 over 7 commits
+- Merge branch 'develop' of https://github.com/olamni-glp/GLPNET into develop
+- session 15 close - a THIRD orphaned takt partition kind=token (singular, 17 fleet/28 local) holds the per-phase token rows the standing order mandates and no reader reads them; the fleet mirror also drops 13 of this host's own rows so every fleet-root count in that thread is a lower bound not a census; shiras's stranded count has grown 128 to 140 so the repair must be a re-runnable filter; the 0-byte pgdb/.lock is proven NON-discriminating - two live rotating holders here; roadmap round 66 clean but 6 pipeline ids still bind nothing; release NO-GO on BK-STD-4 tiering not on a tool failure; 4 BK-STD-2 questions put
+- Merge remote-tracking branch 'origin/develop' into develop
+- ruling Q-GLPNETO22-01 (terminate the wedged lock holder) + honest outcome - process is a zombie, stale lock persists, reboot is the remedy
+- round 66 - reconcile/import/reconcile/dedupe/export/sync; 21 epics/123 features/4048 journal lines, 0 dedupe groups, replay --verify OK; plus BK-STD-2 question set Q-GLPNETS15 (4 questions, validator conformant)
+- round 65 - reconcile/import/reconcile/dedupe/export/sync; replay --verify OK
+- Merge pull request #281 from olamni-glp/main
 
 ## [v2026.09.02.3] - 2026-09-02
 

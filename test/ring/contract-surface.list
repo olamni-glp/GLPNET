@@ -1,0 +1,90 @@
+# test/ring/contract-surface.list - the measured L0 contract surface (feature 101, T013).
+#
+# The runtime-free modules of glp_gleam/src, MEASURED by test/ring/analyze_imports.py
+# (transitive closure over gleam/erlang imports and @external(erlang) FFI), not asserted.
+# Regenerate:  python test/ring/analyze_imports.py --json
+# Enforced by: test/ring/check_contract_purity.sh (C1-R)
+#
+# Principle IV-b: ADDITIVE. These modules stay exactly where they are; this file
+# declares which of them constitute the L0 contract. Nothing is moved or copied.
+#
+# denominator: 100 modules scanned | runtime-free: 71 | tainted: 29 | not read: 0
+# measured: 2026-09-03
+
+glp/analysis
+glp/analysis/prelude
+glp/analysis/srsw
+glp/analysis/type_ast
+glp/analysis/type_checker/clause_validation
+glp/analysis/type_checker/mode
+glp/analysis/type_checker/moded_head
+glp/analysis/type_checker/moded_term
+glp/analysis/type_checker/param_expansion
+glp/analysis/type_checker/program_dfa
+glp/analysis/type_checker/subtyping
+glp/analysis/type_checker/type_checker
+glp/analysis/type_checker/type_environment_builder
+glp/analysis/type_checker/well_typed_clause
+glp/analysis/type_checker/well_typed_term
+glp/analysis/type_conversion
+glp/bytecode
+glp/bytecode/guard_defs
+glp/bytecode/lint
+glp/bytecode/opcodes
+glp/bytecode/program
+glp/codec/result_envelope
+glp/codec/result_envelope_builder
+glp/codec/term_codec
+glp/compiler
+glp/compiler/codegen
+glp/compiler/loader
+glp/compiler/partial_eval
+glp/compiler/project_linker
+glp/diagnostics
+glp/engine/arith
+glp/engine/goal_boot
+glp/engine/goal_format
+glp/engine/output_capture
+glp/engine/types
+glp/link
+glp/link/primitives/capability_gate
+glp/link/primitives/link_faults
+glp/link/primitives/link_terms
+glp/link/primitives/payload_codec
+glp/link/reliability/crc32
+glp/link/reliability/frame_codec
+glp/link/reliability/frame_reassembler
+glp/link/reliability/inbound_ordering
+glp/link/reliability/link_sequencer
+glp/link/reliability/send_window
+glp/link/seam/link_address
+glp/link/seam/link_fault
+glp/link/seam/link_id
+glp/link/seam/link_options
+glp/link/seam/link_scheme
+glp/lint
+glp/mad/global_name
+glp/mad/global_writers_table
+glp/mad/globalize
+glp/mad/localize
+glp/mad/mad_kernels
+glp/mad/message
+glp/multiagent
+glp/parser/ast
+glp/parser/lexer
+glp/parser/parser
+glp/repl/results
+glp/runtime
+glp/runtime/heap
+glp/runtime/suspension
+glp/runtime/terms
+glp/runtime/unify
+glp/split/wire
+
+# Codex review 20260904T055230Z (P1): the surface listed implementation modules but OMITTED the
+# contract package itself - so the real ring modules, whose only contract import IS
+# glp/contract/ring_descriptor, consumed "zero listed modules" and were refused, while an
+# unrelated subtree importing one internal parser module could be admitted as a realization.
+# The contract package is the surface a realization is held to; it belongs here.
+glp/contract/ring_descriptor
+glp/contract/surface
