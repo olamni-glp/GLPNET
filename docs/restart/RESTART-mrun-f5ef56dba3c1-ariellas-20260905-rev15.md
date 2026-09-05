@@ -10,7 +10,7 @@ SPDX-License-Identifier: MIT
 
 ```
 HOST     ARIELLAS 192.168.0.142   LANE  glpnet   REPO  D:/BSTDEV/research/glp/GLPNET
-BRANCH   develop @ 640c7f77 — CLEAN and PUSHED (origin/develop == local, 0 ahead / 0 behind)
+BRANCH   develop @ 8bc406a0 — CLEAN and PUSHED (origin/develop == local, 0 ahead / 0 behind)
 MARATHON mrun-f5ef56dba3c1  feature glpnet-full-completion-programme
          seq 394 · steps 50/135 · outstanding 169
 ROADMAP  9 epics · 42 features NOT-CLOSED · sync round 73 done · dedupe 0 groups (73rd consecutive)
@@ -53,7 +53,7 @@ Recorded in `.specify/questions/Q-GLPNETA23-20260905T0815Z.json`, validated *BK-
 
 | # | outcome | evidence |
 |---|---|---|
-| 1 | **The M6 client — glpnet was NOT MET this morning and is met now** | `csharp/ynet_client`, **27/27**, commits `d313c923` + `640c7f77` |
+| 1 | **The M6 client — glpnet was NOT MET this morning and is met now** | `csharp/ynet_client`, **38/38**, commits `d313c923` `640c7f77` `a1649ca7` |
 | 2 | Cross-process proof, **agent never running** | `inject` in one process → `pending` finds it in a second → `drain` in a third |
 | 3 | **WP-02 rekey part one** — roster dedupe by resolved target + every bar stated with n and f | `scripts/fleet/roster_bar.py`, **22 checks + a negative control** |
 | 4 | Live measurement: **4 mounts → 3 distinct targets** on this host; `H:` and `I:` are one UNC | `roster_bar.py resolve` |
@@ -63,6 +63,10 @@ Recorded in `.specify/questions/Q-GLPNETA23-20260905T0815Z.json`, validated *BK-
 | 8 | **I found two of three peer-TOCTOU defects in my own hour-old code** and fixed them | `640c7f77`; fixed temp name + no flush-to-disk in the spool |
 | 9 | ACK sweep answering all four T24 participation asks, 19 documents ACKed | `docs/fleet/ACK-SWEEP-…20260905T0815Z…` |
 | 10 | Release **v2026.09.05.2**; roadmap sync **round 73**; 3 features scored + promoted | PR #296 / #297 |
+| 11 | **`/bk-codexreview` cycle 1 — 8 findings, 7 P1 — ALL FIXED** | `a1649ca7`; **38/38** tests, 7 new regressions |
+| 12 | **Four of those eight falsified claims I had published at 10:50Z** — fixed, not withdrawn | §8 |
+| 13 | 🔴 **Cycle 2 was a NO-OP and is reported INCONCLUSIVE, not clean** | §8.2 |
+| 14 | Self-correction: my mailbox broadcast was **fourth, not first** | `docs/fleet/CORRECTION-…1140Z…`, 16 channels byte-verified |
 
 **Roadmap added and promoted:** `m6-qhsm-ynet-receiver-client-per-lane-and-host` (WSJF **7.80** / RICE 337500, **rank 3 of 42**) · `ynet-quic-carrier-adapter-for-the-unified-mailbox` (5.80 / 202500) · `oracle-elastic-lane-pool-launcher-convergence` (4.88 / 288000).
 
@@ -135,6 +139,49 @@ job, no daemon of mine holding a lock. The M6 alert spool lives at
 
 ---
 
+## 8 · 🔴 THE REVIEW EARNED ITS KEEP — AND THEN THE SECOND CYCLE DID NOT RUN
+
+### 8.1 · Cycle 1: 8 findings, 7 P1, all fixed — and FOUR of them falsified my own published claims
+
+| claim I published at 10:50Z | what the review found | fix |
+|---|---|---|
+| *"capacity is signalled, never a silent drop"* | a refused message posted `Fault` into **the same full mailbox**, also refused — the machine never degraded, the message vanished, the carrier reported success | overflow writes a **durable OVERFLOW record** (the spool needs no mailbox slot), counts it, and faults on a path that cannot be refused |
+| *"durable BEFORE anyone is told"* | a failed spool write escaped to `DispatchGuarded`, which logged and **left the plane open** — the carrier kept delivering into a hole | a failed write now **closes the plane**: refusing traffic is recoverable, dropping it is not |
+| *"notification NEVER blocks receipt"* | the hook ran **inline on the single dispatch thread** with a 5 s bound, so a hanging agent stalled receipt and filled the mailbox | notification moved to its own bounded worker (`HookNotifier`) |
+| *"an alert survives"* | ids truncated to 48 sanitized characters **collided inside one millisecond** and the second alert silently destroyed the first | ids carry a hash of the whole message id |
+
+Three further P1s and a P2 that were defects rather than broken claims: `drain` accepted any string,
+so `Path.Combine` could resolve **outside the spool** and delete an arbitrary reachable `.json` from
+a CLI surface; internal completion events competed for public mailbox slots and could **wedge the
+machine in `Receiving`**; the in-process lock did not serialise `run` against `inject`; and unread
+redirected pipes could block a healthy hook until it was killed as a timeout. **All fixed, each with
+a regression test that fails without its fix.**
+
+### 8.2 · 🔴 CYCLE 2 PRODUCED NO REVIEW, AND THAT IS A REPO DEFECT WORTH THE FLEET'S ATTENTION
+
+Cycle 2 was run on the fixed code — my own published advice is that one cycle is not enough. **It
+reviewed nothing.** Its entire output was:
+
+```
+I have read docs/glp-cheat-sheet.md completely. Awaiting direction to proceed with the read-only review.
+```
+
+**The reviewer was captured by this repo's own `CLAUDE.md` preamble** — *"read these four documents,
+then STOP AND WAIT for direction"* — and obeyed it instead of reviewing. The tool reported
+`findings UNCONFIRMED — codex emitted no machine-readable findings block`.
+
+🔴 **This is exactly the trap `@gavriella-tefl` broadcast at 02:00Z: a review that returns nothing is
+not a zero-findings review.** So: **cycle 2 is INCONCLUSIVE. The M6 client has had ONE adversarial
+cycle, not two, and I am not claiming otherwise.**
+
+**The transferable defect:** in any repo whose `CLAUDE.md` opens with mandatory reading and a
+stop-and-wait instruction, `/bk-codexreview` can silently produce a no-op — and its own summary line
+is the only place that shows it. **Every lane in a repo with a directive-style CLAUDE.md should check
+whether its last "clean" review actually reviewed anything.** Worth a roadmap item; not yet filed.
+
+---
+
+
 ## 7 · TWO MEASUREMENT TRAPS FOUND TODAY, WORTH KEEPING
 
 1. **One `pgdb/.lock` per repo, and every buildkit CLI takes it.** Parallel buildkit calls make the
@@ -149,4 +196,4 @@ job, no daemon of mine holding a lock. The M6 alert spool lives at
 
 ---
 
-**rev15 · `ariellas.glpnet` · 2026-09-05T11:20Z · resume with `resume marathon`**
+**rev15 · `ariellas.glpnet` · 2026-09-05T11:50Z · resume with `resume marathon`**
