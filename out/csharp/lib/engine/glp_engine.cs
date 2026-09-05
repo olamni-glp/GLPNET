@@ -39,6 +39,51 @@ using RtStructTerm = GlpRuntime.Runtime.StructTerm;
 
 namespace GlpRuntime.Engine;
 
+// ── GoalTermError ───────────────────────────────────────────
+
+/// <summary>
+/// A goal term the front end cannot faithfully represent.
+/// <para>Implements: specs/101-goal-term-acceptance/spec.md FR-005, FR-006.</para>
+/// <para>
+/// The message names what the PROGRAMMER typed. FR-006 forbids notifying solely via an
+/// internal class name — <c>Unsupported list head type: UnderscoreTerm</c> tells the
+/// programmer nothing actionable about the goal they entered.
+/// </para>
+/// <para>
+/// Raised during goal-argument construction. For a SINGLE goal that is before the goal is
+/// scheduled, so nothing runs. 🔴 FOR A CONJUNCTION IT IS NOT: <c>_RunConjunctionAsync</c>
+/// sets up and DRAINS each conjunct inside one loop, so an earlier conjunct has already
+/// executed by the time a later one is refused. Found by adversarial review 2026-09-05
+/// (finding F1) after an earlier version of this comment claimed otherwise; the claim was
+/// wrong and is corrected rather than quietly dropped. FR-007 still holds — the session
+/// stays usable — but a refused conjunction is NOT atomic. Reported as a defect rather than
+/// fixed here: see specs/101-goal-term-acceptance/analysis.md A7.
+/// </para>
+/// <para>Mirror of Dart <c>GoalTermError</c> in glp_runtime/lib/engine/glp_engine.dart.</para>
+/// </summary>
+public sealed class GoalTermError : Exception
+{
+    public GoalTermError(string message) : base(message) { }
+
+    public override string ToString() => Message;
+}
+
+/// <summary>Goal-term description helper (FR-006).</summary>
+internal static class GoalTermDescribe
+{
+    /// <summary>Render a goal-term AST node as the programmer would recognise it (FR-006).</summary>
+    internal static string Describe(object? term) => term switch
+    {
+        null => "nothing",
+        Compiler.ConstTerm c => $"{c.Value}",
+        VarTerm v => v.IsReader ? $"{v.Name}?" : v.Name,
+        UnderscoreTerm u => u.IsReader ? "_?" : "_",
+        Compiler.StructTerm st => $"{st.Functor}/{st.Args.Count}",
+        ListTerm => "a list",
+        _ => term.ToString() ?? "nothing",
+    };
+}
+
 // ── ExecutionResult ───────────────────────────────────────────────────────────
 
 /// <summary>
@@ -1071,9 +1116,16 @@ public sealed class GlpEngine
             runtime.Heap.BindWriterStruct(writerId, structValue.Functor, structValue.Args.ToList());
             argSlots[argSlot] = new RtVarRef(readerId);
         }
+        else if (arg is UnderscoreTerm underscoreArg)
+        {
+            // FR-001: `_` is accepted at a top-level goal argument.
+            if (underscoreArg.IsReader) _RefuseAnonymousReader("a goal argument");
+            argSlots[argSlot] = _AnonymousGoalWriter(runtime);
+        }
         else
         {
-            throw new InvalidOperationException($"Unsupported argument type: {arg.GetType().Name}");
+            throw new GoalTermError(
+                $"cannot use {GoalTermDescribe.Describe(arg)} as a goal argument");
         }
     }
 
@@ -1127,11 +1179,52 @@ public sealed class GlpEngine
             runtime.Heap.BindWriterStruct(writerId, structValue.Functor, structValue.Args.ToList());
             argSlots[argSlot] = new RtVarRef(readerId);
         }
+        else if (arg is UnderscoreTerm underscoreArg)
+        {
+            // FR-001: `_` is accepted at a top-level goal argument.
+            if (underscoreArg.IsReader) _RefuseAnonymousReader("a goal argument");
+            argSlots[argSlot] = _AnonymousGoalWriter(runtime);
+        }
         else
         {
-            throw new InvalidOperationException($"Unsupported argument type: {arg.GetType().Name}");
+            throw new GoalTermError(
+                $"cannot use {GoalTermDescribe.Describe(arg)} as a goal argument");
         }
     }
+
+    /// <summary>
+    /// Materialise an anonymous variable <c>_</c> appearing in a goal term.
+    /// <para>Implements: specs/101-goal-term-acceptance/spec.md FR-001, FR-003, FR-004.</para>
+    /// <para>
+    /// Per docs/typed-glp-manual.md §9.1 the anonymous variable is "a fresh writer with no
+    /// paired reader, so that a value assigned to it is discarded". So this returns the WRITER
+    /// half. A reader would suspend forever waiting on a writer that does not exist.
+    /// </para>
+    /// <para>
+    /// Deliberately NOT recorded in <c>queryVarWriters</c>: that map drives result reporting, and
+    /// <c>_</c> has no name to report against (FR-004 by construction, not by filtering after).
+    /// </para>
+    /// <para>
+    /// Each call allocates its own heap variable and nothing keys it by name, so two occurrences
+    /// of <c>_</c> in one goal can never alias (FR-003 by construction).
+    /// </para>
+    /// </summary>
+    private RtTerm _AnonymousGoalWriter(GlpRuntimeEngine runtime)
+    {
+        var (writerId, _) = runtime.Heap.AllocateVariable();
+        return new RtVarRef(writerId);
+    }
+
+    /// <summary>
+    /// Guard for <c>_?</c> in a goal term. The language does not permit an anonymous reader
+    /// (manual §9.1: "Only anonymous writers are permitted"), and this feature does not change
+    /// that (FR-012) — it only makes the refusal legible.
+    /// </summary>
+    private static void _RefuseAnonymousReader(string position) =>
+        throw new GoalTermError(
+            $"anonymous reader `_?` is not a valid term in {position} — " +
+            "an anonymous variable is a writer nobody reads, so `_?` reads nothing. " +
+            "Use `_` to discard a value, or a named variable to keep it.");
 
     private RtTerm _BuildStructTerm(
         GlpRuntimeEngine runtime,
@@ -1192,9 +1285,16 @@ public sealed class GlpEngine
                 runtime.Heap.BindWriterStruct(writerId, structValue.Functor, structValue.Args.ToList());
                 argTerms.Add(new RtVarRef(readerId));
             }
+            else if (arg is UnderscoreTerm underscoreArg)
+            {
+                // FR-001: `_` is accepted inside a structure in a goal.
+                if (underscoreArg.IsReader) _RefuseAnonymousReader("a structure argument");
+                argTerms.Add(_AnonymousGoalWriter(runtime));
+            }
             else
             {
-                throw new InvalidOperationException($"Unsupported struct argument type: {arg.GetType().Name}");
+                throw new GoalTermError(
+                    $"cannot use {GoalTermDescribe.Describe(arg)} as a structure argument");
             }
         }
 
@@ -1262,9 +1362,16 @@ public sealed class GlpEngine
                 runtime.Heap.BindWriterStruct(writerId, structValue.Functor, structValue.Args.ToList());
                 argTerms.Add(new RtVarRef(readerId));
             }
+            else if (arg is UnderscoreTerm underscoreArg)
+            {
+                // FR-001: `_` is accepted inside a structure in a goal.
+                if (underscoreArg.IsReader) _RefuseAnonymousReader("a structure argument");
+                argTerms.Add(_AnonymousGoalWriter(runtime));
+            }
             else
             {
-                throw new InvalidOperationException($"Unsupported struct argument type: {arg.GetType().Name}");
+                throw new GoalTermError(
+                    $"cannot use {GoalTermDescribe.Describe(arg)} as a structure argument");
             }
         }
 
@@ -1314,9 +1421,16 @@ public sealed class GlpEngine
         {
             headTerm = _BuildStructTerm(runtime, st, queryVarWriters, varNameToId);
         }
+        else if (head is UnderscoreTerm underscoreHead)
+        {
+            // FR-001: `_` is accepted as a list element in a goal.
+            if (underscoreHead.IsReader) _RefuseAnonymousReader("a list element");
+            headTerm = _AnonymousGoalWriter(runtime);
+        }
         else
         {
-            throw new InvalidOperationException($"Unsupported list head type: {head.GetType().Name}");
+            throw new GoalTermError(
+                $"cannot use {GoalTermDescribe.Describe(head)} as a list element");
         }
 
         RtTerm tailTerm;
@@ -1342,9 +1456,26 @@ public sealed class GlpEngine
                 tailTerm = new RtVarRef(tailVt.IsReader ? readerId : writerId);
             }
         }
+        else if (tail is UnderscoreTerm underscoreTail && !underscoreTail.IsReader)
+        {
+            // FR-001: `_` is a legal list tail — a writer nobody reads.
+            tailTerm = _AnonymousGoalWriter(runtime);
+        }
         else
         {
-            tailTerm = new RtConstTerm(null);
+            // FR-005: previously `tailTerm = new RtConstTerm(null)`, which SILENTLY discarded an
+            // improper tail and ran the goal against a DIFFERENT term than the one typed —
+            // `[a|foo]` returned exactly what `[a|[]]` returned. A wrong answer, not an error.
+            // Refuse instead.
+            //
+            // RULED 2026-09-04 (engineer ruling Q-101-02, "refusal is the answer"): an improper
+            // tail in a GOAL TERM is permanently invalid, and this refusal IS the specification.
+            // Previously recorded as an open §1.14 question awaiting Udi; now closed, and
+            // deliberately NOT referred. Goal-term front end only — FR-012 unchanged.
+            throw new GoalTermError(
+                "list tail is neither a list nor a variable: " +
+                $"{GoalTermDescribe.Describe(tail)} — the goal was not run. " +
+                "A list must end in [] or a variable.");
         }
 
         // List-cell functor "." preserved verbatim.
@@ -1396,9 +1527,16 @@ public sealed class GlpEngine
         {
             headTerm = _BuildStructTermForConj(runtime, st, queryVarWriters, varNameToId);
         }
+        else if (head is UnderscoreTerm underscoreHead)
+        {
+            // FR-001: `_` is accepted as a list element in a goal.
+            if (underscoreHead.IsReader) _RefuseAnonymousReader("a list element");
+            headTerm = _AnonymousGoalWriter(runtime);
+        }
         else
         {
-            throw new InvalidOperationException($"Unsupported list head type: {head.GetType().Name}");
+            throw new GoalTermError(
+                $"cannot use {GoalTermDescribe.Describe(head)} as a list element");
         }
 
         RtTerm tailTerm;
@@ -1425,9 +1563,26 @@ public sealed class GlpEngine
                 tailTerm = tailVt.IsReader ? new RtVarRef(readerId) : new RtVarRef(writerId);
             }
         }
+        else if (tail is UnderscoreTerm underscoreTail && !underscoreTail.IsReader)
+        {
+            // FR-001: `_` is a legal list tail — a writer nobody reads.
+            tailTerm = _AnonymousGoalWriter(runtime);
+        }
         else
         {
-            tailTerm = new RtConstTerm(null);
+            // FR-005: previously `tailTerm = new RtConstTerm(null)`, which SILENTLY discarded an
+            // improper tail and ran the goal against a DIFFERENT term than the one typed —
+            // `[a|foo]` returned exactly what `[a|[]]` returned. A wrong answer, not an error.
+            // Refuse instead.
+            //
+            // RULED 2026-09-04 (engineer ruling Q-101-02, "refusal is the answer"): an improper
+            // tail in a GOAL TERM is permanently invalid, and this refusal IS the specification.
+            // Previously recorded as an open §1.14 question awaiting Udi; now closed, and
+            // deliberately NOT referred. Goal-term front end only — FR-012 unchanged.
+            throw new GoalTermError(
+                "list tail is neither a list nor a variable: " +
+                $"{GoalTermDescribe.Describe(tail)} — the goal was not run. " +
+                "A list must end in [] or a variable.");
         }
 
         // List-cell functor "." preserved verbatim.

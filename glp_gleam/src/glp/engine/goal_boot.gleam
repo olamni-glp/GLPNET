@@ -9,11 +9,28 @@
 //// MVP scope (restart doc 2026-07-12): single-atom goals only (Dart
 //// `_setupConjunctionArg`/conjunction path is DEFERRED to the REPL). Argument shapes:
 //// VarTerm / ConstTerm / StructTerm (with nested structs) / proper lists (lists-of-consts,
-//// nested lists, struct/var elements). DEFERRED, surfaced LOUDLY (never a wrong result):
-////   - an anonymous `_` in argument position (Dart throws "Unsupported argument type");
-////   - an improper-list tail that is neither a list nor a var — the Dart
-////     `ConstTerm(null)` void case (`_buildListTerm` :1200), a frozen-semantics gap the
-////     Gleam term model has no faithful representation for (§1.14 / restart Signaling).
+//// nested lists, struct/var elements).
+////
+//// UPDATED 2026-09-04 (feature 101 — front-end goal-term acceptance completeness):
+////   - An anonymous `_` in argument position is now ACCEPTED at every position a named
+////     variable is (top-level argument, structure argument, list element, list tail).
+////     Engineer ruling R-3: this is COMPLETENESS, not a §1.14 language change — `_` was
+////     already handled by the parser, SRSW checker, type checker and compiler in every
+////     runtime; only goal-argument materialisation omitted it. Dart failed at four
+////     positions (eight code sites); this module refused loudly instead, which is why it
+////     never returned a wrong answer. `_?` (anonymous READER) remains INVALID — the
+////     language permits only anonymous writers (manual §9.1) — with a legible message.
+////   - An improper-list tail is still REFUSED, and that refusal was always correct: Dart
+////     and C# silently coerced it to nil and ANSWERED THE GOAL, so `[a|foo]` returned
+////     byte-identically to `[a|[]]`. This port was the only runtime that never produced
+////     that wrong answer, and Dart/C# have now been brought up to this behaviour rather
+////     than the reverse. RULED 2026-09-04 (Q-101-02): the refusal is not a placeholder for a
+////     pending decision — an improper tail in a goal term is PERMANENTLY INVALID and this
+////     refusal IS the specification. Scope is goal terms only; FR-012 is unchanged.
+////
+//// STILL DEFERRED, surfaced LOUDLY (never a wrong result): the conjunction path. Feature
+//// 101 FR-008a makes this a DECLARED, TESTED divergence rather than a silent one —
+//// parity with Dart/C# is bounded to shapes all three runtimes can express (SC-003a).
 ////
 //// The Dart runtime threads a MUTABLE heap + maps; here the equivalent state is threaded
 //// immutably through a `BootState` (heap + name→writer table + ordered writer list).
@@ -152,10 +169,9 @@ fn setup_argument(
       use #(state, value) <- result.try(build_list(state, head, tail))
       materialize(state, value)
     }
-    ast.UnderscoreTerm(_, _) ->
-      Error(
-        "goal-boot: anonymous variable in goal argument not supported (MVP)",
-      )
+    // feature 101 FR-001: `_` is accepted at a top-level goal argument.
+    ast.UnderscoreTerm(True, _) -> refuse_anonymous_reader("a goal argument")
+    ast.UnderscoreTerm(False, _) -> Ok(anonymous_writer(state))
   }
 }
 
@@ -181,10 +197,10 @@ fn build_struct_arg(
           materialize(state, value)
         }
       }
-    ast.UnderscoreTerm(_, _) ->
-      Error(
-        "goal-boot: anonymous variable in struct argument not supported (MVP)",
-      )
+    // feature 101 FR-001: `_` is accepted inside a structure in a goal.
+    ast.UnderscoreTerm(True, _) ->
+      refuse_anonymous_reader("a structure argument")
+    ast.UnderscoreTerm(False, _) -> Ok(anonymous_writer(state))
   }
 }
 
@@ -247,8 +263,9 @@ fn build_list_head(
     ast.VarTerm(name, is_reader, _) -> Ok(resolve_var(state, name, is_reader))
     ast.ListTerm(h, t, _) -> build_list(state, h, t)
     ast.StructTerm(functor, args, _) -> build_struct(state, functor, args)
-    ast.UnderscoreTerm(_, _) ->
-      Error("goal-boot: anonymous variable in list not supported (MVP)")
+    // feature 101 FR-001: `_` is accepted as a list element in a goal.
+    ast.UnderscoreTerm(True, _) -> refuse_anonymous_reader("a list element")
+    ast.UnderscoreTerm(False, _) -> Ok(anonymous_writer(state))
   }
 }
 
@@ -259,10 +276,20 @@ fn build_list_tail(
   case tail {
     ast.ListTerm(h, t, _) -> build_list(state, h, t)
     ast.VarTerm(name, is_reader, _) -> Ok(resolve_var(state, name, is_reader))
-    _ ->
+    // feature 101 FR-001: `_` is a legal list tail — a writer nobody reads.
+    ast.UnderscoreTerm(False, _) -> Ok(anonymous_writer(state))
+    ast.UnderscoreTerm(True, _) -> refuse_anonymous_reader("a list tail")
+    // feature 101 FR-005: an improper tail is REFUSED, never silently coerced.
+    // Gleam already refused here and was the ONLY runtime that never returned a
+    // wrong answer for this shape — Dart and C# discarded the tail and answered.
+    // The refusal stays; only the wording changes, to name what was typed (FR-006).
+    // RULED 2026-09-04 (Q-101-02): an improper tail in a GOAL TERM is permanently
+    // invalid and this refusal IS the specification. No longer an open §1.14 question.
+    other ->
       Error(
-        "goal-boot: improper list tail (Dart ConstTerm(null) void case) "
-        <> "has no faithful term representation — unsupported (frozen-semantics gap)",
+        "goal-boot: list tail is neither a list nor a variable: "
+        <> ast.term_to_string(other)
+        <> " — the goal was not run. A list must end in [] or a variable.",
       )
   }
 }
@@ -273,6 +300,35 @@ fn build_list_tail(
 /// occurrence of a name allocates its writer/reader pair and (if produced) records the
 /// writer as a query variable; later occurrences reuse it. A produced occurrence yields
 /// the writer, a consumed occurrence the reader (`X` vs `X?`).
+/// Materialise an anonymous variable `_` in a goal term (feature 101, FR-001/FR-003/FR-004).
+///
+/// Mirrors Dart `_anonymousGoalWriter`. Returns the WRITER half: the manual (§9.1) defines
+/// `_` as "a fresh writer with no paired reader, so that a value assigned to it is
+/// discarded". A reader would suspend forever on a writer that does not exist.
+///
+/// Deliberately does NOT extend `query_var_writers` — `_` has no name to report a binding
+/// against (FR-004) — and does NOT touch `var_name_to_id`, so two occurrences of `_` can
+/// never alias one another (FR-003). Both hold by construction, not by filtering later.
+fn anonymous_writer(state: BootState) -> #(BootState, terms.Term) {
+  let #(h, writer_id, _reader_id) = heap.allocate_variable(state.heap)
+  #(
+    BootState(h, state.var_name_to_id, state.query_var_writers),
+    terms.VarRef(writer_id),
+  )
+}
+
+/// `_?` is not a valid goal term: the language permits only anonymous WRITERS
+/// (manual §9.1). Feature 101 does not change that (FR-012) — it only makes the
+/// refusal name what the programmer typed instead of an internal class (FR-006).
+fn refuse_anonymous_reader(position: String) -> Result(a, String) {
+  Error(
+    "goal-boot: anonymous reader `_?` is not a valid term in "
+    <> position
+    <> " — an anonymous variable is a writer nobody reads, so `_?` reads nothing. "
+    <> "Use `_` to discard a value, or a named variable to keep it.",
+  )
+}
+
 fn resolve_var(
   state: BootState,
   name: String,

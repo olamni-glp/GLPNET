@@ -2524,6 +2524,158 @@ set -e
 echo ""
 
 # =============================================================================
+# SECTION V: FRONT-END GOAL-TERM ACCEPTANCE (feature 101)
+# =============================================================================
+#
+# Implements: specs/101-goal-term-acceptance/spec.md FR-009, SC-001..SC-006.
+#
+# Pins FOUR claims, two of which were RETIRED as stale after measurement and two
+# of which were live defects now fixed. SC-005 requires each to be backed by a
+# test rather than by a note, because two of the three originally-recorded
+# limitations had already gone stale once without anyone noticing.
+#
+# V-1..V-4  FR-001/FR-002: `_` is accepted at all four goal positions (was: four
+#           internal exceptions naming UnderscoreTerm).
+# V-5       FR-004: an anonymous argument reports NO binding — it has no name.
+# V-6..V-7  FR-005/FR-006: an improper list tail is REFUSED with a legible
+#           message, instead of being silently coerced to nil and answered.
+#           This was a WRONG ANSWER, not an error: `[send(1,a)|foo]` returned
+#           byte-identically to `[send(1,a)|[]]`.
+# V-8       FR-006: `_?` stays INVALID (FR-012 unchanged) but says so legibly.
+# V-9       FR-007: the session survives a refused goal.
+# V-10..V-13 the keep-working shapes the old silent fallback also caught.
+# V-14      RETIRED CLAIM L1: `=..` in a clause BODY works (CLAUDE.md says it
+#           does not — the module would not load if that note were true).
+# V-15      RETIRED CLAIM L2: a struct inside a list in a REPL goal works
+#           (recorded as "Unsupported list head type: StructTerm").
+section "V" "Front-end goal-term acceptance (101)"
+echo ""
+set +e
+GTA="$TYPED/goal_term_acceptance.glp"
+if [ ! -f "$SCRIPT_DIR/../programs/tests/typed/goal_term_acceptance.glp" ]; then
+    skip "Section V (101 goal-term acceptance)" "fixture not found (programs/tests/typed/goal_term_acceptance.glp)"
+else
+    # Accept path: every shape here MUST run. Loading the fixture at all is V-14
+    # (a body-position `=..` that the stale note claims is a parser error).
+    v1=$($DART run "$REPL" <<HEREDOC
+$GTA
+first_item([send(1,a)], _).
+first_item([send(1,_)], Y).
+first_item([_], Y).
+first_item([send(1,a)], _), first_item([send(2,b)], Z).
+first_item([send(1,a)], Y).
+first_item([], Y).
+first_item([send(1,a)|[]], Y).
+first_item([send(1,a)|T], Y).
+first_atom([a,b], Y).
+HEREDOC
+)
+    check "V-14: RETIRED L1 — module with body-position \`=..\` loads (CLAUDE.md note is stale)" "Loaded" "$v1"
+    check "V-1: FR-001 \`_\` at a top-level goal argument runs" "succeeds" "$v1"
+    check "V-2: FR-001 \`_\` inside a structure binds the named var" "Y = some(send(1, " "$v1"
+    check "V-3: FR-001 \`_\` as a list element binds the named var" "Y = some(" "$v1"
+    check "V-4: FR-002 \`_\` in a conjunctive goal binds the other conjunct" "Z = some(send(2, b))" "$v1"
+    check "V-15: RETIRED L2 — struct inside a list in a goal works" "Y = some(send(1, a))" "$v1"
+    check "V-10: empty list still accepted" "Y = none" "$v1"
+    check "V-11: explicit nil tail still accepted" "Y = some(send(1, a))" "$v1"
+    check "V-12: bare variable tail still accepted" "T = <unbound>" "$v1"
+    check "V-13: constant list still accepted" "Y = an_atom(a)" "$v1"
+    check_not "V-5: FR-004 an anonymous argument reports NO binding" "^_ = " "$v1"
+    check_not "V-16: no internal class name leaks to the user (FR-006)" "UnderscoreTerm" "$v1"
+
+    # Refuse path: these MUST be refused, and refused legibly. The old behaviour
+    # for the improper tail was to answer the goal — so a passing V-6 is the
+    # difference between a wrong answer and no answer.
+    v2=$($DART run "$REPL" <<HEREDOC
+$GTA
+first_item([send(1,a)|foo], Y).
+first_item([_?], Y).
+first_item([send(1,a)], Y).
+HEREDOC
+)
+    check "V-6: FR-005 improper list tail is REFUSED, not silently coerced to nil" "list tail is neither a list nor a variable" "$v2"
+    check "V-7: FR-006 the refusal names the term the programmer typed" "foo" "$v2"
+    check "V-8: FR-006 \`_?\` stays invalid but says so legibly (FR-012 unchanged)" "anonymous reader" "$v2"
+    check "V-9: FR-007 the session survives a refused goal" "Y = some(send(1, a))" "$v2"
+    check_not "V-17: a refused goal does NOT report success" "Unsupported list head type" "$v2"
+
+    # -------------------------------------------------------------------------
+    # V-18..V-23 — FR-008 / SC-003: THE CROSS-RUNTIME OBLIGATION, MEASURED.
+    #
+    # Everything above this line exercises ONE runtime. FR-008 requires the same
+    # goal text to be accepted or refused IDENTICALLY on Dart, C# and Gleam, and
+    # SC-003 makes that agreement an acceptance criterion — but until these checks
+    # existed nothing in this suite ever started a second runtime, so SC-003 was
+    # backed by a claim rather than by a measurement. Feature 101 exists because
+    # exactly that kind of unmeasured claim went stale twice without being noticed.
+    #
+    # The method is a differential one: run the SAME script through both REPLs,
+    # strip the banner/prompt chrome, and require the two transcripts to be
+    # BYTE-IDENTICAL. A per-runtime pattern assertion would pass while the two
+    # disagreed about WHICH variable bound or WHAT the refusal said; a diff cannot.
+    #
+    # Gleam's half is pinned IN-LANGUAGE (glp_gleam/test/glp/engine/goal_boot_101_test.gleam,
+    # 20 checks incl. negative controls) because the Gleam REPL does not offer this
+    # script's `load` surface. That is a declared, tested division — not a gap.
+    csparity_script=$(cat <<HEREDOC
+$GTA
+first_item([send(1,a)], _).
+first_item([send(1,_)], Y).
+first_item([_], Y).
+first_item([send(1,a)], _), first_item([send(2,b)], Z).
+first_item([send(1,a)|foo], Y).
+first_item([_?], Y).
+first_item([send(1,a)], Y).
+HEREDOC
+)
+    # Keep only RESULT lines (bindings / status / refusals); drop banner + prompts.
+    csparity_norm() { sed 's/^GLP> //' | grep -E '^(→|Error:|[A-Za-z_][A-Za-z0-9_]* = )'; }
+
+    if [ "$GLPREPL_STALE" -eq 1 ] && [ -f "$CSREPL_BIN" ]; then
+        unsearchable "V-18..V-23 (101 cross-runtime Dart vs C# parity)" "$GLPREPL_STALE_WHY"
+    elif [ -f "$CSREPL_BIN" ]; then
+        # Capture the RAW transcript and the REPL's own exit status separately, THEN
+        # normalise. Adversarial review finding F3: reading only filtered stdout meant a
+        # runtime that printed the expected lines and then exited non-zero still passed —
+        # the check could not tell "answered correctly" from "answered correctly then died".
+        _draw=$(printf '%s\n' "$csparity_script" | $DART run "$REPL" 2>&1); _drc=$?
+        _craw=$(printf '%s\n' "$csparity_script" | "$CSREPL_BIN" 2>&1); _crc=$?
+        v_dart=$(printf '%s\n' "$_draw" | csparity_norm)
+        v_cs=$(printf '%s\n' "$_craw" | csparity_norm)
+        check "V-24: the Dart REPL exits 0 for this script (not just prints the right lines)" "^0$" "$_drc"
+        check "V-25: the C# REPL exits 0 for this script (same guard, other runtime)" "^0$" "$_crc"
+
+        # Guard first: an EMPTY transcript on both sides would diff clean and read as
+        # parity. That is the false-green this feature's own method note warns about,
+        # so the presence of real output is asserted BEFORE the comparison is trusted.
+        check "V-18: the Dart transcript is non-empty (guard against a clean diff of nothing)" "succeeds" "$v_dart"
+        check "V-19: the C# transcript is non-empty (same guard, other runtime)" "succeeds" "$v_cs"
+
+        if [ "$v_dart" = "$v_cs" ]; then
+            check "V-20: FR-008/SC-003 Dart and C# transcripts are BYTE-IDENTICAL" "ok" "ok"
+        else
+            check "V-20: FR-008/SC-003 Dart and C# transcripts are BYTE-IDENTICAL" "ok" \
+                  "DIVERGED
+--- dart ---
+$v_dart
+--- csharp ---
+$v_cs"
+        fi
+
+        # Named sub-claims, so a regression says WHICH half broke instead of only
+        # that the two disagree.
+        check "V-21: C# accepts \`_\` at a goal argument (was: Unsupported argument type)" "succeeds" "$v_cs"
+        check "V-22: C# REFUSES an improper tail (was: a silent WRONG ANSWER)" "list tail is neither a list nor a variable" "$v_cs"
+        check_not "V-23: no internal class name leaks from the C# runtime either" "UnderscoreTerm" "$v_cs"
+    else
+        skip "V-18..V-23 (101 cross-runtime Dart vs C# parity)" "C# REPL not built ($CSREPL_BIN) — build with: dotnet build out/csharp/glp_runtime_net.sln"
+    fi
+fi
+set -e
+
+echo ""
+
+# =============================================================================
 # SUMMARY
 # =============================================================================
 TOTAL=$((PASS + FAIL))
