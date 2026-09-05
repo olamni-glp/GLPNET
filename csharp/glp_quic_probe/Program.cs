@@ -100,9 +100,15 @@ if (certOrigin == "recreated-expired")
 if (!ephemeral)
 {
     var federation = QuicLinkTransport.LoadFederationIdentity(Environment.MachineName.ToLowerInvariant());
-    Console.WriteLine($"   node_id (hex)       : {federation.NodeId}");
-    Console.WriteLine($"   spki (base64)       : {federation.Spki}");
+    // 🔴 LABELLED AS TLS, DELIBERATELY. Printing this beside the lane node id below under the bare
+    // name "node_id" is how an operator pastes a certificate hash into a YNET resolver and gets
+    // every genuine peer refused with IdentityMismatch — a config error wearing a security event's
+    // clothes. The two ids are different objects; the output now says so at the point of reading.
+    Console.WriteLine($"   TLS cert node id    : {federation.TlsNodeId}   (transport anchor ONLY)");
+    Console.WriteLine($"   TLS cert spki (b64) : {federation.TlsSpki}");
     Console.WriteLine($"   keystore            : {federation.PfxPath}");
+    Console.WriteLine("   ⚠ this is the CERTIFICATE's id. It is NOT the lane node id below, it must");
+    Console.WriteLine("     never be entered into INodeAddressResolver, and it cannot verify board ops.");
 }
 Console.WriteLine("   (a peer must carry this pin to be admitted; reachability alone is refused)");
 Console.WriteLine("   (re-run this probe — a pin that CHANGES is the Q-GLPNETA21-01 defect returning)");
@@ -129,6 +135,41 @@ Console.WriteLine(idOrigin switch
 });
 Console.WriteLine("   Resolve(nodeId) -> address is served by INodeAddressResolver; an unbound id is");
 Console.WriteLine("   refused RecordNotFound, and a refusal is a valid answer — never a fabricated address.");
+
+// ---- 2c. has this lane's id CHANGED since the fleet was told? (ruling Q-47) ---------
+// 🔴 THIS EXISTS BECAUSE THE ANSWER WAS ONCE YES AND NOBODY WAS TOLD. Feature 102 proved the key
+// persisted across three processes in ONE boot and reported it as "stable across reboots". After the
+// first real reboot the key was ABSENT and a new id was minted: 76b66c25... -> c8c237ea..., visible
+// only to whoever happened to read this transcript. The cause is still undetermined; this check does
+// not depend on knowing it, because it compares what the lane HAS against what the fleet was TOLD.
+var publication = NodeIdentity.CheckPublication(laneName, nodeIdentity.NodeId.Value);
+Console.WriteLine($"   publication         : {publication.State}");
+if (publication.RequiresRepublication)
+{
+    Console.WriteLine();
+    Console.WriteLine(publication.Report);
+    Console.WriteLine();
+    Console.WriteLine("   Once you HAVE re-published it, record that fact:");
+    Console.WriteLine($"     NodeIdentity.RecordPublication(\"{laneName}\", \"{nodeIdentity.NodeId.Value}\")");
+    Console.WriteLine("   (recorded AFTER publishing, never before: recording first makes a failed");
+    Console.WriteLine("    publication look successful, which is the exact failure this guard catches)");
+}
+else if (publication.State == PublicationState.Unpublished)
+{
+    Console.WriteLine("   (no publication recorded yet — this lane has never told the fleet an id,");
+    Console.WriteLine("    so there is nothing to contradict. Record one after you publish.)");
+}
+
+// --record-publication asserts "I have told the fleet this id". It is a SEPARATE, deliberate act
+// from printing the id, because the guard's whole value comes from the record meaning a publication
+// really happened. Doing it automatically on every run would make the record self-fulfilling and the
+// guard would never fire.
+if (args.Contains("--record-publication"))
+{
+    NodeIdentity.RecordPublication(laneName, nodeIdentity.NodeId.Value);
+    Console.WriteLine($"   ✅ recorded as published: {nodeIdentity.NodeId.Value}");
+    Console.WriteLine("      the next run that finds a DIFFERENT id will say so loudly.");
+}
 Console.WriteLine();
 
 var transport = new QuicLinkTransport("glpnet-probe", cert, new Dictionary<string, string>());

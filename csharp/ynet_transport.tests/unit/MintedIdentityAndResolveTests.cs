@@ -149,13 +149,35 @@ public sealed class MintedLaneIdentityTests : IDisposable
         Assert.True(StaticNodeAddressResolverProbe.IsWellFormed(reminted.NodeId));
     }
 
-    // Key material must never be left behind in a temp file the write-then-rename uses.
+    // Key material must never be left behind in a temp file the write-then-rename uses, and the
+    // atomic claim must be released rather than left lying around. Asserted by KIND rather than by
+    // counting files: the directory legitimately gained a mint-audit.log under ruling Q-47, and a
+    // bare file count would have failed for a reason that has nothing to do with key material.
     [Fact]
     public void Minting_leaves_no_stray_temp_file_holding_key_material()
     {
         using var seed = NodeIdentity.LoadOrMint("shiras.glpnet", out _, _dir);
-        Assert.Single(Directory.GetFiles(_dir));
-        Assert.Empty(Directory.GetFiles(_dir, "*.tmp"));
+
+        Assert.Single(Directory.GetFiles(_dir, "*.nodekey"));   // exactly one key
+        Assert.Empty(Directory.GetFiles(_dir, "*.tmp"));        // no temp survived
+        Assert.Empty(Directory.GetFiles(_dir, "*.tmp-*"));
+        Assert.Empty(Directory.GetFiles(_dir, "*.claim"));      // the claim was released
+    }
+
+    /// <summary>
+    /// The forensic record must never become the leak. It records the CIRCUMSTANCES of a mint —
+    /// paths, environment, pid — and must not contain the key or the id it is describing.
+    /// </summary>
+    [Fact]
+    public void The_mint_audit_contains_no_key_material()
+    {
+        using var seed = NodeIdentity.LoadOrMint("shiras.glpnet", out _, _dir);
+
+        var audit = File.ReadAllText(System.IO.Path.Combine(_dir, "mint-audit.log"));
+
+        Assert.DoesNotContain(seed.NodeId.Value, audit, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("PRIVATE KEY", audit, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain(Convert.ToBase64String(seed.PublicKeySpki), audit, StringComparison.Ordinal);
     }
 
     // A4 — it holds a private key.
@@ -191,12 +213,162 @@ public sealed class MintedLaneIdentityTests : IDisposable
     }
 
     // A lane name is caller-supplied and lands in a path: it must not escape the keystore dir.
+    // It is now REFUSED rather than sanitised — see Two_lane_names_cannot_collide_onto_one_key for
+    // why silently rewriting it was the more dangerous of the two behaviours.
     [Fact]
     public void Lane_name_cannot_traverse_out_of_the_keystore()
     {
-        using var seed = NodeIdentity.LoadOrMint("../../etc/evil", out _, _dir);
-        Assert.Single(Directory.GetFiles(_dir, "*.nodekey"));
+        Assert.Throws<ArgumentException>(() => NodeIdentity.LoadOrMint("../../etc/evil", out _, _dir));
+
+        // The refusal must happen BEFORE anything is written: no key, no stray directory, nothing
+        // for a later run to load and mistake for this lane's identity.
+        Assert.Empty(Directory.GetFiles(_dir, "*.nodekey"));
         Assert.Empty(Directory.GetDirectories(_dir));
+    }
+
+    // 🔴 The reason the rule is REJECT and not SANITISE. Mapping every unsupported character to '_'
+    // is not injective, so two DIFFERENT configured lanes collapse onto ONE key file and therefore
+    // ONE node id: a single signing identity answering for both, which is the identity fork the
+    // keystore exists to prevent — reached through configuration rather than through a race.
+    [Theory]
+    [InlineData("a/b", "a?b")]
+    [InlineData("shiras glpnet", "shiras:glpnet")]
+    public void Two_lane_names_cannot_collide_onto_one_key(string first, string second)
+    {
+        Assert.Throws<ArgumentException>(() => NodeIdentity.LoadOrMint(first, out _, _dir));
+        Assert.Throws<ArgumentException>(() => NodeIdentity.LoadOrMint(second, out _, _dir));
+        Assert.Empty(Directory.GetFiles(_dir, "*.nodekey"));
+    }
+
+    // Names that ARE representable must still work — a guard that refuses everything is not a guard.
+    [Theory]
+    [InlineData("shiras.glpnet")]
+    [InlineData("olamnit-yngcor")]
+    [InlineData("host_1.lane_2")]
+    public void Well_formed_lane_names_are_accepted(string lane)
+    {
+        using var id = NodeIdentity.LoadOrMint(lane, out var origin, _dir);
+        Assert.Equal(IdentityOrigin.Minted, origin);
+        Assert.True(File.Exists(System.IO.Path.Combine(_dir, lane + ".nodekey")));
+    }
+
+    // ---- ruling Q-glpnetshiras-47: a changed id must be LOUD ---------------------------
+    // The measured reboot loss (76b66c25... -> c8c237ea..., origin=Minted) was visible ONLY to
+    // whoever read the transcript. These pin the guard that makes it visible to the operator.
+
+    [Fact]
+    public void First_run_has_nothing_published_to_contradict()
+    {
+        using var id = NodeIdentity.LoadOrMint("shiras.glpnet", out _, _dir);
+
+        var status = NodeIdentity.CheckPublication("shiras.glpnet", id.NodeId.Value, _dir);
+
+        Assert.Equal(PublicationState.Unpublished, status.State);
+        Assert.False(status.RequiresRepublication);
+        Assert.Null(status.Report);
+    }
+
+    [Fact]
+    public void A_published_id_that_still_matches_is_silent()
+    {
+        using var id = NodeIdentity.LoadOrMint("shiras.glpnet", out _, _dir);
+        NodeIdentity.RecordPublication("shiras.glpnet", id.NodeId.Value, _dir);
+
+        var status = NodeIdentity.CheckPublication("shiras.glpnet", id.NodeId.Value, _dir);
+
+        Assert.Equal(PublicationState.Matches, status.State);
+        Assert.False(status.RequiresRepublication);
+        Assert.Null(status.Report);   // a guard that shouts when nothing is wrong gets ignored
+    }
+
+    // 🔴 THE ONE THAT MATTERS: reproduce the reboot exactly — publish an id, then make the key
+    // VANISH (not corrupt: absent, which is what was measured) and mint again.
+    [Fact]
+    public void An_id_that_changed_across_a_vanished_key_is_reported_loudly()
+    {
+        string published;
+        using (var first = NodeIdentity.LoadOrMint("shiras.glpnet", out var o1, _dir))
+        {
+            Assert.Equal(IdentityOrigin.Minted, o1);
+            published = first.NodeId.Value;
+            NodeIdentity.RecordPublication("shiras.glpnet", published, _dir);
+        }
+
+        // exactly the measured post-reboot state: the key is GONE, the publication record is not
+        File.Delete(System.IO.Path.Combine(_dir, "shiras.glpnet.nodekey"));
+
+        using var second = NodeIdentity.LoadOrMint("shiras.glpnet", out var o2, _dir);
+        Assert.Equal(IdentityOrigin.Minted, o2);          // minted, NOT RemintedCorrupt — as measured
+        Assert.NotEqual(published, second.NodeId.Value);        // the id really did change
+
+        var status = NodeIdentity.CheckPublication("shiras.glpnet", second.NodeId.Value, _dir);
+
+        Assert.Equal(PublicationState.Changed, status.State);
+        Assert.True(status.RequiresRepublication);
+        Assert.NotNull(status.Report);
+        Assert.Contains(published, status.Report!, StringComparison.Ordinal);       // names BOTH ids
+        Assert.Contains(second.NodeId.Value, status.Report!, StringComparison.Ordinal);
+        Assert.Contains("RE-PUBLISH", status.Report!, StringComparison.Ordinal);    // and what to do
+    }
+
+    // The guard must be CAUSE-INDEPENDENT: it compares what the lane HAS against what the fleet was
+    // TOLD, so it fires for a key that was deleted, moved, or written somewhere else entirely.
+    [Fact]
+    public void The_guard_does_not_care_why_the_id_changed()
+    {
+        NodeIdentity.RecordPublication("shiras.glpnet", "an-id-this-lane-never-had-again", _dir);
+        using var current = NodeIdentity.LoadOrMint("shiras.glpnet", out _, _dir);
+
+        var status = NodeIdentity.CheckPublication("shiras.glpnet", current.NodeId.Value, _dir);
+
+        Assert.Equal(PublicationState.Changed, status.State);
+    }
+
+    // Ruling Q-47's second half: every mint leaves a forensic line, so the NEXT disappearance can
+    // be explained where this one could not.
+    [Fact]
+    public void Every_mint_appends_a_forensic_record()
+    {
+        using (NodeIdentity.LoadOrMint("shiras.glpnet", out _, _dir)) { }
+        File.Delete(System.IO.Path.Combine(_dir, "shiras.glpnet.nodekey"));
+        using (NodeIdentity.LoadOrMint("shiras.glpnet", out _, _dir)) { }
+
+        var audit = File.ReadAllLines(System.IO.Path.Combine(_dir, "mint-audit.log"));
+
+        Assert.Equal(2, audit.Length);                     // one line per MINT, appended not replaced
+        Assert.All(audit, l => Assert.Contains("lane=shiras.glpnet", l, StringComparison.Ordinal));
+        Assert.All(audit, l => Assert.Contains("origin=Minted", l, StringComparison.Ordinal));
+        Assert.All(audit, l => Assert.Contains("localappdata=", l, StringComparison.Ordinal));
+        Assert.All(audit, l => Assert.Contains("cwd=", l, StringComparison.Ordinal));
+    }
+
+    // 🔴 A key we cannot READ is not a key that is WRONG. A storage-layer failure must propagate,
+    // because the caller's false-branch deletes the file and mints a new id: swallowing it would
+    // turn a transient, self-healing condition into a PERMANENT fleet-visible identity change.
+    // Proven by making the key unreadable rather than by asserting on the implementation.
+    [Fact]
+    public void Unreadable_storage_must_not_silently_rotate_the_node_id()
+    {
+        using (var seeded = NodeIdentity.LoadOrMint("shiras.glpnet", out var first, _dir))
+            Assert.Equal(IdentityOrigin.Minted, first);
+
+        var keyPath = System.IO.Path.Combine(_dir, "shiras.glpnet.nodekey");
+        var before = File.ReadAllBytes(keyPath);
+
+        if (OperatingSystem.IsWindows()) return; // chmod-based denial is a Unix construction
+        File.SetUnixFileMode(keyPath, UnixFileMode.None);
+        try
+        {
+            Assert.ThrowsAny<UnauthorizedAccessException>(
+                () => NodeIdentity.LoadOrMint("shiras.glpnet", out _, _dir));
+            // and, decisively, the key is STILL THERE: not deleted, not re-minted.
+            File.SetUnixFileMode(keyPath, UnixFileMode.UserRead | UnixFileMode.UserWrite);
+            Assert.Equal(before, File.ReadAllBytes(keyPath));
+        }
+        finally
+        {
+            File.SetUnixFileMode(keyPath, UnixFileMode.UserRead | UnixFileMode.UserWrite);
+        }
     }
 }
 

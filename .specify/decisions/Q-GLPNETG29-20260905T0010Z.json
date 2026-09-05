@@ -1,0 +1,49 @@
+{
+  "qid": "Q-GLPNETG29-01",
+  "utc": "2026-09-05T00:10:00Z",
+  "host": "GAVRIELLA",
+  "lane": "glpnet",
+  "feature": "102-quic-federation-transport",
+  "block": "Twelve codexreview rounds never produced the two consecutive low-yield rounds the earlier ruling required, so era 102 could not close.",
+  "background": [
+    "Federation-scoped findings across twelve identical runs: 1, 14, 17, 12, 14, 5, 8, 1, 11, 7, 4, 7.",
+    "Every round found ZERO recurrences - each fix held - but from round 4 on, most findings were in the PREVIOUS round's fixes (round 7: five of eight).",
+    "Round 8's apparent '1' was attention displacement: 18 of its 19 were outside the feature. A low count is not evidence until it is scope-normalised.",
+    "The count bar is measurably unreachable on this codebase, because each remediation seeds the next round's findings."
+  ],
+  "impact_if_unanswered": "Era 102 stays open indefinitely at roughly 25 minutes per round plus fix time, with no evidence the count bar can ever be met.",
+  "options": [
+    {
+      "key": "class-bar",
+      "label": "Ship on a defect-CLASS bar",
+      "consequence": "Ship when a round finds no defect in a class that can cause silent divergence, permanent data loss, or a security bypass.",
+      "size": "micro",
+      "reversibility": "reversible"
+    },
+    {
+      "key": "count-bar",
+      "label": "Keep the two-consecutive-low-round bar",
+      "consequence": "May not terminate on the observed pattern; unbounded cost.",
+      "size": "maxi",
+      "reversibility": "reversible"
+    },
+    {
+      "key": "ship-now",
+      "label": "Ship on current evidence",
+      "consequence": "Forecloses review of a round already known to have found serious defects.",
+      "size": "micro",
+      "reversibility": "one-way"
+    }
+  ],
+  "recommendation": {
+    "option": "class-bar",
+    "because": "The count bar is unreachable here, and the class bar measures the property that actually matters."
+  },
+  "decision": {
+    "option": "class-bar",
+    "rationale": "Engineer ruled the class bar replaces the count bar for era 102. Applied faithfully: round 12 found five defects INSIDE the named classes (fossil term invisible to ordering, dot collision, stale-capability bypass, key permissions, journal poisoning), so it is not a pass and round 13 was run.",
+    "date": "2026-09-05"
+  },
+  "severity": "high",
+  "origin": "measurement"
+}

@@ -37,7 +37,7 @@
     <RootNamespace>GlpRuntime.SplitProtocol</RootNamespace>
     <AssemblyName>glp_split_protocol</AssemblyName>
     <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
-    <WarningsAsErrors>CS0649;CS0169</WarningsAsErrors>
+    <WarningsAsErrors>$(WarningsAsErrors);CS0649;CS0169</WarningsAsErrors>
   </PropertyGroup>
 
   <ItemGroup>

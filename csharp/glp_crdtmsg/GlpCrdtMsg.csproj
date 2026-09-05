@@ -24,7 +24,21 @@
     <RootNamespace>GlpRuntime.CrdtMsg</RootNamespace>
     <AssemblyName>glp_crdtmsg</AssemblyName>
     <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
-    <WarningsAsErrors>CS0649;CS0169</WarningsAsErrors>
+    <!--
+      THE DURABLE HALF of the _pumpCts fix (era 102, round 16). A CancellationTokenSource field was
+      declared, cancelled and disposed in DisposeAsync, and NEVER ASSIGNED — so the shutdown path
+      read as if it owned the four long-running loops while both statements were unconditional
+      no-ops. The compiler had reported it as CS0649 from the commit that introduced it; nothing
+      promoted the warning, so nothing failed and it survived fifteen adversarial review rounds.
+
+      This is the same declared-but-unconsumed shape this lane broadcast fleet-wide as
+      `declared-unconsumed-guard` — "a guard that did not look reads identically to one that
+      passed". Deleting the one field fixes the instance; promoting the diagnostic fixes the class.
+
+        CS0649 - field is never assigned to and will always have its default value
+        CS0169 - field is never used
+    -->
+    <WarningsAsErrors>$(WarningsAsErrors);CS0649;CS0169</WarningsAsErrors>
   </PropertyGroup>
 
   <ItemGroup>
@@ -45,6 +59,11 @@
 
   <ItemGroup>
     <InternalsVisibleTo Include="glp_crdtmsg.tests" />
+    <!-- The test ASSEMBLY is named after the project file (GlpCrdtMsg.Tests), not the
+         directory. The entry above names an assembly that does not exist, so internals were
+         never actually visible to the tests - a latent defect nothing had leaned on until a
+         test seam needed it. -->
+    <InternalsVisibleTo Include="GlpCrdtMsg.Tests" />
   </ItemGroup>
 
 </Project>

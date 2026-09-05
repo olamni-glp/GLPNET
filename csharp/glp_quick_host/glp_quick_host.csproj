@@ -16,6 +16,7 @@
     <AssemblyName>glp_quick_host</AssemblyName>
     <RootNamespace>GlpQuick.Host</RootNamespace>
     <InvariantGlobalization>true</InvariantGlobalization>
+    <WarningsAsErrors>$(WarningsAsErrors);CS0649;CS0169</WarningsAsErrors>
   </PropertyGroup>
 
   <ItemGroup>

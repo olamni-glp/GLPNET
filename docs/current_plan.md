@@ -6,7 +6,15 @@ SPDX-License-Identifier: MIT
 
 # Restart pointer — **THIN POINTER ONLY, NOT A WORK LEDGER**
 
-> Last verified **2026-08-31T11:30Z** by the `gavriella` lane, against durable rows — not from a
+> Last verified **2026-09-04T16:40Z** by the `gavriella` lane, against durable rows — not from a
+> summary. **ACTIVE ERA: `102-quic-federation-transport`** (engineer ruling `Q-GLPNETG27-01`;
+> `specify` COMPLETE, slot HELD since 10:09Z). Full handoff:
+> `docs/restart/RESTART-gavriella-glpnet-20260904-wave27.md`.
+> 🔴 The `078-verification-receipts` marathon run below is **still open (28/111, 214 items) and was
+> DEFERRED, not cancelled** — `resume marathon` still resumes it until a `102` run can be opened
+> (blocked at time of writing by a peer lane's live codexreview holding the registry).
+
+> Previously verified **2026-08-31T11:30Z** by the `gavriella` lane, against durable rows — not from a
 > summary. Per CLAUDE.md § *Multi-Stage Task Persistence & Restart-Resume*, the **roadmap + buildkit
 > marathon state are the source of truth**. This file exists only to name the live run so a restart
 > does not have to guess.
