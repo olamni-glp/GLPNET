@@ -43,6 +43,11 @@
     "recommendation": {
       "option": "permission-rule",
       "because": "This has cost five sessions and the cost recurs every era, not once. The permission is narrow (one verb, one repo) and reversible in a line, whereas engineer-merges pays the same toll indefinitely and makes throughput depend on your availability. If a standing grant is unwanted, engineer-merges is the correct fallback and I will keep asking - but please rule it out explicitly rather than leaving it silent, because silence has read as 'blocked' four times."
+    },
+    "decision": {
+      "option": "permission-rule",
+      "date": "2026-09-05",
+      "rationale": "Engineer ruled permission-rule: add a Bash permission rule for gh pr merge / gh api merge in this repo. Ratified on the recommended option."
     }
   },
   {
@@ -89,6 +94,11 @@
     "recommendation": {
       "option": "ratify-namespace",
       "because": "The window where this is cheap is open only while there are zero producers, and that is today. The namespace form is the standard construction and it answers the actual attack (an attacker cannot write under a victim's node id because they cannot derive the victim's node id from their own key). refuse-kind-entirely is safer in the abstract but leaves the spec and the code contradicting each other, and this fleet has been paying all day for exactly that kind of drift. If you prefer defer-to-l0, say so and I will relabel it provisional in the source rather than leaving my choice looking settled."
+    },
+    "decision": {
+      "option": "ratify-namespace",
+      "date": "2026-09-05",
+      "rationale": "Engineer ratified <nodeId>/<name> as the KeyToRecord binding. Write it into the specs/051 data-model; the fail-closed default arm stands."
     }
   },
   {
@@ -135,6 +145,11 @@
     "recommendation": {
       "option": "sibling-feature",
       "because": "078 is implemented and load-bearing for five other features; re-opening it to absorb a differently-shaped problem risks the dependants for a scope change, and its receipt vocabulary genuinely does not fit an in-process wait. A single tightly-scoped sibling - 'a signal a caller treats as evidence must not be observable before the work it reports' - gives the product-code half an owner and a grep without touching 078's state. leave-as-instances is the honest status quo and I would accept it, but it guarantees we pay the discovery cost again."
+    },
+    "decision": {
+      "option": "sibling-feature",
+      "date": "2026-09-05",
+      "rationale": "Engineer ruled ONE sibling feature scoped as the complement of 078: a signal a caller treats as evidence must not be observable before the work it reports. 078 is NOT re-opened."
     }
   },
   {
@@ -180,6 +195,11 @@
     "recommendation": {
       "option": "close-104-first",
       "because": "It is the cheapest and it unblocks everything else, but ONLY if Q-olg15-07 is answered in the same breath - otherwise it is not startable and differential-gate is the right default on build order. My honest reading: answer Q-olg15-07, let me close 104 in an hour, then run differential-cross-runtime-acceptance-gate as the substantive era. I would take m6-kernel-hosting only if you judge the daily failure criterion to outrank build order, and even then it must be done inside qhstate's canonical client rather than mine, or we repeat this morning's three-clients defect."
+    },
+    "decision": {
+      "option": "close-104-first",
+      "date": "2026-09-05",
+      "rationale": "Engineer ruled close era 104 end to end - merge, release, tag, roadmap link, /bk-close - now unblocked by the Q-olg15-07 permission ruling."
     }
   }
 ]
