@@ -22,6 +22,7 @@
     <RootNamespace>Ynet.Transport</RootNamespace>
     <AssemblyName>ynet_transport</AssemblyName>
     <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <WarningsAsErrors>CS0649;CS0169</WarningsAsErrors>
   </PropertyGroup>
 
   <ItemGroup>
