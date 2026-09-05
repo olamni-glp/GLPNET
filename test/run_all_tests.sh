@@ -2634,8 +2634,16 @@ HEREDOC
     if [ "$GLPREPL_STALE" -eq 1 ] && [ -f "$CSREPL_BIN" ]; then
         unsearchable "V-18..V-23 (101 cross-runtime Dart vs C# parity)" "$GLPREPL_STALE_WHY"
     elif [ -f "$CSREPL_BIN" ]; then
-        v_dart=$(printf '%s\n' "$csparity_script" | $DART run "$REPL" 2>&1 | csparity_norm)
-        v_cs=$(printf '%s\n' "$csparity_script" | "$CSREPL_BIN" 2>&1 | csparity_norm)
+        # Capture the RAW transcript and the REPL's own exit status separately, THEN
+        # normalise. Adversarial review finding F3: reading only filtered stdout meant a
+        # runtime that printed the expected lines and then exited non-zero still passed —
+        # the check could not tell "answered correctly" from "answered correctly then died".
+        _draw=$(printf '%s\n' "$csparity_script" | $DART run "$REPL" 2>&1); _drc=$?
+        _craw=$(printf '%s\n' "$csparity_script" | "$CSREPL_BIN" 2>&1); _crc=$?
+        v_dart=$(printf '%s\n' "$_draw" | csparity_norm)
+        v_cs=$(printf '%s\n' "$_craw" | csparity_norm)
+        check "V-24: the Dart REPL exits 0 for this script (not just prints the right lines)" "^0$" "$_drc"
+        check "V-25: the C# REPL exits 0 for this script (same guard, other runtime)" "^0$" "$_crc"
 
         # Guard first: an EMPTY transcript on both sides would diff clean and read as
         # parity. That is the false-green this feature's own method note warns about,

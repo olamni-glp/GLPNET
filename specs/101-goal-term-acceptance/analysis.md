@@ -129,3 +129,72 @@ Codified as roadmap feature `differential-cross-runtime-acceptance-gate` (WSJF 1
 **Ship-ready under ruling `Q-101-01`, with one escalation (A1/T024) and one root cause recorded
 (A2).** No finding blocks the release; A2's remediation is already in the tree, and A1 is a
 question about which sentence of the spec is correct, not about what the code does.
+
+---
+
+## A7 · `/bk-codexreview` — adversarial cross-provider review, 2026-09-05
+
+Run with the local **codex CLI** v0.141.0 (reasoning effort high; the account's **default**
+model — an explicit `gpt-5-codex` request was refused as unsupported for this account, so the
+exact model is not asserted here rather than guessed) against a scoped
+brief naming the three changed files and the five claims the change makes, with an explicit
+instruction to hunt for vacuous passes. **Four findings, all read as real; two fixed here, two
+reported rather than silently patched.**
+
+### 🔴 F1 (High) — **CONFIRMED, and it falsified a claim I had written** — a refused conjunction is NOT atomic
+
+> *"`_RunConjunctionAsync` constructs, schedules and drains each conjunct inside the loop. A
+> later conjunct can throw from `_SetupConjunctionArg` after earlier conjuncts have already run."*
+
+**Verified in code and by measurement, not taken on trust.** `out/csharp/lib/engine/glp_engine.cs:753`
+— the `foreach` does *setup args → enqueue → `DrainAsyncWithStatus` (execute)* per conjunct, so
+conjunct 1 **has already run** before conjunct 2's arguments are built. Dart mirrors it.
+
+🔴 **This makes my own `GoalTermError` doc comment false.** It read *"Raised during goal-argument
+construction, **before any goal is scheduled**, so a refused goal leaves no partial heap state."*
+True for a single goal; **false for a conjunction.** The comment is corrected in both runtimes
+rather than quietly dropped — it is exactly the class of unverified claim this feature exists to
+eliminate, and it was written by this era.
+
+**Observable behaviour is still sound**: measured `first_item([send(1,a)], Y), first_item([send(2,b)|foo], Z).`
+→ `→ failed` + the refusal, **no `Y` binding reported**, session usable afterwards. FR-007 holds.
+What does *not* hold is atomicity: a conjunct with an output side effect would have produced it.
+
+**Reported, NOT fixed.** Making it atomic means hoisting every conjunct's argument setup ahead of
+the first drain — which changes *when* shared logic variables are materialised, in a conjunction
+driver this feature does not own and no spec section covers. Per `DISCIPLINE.md` §1.2/§1.8 that
+is a bug to report, not to work around. **Engineer decision required.**
+
+### F2 (Medium) — a refused goal leaves partial heap allocations
+
+`_SetupArgument` allocates before calling the builders, which can then throw; there is no
+rollback, so the persistent engine heap keeps the partial cells. **Codex noted Dart has the same
+shape, so this is not a C#-parity divergence** — it is pre-existing in both, and predates this
+feature. Recorded; not fixed here (same §1.8 reasoning as F1).
+
+### ✅ F3 (Medium) — **FIXED** — V-18..V-23 ignored the REPL exit status
+
+The parity block read only filtered stdout, so *"answered correctly"* and *"answered correctly
+then exited non-zero"* were indistinguishable. Now the raw transcript and the exit code are
+captured separately and both asserted — **new checks V-24 and V-25**.
+
+This is the same defect class as A5 and as the estate's `dotnet test --filter <matches nothing>`
+exiting 0: **a surface that answers a different question than the one asked.** It appeared in the
+very check written to close that class, which is worth recording rather than tidying away.
+
+### F4 (Low) — broad greps in Section V can match the wrong goal
+
+V-1..V-3 and V-21 search the whole transcript, so another successful goal could satisfy them.
+**V-20 (byte-identical transcripts) is not vulnerable** — it compares the whole thing — so the
+feature's central claim is safe; the risk is a *named sub-claim* passing for the wrong reason.
+Recorded, not fixed: tightening these to per-goal anchors is a Section V refactor, and it is
+folded into the `differential-cross-runtime-acceptance-gate` era (`Q-101-04`) where the harness
+is generalised anyway.
+
+### What codex explicitly did NOT find
+
+- **No live `RtConstTerm(null)` path** in the C# engine — only comments referencing the old fallback.
+- **No C#-vs-Dart mismatch** across the eight `_` sites: top-level, structure, list element and
+  list tail are mirrored in both the single-goal and conjunction families.
+
+That second negative is the one that mattered most, since it is the parity claim the whole era rests on.

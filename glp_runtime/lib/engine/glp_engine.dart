@@ -39,8 +39,16 @@ import 'package:glp_runtime/compiler/project_linker.dart';
 /// via an internal class name — `Unsupported list head type: UnderscoreTerm` tells
 /// the programmer nothing actionable about the goal they entered.
 ///
-/// Raised during goal-argument construction, before any goal is scheduled, so a
-/// refused goal leaves no partial heap state and the session stays usable (FR-007).
+/// Raised during goal-argument construction. For a SINGLE goal that is before the goal
+/// is scheduled, so nothing runs. 🔴 FOR A CONJUNCTION IT IS NOT: the conjunction driver
+/// sets up and DRAINS each conjunct in one loop, so an earlier conjunct has already
+/// executed by the time a later one is refused. Found by adversarial review 2026-09-05
+/// (finding F1) after an earlier version of this comment claimed otherwise; the claim was
+/// wrong and is corrected rather than quietly dropped. FR-007 still holds — the session
+/// stays usable — but a refused conjunction is NOT atomic. Reported as a defect rather
+/// than fixed here: making it atomic means hoisting every conjunct's argument setup ahead
+/// of the first drain, which changes when shared logic variables are materialised in a
+/// driver this feature does not own. See specs/101-goal-term-acceptance/analysis.md A7.
 class GoalTermError implements Exception {
   final String message;
   GoalTermError(this.message);

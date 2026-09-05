@@ -50,8 +50,14 @@ namespace GlpRuntime.Engine;
 /// programmer nothing actionable about the goal they entered.
 /// </para>
 /// <para>
-/// Raised during goal-argument construction, before any goal is scheduled, so a refused
-/// goal leaves no partial heap state and the session stays usable (FR-007).
+/// Raised during goal-argument construction. For a SINGLE goal that is before the goal is
+/// scheduled, so nothing runs. 🔴 FOR A CONJUNCTION IT IS NOT: <c>_RunConjunctionAsync</c>
+/// sets up and DRAINS each conjunct inside one loop, so an earlier conjunct has already
+/// executed by the time a later one is refused. Found by adversarial review 2026-09-05
+/// (finding F1) after an earlier version of this comment claimed otherwise; the claim was
+/// wrong and is corrected rather than quietly dropped. FR-007 still holds — the session
+/// stays usable — but a refused conjunction is NOT atomic. Reported as a defect rather than
+/// fixed here: see specs/101-goal-term-acceptance/analysis.md A7.
 /// </para>
 /// <para>Mirror of Dart <c>GoalTermError</c> in glp_runtime/lib/engine/glp_engine.dart.</para>
 /// </summary>
