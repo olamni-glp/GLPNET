@@ -511,7 +511,34 @@ public static class Program
         {
             while (!stop.IsCancellationRequested)
             {
+                // ORDER MATTERS, AND IT WAS WRONG.
+                //
+                // InvalidOperationException is the BASE CLASS of DotConflictException,
+                // MergeRefusedException and AttributionRefusedException. Listing it in the generic
+                // malformed-frame filter meant this clause swallowed all three, and the three
+                // dedicated handlers below were UNREACHABLE — every refusal reported as "malformed
+                // frame", losing exactly the distinct diagnostics FR-008's discipline exists to
+                // preserve. The specific handlers now come first.
                 try { await svc.ReceiveOneAsync(stop); }
+                catch (DotConflictException ex)
+                {
+                    // Two different operations claiming one dot. Refused loudly; never folded,
+                    // never acked, and the loop continues.
+                    Console.Error.WriteLine($"REJECTED: {ex.Message}");
+                }
+                catch (MergeRefusedException ex)
+                {
+                    // A refused merge is REPORTED and the loop continues. Refusing one peer must not
+                    // stop serving every other peer, and a silent swallow would hide the STOP ORDER
+                    // doing its job.
+                    Console.Error.WriteLine($"REFUSED: {ex.Message}");
+                }
+                catch (AttributionRefusedException ex)
+                {
+                    // Same discipline, different gate: a forged or inconsistent attribution is
+                    // rejected loudly and named, never folded and never allowed to stop the daemon.
+                    Console.Error.WriteLine($"REFUSED: {ex.Message}");
+                }
                 catch (Exception ex) when (ex is System.Text.Json.JsonException
                                                  or KeyNotFoundException
                                                  or FormatException
@@ -527,25 +554,6 @@ public static class Program
                     // EVERY peer. One corrupt frame could take the host off the board, which is a
                     // denial of service any admitted party could trigger by accident.
                     Console.Error.WriteLine($"REJECTED malformed frame: {ex.GetType().Name}: {ex.Message}");
-                }
-                catch (DotConflictException ex)
-                {
-                    // Two different operations claiming one dot. Refused loudly and the loop
-                    // continues — the conflicting op is never folded, and never acked.
-                    Console.Error.WriteLine($"REJECTED: {ex.Message}");
-                }
-                catch (MergeRefusedException ex)
-                {
-                    // A refused merge is REPORTED and the loop continues. Refusing one peer must not
-                    // stop serving every other peer, and a silent swallow would hide the STOP ORDER
-                    // doing its job.
-                    Console.Error.WriteLine($"REFUSED: {ex.Message}");
-                }
-                catch (AttributionRefusedException ex)
-                {
-                    // Same discipline, different gate: a forged or inconsistent attribution is
-                    // rejected loudly and named, never folded and never allowed to stop the daemon.
-                    Console.Error.WriteLine($"REFUSED: {ex.Message}");
                 }
             }
         }

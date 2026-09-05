@@ -74,7 +74,11 @@ if (!QuicLinkTransport.IsSupported)
 // NodeIdentityStore mints once and loads thereafter, so the pin below is STABLE and publishable —
 // and it is the SAME identity `ynet-federation` uses, which is the point. Two components on one
 // host presenting two identities is how a peer ends up pinning the one that is not listening.
-X509Certificate2 cert = new NodeIdentityStore(NodeIdentityStore.DefaultPath())
+// HONOUR identity_path. Loading the DEFAULT key while the daemon loads a configured one recreates
+// the two-identities-per-host failure this change exists to remove — the probe would publish a pin
+// for a key the listener does not hold.
+var probeCfg = FederationConfig.Load();
+X509Certificate2 cert = new NodeIdentityStore(probeCfg.EffectiveIdentityPath)
     .LoadOrMint(Environment.MachineName.ToLowerInvariant());
 
 string nodeId = NodeIdentityStore.DeriveNodeId(cert);
@@ -82,7 +86,7 @@ string pin = QuicLinkTransport.SpkiPin(cert);
 
 Console.WriteLine($"   node id             : {nodeId}");
 Console.WriteLine($"   local cert SPKI pin : {pin}");
-Console.WriteLine($"   key                 : {NodeIdentityStore.DefaultPath()}");
+Console.WriteLine($"   key                 : {probeCfg.EffectiveIdentityPath}");
 Console.WriteLine("   (a peer must carry this pin to be admitted; reachability alone is refused)");
 Console.WriteLine("   STABLE across runs — this is the persisted federation identity, not a fresh");
 Console.WriteLine("   dev cert. It is safe to publish, and `ynet-federation identity` prints the same.");

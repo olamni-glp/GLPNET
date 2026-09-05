@@ -306,6 +306,13 @@ public sealed class Round2RegressionTests
         var svc = new FederationService(Cfg(), link, NewFold(), new InMemoryBoardLog());
         for (long i = 1; i <= 3; i++) await svc.AppendAndPushAsync(Op("g", i));
 
+
+        // R14-02: pull responses are gated on the peer's declaration too, so the peer must declare
+        // — as a real one does — before board operations are handed to it.
+        link.PushInbound(new LinkInbound("peer",
+            HelloProtocol.Encode(new PeerCapabilities(true, LiveEpoch), isReply: true), HelloProtocol.Box));
+        await svc.ReceiveOneAsync();
+
         // The requester has 1 and 3 but never received 2.
         var theirs = new FederationFrontier().With(new Dot("g", 1)).With(new Dot("g", 3));
         await svc.AnswerPullAsync("peer", theirs);

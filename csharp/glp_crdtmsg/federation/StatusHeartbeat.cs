@@ -148,7 +148,12 @@ public sealed record StatusHeartbeat
         BoundEndpoint = BoundEndpoint,
         AdmittedParticipants = AdmittedParticipants,
         PolicyRefused = PolicyRefused,
-        Reasons = new Dictionary<string, string>(Reasons),
+        // NORMALISED, not trusted. A record containing "reasons": null deserialises happily and then
+        // threw ArgumentNullException here — crashing the very command whose contract says a corrupt
+        // record must yield UNKNOWN rather than a crash.
+        Reasons = Reasons is null
+            ? new Dictionary<string, string>()
+            : new Dictionary<string, string>(Reasons),
     };
 
     private static Tri ParseTri(string s) => s switch

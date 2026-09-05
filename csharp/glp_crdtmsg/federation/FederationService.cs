@@ -320,6 +320,19 @@ public sealed class FederationService : IAsyncDisposable
             try
             {
                 await _link.ConnectPeerAsync(entry.NodeId, ep, ct).ConfigureAwait(false);
+
+                // INVALIDATE AT CONNECTION TIME, not at the next inbound frame.
+                //
+                // A new dial establishes a NEW session, but the cached declaration stayed readable
+                // until something arrived — so WaitForPeerCapabilitiesAsync could succeed instantly
+                // on the PREVIOUS session's word and traffic could flow to a restarted or DOWNGRADED
+                // peer before its new hello. The moment the connection is established is the moment
+                // the old declaration stops being true.
+                string dialled = _link.SessionIdOf(entry.NodeId) ?? string.Empty;
+                if (!_peerSession.TryGetValue(entry.NodeId, out var prior) || prior != dialled)
+                    _peerCaps.TryRemove(entry.NodeId, out _);
+                _peerSession[entry.NodeId] = dialled;
+
                 _admitted[entry.NodeId] = 0;
                 _connected[entry.NodeId] = 0;
                 // Declare our own capabilities so the peer's gate can admit us. A peer that never
@@ -707,21 +720,15 @@ public sealed class FederationService : IAsyncDisposable
         {
             if (RequireVerifiedAttribution) throw new AttributionRefusedException(attribution);
 
-            // A LEADERSHIP-BEARING OP IS REFUSED WITHOUT A VERIFIED ORIGIN, WHATEVER THE SETTING.
+            // THE SHARED RULE, NOT AN INLINE COPY OF IT.
             //
-            // Counting an unverified op is adequate for an ordinary board post: the worst case is a
-            // misattributed note. It is NOT adequate for one carrying a TERM. An admitted peer with
-            // no configured key could submit an unsigned op naming the live space and a maximal era
-            // counter and win WinningTerm permanently — term ordering is monotone, so there is no
-            // later fix, only a new epoch, which is a different board.
-            //
-            // So the relaxed default stays where it is harmless and stops where it is not.
-            if (op.Term is not null)
-                throw new AttributionRefusedException(new AttributionResult(
-                    AttributionVerdict.UnverifiedOrigin,
-                    $"operation from '{op.Origin}' carries a TERM but its origin cannot be verified — "
-                    + "publish that peer's spki. A leadership-bearing operation is monotone: accepting "
-                    + "one unverified can install a permanent winner that no later correction removes."));
+            // This path kept its own duplicate, so when round 13 taught the rule that only a
+            // LIVE-space term needs a verified origin, the network path did not learn it: pushed and
+            // pulled operations carrying a LEGACY or UNKNOWN term were still refused, and network
+            // convergence went on deleting the very scheduler fossils that replay and tail had just
+            // been fixed to preserve. The same defect, on the one door I had not routed through the
+            // shared rule — which is the argument for there being exactly one.
+            RequireVerifiableTerm(op, attribution);
 
             UnverifiedOps++;   // COUNTED and reported, never silently treated as verified
         }
@@ -952,6 +959,16 @@ public sealed class FederationService : IAsyncDisposable
     /// </summary>
     public async Task AnswerPullAsync(string peerName, FederationFrontier peerFrontier, CancellationToken ct = default)
     {
+        // THE OUTBOUND GATE APPLIES TO PULL RESPONSES TOO.
+        //
+        // PushAsync was gated and this was not, so a pinned peer could simply send `pull-req`
+        // WITHOUT ever declaring term-space awareness — or having declared FALSE — and be handed the
+        // board anyway. A gate on one of two outbound paths is a gate with a door beside it, and
+        // this is the easier door: the peer chooses when to knock.
+        var target = _peers.Find(peerName) ?? _peers.Entries.FirstOrDefault(e => e.Name == peerName);
+        string capKey = target?.NodeId ?? peerName;
+        if (DeclaredCapabilitiesOf(capKey) is not { TermSpaceAware: true }) return;
+
         var missing = OpsMissingFrom(peerFrontier);
         if (missing.Count == 0) return;
 

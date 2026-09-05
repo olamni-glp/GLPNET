@@ -357,6 +357,92 @@ public sealed class Round5RegressionTests
         Assert.Null(fold.WinningTerm());
     }
 
+    // ---- R14-01: the NETWORK path kept an inline copy of the rule and deleted fossils ----------
+
+    /// <summary>
+    /// The same defect as R13-01, on the one door I had not routed through the shared rule.
+    /// <para>
+    /// Round 13 taught <c>RequireVerifiableTerm</c> that only a LIVE-space term needs a verified
+    /// origin. The network admission path kept its own INLINE duplicate, so it never learned:
+    /// pushed and pulled operations carrying a legacy or unknown term were still refused, and
+    /// network convergence went on deleting the scheduler fossils replay and tail had just been
+    /// fixed to preserve. Duplicating a rule is how half of it gets fixed.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public async Task AFossilArrivingOVERTHENETWORKIsRetainedNotRefused()
+    {
+        using var doc = JsonDocument.Parse(
+            "{\"actor\":\"olamnit\",\"op_id\":\"olamnit:000009\",\"op_type\":\"leader_claim\","
+            + "\"seq\":9,\"term\":5961694}");
+        var fossil = SchedulerBoardLog.AdaptSchedulerLine(doc.RootElement)!;
+
+        var fold = NewFold();
+        var svc = new FederationService(Cfg(), new RecordingLink("A"), fold, new InMemoryBoardLog());
+
+        // THROUGH RECONCILIATION — the network path, not replay.
+        Assert.Equal(1, await svc.ReconcileAsync(new[] { fossil }, new PeerCapabilities(true, LiveEpoch)));
+        Assert.True(fold.Contains(fossil.OpId));
+        Assert.Equal(OrderingDisposition.UnorderedLegacy, fold.DispositionOf(fossil));
+        Assert.Null(fold.WinningTerm());
+
+        // POSITIVE CONTROL: an unverified LIVE-space term is still refused on this same path.
+        string stranger = NodeId("stranger");
+        var live = FederationOp.Create(new Dot(stranger, 1), stranger, "claim", Body,
+            term: new Term(LiveEpoch, long.MaxValue, stranger));
+        Assert.Equal(0, await svc.ReconcileAsync(new[] { live }, new PeerCapabilities(true, LiveEpoch)));
+        Assert.False(fold.Contains(live.OpId));
+    }
+
+    // ---- R14-02: pull responses are an outbound path and must be gated -------------------------
+
+    /// <summary>
+    /// <c>PushAsync</c> was gated and <c>AnswerPullAsync</c> was not, so a pinned peer could simply
+    /// send <c>pull-req</c> WITHOUT declaring term-space awareness and be handed the board anyway.
+    /// A gate on one of two outbound paths is a gate with a door beside it — and this is the easier
+    /// door, because the peer chooses when to knock.
+    /// </summary>
+    [Fact]
+    public async Task APullFromAnUndeclaredPeerIsNotAnswered()
+    {
+        string id = NodeId("olamnit");
+        var link = new RecordingLink("A");
+        var svc = new FederationService(Cfg(Peer("olamnit", "olamnit", "192.168.0.136:47890")),
+                                        link, NewFold(), new InMemoryBoardLog());
+        await svc.AppendAndPushAsync(Op(NodeId("gavriella"), 1));
+
+        // It never declared — and asks for the board.
+        await svc.AnswerPullAsync(id, new FederationFrontier());
+        Assert.DoesNotContain(link.Sent, x => x.Box == PullProtocol.ResponseBox);
+
+        // POSITIVE CONTROL: once it declares AWARE, the same pull is answered.
+        link.PushInbound(new LinkInbound(id,
+            HelloProtocol.Encode(new PeerCapabilities(true, LiveEpoch), isReply: true), HelloProtocol.Box));
+        await svc.ReceiveOneAsync();
+
+        await svc.AnswerPullAsync(id, new FederationFrontier());
+        Assert.Contains(link.Sent, x => x.Box == PullProtocol.ResponseBox);
+    }
+
+    // ---- R14-09: a corrupt heartbeat must yield UNKNOWN, never a crash -------------------------
+
+    /// <summary>
+    /// A record containing <c>"reasons": null</c> deserialises happily and then threw
+    /// <c>ArgumentNullException</c> — crashing the very command whose contract says a corrupt record
+    /// yields unknown state rather than a crash.
+    /// </summary>
+    [Fact]
+    public void AHeartbeatWithNullReasonsYieldsUnknownRatherThanCrashing()
+    {
+        var hb = JsonSerializer.Deserialize<StatusHeartbeat>(
+            "{\"published_utc\":\"2026-09-05T00:00:00Z\",\"listener_bound\":\"yes\",\"reasons\":null}")!;
+
+        var status = hb.ToStatus(Tri.Yes);          // must not throw
+        Assert.Equal(Tri.Yes, status.ListenerBound);
+        Assert.NotNull(status.Reasons);
+        Assert.Empty(status.Reasons);
+    }
+
     // ---- R13-02: outbound board data must be gated on the peer's declaration -------------------
 
     /// <summary>

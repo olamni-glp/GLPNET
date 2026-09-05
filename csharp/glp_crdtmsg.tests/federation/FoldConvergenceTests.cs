@@ -437,6 +437,13 @@ public sealed class FoldConvergenceTests
         await svc.AppendAndPushAsync(Op("gavriella", 1));
         await svc.AppendAndPushAsync(Op("gavriella", 2));
 
+
+        // R14-02: pull responses are gated on the peer's declaration too, so the peer must declare
+        // — as a real one does — before board operations are handed to it.
+        link.PushInbound(new LinkInbound("peer",
+            HelloProtocol.Encode(new PeerCapabilities(true, LiveEpoch), isReply: true), HelloProtocol.Box));
+        await svc.ReceiveOneAsync();
+
         // The requester already has op 1.
         var theirFrontier = new FederationFrontier().With(new Dot("gavriella", 1));
         await svc.AnswerPullAsync("peer", theirFrontier);
