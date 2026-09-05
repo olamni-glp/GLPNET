@@ -31,6 +31,18 @@ public enum AppendOutcome
 public abstract class QActiveLite : Qhsm, IDisposable
 {
     private readonly BlockingCollection<QEvt> _mailbox;
+
+    /// <summary>
+    /// Internal completion events (codex cycle 1, P1). A machine's own transition events —
+    /// "the plane opened", "the alert is recorded", "the agent was told" — must NEVER compete for
+    /// the bounded PUBLIC mailbox: if a carrier burst fills it during an entry action, the machine
+    /// wedges in a transient state and every later message goes unhandled. This queue is internal,
+    /// drained with priority, and bounded in practice by run-to-completion (a dispatch posts at
+    /// most a small constant number of internal events before it returns).
+    /// </summary>
+    private readonly ConcurrentQueue<QEvt> _internal = new();
+
+    private readonly SemaphoreSlim _signal = new(0);
     private readonly CancellationTokenSource _stopping = new();
     private Thread? _thread;
     private long _accepted;
@@ -71,11 +83,24 @@ public abstract class QActiveLite : Qhsm, IDisposable
         if (_mailbox.TryAdd(e))
         {
             Interlocked.Increment(ref _accepted);
+            _signal.Release();
             return AppendOutcome.Accepted;
         }
 
         Interlocked.Increment(ref _refused);
         return AppendOutcome.Closed;
+    }
+
+    /// <summary>
+    /// Post one of the machine's OWN completion events. Cannot be refused, and is dispatched ahead
+    /// of anything in the public mailbox, so a machine can always finish the transition it started.
+    /// Only a state handler may call this — it is not a back door around the public bound.
+    /// </summary>
+    protected void PostInternal(QEvt e)
+    {
+        ArgumentNullException.ThrowIfNull(e);
+        _internal.Enqueue(e);
+        _signal.Release();
     }
 
     /// <summary>Start the machine and its dispatch thread.</summary>
@@ -87,28 +112,44 @@ public abstract class QActiveLite : Qhsm, IDisposable
         _thread.Start();
     }
 
-    /// <summary>Dispatch queued events on the calling thread until the mailbox is empty (tests).</summary>
+    /// <summary>Dispatch queued events on the calling thread until both queues are empty (tests).</summary>
     public int PumpOnce()
     {
         var n = 0;
-        while (_mailbox.TryTake(out var e))
+        while (TryNext(out var e))
         {
-            DispatchGuarded(e);
+            DispatchGuarded(e!);
             n++;
         }
         return n;
+    }
+
+    /// <summary>Internal completion events first, then the public mailbox.</summary>
+    private bool TryNext(out QEvt? e)
+    {
+        if (_internal.TryDequeue(out var i)) { e = i; return true; }
+        if (_mailbox.TryTake(out var m)) { e = m; return true; }
+        e = null;
+        return false;
     }
 
     private void Pump()
     {
         try
         {
-            foreach (var e in _mailbox.GetConsumingEnumerable(_stopping.Token))
-                DispatchGuarded(e);
+            while (!_stopping.IsCancellationRequested)
+            {
+                _signal.Wait(_stopping.Token);
+                while (TryNext(out var e)) DispatchGuarded(e!);
+            }
         }
         catch (OperationCanceledException)
         {
             // normal shutdown
+        }
+        catch (ObjectDisposedException)
+        {
+            // shutdown raced the dispose; nothing is in flight by then
         }
     }
 
@@ -138,6 +179,7 @@ public abstract class QActiveLite : Qhsm, IDisposable
         _mailbox.CompleteAdding();
         _thread?.Join(TimeSpan.FromSeconds(5));
         _stopping.Dispose();
+        _signal.Dispose();
         _mailbox.Dispose();
     }
 }

@@ -67,8 +67,12 @@ public sealed class AgentHook
             {
                 FileName = _command,
                 UseShellExecute = false,
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
+                // NOT redirected (codex cycle 1, P2). A redirected pipe nobody reads fills, the
+                // child blocks on its own write, and a perfectly healthy hook is then killed and
+                // reported as a timeout. The hook's output is not used for anything, so the honest
+                // fix is to stop capturing it rather than to add a reader for output we discard.
+                RedirectStandardOutput = false,
+                RedirectStandardError = false,
                 CreateNoWindow = true,
             };
             psi.ArgumentList.Add(alert.AlertId);

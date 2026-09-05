@@ -74,8 +74,11 @@ switch (verb)
         }
 
         machine.PumpOnce();
+        // Notification is asynchronous now, so wait for it before REPORTING its outcome —
+        // printing a blank outcome would be a true-looking blank rather than a truthful result.
+        machine.WaitForNotifications(TimeSpan.FromSeconds(15));
         Console.WriteLine($"ynet_client: injected {msg.MessageId}   received={machine.MessagesReceived}   " +
-                          $"hook={machine.LastHookAttempt?.Outcome}   pending_now={spool.Count}");
+                          $"hook={machine.LastHookAttempt?.Outcome.ToString() ?? "not-attempted"}   pending_now={spool.Count}");
         return 0;
     }
 

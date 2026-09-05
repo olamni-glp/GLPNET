@@ -33,6 +33,43 @@ public sealed class PendingAlertSpool
     private static readonly JsonSerializerOptions Json = new() { WriteIndented = true };
     private readonly object _gate = new();
 
+    /// <summary>
+    /// A CROSS-PROCESS lock around every read-modify-write (codex cycle 1, P1). `_gate` only ever
+    /// serialised threads inside one process, but `run` and `inject` are two processes over one
+    /// directory: two raises could read the same snapshot and lose a presentation increment, and a
+    /// raise racing a drain could resurrect an alert the agent had already handled.
+    ///
+    /// The lock is a file held with FileShare.None — the same primitive the estate's own bridge uses
+    /// — with a bounded wait. A lock that cannot be acquired is reported by throwing, never by
+    /// quietly proceeding unsynchronised, because an unsynchronised write here is the failure the
+    /// lock exists to prevent.
+    /// </summary>
+    private IDisposable AcquireCrossProcess(TimeSpan? timeout = null)
+    {
+        var lockPath = Path.Combine(Directory, ".spool.lock");
+        var deadline = DateTime.UtcNow + (timeout ?? TimeSpan.FromSeconds(10));
+        var delayMs = 2;
+
+        while (true)
+        {
+            try
+            {
+                return new FileStream(lockPath, FileMode.OpenOrCreate, FileAccess.ReadWrite,
+                                      FileShare.None, 1, FileOptions.DeleteOnClose);
+            }
+            catch (IOException) when (DateTime.UtcNow < deadline)
+            {
+                Thread.Sleep(delayMs);
+                delayMs = Math.Min(delayMs * 2, 100);
+            }
+            catch (UnauthorizedAccessException) when (DateTime.UtcNow < deadline)
+            {
+                Thread.Sleep(delayMs);
+                delayMs = Math.Min(delayMs * 2, 100);
+            }
+        }
+    }
+
     public PendingAlertSpool(string directory)
     {
         Directory = directory ?? throw new ArgumentNullException(nameof(directory));
@@ -65,6 +102,7 @@ public sealed class PendingAlertSpool
         var now = nowUtc ?? DateTimeOffset.UtcNow;
 
         lock (_gate)
+        using (AcquireCrossProcess())
         {
             var existing = ReadAll().FirstOrDefault(a => a.MessageId == messageId);
             var alert = existing is null
@@ -80,6 +118,7 @@ public sealed class PendingAlertSpool
     public IReadOnlyList<PendingAlert> Undrained()
     {
         lock (_gate)
+        using (AcquireCrossProcess())
         {
             return ReadAll().OrderBy(a => a.RaisedUtc).ThenBy(a => a.AlertId, StringComparer.Ordinal).ToList();
         }
@@ -93,8 +132,20 @@ public sealed class PendingAlertSpool
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(alertId);
         lock (_gate)
+        using (AcquireCrossProcess())
         {
-            var path = PathFor(alertId);
+            string path;
+            try
+            {
+                path = PathFor(alertId);
+            }
+            catch (ArgumentException)
+            {
+                // A malformed or escaping id is REFUSED, not obeyed and not thrown at the operator:
+                // "that was not pending" is the truthful answer and it deletes nothing.
+                return false;
+            }
+
             if (!File.Exists(path)) return false;
             File.Delete(path);
             return true;
@@ -167,12 +218,43 @@ public sealed class PendingAlertSpool
         catch (UnauthorizedAccessException) { /* likewise */ }
     }
 
-    private string PathFor(string alertId) => Path.Combine(Directory, alertId + ".json");
+    /// <summary>
+    /// An alert id must be one of ours (codex cycle 1, P1). Without this, `drain ../../secrets`
+    /// resolves outside the spool and deletes an arbitrary reachable .json file: the drain verb is
+    /// reachable from a CLI, so an id is untrusted input, not an internal token.
+    /// </summary>
+    private static readonly System.Text.RegularExpressions.Regex ValidAlertId =
+        new(@"^\d{8}T\d{12}-[A-Za-z0-9_-]{1,48}-[0-9a-f]{8}$",
+            System.Text.RegularExpressions.RegexOptions.Compiled);
 
+    private string PathFor(string alertId)
+    {
+        if (!ValidAlertId.IsMatch(alertId))
+            throw new ArgumentException($"not a well-formed alert id: '{alertId}'", nameof(alertId));
+
+        var full = Path.GetFullPath(Path.Combine(Directory, alertId + ".json"));
+        var root = Path.GetFullPath(Directory) + Path.DirectorySeparatorChar;
+        if (!full.StartsWith(root, StringComparison.OrdinalIgnoreCase))
+            throw new ArgumentException($"alert id escapes the spool directory: '{alertId}'", nameof(alertId));
+
+        return full;
+    }
+
+    /// <summary>
+    /// A time prefix plus a sanitized stem plus a hash of the WHOLE message id (codex cycle 1, P1).
+    /// Truncating to 48 sanitized characters made two distinct message ids collide inside one
+    /// millisecond, and because a write replaces, the second alert destroyed the first — silently,
+    /// in the class whose entire purpose is not losing alerts.
+    /// </summary>
     private static string NewAlertId(string messageId)
     {
         var safe = new string(messageId.Where(c => char.IsLetterOrDigit(c) || c is '-' or '_').Take(48).ToArray());
         if (safe.Length == 0) safe = "msg";
-        return $"{DateTimeOffset.UtcNow:yyyyMMddTHHmmssfff}-{safe}";
+
+        var hash = Convert.ToHexString(
+            System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(messageId)))
+            .ToLowerInvariant()[..8];
+
+        return $"{DateTimeOffset.UtcNow:yyyyMMddTHHmmssfff}{DateTimeOffset.UtcNow.Microsecond:D3}-{safe}-{hash}";
     }
 }

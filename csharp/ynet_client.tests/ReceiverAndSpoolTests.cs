@@ -123,6 +123,7 @@ public sealed class ReceiverAndSpoolTests : IDisposable
 
         Assert.True(plane.Deliver(Msg("m-1")));
         machine.PumpOnce();
+        Assert.True(machine.WaitForNotifications(TimeSpan.FromSeconds(10)));
 
         Assert.Equal(1, machine.MessagesReceived);
         Assert.Equal(1, machine.AlertsRaised);
@@ -140,6 +141,7 @@ public sealed class ReceiverAndSpoolTests : IDisposable
 
         plane.Deliver(Msg("m-1"));
         machine.PumpOnce();
+        Assert.True(machine.WaitForNotifications(TimeSpan.FromSeconds(20)));
 
         Assert.Equal(HookOutcome.Failed, machine.LastHookAttempt!.Outcome);
         Assert.NotNull(machine.LastHookAttempt.Detail);      // the failure is recorded, not swallowed
@@ -266,6 +268,143 @@ public sealed class ReceiverAndSpoolTests : IDisposable
         var pending = spool.Undrained();
         Assert.Equal(8, pending.Count);
         Assert.DoesNotContain(Directory.GetFiles(_dir), f => f.EndsWith(".unreadable", StringComparison.Ordinal));
+    }
+
+
+    // ---- codex cycle 1 regressions: seven P1 findings, each with a test that fails without the fix
+
+    [Fact]
+    public void CODEX_P1_overflow_is_recorded_durably_and_the_machine_degrades()
+    {
+        // Before the fix: a refused MessageArrived posted Fault into the SAME full mailbox, which
+        // was also refused, so the machine never degraded and the message vanished while the
+        // carrier believed it delivered.
+        var plane = new LoopbackInbound();
+        var spool = new PendingAlertSpool(_dir);
+        using var machine = new YnetReceiverMachine(plane, spool, new AgentHook(null), capacity: 2);
+        machine.Start();
+        machine.PumpOnce();
+
+        for (var i = 0; i < 12; i++) plane.Deliver(Msg($"burst-{i}"));
+
+        Assert.True(machine.Overflowed > 0);                 // counted
+        Assert.Null(machine.OverflowSpoolError);
+        Assert.Contains(spool.Undrained(), a => a.MessageId.StartsWith("OVERFLOW-", StringComparison.Ordinal));
+
+        machine.PumpOnce();
+        Assert.True(machine.IsDegraded);                     // and it actually degraded
+    }
+
+    [Fact]
+    public void CODEX_P1_internal_completion_events_are_never_refused_by_a_full_mailbox()
+    {
+        // Before the fix: a carrier burst during Receiving:entry could fill the mailbox before
+        // AlertRaised was posted, wedging the machine in Receiving forever.
+        var plane = new LoopbackInbound();
+        var spool = new PendingAlertSpool(_dir);
+        using var machine = new YnetReceiverMachine(plane, spool, new AgentHook(null), capacity: 1);
+        machine.Start();
+        machine.PumpOnce();
+
+        for (var i = 0; i < 8; i++) { plane.Deliver(Msg($"m-{i}")); machine.PumpOnce(); }
+
+        // Whatever else happened, the machine must not be stuck in a transient state.
+        Assert.True(machine.IsIdle || machine.IsDegraded);
+        Assert.True(machine.AlertsRaised >= 1);
+    }
+
+    [Fact]
+    public void CODEX_P1_a_failed_durable_write_closes_the_plane_instead_of_losing_the_message()
+    {
+        // Before the fix: the exception escaped to DispatchGuarded, the plane stayed open, and the
+        // carrier kept delivering into a hole.
+        var plane = new LoopbackInbound();
+        var unwritable = Path.Combine(_dir, "spool");
+        var spool = new PendingAlertSpool(unwritable);
+        using var machine = new YnetReceiverMachine(plane, spool, new AgentHook(null));
+        machine.Start();
+        machine.PumpOnce();
+
+        Directory.Delete(unwritable, recursive: true);
+        File.WriteAllText(unwritable, "now a FILE, so every spool write must fail");
+
+        plane.Deliver(Msg("m-1"));
+        machine.PumpOnce();
+
+        Assert.NotNull(machine.SpoolError);
+        Assert.True(machine.IsDegraded);
+        Assert.False(plane.Deliver(Msg("m-2")));   // backpressure: the carrier is refused, not fed
+    }
+
+    [Fact]
+    public void CODEX_P1_a_hanging_hook_does_not_stall_receipt()
+    {
+        // Before the fix: _hook.Notify ran on the single dispatch thread with a 5s bound, so a
+        // hanging agent stalled receipt. The hook below sleeps well past the machine's work.
+        var hookCmd = OperatingSystem.IsWindows() ? "timeout" : "sleep";
+        var plane = new LoopbackInbound();
+        var spool = new PendingAlertSpool(_dir);
+        using var machine = new YnetReceiverMachine(plane, spool, new AgentHook(hookCmd));
+        machine.Start();
+        machine.PumpOnce();
+
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+        for (var i = 0; i < 5; i++) { plane.Deliver(Msg($"m-{i}")); machine.PumpOnce(); }
+        sw.Stop();
+
+        // Five alerts durable, and the dispatch thread never waited on the hook.
+        Assert.Equal(5, spool.Undrained().Count);
+        Assert.True(sw.Elapsed < TimeSpan.FromSeconds(5),
+            $"receipt took {sw.Elapsed.TotalSeconds:0.0}s — the hook is back on the dispatch thread");
+    }
+
+    [Fact]
+    public void CODEX_P1_two_message_ids_sharing_a_sanitized_prefix_do_not_overwrite_each_other()
+    {
+        // Before the fix: the id was a timestamp plus the first 48 sanitized chars, so these two
+        // collided within one millisecond and the second silently destroyed the first.
+        var spool = new PendingAlertSpool(_dir);
+        var stem = new string('a', 48);
+        var a = spool.Raise(stem + "-ONE", "o", "first");
+        var b = spool.Raise(stem + "-TWO", "o", "second");
+
+        Assert.NotEqual(a.AlertId, b.AlertId);
+        Assert.Equal(2, spool.Undrained().Count);
+    }
+
+    [Theory]
+    [InlineData("../../escape")]
+    [InlineData(@"..\..\escape")]
+    [InlineData(@"C:\Windows\Temp\anything")]
+    [InlineData("/etc/passwd")]
+    [InlineData("not-an-alert-id")]
+    public void CODEX_P1_drain_refuses_an_id_that_is_not_ours(string bad)
+    {
+        // Before the fix: Path.Combine resolved outside the spool and `drain` deleted an arbitrary
+        // reachable .json. The drain verb is a CLI surface, so its argument is untrusted input.
+        var spool = new PendingAlertSpool(_dir);
+        var victim = Path.Combine(_dir, "..", "victim.json");
+        File.WriteAllText(victim, "{}");
+
+        Assert.False(spool.Drain(bad));      // refused, and reported as "was not pending"
+        Assert.True(File.Exists(victim));    // and nothing outside the spool was touched
+
+        File.Delete(victim);
+    }
+
+    [Fact]
+    public void CODEX_P1_two_spool_instances_over_one_directory_do_not_lose_a_presentation()
+    {
+        // Before the fix: _gate serialised threads in ONE process; `run` and `inject` are two.
+        // Two independent instances stand in for two processes over the same directory.
+        var a = new PendingAlertSpool(_dir);
+        var b = new PendingAlertSpool(_dir);
+
+        a.Raise("m-1", "o", "s");
+        var second = b.Raise("m-1", "o", "s");
+
+        Assert.Equal(2, second.Presentations);
+        Assert.Single(a.Undrained());
     }
 
     // ---- the bounded mailbox ------------------------------------------------------------------

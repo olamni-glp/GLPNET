@@ -47,11 +47,15 @@ public sealed class YnetReceiverMachine : QActiveLite
     private readonly IYnetOutbound? _outbound;
     private readonly PendingAlertSpool _spool;
     private readonly AgentHook _hook;
+    private readonly HookNotifier _notifier;
     private readonly List<string> _trace = new();
 
     private YnetMessage? _current;
     private PendingAlert? _currentAlert;
     private string? _faultReason;
+    private string? _pendingFault;
+    private string? _overflowSpoolError;
+    private long _overflowed;
 
     public YnetReceiverMachine(
         IYnetInbound inbound,
@@ -64,6 +68,7 @@ public sealed class YnetReceiverMachine : QActiveLite
         _inbound = inbound ?? throw new ArgumentNullException(nameof(inbound));
         _spool = spool ?? throw new ArgumentNullException(nameof(spool));
         _hook = hook ?? throw new ArgumentNullException(nameof(hook));
+        _notifier = new HookNotifier(_hook);
         _outbound = outbound;
         _inbound.Received += OnCarrierMessage;
     }
@@ -75,7 +80,22 @@ public sealed class YnetReceiverMachine : QActiveLite
     public long AlertsRaised { get; private set; }
 
     /// <summary>The last hook attempt, including a failure reason. Null before the first attempt.</summary>
-    public HookAttempt? LastHookAttempt { get; private set; }
+    public HookAttempt? LastHookAttempt => _notifier.Last;
+
+    /// <summary>Block until every queued announcement has been attempted. For tests and shutdown.</summary>
+    public bool WaitForNotifications(TimeSpan timeout) => _notifier.WaitForIdle(timeout);
+
+    /// <summary>Announcements dropped because the notifier saturated. The ALERTS are still pending.</summary>
+    public long NotificationsDropped => _notifier.Dropped;
+
+    /// <summary>Messages the carrier offered that the bounded mailbox refused. Never silent.</summary>
+    public long Overflowed => Interlocked.Read(ref _overflowed);
+
+    /// <summary>Set only if even the durable overflow record could not be written.</summary>
+    public string? OverflowSpoolError => _overflowSpoolError;
+
+    /// <summary>Why a durable spool write failed, when one did. Non-null means the plane was closed.</summary>
+    public string? SpoolError { get; private set; }
 
     /// <summary>Why the machine is degraded, when it is.</summary>
     public string? FaultReason => _faultReason;
@@ -98,8 +118,35 @@ public sealed class YnetReceiverMachine : QActiveLite
     {
         // The carrier thread only ENQUEUES. All state work happens on the machine's own thread,
         // so a burst of traffic cannot re-enter the machine and break run-to-completion.
-        if (Post(new QEvt(YnetSignal.MessageArrived, m)) == AppendOutcome.Closed)
-            Post(new QEvt(YnetSignal.Fault, "inbound mailbox at capacity"));
+        if (Post(new QEvt(YnetSignal.MessageArrived, m)) == AppendOutcome.Accepted) return;
+
+        // OVERFLOW (codex cycle 1, P1). The first version posted a Fault into the SAME bounded
+        // mailbox that had just refused a message — which is normally refused too, so the machine
+        // never degraded and the message vanished while the carrier believed it delivered. A full
+        // mailbox must therefore be reported on a path that needs no mailbox slot at all:
+        //   1. the spool, which is independent of the mailbox, so the loss is DURABLE;
+        //   2. a counter, so it is reportable;
+        //   3. an internal event, which cannot be refused, so the machine actually degrades.
+        Interlocked.Increment(ref _overflowed);
+        try
+        {
+            _spool.Raise(
+                $"OVERFLOW-{m.MessageId}", m.Origin,
+                $"inbound mailbox at capacity ({Capacity}); message {m.MessageId} was NOT processed");
+        }
+        catch (Exception ex)
+        {
+            _overflowSpoolError = ex.GetType().Name + ": " + ex.Message;
+        }
+
+        RaiseFault($"inbound mailbox at capacity ({Capacity})");
+    }
+
+    /// <summary>Signal a fault on a path that cannot be refused by a full public mailbox.</summary>
+    private void RaiseFault(string reason)
+    {
+        _pendingFault = reason;
+        PostInternal(new QEvt(YnetSignal.Fault, reason));
     }
 
     // ---- states -----------------------------------------------------------------------------
@@ -113,7 +160,7 @@ public sealed class YnetReceiverMachine : QActiveLite
             case QSignal.Entry:
                 Mark("Booting:entry");
                 _inbound.Open();
-                Post(new QEvt(YnetSignal.PlaneOpened));
+                PostInternal(new QEvt(YnetSignal.PlaneOpened));
                 return Handled();
             case QSignal.Exit:
                 Mark("Booting:exit");
@@ -175,9 +222,26 @@ public sealed class YnetReceiverMachine : QActiveLite
                 MessagesReceived++;
                 // Durable BEFORE anyone is told. This is the line that makes an absent agent
                 // survivable, and it is why the spool write is synchronous here.
-                _currentAlert = _spool.Raise(m.MessageId, m.Origin, m.Summary);
+                //
+                // A FAILED durable write is a fault, not a shrug (codex cycle 1, P1). The first
+                // version let the exception escape to DispatchGuarded, which published Faulted and
+                // left the plane open — so a full disk or a permission error discarded the message
+                // and the carrier went on delivering into the same hole. Losing the message is
+                // exactly what this class exists to prevent, so the plane is closed instead:
+                // refusing new traffic is recoverable, silently dropping it is not.
+                try
+                {
+                    _currentAlert = _spool.Raise(m.MessageId, m.Origin, m.Summary);
+                }
+                catch (Exception ex)
+                {
+                    SpoolError = ex.GetType().Name + ": " + ex.Message;
+                    RaiseFault($"durable spool write failed for {m.MessageId}: {SpoolError}");
+                    return Handled();
+                }
+
                 AlertsRaised++;
-                Post(new QEvt(YnetSignal.AlertRaised));
+                PostInternal(new QEvt(YnetSignal.AlertRaised));
                 return Handled();
             case QSignal.Exit:
                 Mark("Receiving:exit");
@@ -195,10 +259,14 @@ public sealed class YnetReceiverMachine : QActiveLite
         {
             case QSignal.Entry:
                 Mark("Alerting:entry");
-                // Announce only. A failure here is recorded and the alert stays pending, so the
-                // agent still finds it later: the notification is not the delivery.
-                LastHookAttempt = _hook.Notify(_currentAlert!);
-                Post(new QEvt(YnetSignal.Notified));
+                // Announce only, and NOT on this thread (codex cycle 1, P1). The hook has a five
+                // second bound, and the first version ran it inline on the single dispatch thread —
+                // so a hanging agent stalled receipt for five seconds per alert, let the bounded
+                // mailbox fill, and turned "an unavailable agent slows nothing down" into the
+                // opposite. The alert is already durable, so the announcement can be late.
+                var alert = _currentAlert!;
+                _notifier.Enqueue(alert);
+                PostInternal(new QEvt(YnetSignal.Notified));
                 return Handled();
             case QSignal.Exit:
                 Mark("Alerting:exit");
@@ -260,7 +328,11 @@ public sealed class YnetReceiverMachine : QActiveLite
 
     protected override void Dispose(bool disposing)
     {
-        if (disposing) _inbound.Received -= OnCarrierMessage;
+        if (disposing)
+        {
+            _inbound.Received -= OnCarrierMessage;
+            _notifier.Dispose();
+        }
         base.Dispose(disposing);
     }
 }
