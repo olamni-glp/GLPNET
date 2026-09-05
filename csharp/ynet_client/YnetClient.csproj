@@ -1,0 +1,32 @@
+<!--
+  ynet_client — the glpnet M6 client (mandatory fleet requirement, 2026-09-05).
+
+  M6: every lane AND every host must have its OWN QHSM/QMSM CODE-BASED YNET receiver client,
+  NEVER agent-based. It sends and receives independently of the agent, and on receipt it
+  asynchronously alerts the agent through a hook whose consumption time the agent chooses
+  ("/btw" semantics) — so an agent that is absent, asleep, compacting or mid-task can neither
+  block receipt nor lose a message.
+
+  SCOPE BOUNDARY: this library owns the RECEIVER and its durable alert spool. It does NOT own the
+  transport (csharp/ynet_transport), the mailbox contract (YngeniOS.Mailbox.Unified in L0), or the
+  QHsm core once @yngcor names the canonical one — see Qhsm/QEvt.cs.
+-->
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net11.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>Ynet.Client</RootNamespace>
+    <AssemblyName>ynet_client</AssemblyName>
+    <OutputType>Exe</OutputType>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <WarningsAsErrors>CS0649;CS0169</WarningsAsErrors>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="ynet_client.tests" />
+  </ItemGroup>
+
+</Project>
