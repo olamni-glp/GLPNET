@@ -1,0 +1,140 @@
+{
+  "schema_version": "1",
+  "set_id": "Q-GLPNETA18-20260904T0700Z",
+  "lane": "glpnet",
+  "repo": "glpnet",
+  "raised_at": "2026-09-04T07:00:00+00:00",
+  "context": "Raised by glpnet after receiving the 2026-09-04 engineer directive (QHSM/QMSM headless virtual terminals, yx-proxy daemon, L0 shared-capability mandate, per-lane exclusive eras with ACK) and after reading ariellas.yngcor's 06:46Z seam-map broadcast in full. This lane has ACCEPTED and CLAIMED S4 (carrier / data plane) on the ledger as ops glpnet:000034/35/36. Every question below originates in a measured tension between the directive and something already recorded or measured, not in a preference. Q-A is a release blocker; Q-B and Q-C block anyone starting the daemon work; Q-D is the reason two assigned eras may never arrive.",
+  "questions": [
+    {
+      "id": "Q-GLPNETA18-01",
+      "kind": "ruling",
+      "header": "GPL under L0",
+      "question": "The directive requires ALL cross-platform code as an L0 shared capability, and a hardened prototype 'adopted by all hosts confidently after it is released'. Measured on D:/yngenios/yngenios @ 67fe862: the repo LICENSE is MIT, but l0/ports.win32 and l0/ports.posix carry QP/C from Quantum Leaps under 'SPDX-License-Identifier: GPL-3.0-or-later OR LicenseRef-QL-commercial', with an explicit note that the GPL does not permit incorporation into proprietary code. Both blocks are state=admitted, self_contained=true in L0, origin root D:/BSTDEV/research/qhstate. The four C# QHsm.cs copies in L0 are stamped MIT while their own docstrings call themselves 'a faithful C# port of QP/C qep_hsm.c'. A grep for GPL-3.0 or Quantum Leaps across every md/json/toml in the repo returns zero hits outside the port trees, so this has never been recorded or waived. Release is the trigger and we are about to run nine-stage eras straight at it. I have NOT measured link/build inclusion and I am NOT asserting contamination. How should this be resolved before any era ships?",
+      "blocks": [
+        "release of the hardened prototype",
+        "the L0 shared-capability mandate",
+        "S1 sequencing (qhstate holds both the origin root and S1)",
+        "all three GA-hardening features"
+      ],
+      "escalate_after_hours": 4,
+      "multi_select": false,
+      "options": [
+        {
+          "label": "Obtain the commercial licence",
+          "recommended": true,
+          "means": "LicenseRef-QL-commercial is the dual-licence's other arm. If the estate already holds it, record it in the repo and this closes immediately. If not, obtain it before release.",
+          "cost": "Cost and lead time on a commercial licence, and it gates the era start. Evidence: measured: zero repo-wide record of GPL-3.0 or Quantum Leaps outside the port trees, so no waiver exists today."
+        },
+        {
+          "label": "Quarantine ports from L0",
+          "means": "If nothing links them into a distributed artefact, move both port blocks out of state=admitted so the L0 mandate cannot pull them into a shipped capability, and record why.",
+          "cost": "Requires someone to actually measure link/build inclusion, which I did not. If anything does link them the quarantine is a false green and the exposure survives. Evidence: measured: state=admitted, self_contained=true, languages=[c] on both blocks."
+        },
+        {
+          "label": "Relicense the estate GPL-3.0",
+          "means": "Accept the copyleft and stop stamping MIT on QP-derived files.",
+          "cost": "Changes the licence of an estate currently MIT across many repos and lanes, and is effectively irreversible. Evidence: repo LICENSE is MIT, Copyright (c) 2026 YngeniOS."
+        },
+        {
+          "label": "Proceed, resolve at release",
+          "means": "Eras open immediately; the licence question is carried as a recorded residual risk against the release gate.",
+          "cost": "The cross-platform layer is the disputed code, so every era on this route builds ON the unresolved item and the cost of a bad answer rises with each one. Evidence: directive names L0 cross-platform code as mandatory and release as the adoption trigger."
+        }
+      ]
+    },
+    {
+      "id": "Q-GLPNETA18-02",
+      "kind": "ruling",
+      "header": "Write pen",
+      "question": "The directive says to build the QHSM/QMSM daemon and the yx-proxy control CLI 'here', plus a verified prototype for yngenios-linux, and to add/score/promote three roadmap features in yngenios-windows, yngenios-linux and yngenios/yngenios. This lane is glpnet on ARIELLAS. Those repos are not this one, buildkit-roadmap is per-repo, and lane write authority is still unresolved on record (N11 / Q50). yngcor's own broadcast states the rule as 'I hold no pen over any lane but my own'. I have written nothing outside GLPNET. Who builds the daemon and yx-proxy?",
+      "blocks": [
+        "the daemon and yx-proxy build",
+        "the yngenios-linux prototype",
+        "adding/scoring/promoting the three GA-hardening features"
+      ],
+      "escalate_after_hours": 4,
+      "multi_select": false,
+      "options": [
+        {
+          "label": "glpnet builds S4 only",
+          "recommended": true,
+          "means": "This lane delivers the carrier/data plane it has claimed and measured. The owning lanes add, score and promote the three features in their own repos.",
+          "cost": "Needs the owning lanes identified and told, and the coop delivery in Q-D actually to work. Evidence: measured: buildkit-roadmap is per-repo; recorded rulings N11/Q50 leave cross-repo authority open."
+        },
+        {
+          "label": "Scoped L0 carrier grant",
+          "means": "glpnet may consolidate l0/ynet plus the four glp_link.* blocks into one L0 shared capability, and nothing else.",
+          "cost": "Opens a second writer on a repo another lane ships from; scope creep is the failure mode and it needs the boundary policed. Evidence: measured: the carrier is split across five L0 blocks with l0/ynet holding a single source file."
+        },
+        {
+          "label": "One-off daemon grant",
+          "means": "glpnet builds daemon plus yx-proxy end to end under a named grant with a named reviewer, on the shiras/Q53=b precedent.",
+          "cost": "This lane has no measured surface in that repo and would be the third re-assignment of work in this estate; also collides with GAVRI's assigned Windows era. Evidence: directive assigns the Windows era to yngenios-windows on host GAVRI."
+        }
+      ]
+    },
+    {
+      "id": "Q-GLPNETA18-03",
+      "kind": "ruling",
+      "header": "Three CLIs",
+      "question": "The directive introduces yx-proxy as a CONTROL CLI over the daemon (enable/disable/start/restart, plus configuration for ngrok and other proxy daemons). yngwin already ships src/yx_ynet/ as the peer/board CLI (yngcor's S5), and yngcor's S6 adds op signing with its own CLI surface. That is three CLIs with no boundary drawn, and the S5/S6 collision already cost yngcor half an era. Measured: yx-proxy and yx_proxy return zero hits repo-wide, so nothing exists yet and the boundary can still be set cheaply. Separately, ynet_transport.relay/holepunch/exit already ship CircuitRelayV2, IceDcutr, PunchOrchestrator, Rendezvous and ExitAbusePolicy, so ngrok should be one adapter behind yx-proxy rather than the mechanism. Who owns yx-proxy and where does its boundary sit?",
+      "blocks": [
+        "specifying yx-proxy",
+        "the daemon control surface",
+        "S5 and S6 scope"
+      ],
+      "escalate_after_hours": 8,
+      "multi_select": false,
+      "options": [
+        {
+          "label": "Extend yx_ynet",
+          "recommended": true,
+          "means": "One peer CLI, one identity model, one schema. yx-proxy becomes 'yx ynet proxy ...' rather than a fourth binary.",
+          "cost": "Enlarges yngwin's era and couples proxy control to board-CLI release cadence. Evidence: measured: nine lanes each wrote their own emitter, producing 4 schemas and 2 id spellings; a fourth CLI repeats that."
+        },
+        {
+          "label": "Separate CLI, own owner",
+          "means": "A distinct binary and a distinct owner, with a written boundary against yx_ynet and the signing CLI.",
+          "cost": "A fourth CLI on a host that already measured a four-schema divergence defect, and the boundary has to be enforced by discipline. Evidence: measured: zero hits for yx-proxy repo-wide, so the boundary would be new and untested."
+        },
+        {
+          "label": "glpnet owns yx-proxy",
+          "means": "The control CLI ships with S4 because it configures the transport the carrier owns.",
+          "cost": "Conflates control plane with data plane, which is precisely the split this route depends on, and enlarges an already-claimed seam. Evidence: recorded: control plane on the CRDT, data plane never, is S4's one irreversible decision."
+        }
+      ]
+    },
+    {
+      "id": "Q-GLPNETA18-04",
+      "kind": "ruling",
+      "header": "Cross-host",
+      "question": "The directive assigns the Windows GA-hardening era to yngenios-windows on host GAVRI and the L0 plus yngenios-linux work to shiras, and requires ACK on receipt and on compliance. Measured: the YNET board is host-local at %LOCALAPPDATA%/yngenios/ynet/mbox with 16 mailboxes, all ARIELLAS. GAVRI and shiras cannot see this board or my ops. lejepa has no mailbox at all. This estate has a recorded defect where a coop mirror published to a host-local dead-drop and 47 of 48 exports were peer-invisible, reporting success throughout. How do the two off-host eras get delivered and acknowledged?",
+      "blocks": [
+        "the GAVRI Windows era",
+        "the shiras L0 and Linux eras",
+        "the ACK-on-receipt and ACK-on-compliance requirement"
+      ],
+      "escalate_after_hours": 4,
+      "multi_select": false,
+      "options": [
+        {
+          "label": "You carry it directly",
+          "recommended": true,
+          "means": "You paste the era requirements into the GAVRI and shiras sessions yourself and their lanes ACK in their own repos.",
+          "cost": "Manual, and it is the step that gets skipped under time pressure. Evidence: measured: the board is host-local; those hosts cannot read this op."
+        },
+        {
+          "label": "Coop pen publishes and confirms",
+          "means": "The requirements go onto the coop share and the publishing lane verifies the peer actually read them before anyone treats the eras as assigned.",
+          "cost": "Depends on the coop leg working, which is the exact thing that silently failed for 47 of 48 exports. Requires a scanned-paths and cursor receipt, not a success message. Evidence: recorded: host-local dead-drop defect."
+        },
+        {
+          "label": "Publish without ACK",
+          "means": "Publish once and consider the eras assigned.",
+          "cost": "This is the false-green shape this estate has already paid for once; an undelivered era looks identical to an ignored one. I would refuse to report it as delivered. Evidence: recorded: 47 of 48 exports peer-invisible while reporting success."
+        }
+      ]
+    }
+  ]
+}

@@ -136,6 +136,12 @@
       "option": "adopt-verbatim",
       "date": "2026-09-02",
       "rationale": "Engineer ruling 2026-09-02: a second author on the same fix is the measured cause of the existing roadmap_open_table.py fork. glpnet waits for shiras to publish to D:/coop/_standards/ and adopts byte-for-byte, then re-applies its own ahead-of-fleet cd5e76ea epic fix on top."
+    },
+    "superseded_by": {
+      "set_id": "Q-GLPNETA17-20260902T1540Z",
+      "qid": "Q-GLPNETA17-04",
+      "date": "2026-09-02",
+      "reason": "PARTIAL supersession, ariellas-glpnet only, line-buffered output ONLY. bk_report_v1.py all reached 1372s CPU over 85+ minutes on ARIELLAS having written 0 bytes, so the mandated SITREP was unobtainable and a slow takt-lake scan was indistinguishable from a wedged process. The single-author rule otherwise STANDS and shiras remains the publisher. Retrospective effect (BK-STD-3 rule 5): actions already taken under Q-GLPNETS15-03 STAND."
     }
   },
   {

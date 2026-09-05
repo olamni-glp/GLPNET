@@ -37,6 +37,7 @@ public sealed class YnetTransportCapability : IYnetTransport, IDisposable
     private readonly INodeEndpointResolver _resolver;
     private readonly Dht.DhtCapability? _dht;
     private readonly Relay.RelayCapability? _relay;
+    private readonly INodeAddressResolver? _addresses;
     private readonly ConcurrentDictionary<Guid, (YnetSession Session, RoutingSelection Selection)> _sessions = new();
     private readonly BlockingCollection<LinkHandle> _acceptedLinks = new(new ConcurrentQueue<LinkHandle>());
     private volatile NodeMode _mode = NodeMode.Full;
@@ -45,16 +46,21 @@ public sealed class YnetTransportCapability : IYnetTransport, IDisposable
     /// absent, the node exposes no DHT and the discovery operations refuse honestly.</param>
     /// <param name="relay">The relay slice (US4): enforces the 056 admission decision and forwards
     /// ciphertext-only. When absent, the node offers no relay mechanism and refuses honestly.</param>
+    /// <param name="addresses">the id→address slice (feature 102). When absent, <see cref="Resolve"/>
+    /// refuses <see cref="RefusalReason.FurtherResolverRequired"/> — a node that cannot answer says
+    /// so; it does not throw and it does not fabricate.</param>
     public YnetTransportCapability(
         NodeIdentity self,
         INodeEndpointResolver resolver,
         Dht.DhtCapability? dht = null,
-        Relay.RelayCapability? relay = null)
+        Relay.RelayCapability? relay = null,
+        INodeAddressResolver? addresses = null)
     {
         _self = self;
         _resolver = resolver;
         _dht = dht;
         _relay = relay;
+        _addresses = addresses;
     }
 
     /// <summary>This node's relay slice (composition-root wiring for the transit side of US4).</summary>
@@ -128,6 +134,25 @@ public sealed class YnetTransportCapability : IYnetTransport, IDisposable
     /// <summary>Block up to <paramref name="timeout"/> for the next accepted inbound link.</summary>
     public bool TryAcceptLink(TimeSpan timeout, out LinkHandle link)
         => _acceptedLinks.TryTake(out link, timeout);
+
+    // --- resolution (feature 102) ---
+
+    /// <summary>
+    /// Map an address-independent node id to an address WITHOUT dialing (FR-102-5).
+    ///
+    /// <para>🔴 Note what this does NOT do: it does not open a channel, and <see cref="Connect"/>
+    /// does not call it. Resolution and dialing stay separate because a caller needs to publish,
+    /// cache, and refuse on an address it never dials — conflating them is the defect this era
+    /// exists to remove.</para>
+    ///
+    /// <para>An unconfigured node refuses <see cref="RefusalReason.FurtherResolverRequired"/> rather
+    /// than throwing, unlike the DHT/relay slices: here a refusal IS the contract (FR-102-6), so
+    /// there is nothing dishonest about answering.</para>
+    /// </summary>
+    public Result<NodeAddress> Resolve(NodeId id)
+        => _addresses is { } resolver
+            ? resolver.Resolve(id)
+            : Result<NodeAddress>.Refuse(RefusalReason.FurtherResolverRequired);
 
     // --- discovery (US3) — REAL over the embedded S-Kademlia node (T025) ---
 
