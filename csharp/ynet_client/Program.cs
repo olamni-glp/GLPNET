@@ -11,6 +11,12 @@
 // M6-d asks for the main part to be a kernel-managed native YNGENIOS process. This executable is
 // the receiver in the form that runs TODAY on a host whose kernel does not yet manage it; the
 // kernel-managed hosting is the next step and is stated as not-yet-done rather than implied.
+//
+// 2026-09-05: "run" now binds a REAL cross-lane plane (CoopFileInbound) when YNET_CLIENT_COOP and
+// YNET_CLIENT_LANE are set. Before this it bound LoopbackInbound unconditionally and could only
+// hear itself — a gap this lane disclosed in its own source rather than hid, and the carrier
+// adapter ruled to this lane by Q-glpnetshiras-50. With no coop root configured it still falls
+// back to loopback, and says so on stdout rather than looking reachable.
 
 using Ynet.Client;
 
@@ -23,13 +29,38 @@ switch (verb)
     case "run":
     {
         var hook = new AgentHook(Environment.GetEnvironmentVariable("YNET_CLIENT_HOOK"));
-        var plane = new LoopbackInbound();
+
+        // Plane selection. YNET_CLIENT_COOP names a shared coop root; with it, this lane receives
+        // real cross-lane traffic. WITHOUT it we fall back to the in-memory plane and SAY SO — a
+        // receiver that can only hear itself must never be mistaken for one that is reachable.
+        var coopRoot = Environment.GetEnvironmentVariable("YNET_CLIENT_COOP");
+        var laneDir = Environment.GetEnvironmentVariable("YNET_CLIENT_LANE");
+        IYnetInbound plane;
+        CoopFileInbound? coop = null;
+
+        if (!string.IsNullOrWhiteSpace(coopRoot) && !string.IsNullOrWhiteSpace(laneDir))
+        {
+            coop = new CoopFileInbound(coopRoot, laneDir);
+            coop.StrayObserved += p => Console.Error.WriteLine($"ynet_client: STRAY (not a .frame, not delivered): {p}");
+            coop.PollFailed += ex => Console.Error.WriteLine($"ynet_client: poll failed: {ex.GetType().Name}: {ex.Message}");
+            plane = coop;
+        }
+        else
+        {
+            plane = new LoopbackInbound();
+        }
+
         using var machine = new YnetReceiverMachine(plane, spool, hook);
 
         machine.Faulted += ex => Console.Error.WriteLine($"machine fault: {ex.GetType().Name}: {ex.Message}");
         machine.Launch("ynet-client-receiver");
 
         Console.WriteLine($"ynet_client: receiver running   plane={plane.PlaneName}   spool={spool.Directory}");
+        if (coop is not null)
+            Console.WriteLine($"ynet_client: inbox={coop.InboxDirectory}");
+        else
+            Console.WriteLine("ynet_client: NO CROSS-LANE PLANE — set YNET_CLIENT_COOP and YNET_CLIENT_LANE. " +
+                              "This receiver can only hear messages this process makes for itself.");
         Console.WriteLine($"ynet_client: hook={(hook.IsConfigured ? "configured" : "NOT configured (durable-only)")}");
         Console.WriteLine($"ynet_client: {spool.Count} alert(s) already pending from earlier runs");
         Console.WriteLine("ynet_client: the agent is not required; press Ctrl+C to stop.");
@@ -40,7 +71,9 @@ switch (verb)
 
         machine.Post(new Ynet.Client.Machine.QEvt(YnetSignal.Stop));
         Thread.Sleep(200);
-        Console.WriteLine($"ynet_client: stopped   received={machine.MessagesReceived}   pending={spool.Count}");
+        Console.WriteLine($"ynet_client: stopped   received={machine.MessagesReceived}   pending={spool.Count}" +
+                          (coop is not null ? $"   strays={coop.StrayCount}" : string.Empty));
+        coop?.Dispose();
         return 0;
     }
 

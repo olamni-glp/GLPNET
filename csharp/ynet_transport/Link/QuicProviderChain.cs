@@ -26,11 +26,19 @@ public sealed class QuicProviderChain
     private readonly IReadOnlyList<IQuicProvider> _ordered;
 
     /// <summary>
-    /// The fleet default. iroh is absent until its stack lands (Q-glpnetshiras-38 keeps it at L1); it
-    /// registers itself at tier 0 and the chain order needs no edit when it does.
+    /// The fleet default. iroh is now registered at tier 0 as a SIDECAR adapter (engineer ruling
+    /// <c>Q-olg15-03</c>: iroh is the primary provider; msquic and ngtcp2 are RETAINED beneath it as
+    /// redundant fallbacks and are not removed).
     /// </summary>
+    /// <remarks>
+    /// Registering iroh does not assert that iroh works here. <see cref="IrohSidecarProvider.Probe"/>
+    /// measures whether the sidecar is actually reachable and reports unavailable — with a reason
+    /// naming what to install — when it is not. On a host with no sidecar the chain therefore selects
+    /// msquic exactly as before, and <c>YnetListenerService</c> REPORTS the tier-0 skip rather than
+    /// falling back silently.
+    /// </remarks>
     public static QuicProviderChain Default { get; } =
-        new(new IQuicProvider[] { MsQuicProvider.Instance, Ngtcp2Provider.Instance });
+        new(new IQuicProvider[] { IrohSidecarProvider.Instance, MsQuicProvider.Instance, Ngtcp2Provider.Instance });
 
     public QuicProviderChain(IEnumerable<IQuicProvider> providers)
         => _ordered = providers.OrderBy(p => (int)p.Tier).ToList();

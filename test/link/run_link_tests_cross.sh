@@ -25,7 +25,10 @@ ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 GLP="$(cygpath -m "$ROOT" 2>/dev/null || echo "$ROOT")"
 DART="${DART:-C:/Users/gavri/dart-sdk/bin/dart.exe}"
 RT="$GLP/glp_runtime"
-CSREPL="$GLP/out/csharp/glp_repl/bin/Debug/net10.0/glp_repl.exe"
+# TFM comes from the csproj, never a literal (test/lib/tfm.sh explains why this was
+# pinned to net10.0 in seven places and what that cost).
+. "$(dirname "${BASH_SOURCE[0]}")/../lib/tfm.sh"
+CSREPL="$(glp_repl_exe "$GLP")" || { echo "run_link_tests_cross.sh: cannot resolve the C# REPL target framework from out/csharp/glp_repl/glp_repl.csproj - refusing rather than falling back to a stale binary" >&2; exit 2; }
 RESULTS="$ROOT/test/link/results/cross"
 LINKDIR="$GLP/programs/tests/link"
 

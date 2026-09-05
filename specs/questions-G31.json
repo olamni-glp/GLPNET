@@ -1,0 +1,305 @@
+[
+ {
+  "qid": "Q-GLPNETG31-01",
+  "header": "Next era",
+  "block": "Era 102 is shipped, released and closed and the era slot is empty, so this lane builds nothing until the next era is chosen - and today's directive, the WSJF ranking and the standing P1 each point at a different feature.",
+  "origin": "contradiction",
+  "severity": "critical",
+  "background": [
+   "Measured state: git is clean, nothing unpushed, tag v2026.09.05.3 released, `buildkit-marathon resume` reports no active run for feature 102. The pipeline is idle.",
+   "Today's directive names M6 (the per-lane/per-host C# QHSM/QMSM code-based YNET receiver client) as a FLEET FAILURE CRITERION for today, and separately requires an effective fleetwide leader today.",
+   "But the roadmap's own arithmetic disagrees about order. Newly scored: ynet-vote-record-schema-and-single-emitter WSJF 9.00 / RICE 24000 (now rank 1), ynet-federation-config-and-firewall-correctness WSJF 8.00 / RICE 10500, m6-qhsm-qmsm-ynet-receiver-client WSJF 4.83 / RICE 21000. M6 ranks lower ONLY because WSJF divides by job size and M6 is genuinely large — that is WSJF working, not WSJF failing.",
+   "Meanwhile declared-unconsumed-guard sits at WSJF 8.00 / RICE 18000 and is the /bk-codify'd form of the L0 feature-020 'zero consumers' item the directive itself calls 'URGENT CRITICAL IMPERATIVE MANDATORY ... P1 ERA for the next wave with top priority'.",
+   "The quota is >=3 maxi-size era-equivalents per 24 hours; below 3 costs 25-50% of the day's points. It is now 14:00Z. Three maxi eras in the remaining window is not credible for one lane; two is a stretch.",
+   "The dependency structure is real, not rhetorical: ynet-vote-record-schema is a SMALL feature that unblocks the fleetwide-leader must-have, and M6 depends on the net8/net11 collision in Q-GLPNETG31-03 being resolved by another lane before its client can even link."
+  ],
+  "impact_if_unanswered": "The lane stays idle with an empty era slot while a failure criterion runs. Choosing wrong costs the whole remaining window: M6 is large enough that starting it and stopping delivers nothing, and the small unblockers deliver nothing to the leader mandate if started after the day ends.",
+  "options": [
+   {
+    "key": "unblockers-then-m6",
+    "label": "Two small unblocker eras first (vote schema, then federation config), then open M6",
+    "consequence": "Delivers two complete eras today at WSJF 9.00 and 8.00, both of which UNBLOCK the fleetwide-leader must-have that is itself a failure criterion, and both of which are small enough to finish. M6 opens third with its blocker (Q-31-03) already escalated and possibly answered. COST: M6 does not ship today, so the M6 failure criterion is met with 'started and specified', not 'delivered'.",
+    "size": "midi",
+    "reversibility": "reversible"
+   },
+   {
+    "key": "m6-only",
+    "label": "Open M6 as the single era and drive it to completion",
+    "consequence": "Attacks the named failure criterion head-on. COST: M6 is blocked at the link step by another lane's net8 kernel (Q-31-03) and I cannot fix that here, so a full day could end with a specified, planned, partly-implemented era and no ship. It also leaves the leader mandate unaddressed, and that is a SECOND failure criterion. Highest risk of ending the day with two criteria unmet instead of one.",
+    "size": "maxi",
+    "reversibility": "reversible"
+   },
+   {
+    "key": "vote-schema-then-m6",
+    "label": "One small unblocker era (vote schema only), then M6",
+    "consequence": "Ships the rank-1 feature that unblocks the leader mandate, then spends the rest of the window on M6. COST: leaves the federation-config defects live, including the one where board_root points at a dead scratchpad so an admitted peer would fold into a throwaway directory AND REPORT SUCCESS — a green status for work that reaches nobody.",
+    "size": "maxi",
+    "reversibility": "reversible"
+   },
+   {
+    "key": "p1-first",
+    "label": "Honour the standing P1: declared-unconsumed-guard first",
+    "consequence": "Respects the directive's own 'top priority for selection' wording for the L0 zero-consumers item, at WSJF 8.00 / RICE 18000. COST: the L0 root cause was measured to be MISSING BUILD INPUTS in a tree this lane does not own (l0/ holds 383 capability-block dirs and 1 csproj), so the highest-value part of this feature is not GLPNET's to fix, and neither of today's two failure criteria is advanced.",
+    "size": "maxi",
+    "reversibility": "reversible"
+   }
+  ],
+  "recommendation": {
+   "option": "unblockers-then-m6",
+   "because": "It is the only option that advances BOTH of today's failure criteria rather than trading one for the other, and it is the only one whose first deliverable is certain to complete. The vote-schema era is small, entirely within this lane's competence, and directly unblocks the leader mandate that is otherwise unreachable — zero of nine vote records in the fleet oplog are currently conformant, so no term can seat a leader today until that is fixed. The federation-config era removes a defect whose failure mode is a FALSE GREEN, which is worse than an outage because other hosts quote it. M6 then opens with its external blocker already escalated instead of discovered mid-era. The honest cost, stated plainly: M6 will not SHIP today under this option, and if the engineer's bar is 'M6 delivered today' then m6-only is the only option that even attempts it — but it attempts it across a blocker this lane cannot clear."
+  },
+  "decision": {
+   "option": "unblockers-then-m6",
+   "date": "2026-09-05",
+   "rationale": "Engineer took the recommendation. Two small unblocker eras first - ynet-vote-record-schema (WSJF 9.00) then ynet-federation-config (8.00) - then open M6. This is the only ordering that advances BOTH of today's failure criteria instead of trading one for the other, and the only one whose first deliverable is certain to complete. Accepted cost, stated in the question and not softened: M6 will not SHIP today; it ends specified and started."
+  },
+  "decided": null
+ },
+ {
+  "qid": "Q-GLPNETG31-02",
+  "header": "Firewall",
+  "block": "Ruling G30-04's authorised firewall one-liner would have created a rule that never fires on this host, while the rules that do exist were never authorised and are far broader than what was approved.",
+  "origin": "measurement",
+  "severity": "high",
+  "background": [
+   "The G30-04 one-liner specifies `-Profile Private`. Measured on GAVRIELLA 2026-09-05T13:08Z: `Get-NetConnectionProfile` returns NetworkCategory=Public for EVERY adapter, including the live LAN path Wi-Fi / 192.168.0.108/24. A Private-scoped rule here binds to no live profile and silently never fires.",
+   "The authorised rule `ynet-federation-quic-udp-47890` DOES NOT EXIST on this host. What exists is TWO Windows 'Query User' rules — auto-generated when someone clicked Allow on a UAC firewall prompt for ynet_federation.exe.",
+   "Those rules are simultaneously wrong in both directions: not the rule that was approved (wrong name, no port restriction), and far broader than anything approved — Protocol TCP *and* UDP, LocalPort=Any, RemoteAddress=Any, on the Public profile.",
+   "Net effect today: inbound UDP for ynet_federation.exe IS open on the LAN, so SC-001's firewall leg is functionally satisfied — but through an accident that also opens every TCP port from every address to that binary.",
+   "I have changed nothing. Creating or deleting a firewall rule needs elevation, and the authorised text is now known to be defective, so running it verbatim is not the fix.",
+   "This matters beyond one host: if other hosts ran the authorised one-liner and their LAN is also Public, they have a rule that never fires and a green tick that means nothing."
+  ],
+  "impact_if_unanswered": "Either the host keeps an over-broad any-port/any-peer inbound allow indefinitely, or a lane runs the authorised command, sees it succeed, and records SC-001 as satisfied by a rule that cannot fire. Both are false-green states, and the second is the one that spreads.",
+  "options": [
+   {
+    "key": "narrow-and-replace",
+    "label": "Amend G30-04 to `-Profile Any`, create the narrow rule, delete the two Query-User rules",
+    "consequence": "Ends with exactly one rule: UDP, LocalPort 47890, RemoteAddress 192.168.0.0/24, Profile Any so it fires whatever category the LAN is classified as. Removes the any-port/any-peer exposure. COST: needs one elevated command; a brief window where the Query-User rules are gone before the narrow one is created could interrupt an in-flight dial.",
+    "size": "mini",
+    "reversibility": "reversible"
+   },
+   {
+    "key": "narrow-keep-broad",
+    "label": "Create the narrow rule now; leave the Query-User rules for a later sweep",
+    "consequence": "Zero risk of interrupting anything, and the approved rule finally exists. COST: the any-port/any-peer allow stays live and, being broader, is the rule that actually governs — so the narrow rule changes nothing in practice and the tick it earns is cosmetic.",
+    "size": "mini",
+    "reversibility": "reversible"
+   },
+   {
+    "key": "leave-and-record",
+    "label": "Change nothing; record that SC-001's firewall leg is met by an unauthorised over-broad rule",
+    "consequence": "Fully honest and costs no elevation. COST: an any-port/any-peer inbound allow persists on a host that federates with three others, and the fleet's record says 'firewall done' with a footnote nobody reads.",
+    "size": "nano",
+    "reversibility": "reversible"
+   }
+  ],
+  "recommendation": {
+   "option": "narrow-and-replace",
+   "because": "The measurement says the approved remediation was wrong for this host, so the choice is not 'run it or not' but 'what should it have said'. `-Profile Any` is the minimal correction that makes the rule fire regardless of how Windows classifies the LAN — and classification changes on its own, so pinning to the currently-observed Public would just re-create the same trap later. Deleting the Query-User rules is the part that actually improves posture: the narrow rule is pointless while a broader one for the same binary sits beside it. Order matters — create the narrow rule FIRST, verify a dial, then delete, which removes the interruption risk in the cost column. This also needs re-broadcasting, because any host that ran the original one-liner has a rule that cannot fire."
+  },
+  "decision": {
+   "option": "narrow-and-replace",
+   "date": "2026-09-05",
+   "rationale": "Engineer took the recommendation. G30-04 is AMENDED: -Profile Any, not Private, because every adapter on this host is classified Public and classification changes on its own. Create the narrow rule (UDP/47890/192.168.0.0/24) FIRST, verify a dial, then delete the two over-broad Query-User rules. Needs elevation. Must be re-broadcast: any host that ran the original one-liner holds a rule that cannot fire."
+  },
+  "decided": null
+ },
+ {
+  "qid": "Q-GLPNETG31-03",
+  "header": "net8 vs 11",
+  "block": "The mandatory M6 client cannot be built as specified, because the L0 kernel it must link targets net8.0 while the fleet mandate is net11-only and a net11 assembly cannot reference a net8 one.",
+  "origin": "contradiction",
+  "severity": "critical",
+  "background": [
+   "Measured 2026-09-05T13:10Z: all NINE YngeniOS.* projects target net8.0 with LangVersion 12, set centrally at qhstate-Yngenios/Csharp/yngenios/Directory.Build.props line 4.",
+   "The standing fleet mandate of 2026-09-01 — broadcast independently by three hosts (shiras 10:52Z, gavriella-mstack 10:45Z, gavriella 11:00Z) with ACK-on-receipt AND ACK-on-compliance mandatory — is net11.0 / C# 15 preview only, with net8/9/10 declared OBSOLETE.",
+   "M6 requires the client to be built ON the kernel mailbox, not to reimplement it. YngeniOS.Kernel/Mailbox/InMailbox.cs is real and good: bounded FIFO, margin policy, sender-side back-pressure, and its own doc-comment carries the invariant that all stimulus lands in one inbox.",
+   "So the mandate and the must-have collide: obey net11 and you cannot link the kernel; link the kernel and you violate a mandate the fleet ACKed four days ago.",
+   "Second measured blocker in the same tree: YngeniOS.Wrappers.Glpnet contains exactly one source file, an empty PhaseCPlaceholder.cs whose doc-comment says the work is 'US5 Phase C, T054-T060'. The GLPNET wrapper was scaffolded and never written.",
+   "I have not modified anything in qhstate-Yngenios. It is another lane's repo and CLAUDE.md forbids sweeping in another session's work. This has apparently not been reported before — I can find no broadcast naming it, which is itself notable given it has blocked since 2026-09-01."
+  ],
+  "impact_if_unanswered": "M6 cannot start. Every lane that tries will hit the same wall independently and may quietly resolve it four different ways — a net8 client here, a reimplemented mailbox there — which is exactly the fragmentation the L0-shared mandate exists to prevent.",
+  "options": [
+   {
+    "key": "migrate-l0-first",
+    "label": "Direct the YngeniOS owner to migrate to net11 as a blocking prerequisite for M6 fleet-wide",
+    "consequence": "One line in one shared file unblocks every lane's M6 at once and keeps both the net11 mandate and the do-not-rebuild rule intact. COST: M6 across the whole fleet waits on one other lane's turnaround, and net8->net11 may surface real breaks behind that one line (nine projects, TreatWarningsAsErrors=true, AnalysisMode=Recommended, so any new analyser diagnostic becomes a build failure).",
+    "size": "mini",
+    "reversibility": "reversible"
+   },
+   {
+    "key": "wrapper-exception",
+    "label": "Grant YngeniOS a dated wrapper exception; M6 clients build at net8 until it migrates",
+    "consequence": "M6 starts today with no cross-lane dependency, using the exception mechanism the net11 mandate already provides for unavailable components. COST: it ships new code onto an obsolete framework, and dated exceptions outlive their dates. The fleet would be writing its newest mandatory capability against the version it declared obsolete.",
+    "size": "maxi",
+    "reversibility": "reversible"
+   },
+   {
+    "key": "multi-target",
+    "label": "Multi-target the kernel (net8.0;net11.0) so both consumers link",
+    "consequence": "Nobody is blocked and nothing is broken; existing net8 consumers keep working while M6 links net11. COST: two build graphs, two analyser surfaces, and a standing invitation to leave the net8 leg forever — it converts a deadline into an option. Also still an edit to another lane's shared file.",
+    "size": "mini",
+    "reversibility": "reversible"
+   }
+  ],
+  "recommendation": {
+   "option": "migrate-l0-first",
+   "because": "The collision is one line, in one shared file, on the critical path of a declared failure criterion — the cheapest possible fix at the highest possible leverage, and it unblocks every lane simultaneously rather than each lane inventing a private workaround. The wrapper exception is the option that looks fastest and ages worst: writing today's most important new capability against the framework the fleet declared obsolete four days ago is a decision that will have to be undone by hand, in nine projects, later. Multi-targeting is the honest second choice if the owner reports real breakage behind that line — it is strictly better than the exception because it keeps net11 as the forward path — but it should be a fallback with a date, not the opening move. Whichever is chosen, it needs an owner named today: I measured the blocker but I must not edit that repo."
+  },
+  "decision": {
+   "option": "migrate-l0-first",
+   "date": "2026-09-05",
+   "rationale": "Engineer took the recommendation. The YngeniOS owner migrates Csharp/yngenios/Directory.Build.props from net8.0 to net11.0 as a BLOCKING prerequisite for M6 fleet-wide. One line, one shared file, unblocks every lane at once; keeps both the net11 mandate and the do-not-rebuild-the-substrate rule intact. A dated wrapper exception was rejected as the option that looks fastest and ages worst."
+  },
+  "decided": null
+ },
+ {
+  "qid": "Q-GLPNETG31-04",
+  "header": "Leader",
+  "block": "Maintaining an effective fleetwide leader today is a declared must-have, but zero of the nine vote records in the fleet oplog are conformant, and the three defensible ways to count them give three different winners.",
+  "origin": "contradiction",
+  "severity": "critical",
+  "background": [
+   "Ruling G30-02 voided term 1 and set the bar: votes must carry host and lane AND satisfy actor == voter before any term counts.",
+   "Term 2 shipped the schema half and not the identity half. Measured across all 16 oplog files: three votes for 2af0d277 (shiras.oracle) from three distinct hosts, all carrying host, lane and one roster_epoch — and actor != voter in ALL THREE.",
+   "Keyed on host, that is 3 of 4 and a leader is seated. Keyed on voter it is 2 of 4. Keyed on actor it is a 1-1 TIE, because two of the three actors have no hello record anywhere and there is a rival self-vote from 1994d86e (shiras.yngenios-app) at 18:38:32Z that I missed in my first pass.",
+   "Term 2 also spans TWO roster_epochs, so the electorate is not fixed even within the term.",
+   "I built an audit (scripts/ynet_vote_audit.py, positive-control proven, published to <COOP_ROOT>/_standards/) that checks C1-C7 mechanically. It exits 1: nine vote records, zero conformant.",
+   "The closest to valid is gavriella.ynglin at 09:52:59Z, which fails on actor==voter alone — one field, on this host. GLPNET contains no vote emitter (grep for roster_epoch over this repo's *.cs and *.py returns nothing), so I cannot fix the emitter here, and I will not hand-write an oplog record to work around it because that is precisely the three-emitters defect."
+  ],
+  "impact_if_unanswered": "Either the day ends with no leader and the must-have unmet, or a lane folds on the one key that happens to seat somebody and the fleet acquires a leader whose mandate collapses the moment another lane folds differently — which is how term 1 ended.",
+  "options": [
+   {
+    "key": "fix-then-elect",
+    "label": "Fix the emitter to C1-C7, then run a clean term 3 today",
+    "consequence": "The three electorate keys agree by construction, and the resulting leader is unarguable. Small work: the nearest-valid record fails on one field. COST: needs the emitter's owner to act today, and the leader arrives hours later than a fold would produce one.",
+    "size": "mini",
+    "reversibility": "reversible"
+   },
+   {
+    "key": "seat-provisionally",
+    "label": "Seat 2af0d277 (shiras.oracle) provisionally on the host-keyed fold, ratify in term 3",
+    "consequence": "A leader exists today and coordination can start immediately; shiras.oracle is the plausible candidate on any reading that seats anyone. COST: it ratifies the exact defect G30-02 voided term 1 over, and it picks the ONE key of three that produces a quorum - choosing the answer and then choosing the method. A rival candidate's self-vote is undeclared. ONE-WAY - it forecloses: term 2 can no longer be voided without unwinding whatever the seated leader has already allocated, ratified or ordered; the host key becomes the fleet's de facto electorate by precedent, so actor==voter can no longer be required without disenfranchising the seated leader's own supporters; and the rival candidate 1994d86e loses any standing in term 2 without ever having been asked to withdraw.",
+    "size": "nano",
+    "reversibility": "one-way"
+   },
+   {
+    "key": "declare-no-leader",
+    "label": "Declare NO_LEADER for today, name the blocker, coordinate peer-to-peer",
+    "consequence": "Fully honest and matches the standing holds. Lanes keep coordinating over COOP as they have all week. COST: a declared must-have is openly unmet, with the penalty that carries.",
+    "size": "nano",
+    "reversibility": "reversible"
+   }
+  ],
+  "recommendation": {
+   "option": "fix-then-elect",
+   "because": "It is the only option that produces a leader whose election survives being re-counted, and the work is genuinely small — one field in one emitter, with the audit already written and published so conformance is checkable rather than argued. Seating provisionally is the option I want to warn against most clearly: choosing the host key because it is the key that yields a quorum is picking the answer first, and term 1 was voided for less. If the emitter's owner cannot act today, declare-no-leader is the honest fallback and is protected by the disclosure bound — a disclosed gap is scored, a silent false leader is not. What I will not do under any option is hand-write a conformant-looking record from this lane to make the count work; that would make me the fourth emitter."
+  },
+  "decision": {
+   "option": "fix-then-elect",
+   "date": "2026-09-05",
+   "rationale": "Engineer took the recommendation and DECLINED to seat a leader on non-conformant records. Fix the emitter to C1-C7, then run a clean term 3. A provisional seating was rejected as one-way and as choosing the answer before the method - the same defect that voided term 1. This lane will NOT hand-write an oplog record to make a count work.",
+   "superseded_by": "Q-GLPNETG31-06",
+   "withdrawn_premise": "PREMISE WITHDRAWN 2026-09-05T15:35Z. This question asserted that actor != voter violated G30-02. It does not: the voter signature covers VOTER_SIGNED_FIELDS, not the outer envelope, and sha256(voter_spki)[:32] == voter makes the voter field unforgeable. gavriella.ospark proved this at 08:49Z, four hours BEFORE the P0 that framed this question. Reproduced independently here at 15:20Z: all five delegations verify and are key-bound. The ruling fix-then-elect was therefore taken on a false measurement and is superseded by Q-GLPNETG31-06."
+  },
+  "decided": null
+ },
+ {
+  "qid": "Q-GLPNETG31-05",
+  "header": "48h scope",
+  "block": "Directive items [01] YStore, [02] YQuery/PostgreSQL-18 and [03] YQuery/DuckLake carry a 48-hour deadline and are declared automatic-fleet-failure items, but no lane has claimed any of them and GLPNET's stake in them is small and contested.",
+  "origin": "assumption-weakness",
+  "severity": "high",
+  "background": [
+   "The directive roots [01] in the OSPARK lane's MinIO implementation and [02] in the OSPARK and OPGAN PostgreSQL 18 implementations. Neither repo is GLPNET's.",
+   "GLPNET does own one genuine slice: this repo holds the canonical PGLite bridge (prereq-patterns/pglite/pglite_bridge.mjs over .pgdb/), so the 'PGLite interface signature served over a YNET kernel mailbox against a named PostgreSQL database' in [02] is squarely ours to define. The PostgreSQL cluster itself is not.",
+   "I have carried all three into FLEET-T24 v3.0 as rows 23/24/25 with every named drive, capacity, host, interval and licence preserved, and broadcast a proposed ownership split (T2) derived from where the code lives — explicitly as a proposal, not an allocation, since I hold no authority to allocate.",
+   "They are a dependency chain, not a list: [23] provides storage and [24] provides the catalog that [25] needs. Building [25] first produces a DuckLake on PGLite, which is the thing being migrated away from.",
+   "As of 14:00Z no lane has claimed any of the three in channel. The 48-hour window is already a quarter gone.",
+   "This lane's remaining capacity today is already contested by Q-31-01."
+  ],
+  "impact_if_unanswered": "Three declared automatic-failure items sit unowned while every lane assumes another lane has them. That is the failure mode the seven-drafts incident already demonstrated, running in reverse: instead of everyone building it, nobody does.",
+  "options": [
+   {
+    "key": "seam-only",
+    "label": "GLPNET takes ONLY the PGLite-signature seam in [02]; escalate the rest for allocation",
+    "consequence": "GLPNET does the part it uniquely owns and cannot be done well elsewhere, and the unowned rows get escalated to the engineer for allocation today rather than drifting. COST: three rows still need owners named by someone with the authority to name them, and that is not me.",
+    "size": "mini",
+    "reversibility": "reversible"
+   },
+   {
+    "key": "glpnet-takes-more",
+    "label": "GLPNET also takes [03] DuckLake, on the strength of its takt-lake work",
+    "consequence": "Puts a real owner on a second unowned row today. COST: [03] depends on [01] and [02], neither of which exists, so GLPNET would own a row it cannot finish; and it competes directly with M6 for the same remaining hours.",
+    "size": "maxi",
+    "reversibility": "reversible"
+   },
+   {
+    "key": "defer-to-leader",
+    "label": "Hold all three pending the leader election, which is meant to allocate them",
+    "consequence": "Respects the plan's own coordination model — the elected leader allocates. COST: there IS no leader (Q-31-04), so this is deferral to an event that may not happen today, on items with a 48-hour clock already running.",
+    "size": "nano",
+    "reversibility": "reversible"
+   }
+  ],
+  "recommendation": {
+   "option": "seam-only",
+   "because": "GLPNET should take exactly the slice it uniquely owns and can define well — the PGLite interface signature, because this repo holds the canonical bridge and no other lane can define that seam authoritatively. Taking more would be claiming rows this lane cannot finish, which reads as coverage and delivers nothing; [03] in particular depends on two artifacts that do not yet exist. But seam-only is only responsible if the escalation actually happens, so it comes with an obligation rather than a shrug: the three rows need owners named TODAY by someone with allocation authority. Deferring to the leader is the option to avoid, because it makes a 48-hour clock depend on an election that is itself blocked."
+  },
+  "decision": {
+   "option": "seam-only",
+   "date": "2026-09-05",
+   "rationale": "Engineer answered '1 then 2': seam-only FIRST, then GLPNET additionally takes [03]. So GLPNET takes the PGLite-signature seam in [02] as its primary claim AND escalates rows 23/24/25 for allocation today; having done that, GLPNET also claims [03] YQuery/DuckLake on the strength of its takt-lake work. Sequencing consequence carried from the question: [03] depends on [23] storage and [24] catalog, so GLPNET's [03] work must start at the template and interface layer, and cannot complete until [01] and [02] exist."
+  },
+  "decided": null
+ },
+ {
+  "qid": "Q-GLPNETG31-06",
+  "header": "Leader v2",
+  "block": "Ruling G31-04 was taken on a premise this lane has since withdrawn, so the leader question is re-opened on the corrected measurement.",
+  "origin": "measurement",
+  "severity": "critical",
+  "background": [
+   "RETRACTED: actor != voter is a genuine delegation, not a defect. The voter signature covers VOTER_SIGNED_FIELDS = (kind, term, candidate, actor, ts, voter), NOT the outer signing_bytes envelope - verifying against the envelope makes a good delegation look forged.",
+   "sha256(voter_spki)[:32] == voter, so the voter field is unforgeable by construction: no forger can claim another host's franchise with a key of their own. gavriella.ospark published this at 08:49Z; this lane reproduced it independently with its own implementation at 15:20Z.",
+   "Measured: ALL FIVE delegations in D:/coop/ynet/oplog verify and are key-bound. Zero forgeries. A vote with no voter field is a DIRECT vote, not a malformed one.",
+   "Re-tallied on the verified franchise, deduped by host: TERM 2 gives 2af0d277 (shiras.oracle) 3 of 4 hosts (ariellas, gavriella, olamnit) with NO F1/F2/F3 finding - only F4 (gavriella submitted twice for the SAME candidate, deduped) and F5 (one vote predates the roster_epoch field).",
+   "TERM 1 gives 1b23876b (shiras.yngraw) 3 of 4, but carries F3, a real defect term 2 does not have: host shiras backed TWO different candidates through two node ids (1994d86e shiras.yngenios-app and 1b23876b shiras.yngraw, each self-voting).",
+   "The board still reports NO_LEADER only because election.tally_votes gates on op['actor'] rather than the verified franchise. verify_voter already exists and is already correct; ospark measured that nothing reads it."
+  ],
+  "impact_if_unanswered": "The fleet keeps refusing a leader it has actually elected twice, on two separate terms, both meeting quorum on the correct rule - which is the inverse of the failure everyone was guarding against, and the leader must-have stays unmet for a reason that is now known to be an artifact.",
+  "options": [
+   {
+    "key": "recognise-term2",
+    "label": "Recognise term 2 and fix the tally",
+    "consequence": "Recognises 2af0d277 (shiras.oracle) on the verified-franchise tally and lands the one-line fix so the board stops contradicting its own records. Term 2 is the cleaner term: 3 of 4 hosts, all delegations verified and key-bound, no F3. COST: F5 stands (two roster_epochs in one term) and the F4 gap stays open - one franchise can still submit twice in a term, harmless here only because both named the same candidate.",
+    "size": "mini",
+    "reversibility": "reversible"
+   },
+   {
+    "key": "recognise-term1",
+    "label": "Recognise term 1 instead, on seniority",
+    "consequence": "Recognises 1b23876b (shiras.yngraw), elected 08:21:50Z on the same rule, as ospark argued. COST: term 1 carries the F3 defect term 2 does not - one host backed two candidates - so this recognises the older, dirtier term over the newer, clean one, which needs a reason beyond seniority.",
+    "size": "nano",
+    "reversibility": "reversible"
+   },
+   {
+    "key": "fix-then-term3",
+    "label": "Fix the tally and the node-id rule, then run term 3",
+    "consequence": "Settles F3 and F4 before an election rather than after. COST: discards two terms that both met quorum on the correct rule - the fleet refusing a leader it actually elected, the precise failure ospark warned about - and the mandate slips again with the day nearly gone.",
+    "size": "midi",
+    "reversibility": "reversible"
+   }
+  ],
+  "recommendation": {
+   "option": "recognise-term2",
+   "because": "Term 2 is the term whose records survive the correct rule without a disqualifying finding: 3 of 4 hosts, every delegation verified AND key-bound, and no F3. Term 1 reaches the same count but carries a genuine host-level double-vote. Recognising term 2 and landing the tally fix together is the pairing that matters - recognising a leader the board still reports as absent would leave the fleet with two contradictory truths, and fixing the tally without recognising anyone would just make the board display a leader nobody has acknowledged. The honest residue, carried not buried: F4 remains unfixed, so a franchise can still submit twice in a term, and that is only harmless while the submissions agree."
+  },
+  "decision": {
+   "option": "recognise-term2",
+   "date": "2026-09-05",
+   "rationale": "Engineer took the recommendation after the premise of G31-04 was withdrawn. Recognise 2af0d277 (shiras.oracle) as elected in term 2 on the verified-franchise tally, and land the tally fix gating on the verified voter - refusing on an invalid proof, never falling back to the actor. Supersedes G31-04."
+  },
+  "decided": null
+ }
+]
