@@ -66,6 +66,35 @@ public class SKademliaTests
         Assert.Null(nodes[3].Lookup(Encoding.ASCII.GetBytes(victim.NodeId.Value), now));
     }
 
+    // ---- DEFECT PROBE (shiras-qhstate 20260905T0240Z ACK-COMPLIANCE) ----
+    // The Reachability spoof above IS refused. This probe measures the SAME spoof under the OTHER
+    // record kind. VerifySelfCertified's signer<->key binding is guarded by
+    // `Kind == RecordKind.Reachability`, so KeyToRecord carries no binding at all.
+    //
+    // 🔴 ASSERTS CURRENT BEHAVIOUR, NOT DESIRED BEHAVIOUR. Invert both asserts when the binding
+    // is extended to KeyToRecord. Kept so the hole stays visible instead of being papered over.
+    [Fact]
+    public void DEFECT_PROBE_a_KeyToRecord_keyed_under_someone_elses_node_id_is_stored_and_served()
+    {
+        _ = Overlay(4, out var nodes);
+        var now = DateTimeOffset.UnixEpoch;
+        using var owner = NodeIdentity.Generate();
+        using var victim = NodeIdentity.Generate();
+
+        var spoof = SignedRecord.Create(
+            owner,
+            Encoding.ASCII.GetBytes(victim.NodeId.Value), // the VICTIM's key
+            RecordKind.KeyToRecord,                        // <-- the only difference from the test above
+            "endpoint=evil"u8.ToArray(), now, TimeSpan.FromMinutes(10));
+
+        Assert.True(spoof.VerifySelfCertified(now));  // <-- the hole: no signer<->key binding
+        Assert.True(nodes[0].Store(spoof, now));      // <-- stored under a key its signer does not own
+        var served = nodes[3].Lookup(Encoding.ASCII.GetBytes(victim.NodeId.Value), now);
+        Assert.NotNull(served);
+        Assert.Equal(owner.NodeId, served!.SignerNodeId);   // author is NOT the key owner
+        Assert.NotEqual(victim.NodeId, served.SignerNodeId);
+    }
+
     [Fact]
     public void A_tampered_record_is_rejected_regardless_of_the_serving_hop()
     {

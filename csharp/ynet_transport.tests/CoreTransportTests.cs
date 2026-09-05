@@ -316,6 +316,33 @@ public class SignedRecordTests
         Assert.False(spoof.VerifySelfCertified()); // key != H(signer pubkey) -> rejected
     }
 
+    // ---- DEFECT PROBE (shiras-qhstate 20260905T0240Z ACK-COMPLIANCE) ----
+    // Fleet finding: "delete node_id and the signature still verifies" — a signer that can be
+    // erased or substituted. GLPNET has no erasable node_id field (SignerNodeId is DERIVED from
+    // the signed-against SPKI), so that exact attack has no field to delete. These two probes
+    // measure whether the SUBSTITUTION half of the same defect class survives here.
+    //
+    // 🔴 THESE ASSERT THE CURRENT BEHAVIOUR, NOT THE DESIRED BEHAVIOUR. If the KeyToRecord
+    // signer binding is added, BOTH must be inverted to Assert.False / rejected. They exist so
+    // the hole stays visible instead of being papered over.
+
+    [Fact]
+    public void DEFECT_PROBE_KeyToRecord_signed_by_any_key_under_any_key_still_self_certifies()
+    {
+        using var victim = NodeIdentity.Generate();
+        using var attacker = NodeIdentity.Generate();
+        var victimKey = System.Text.Encoding.ASCII.GetBytes(victim.NodeId.Value);
+
+        // attacker signs a KeyToRecord stored under the VICTIM's key, with the attacker's own key
+        var spoof = SignedRecord.Create(
+            attacker, victimKey, RecordKind.KeyToRecord, "evil-payload"u8.ToArray(), Now, TimeSpan.FromHours(1));
+
+        // The Reachability guard in VerifySelfCertified is conditional on Kind == Reachability,
+        // so KeyToRecord carries NO signer<->key binding at all.
+        Assert.True(spoof.VerifySelfCertified());              // <-- the hole
+        Assert.NotEqual(victim.NodeId, spoof.SignerNodeId);    // and the author is not the key owner
+    }
+
     // codexreview: an expired record must not verify when a clock is supplied.
     [Fact]
     public void Expired_record_is_rejected_when_clock_supplied()
