@@ -26,6 +26,7 @@
     <RootNamespace>GlpRuntime.ResultCodec.Builder</RootNamespace>
     <AssemblyName>glp_result_codec_builder</AssemblyName>
     <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <WarningsAsErrors>$(WarningsAsErrors);CS0649;CS0169</WarningsAsErrors>
   </PropertyGroup>
 
   <ItemGroup>
