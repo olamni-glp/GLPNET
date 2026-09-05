@@ -114,3 +114,15 @@ a zero", and the first reading here came from a `grep` and said 0.
 
 **T012/T013.** Section W runs the control in the suite; the corrected audit is republished to
 `<COOP_ROOT>/_standards/`, replacing the copy that enforced the withdrawn `actor == voter` rule.
+
+## Codexreview — **INCONCLUSIVE, NOT CLEAN** (2026-09-05T15:20Z)
+
+`codex exec` ran and returned **zero findings**. That is **not** a clean review.
+
+The transcript shows **six** `rejected: blocked by policy` errors — codex could not run its own
+line-numbering command, fell back to dumping the file, and produced no analysis. A review that was
+prevented from reading its subject and reported nothing is **INCONCLUSIVE**; recording it as
+"0 findings" would be the same defect as reporting a `grep`'s exit status as a build's.
+
+**Era 105 is therefore implemented and NOT codex-reviewed.** It must not ship on this result.
+Re-run with the sandbox policy relaxed, or with a different second instrument, before `/bk-ship`.
