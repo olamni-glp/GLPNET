@@ -48,17 +48,17 @@ Ordered. `[P]` may run in parallel with the task above it.
 
 ## Phase 4 — pin it so it cannot rot
 
-- [ ] **T012** Ensure Section W (`test/run_all_tests.sh`) runs the self-test and requires it to
+- [x] **T012** Ensure Section W (`test/run_all_tests.sh`) runs the self-test and requires it to
   pass, so a regression surfaces in the suite rather than in an election. *(FR-012)*
 - [x] **T013 [P]** Republish the corrected audit to `<COOP_ROOT>/_standards/` so every lane runs
   the same instrument, and state in the broadcast that the earlier copy enforced a withdrawn rule.
-- [ ] **T014** Full suite run. Record the result **including the two known Section T failures**
+- [x] **T014** Full suite run. Record the result **including the two known Section T failures**
   (`glpquick-cert/glpquick.pfx` absent since 2026-08-12) — they are unrelated to this feature and
   must be reported, not absorbed.
 
 ## Phase 5 — hand off what this lane does not own
 
-- [ ] **T015** Publish the F3 and F6 rules to the owner of the election code, with the audit as the
+- [x] **T015** Publish the F3 and F6 rules to the owner of the election code, with the audit as the
   independent check on their tally fix. **This lane owns the rules and the instrument; it does not
   own the emitter or the board's tally, and must not write either.**
 
@@ -126,3 +126,22 @@ prevented from reading its subject and reported nothing is **INCONCLUSIVE**; rec
 
 **Era 105 is therefore implemented and NOT codex-reviewed.** It must not ship on this result.
 Re-run with the sandbox policy relaxed, or with a different second instrument, before `/bk-ship`.
+
+## T014 — full suite, 2026-09-05T15:40Z
+
+    Total: 592 | Passed: 590 | Failed: 2 | Skipped: 0 | Unsearchable: 0
+
+**Unsearchable is now 0** — it was 4 before this era's TFM fix, all four hidden behind a stale C#
+binary. Making them run is what exposed the two failures below; they were always there.
+
+**The 2 failures are Section T (`T-1`, `T-2`) and are NOT this feature's.** The REPL fails **closed**
+with a named diagnostic because `glpquick-cert/glpquick.pfx` is absent. Reported, not absorbed —
+an era that quietly inherits another defect's red is how a known defect becomes invisible.
+
+**New evidence, and it retires a fleet theory:** the directory's mtime is `2026-08-12 09:06:39` and
+nothing has been removed from it since. So the "**fourth** destruction" reported by this lane on the
+morning of 2026-09-05 was **one destruction on 2026-08-12, re-observed 24 days later.** There is no
+recurring mechanism to hunt. **Not regenerated** — regenerating is a workaround and would erase the
+only evidence there is.
+
+**Section W (W-1..W-6) all pass**, so this era's control is pinned in the suite.
