@@ -184,9 +184,21 @@ public sealed class SchedulerBoardLog : IBoardLog
             }
 
             // Scheduler-native: op_id is a STRING "<actor>:<seq>", with actor + seq beside it.
-            var adapted = AdaptSchedulerLine(r);
-            if (adapted is not null) AdaptedLines++;
-            return adapted;
+            // ONE BAD ROW MUST NOT ABORT THE WHOLE READ. AdaptSchedulerLine calls
+            // FederationOp.Create, which throws on a nonpositive seq — and unlike the
+            // federation-native branch this call sat OUTSIDE the refusal catch, so a single
+            // malformed scheduler row aborted ReadAllAsync and with it service startup.
+            try
+            {
+                var adapted = AdaptSchedulerLine(r);
+                if (adapted is not null) AdaptedLines++;
+                return adapted;
+            }
+            catch (Exception ex) when (ex is ArgumentOutOfRangeException or ArgumentException
+                                             or FormatException or InvalidOperationException)
+            {
+                return null;   // counted as unreadable by the caller, never silently skipped
+            }
         }
     }
 

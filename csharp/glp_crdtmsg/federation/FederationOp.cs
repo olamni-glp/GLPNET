@@ -135,6 +135,16 @@ public sealed record FederationOp
         return sb.ToString();
     }
 
+    /// <summary>
+    /// Lowercase a value that IS a NodeId; leave anything else exactly as it is.
+    /// <para>
+    /// Only a well-formed 64-hex NodeId is normalised. A scheduler identity (<c>sched:actor</c>) or
+    /// any other label keeps its spelling, because for those the text is the identity.
+    /// </para>
+    /// </summary>
+    private static string Canonical(string peer) =>
+        NodeIdentityStore.IsNodeId(peer) ? peer.ToLowerInvariant() : peer;
+
     /// <summary>Parse the canonical form. A malformed op is a loud fault, never a silently-skipped line.</summary>
     public static FederationOp FromJson(string json)
     {
@@ -154,7 +164,11 @@ public sealed record FederationOp
                 $"op_id.counter must be >= 1; got {counter}. A nonpositive counter is reported as "
                 + "already-held by every frontier, so a lost operation could never be recovered.");
 
-        var opId = new Dot(idEl.GetProperty("peer").GetString()!, counter);
+        // CANONICALISE AT THE DECODE BOUNDARY. The fold and frontier compare dots ORDINALLY while
+        // key lookup lowercases, so a valid signer could issue operations under several textual
+        // spellings of ONE identity, pass signature verification every time, and appear to the fold
+        // as several distinct peers. Every downstream comparison inherits that.
+        var opId = new Dot(Canonical(idEl.GetProperty("peer").GetString()!), counter);
 
         Term? term = null;
         if (r.TryGetProperty("term", out var tEl) && tEl.ValueKind == JsonValueKind.Object)
@@ -193,7 +207,7 @@ public sealed record FederationOp
         return new FederationOp
         {
             OpId = opId,
-            Origin = r.GetProperty("origin").GetString()!,
+            Origin = Canonical(r.GetProperty("origin").GetString()!),
             Kind = r.GetProperty("kind").GetString()!,
             Term = term,
             Deps = deps,

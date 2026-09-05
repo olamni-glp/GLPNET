@@ -230,14 +230,29 @@ public sealed class AdmissionTests
 
     /// <summary>A hostname endpoint is refused with the estate-specific reason (names ⇒ link-local only).</summary>
     [Fact]
-    public void AHostnameEndpointIsRefusedWithTheLinkLocalReason()
+    public void AHostnameEndpointIsWARNEDAboutButNotRefused()
     {
         var cfg = new FederationConfig
         {
             Enabled = true, BoardRootPath = "D:/coop/buildkit/sched", BoardActor = "gavriella", BindAddress = "0.0.0.0", SpaceId = LiveEpoch,
             Peers = { new PeerConfig { Name = "o", NodeId = "2222222222222222222222222222222222222222222222222222222222222222", Endpoints = { "olamnit:47890" } } },
         };
-        Assert.Contains(cfg.Validate(), p => p.Contains("literal address"));
+
+        // THE CONTRACT SAYS WARNING, NOT REFUSAL — and this test asserted the refusal, because a
+        // later port-validation fix of mine changed the decision while tightening the check. An
+        // operator in an environment where names DO resolve must still be able to configure one.
+        Assert.Contains(cfg.Warnings, w => w.Contains("is a NAME"));
+        Assert.DoesNotContain(cfg.Validate(), p => p.Contains("is a NAME"));
+        Assert.True(cfg.IsValid);
+
+        // POSITIVE CONTROL: a literal address with a BROKEN port is still a genuine refusal, so the
+        // port check survived the correction.
+        var badPort = new FederationConfig
+        {
+            Enabled = true, BoardRootPath = "D:/coop/buildkit/sched", BoardActor = "gavriella", BindAddress = "0.0.0.0", SpaceId = LiveEpoch,
+            Peers = { new PeerConfig { Name = "x", NodeId = "3333333333333333333333333333333333333333333333333333333333333333", Endpoints = { "192.0.2.1:notaport" } } },
+        };
+        Assert.Contains(badPort.Validate(), p => p.Contains("no valid port"));
     }
 
     /// <summary>The safe default validates clean, and disables nothing local (FR-004).</summary>

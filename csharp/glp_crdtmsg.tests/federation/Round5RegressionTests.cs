@@ -357,6 +357,92 @@ public sealed class Round5RegressionTests
         Assert.Null(fold.WinningTerm());
     }
 
+    // ---- R15-02: an unauthenticated retirement is a deletion primitive -------------------------
+
+    /// <summary>
+    /// A retirement carries no term, so a term-only check let an UNSIGNED one straight through: any
+    /// admitted peer could retire ANOTHER participant's legitimate operation and remove it from
+    /// ordering, without holding that origin's key. Retirement is the ONLY correction mechanism on
+    /// an append-only board (FR-017/FR-029), which makes an unauthenticated one a deletion
+    /// primitive under a different name.
+    /// </summary>
+    [Fact]
+    public async Task AnUnverifiedRetirementIsRefused()
+    {
+        string stranger = NodeId("stranger");
+        var victim = Op(NodeId("gavriella"), 1);
+
+        var fold = NewFold();
+        var svc = new FederationService(Cfg(), new RecordingLink("A"), fold, new InMemoryBoardLog());
+        await svc.ReconcileAsync(new[] { victim }, new PeerCapabilities(true, LiveEpoch));
+
+        var retire = RetirementOp.Create(new Dot(stranger, 1), stranger, victim.OpId, "not mine to retire");
+        Assert.Equal(0, await svc.ReconcileAsync(new[] { retire }, new PeerCapabilities(true, LiveEpoch)));
+
+        // The victim is UNTOUCHED — still present and still orderable-by-disposition.
+        Assert.False(fold.Contains(retire.OpId));
+        Assert.NotEqual(OrderingDisposition.UnorderedLegacy, fold.DispositionOf(victim));
+    }
+
+    /// <summary>POSITIVE CONTROL: a retirement from a VERIFIED origin still works.</summary>
+    [Fact]
+    public async Task AVerifiedRetirementStillRetires()
+    {
+        using var alice = QuicLinkTransport.CreateDevCert("alice");
+        string aliceId = NodeIdentityStore.DeriveNodeId(alice);
+
+        var cfg = Cfg(new PeerConfig
+        {
+            Name = "alice", NodeId = aliceId, Endpoints = { "192.168.0.142:47890" },
+            Pin = NodeIdentityStore.PinFromNodeId(aliceId),
+            Spki = NodeIdentityStore.ExportSpki(alice),
+        });
+
+        var fold = NewFold();
+        var svc = new FederationService(cfg, new RecordingLink("A"), fold, new InMemoryBoardLog());
+
+        var victim = FederationOp.Create(new Dot(aliceId, 1), aliceId, "claim", Body).SignedBy(alice);
+        await svc.ReconcileAsync(new[] { victim }, new PeerCapabilities(true, LiveEpoch));
+
+        var retire = RetirementOp.Create(new Dot(aliceId, 2), aliceId, victim.OpId, "superseded")
+                                 .SignedBy(alice);
+        Assert.Equal(1, await svc.ReconcileAsync(new[] { retire }, new PeerCapabilities(true, LiveEpoch)));
+        Assert.Equal(OrderingDisposition.UnorderedLegacy, fold.DispositionOf(victim));
+        Assert.True(fold.Contains(victim.OpId));   // retained, never deleted (SC-012)
+    }
+
+    // ---- R15-12: one signer must not appear to the fold as several peers -----------------------
+
+    /// <summary>
+    /// The fold and frontier compare dots ORDINALLY while key lookup lowercases, so a valid signer
+    /// could issue operations under several textual spellings of ONE NodeId, pass verification each
+    /// time, and appear as several distinct peers — defeating exactly-once identity and
+    /// deterministic ordering together.
+    /// </summary>
+    [Fact]
+    public void NodeIdsAreCanonicalisedAtTheDecodeBoundary()
+    {
+        string id = NodeId("olamnit");
+        string pred = Convert.ToHexStringLower(HashChain.PredHash(new Dot(id, 1), Array.Empty<Dot>()));
+        string upper = id.ToUpperInvariant();
+
+        string json = "{\"op_id\":{\"peer\":\"" + upper + "\",\"counter\":1},\"origin\":\"" + upper + "\","
+                    + "\"kind\":\"board_post\",\"deps\":[],\"pred_hash\":\"" + pred + "\",\"body\":null}";
+
+        var op = FederationOp.FromJson(json);
+        Assert.Equal(id, op.OpId.PeerName);
+        Assert.Equal(id, op.Origin);
+
+        // ONE peer in the fold, not two spellings of one.
+        var fold = NewFold();
+        fold.Apply(op);
+        fold.Apply(FederationOp.FromJson(json.Replace(upper, id)));
+        Assert.Equal(1, fold.Count);
+
+        // POSITIVE CONTROL: a non-NodeId label keeps its spelling, because there the text IS the id.
+        Assert.Equal("sched:Gavriella", SchedulerBoardLog.SchedulerDotPeer("Gavriella"));
+    }
+
     // ---- R14-01: the NETWORK path kept an inline copy of the rule and deleted fossils ----------
 
     /// <summary>

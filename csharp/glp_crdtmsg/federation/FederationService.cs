@@ -190,6 +190,18 @@ public sealed class FederationService : IAsyncDisposable
     /// </summary>
     private void RequireVerifiableTerm(FederationOp op, AttributionResult attribution)
     {
+        // A RETIREMENT HAS A MONOTONE SIDE EFFECT AND CARRIES NO TERM, so a term-only test let it
+        // straight through: any admitted peer could retire ANOTHER participant's legitimate
+        // operation and remove it from ordering, without holding that origin's key. Retirement is
+        // the ONLY correction mechanism on an append-only board (FR-017/FR-029), which makes an
+        // unauthenticated one a deletion primitive under a different name.
+        if (RetirementOp.IsRetirement(op))
+            throw new AttributionRefusedException(new AttributionResult(
+                AttributionVerdict.UnverifiedOrigin,
+                $"retirement from '{op.Origin}' cannot be verified — publish that peer's spki. A "
+                + "retirement suppresses another operation from ordering and cannot be undone, so it "
+                + "requires a proven origin whether or not it carries a term."));
+
         if (op.Term is not { } term) return;
 
         // ONLY A LIVE-SPACE TERM CAN WIN, SO ONLY A LIVE-SPACE TERM NEEDS THIS PROTECTION.

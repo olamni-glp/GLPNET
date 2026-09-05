@@ -115,6 +115,7 @@ public sealed record FederationConfig
     public IReadOnlyList<string> Validate()
     {
         var problems = new List<string>();
+        _warnings.Clear();
 
         if (Enabled)
         {
@@ -213,12 +214,20 @@ public sealed record FederationConfig
                 // "192.0.2.1:notaport" pass; ToPeerSet then silently dropped the unparsable entry
                 // and the configuration error resurfaced much later as a name-resolution or
                 // reachability failure — pointing the operator at the network for a typo.
-                if (!IPEndPoint.TryParse(ep, out var parsed) || parsed.Port is < 1 or > 65535)
+                var host = ep.Contains(':') ? ep[..ep.LastIndexOf(':')] : ep;
+                bool literal = IPAddress.TryParse(host, out _);
+
+                if (!literal)
                 {
-                    var host = ep.Contains(':') ? ep[..ep.LastIndexOf(':')] : ep;
-                    problems.Add(IPAddress.TryParse(host, out _)
-                        ? $"peers[{p.Name}].endpoints: '{ep}' has no valid port — an endpoint is <ip>:<port>, and an unparsable one is silently dropped and later misreported as unreachability"
-                        : $"peers[{p.Name}].endpoints: '{ep}' is not a literal address — names on this estate resolve to link-local only; use a literal IPv4 address (FR-003)");
+                    // A WARNING, NOT A REFUSAL — as the config contract states. On this estate names
+                    // resolve to fe80:: link-local only, so a dial by name fails for a reason that
+                    // is not QUIC and gets misread as a transport failure. That is worth saying, and
+                    // it is not grounds for refusing a configuration an operator may know resolves.
+                    _warnings.Add($"peers[{p.Name}].endpoints: '{ep}' is a NAME, not a literal address — on this estate names resolve to link-local only, so a dial by name fails for a reason that is not QUIC (FR-003)");
+                }
+                else if (!IPEndPoint.TryParse(ep, out var parsed) || parsed.Port is < 1 or > 65535)
+                {
+                    problems.Add($"peers[{p.Name}].endpoints: '{ep}' has no valid port — an endpoint is <ip>:<port>, and an unparsable one is silently dropped and later misreported as unreachability");
                 }
             }
         }
@@ -226,7 +235,19 @@ public sealed record FederationConfig
         return problems;
     }
 
-    /// <summary>True iff there are no refusals. Warnings about hostnames are refusals here by design.</summary>
+    private readonly List<string> _warnings = new();
+
+    /// <summary>
+    /// Non-fatal concerns from the last <see cref="Validate"/>. A hostname endpoint is the canonical
+    /// one: the contract allows it WITH a recorded warning, so it must not invalidate the
+    /// configuration — but the operator still has to be told.
+    /// </summary>
+    public IReadOnlyList<string> Warnings
+    {
+        get { Validate(); return _warnings.ToList(); }
+    }
+
+    /// <summary>True iff there are no REFUSALS. A warning does not make a configuration invalid.</summary>
     public bool IsValid => Validate().Count == 0;
 
     /// <summary>Build the runtime peer set from configuration.</summary>
