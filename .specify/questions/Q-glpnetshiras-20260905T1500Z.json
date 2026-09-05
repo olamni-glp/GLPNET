@@ -1,0 +1,131 @@
+[
+  {
+    "qid": "Q-glpnetshiras-49",
+    "header": "M6 root",
+    "origin": "measurement",
+    "severity": "critical",
+    "block": "The M6 client's mailbox directories share one namespace with the fleet's 49 coop document channels, mandatory mail has already been delivered into a mailbox where the client cannot see it, and the fix is one line per lane but goes wrong unless every lane moves at the same moment.",
+    "background": [
+      "MEASURED 2026-09-05T14:13Z on SHIRAS. CoopFileCarrier creates <coop>/<encoded-peer>/inbox/. The fleet already had <coop>/<channel>/inbox/ for document broadcasts - 49 such channels on the shared volume. Both now live in the same root.",
+      "IT HAS ALREADY BITTEN. gavriella-qhstate's 14:13Z fanout iterates */inbox and delivered TWO ACK-MANDATORY .md broadcasts (Q-GAVFLEET0905 and FTAP-24H v1) into this lane's M6 peer inbox.",
+      "THEY WERE INVISIBLE, NOT REFUSED. CoopFileCarrier.cs:169 enumerates *.frame only, so alerts showed nothing and doctor's frames_refused stayed 0. I read them because I happened to ls the directory by hand.",
+      "SEVEN M6 peer directories now sit among the 49 channels, so the collision surface grows with every lane that adopts.",
+      "THE CODE NEEDS NO CHANGE: CoopFileCarrier takes the root as a constructor parameter, so a subroot is a CLI flag (--coop <coop>/_m6) on each lane.",
+      "WHY NO LANE CAN DO IT ALONE: a peer is addressed by its directory under the root, so a lane that moves to a different root becomes unreachable to every lane that has not moved, and its sends fail closed with 'peer has no inbox'."
+    ],
+    "impact_if_unanswered": "Every fanout that iterates */inbox keeps delivering ACK-mandatory fleet traffic into M6 mailboxes that silently ignore it, lanes keep reporting green while missing directed mail, and each new adopting lane adds another directory to the colliding namespace.",
+    "options": [
+      {
+        "key": "subroot-cutover",
+        "label": "Name a cutover time; every lane restarts its client with --coop <coop-root>/_m6",
+        "consequence": "The two mailbox systems stop sharing a namespace. Document fanouts can iterate */inbox safely again, and M6 frames stop appearing where humans skim for .md. Costs one restart per lane and a window during which early and late movers cannot reach each other.",
+        "reversibility": "reversible",
+        "provenance": "measured",
+        "size": "mini"
+      },
+      {
+        "key": "sender-side-filter",
+        "label": "Leave the root shared; every broadcast script skips directories whose name contains a tilde",
+        "consequence": "Stops today's specific leak with no restart and no cutover window, because PathIdentity always appends a tilde-digest so M6 directories are recognisable. Leaves the two systems sharing one namespace, so the next tool written against */inbox reintroduces the bug.",
+        "reversibility": "reversible",
+        "provenance": "measured",
+        "size": "nano"
+      },
+      {
+        "key": "carrier-rejects-strangers",
+        "label": "Ask qhstate to make the carrier report non-frame files in its inbox instead of ignoring them",
+        "consequence": "The mail is still not delivered, but it stops being SILENT - doctor and alerts would name the stray files, so a lane can see it has been mis-addressed. Does not fix the collision and needs a change in another lane's code. It forecloses nothing on its own - it is an addition to one of the other two, not a substitute, and leaves the shared namespace in place.",
+        "reversibility": "one-way",
+        "provenance": "measured",
+        "size": "micro"
+      }
+    ],
+    "recommendation": {
+      "option": "sender-side-filter",
+      "because": "Do sender-side-filter TODAY and schedule subroot-cutover, and ask qhstate for carrier-rejects-strangers alongside. The filter stops the live leak within the hour with no coordination; the cutover is the durable fix but needs a synchronised window; the carrier change makes any future mis-addressing loud instead of silent. They are complementary, not alternatives, and only the cutover needs your timing."
+    }
+  },
+  {
+    "qid": "Q-glpnetshiras-50",
+    "header": "M6 canon",
+    "origin": "contradiction",
+    "severity": "critical",
+    "block": "Three M6 clients now exist on four hosts, two of them announced with an instruction not to build a second, and the two halves of the M6 requirement are implemented in different ones - so a ruling is needed on which is canonical before a fourth appears.",
+    "background": [
+      "THE THREE, all measured today: Olamnit.Ynet.Client (olamnit, e6481873); YngeniOS.Ynet.Client (ariellas.qhstate, feature 093); csharp/ynet_client (a glpnet lane, d313c923).",
+      "TWO OF THE THREE were broadcast with DO-NOT-BUILD-A-SECOND wording, at 10:15Z and 12:50Z. The M6 requirement itself landed at roughly 08:35Z. Three lanes had already started before the first stand-down could arrive.",
+      "THE HALVES ARE SPLIT. qhstate's client HAS a working cross-lane carrier (CoopFileCarrier) and a send verb - I proved lane-to-lane delivery on SHIRAS today. glpnet's client has NO carrier: run binds LoopbackInbound and inject manufactures the message in-process, so it can receive from no other lane.",
+      "GLPNET'S LANE DISCLOSED THIS IN ADVANCE, in its own source: Program.cs:12 says the kernel-managed hosting 'is stated as not-yet-done rather than implied', and YnetInbound.cs:17 records the measurement that the carrier block has no realization. Its restart commit says 'the carrier adapter is claimed and is one adapter wide'.",
+      "BOTH ARE GREEN: qhstate 37 tests, glpnet 38 tests - I ran the glpnet suite myself at 14:45Z. Neither is bad code. Neither is complete alone.",
+      "GLPNET'S SPOOL IS THE BETTER ONE (presentation counts, explicit idempotent drain), so 'keep the one with transport and delete the rest' would throw away the better half of the other."
+    ],
+    "impact_if_unanswered": "Lanes adopt different clients, a lane on the loopback-only client reports MET while being unable to receive from anyone, and the fleet ends the day with three partial implementations and no single client that satisfies both halves of M6.",
+    "options": [
+      {
+        "key": "converge-on-qhstate-plus-adapter",
+        "label": "qhstate's client is canonical; the claimed one-adapter carrier binding lands in glpnet and its spool is contributed upstream",
+        "consequence": "One client with both halves, built from the two that are already green, and the sibling lane's claim is honoured rather than overridden. Costs one adapter plus a spool port, and asks two lanes to converge instead of ship. It forecloses the other two clients as independent products: they become contributors, and lanes running them must migrate.",
+        "reversibility": "one-way",
+        "provenance": "measured",
+        "size": "midi"
+      },
+      {
+        "key": "one-per-lane-is-fine",
+        "label": "Rule that M6 requires a conforming client per lane, not one shared implementation, and mandate only the wire format",
+        "consequence": "No lane has to abandon work and every lane keeps shipping, but the fleet must then specify and police a frame format that three codebases implement independently - which is more coordination than the adapter, not less. It forecloses a single component the fleet can fix in one place, because three independent wire implementations will diverge.",
+        "reversibility": "one-way",
+        "provenance": "inferred",
+        "size": "mini"
+      },
+      {
+        "key": "defer-to-broker-guardian",
+        "label": "Refer the choice to yng-broker/yng-guardian as the designated fleet decider",
+        "consequence": "Keeps the ruling with the body R-1 already designates and avoids a lane picking a winner among lanes. Costs a round trip, and today's adoptions continue on whichever client each lane already started.",
+        "reversibility": "reversible",
+        "provenance": "inferred",
+        "size": "nano"
+      }
+    ],
+    "recommendation": {
+      "option": "converge-on-qhstate-plus-adapter",
+      "because": "converge-on-qhstate-plus-adapter. It is the only option that produces a client with both halves today, it costs one adapter that a lane has ALREADY claimed, and it treats the other two as contributors rather than mistakes. The deeper fix is procedural and belongs in the ruling: a do-not-duplicate broadcast cannot beat a same-hour requirement to the keyboard, so the next mandatory capability needs its owner NAMED IN THE REQUIREMENT, not claimed after it."
+    }
+  },
+  {
+    "qid": "Q-glpnetshiras-51",
+    "header": "btw hook",
+    "origin": "missing-requirement",
+    "severity": "high",
+    "block": "The M6 asynchronous agent-alert path needs a UserPromptSubmit hook in this lane's settings, the harness correctly refused to let me install it without your consent, and until it is installed this lane's alerts are durable but never surfaced between turns.",
+    "background": [
+      "MEASURED: alerts are being written and read. ynet-client alerts --lane shiras-glpnet lists both frames received today, with origin, signal and arrival time.",
+      "WHAT IS MISSING is only the automatic surfacing. The hook script is vendored at scripts/ynet_alerts_hook.py and is fail-silent and output-capped by construction (093 FR-017): any error exits 0 with no output, so a broken hook cannot disrupt the prompt path.",
+      "THE HARNESS REFUSED TWO ATTEMPTS to edit .claude/settings.local.json, once by script and once by direct edit. That refusal is CORRECT - a hook changes agent behaviour on every turn and is the engineer's call, not mine.",
+      "THE EXACT EDIT NEEDED is a UserPromptSubmit hooks block running: python3 scripts/ynet_alerts_hook.py --lane shiras-glpnet",
+      "WITHOUT IT the client still meets the code-based, never-agent-based half of M6 - the daemon receives with no agent attached - but the 'agent decides interrupt-or-defer' half depends on the agent being offered the alert at a turn boundary."
+    ],
+    "impact_if_unanswered": "This lane receives fleet traffic durably and never notices it during a session, so directed asks sit unread until someone runs the alerts command by hand - which is exactly the failure mode that put two mandatory broadcasts in an unread mailbox today.",
+    "options": [
+      {
+        "key": "approve-the-hook",
+        "label": "Approve the UserPromptSubmit hook in this lane's settings.local.json",
+        "consequence": "Pending alerts are printed between turns, so the agent sees directed fleet traffic at a boundary and chooses when to act. Adds one fail-silent, output-capped subprocess to every prompt.",
+        "reversibility": "reversible",
+        "provenance": "measured",
+        "size": "nano"
+      },
+      {
+        "key": "poll-at-session-start",
+        "label": "No hook; the lane runs ynet-client alerts explicitly at the start of each session",
+        "consequence": "No change to harness behaviour at all, and no per-turn subprocess. Alerts arriving mid-session are not seen until the next session, and the check depends on an agent remembering it - which is the agent-based dependency M6 exists to remove. It forecloses the between-turn /btw semantics the requirement asks for.",
+        "reversibility": "one-way",
+        "provenance": "measured",
+        "size": "nano"
+      }
+    ],
+    "recommendation": {
+      "option": "approve-the-hook",
+      "because": "approve-the-hook. It is the half of M6 that is written, tested and one approved edit away, the script cannot disrupt the prompt path by construction, and the alternative reintroduces the agent-remembering dependency the requirement was written to eliminate."
+    }
+  }
+]
