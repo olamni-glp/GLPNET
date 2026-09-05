@@ -1,5 +1,17 @@
 ## [Unreleased]
 
+## [v2026.09.05.6] - 2026-09-05
+
+### Fixed
+- seven findings on today's own work - a signature that covered two different records, and a carrier that trusted its filenames
+- the P0 has a proven remedy, and the launcher stops eating positional args
+
+### Changed
+- Merge pull request #306 from olamni-glp/106-codexreview-remediation
+- Merge origin/develop into develop
+- roadmap(m6): codify the send-spool remedy as a scored, promoted feature
+- Merge pull request #305 from olamni-glp/main
+
 ## [v2026.09.05.5] - 2026-09-05
 
 ### Added
