@@ -128,6 +128,19 @@ switch (verb)
         carrier.ConfirmDurable = m => machine.WaitForDurable(m.MessageId, TimeSpan.FromSeconds(10));
         carrier.StrayObserved += p => Console.WriteLine($"  stray (not a deliverable frame): {p}");
 
+        // 🔴 THE CONFIDENT ZERO (olamnit-yngapp, 2026-09-05T16:12Z, corroborated here at the CLI
+        // layer). "delivered=0" means two different things: an inbox READ AND FOUND EMPTY, and an
+        // inbox THAT COULD NOT BE READ AT ALL - root not mounted, share dropped, ACL refused. The
+        // carrier already distinguishes them and raises PollFailed; this verb subscribed only to
+        // strays, so an unreachable root printed a serene "delivered=0" exactly like a quiet one.
+        // Never report Quiet for a transport you could not reach.
+        var unexaminable = false;
+        carrier.PollFailed += ex =>
+        {
+            unexaminable = true;
+            Console.Error.WriteLine($"ynet_client: INBOX UNEXAMINABLE — {ex.GetType().Name}: {ex.Message}");
+        };
+
         // LAUNCH, not Start+PumpOnce. The durability gate runs INSIDE PollOnce and asks whether the
         // alert has reached the spool; the spool write happens on the machine's dispatch thread. With
         // a manually pumped machine that thread does not exist yet, so the gate could NEVER be
@@ -154,6 +167,13 @@ switch (verb)
         Console.WriteLine($"ynet_client: delivered={delivered}   received={machine.MessagesReceived}   " +
                           $"pending_now={spool.Count}   strays={carrier.StrayCount}   " +
                           $"returned_for_retry={carrier.UndurableReturned}");
+        if (unexaminable)
+        {
+            Console.Error.WriteLine(
+                "ynet_client: this run is UNEXAMINABLE, not quiet — the count above is not evidence " +
+                "that nothing arrived.");
+            return 5;
+        }
         return 0;
     }
 
