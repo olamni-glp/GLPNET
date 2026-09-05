@@ -121,11 +121,16 @@ public class QuicProviderChainTests
         Assert.Contains("ngtcp2", chain.Describe());
     }
 
+    // Was `Default_chain_is_msquic_then_ngtcp2`. Updated — not deleted — for the intended contract
+    // change in feature 104 under engineer ruling Q-olg15-03: iroh becomes the PRIMARY provider at
+    // tier 0 as a sidecar adapter, and msquic and ngtcp2 are RETAINED beneath it as redundant
+    // fallbacks ("it is not removed"). This test still pins the default chain's exact composition,
+    // which is the property it was written to protect.
     [Fact]
-    public void Default_chain_is_msquic_then_ngtcp2()
+    public void Default_chain_is_iroh_then_msquic_then_ngtcp2()
     {
         Assert.Equal(
-            new[] { "msquic", "ngtcp2" },
+            new[] { "iroh-sidecar", "msquic", "ngtcp2" },
             QuicProviderChain.Default.Providers.Select(p => p.Name));
     }
 }
