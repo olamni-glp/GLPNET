@@ -208,6 +208,20 @@ public sealed class FederationFold
     }
 
     /// <summary>
+    /// How this fold classifies a term-space.
+    /// <para>
+    /// Exposed so admission can tell a LIVE term — which can become the permanent winner, and so
+    /// needs a verified origin — from a legacy or unknown one, which is incomparable by construction
+    /// and must simply be RETAINED (FR-016, FR-027). Without the distinction, protecting the former
+    /// deleted the latter.
+    /// </para>
+    /// </summary>
+    public SpaceKind SpaceKindOf(string spaceId)
+    {
+        lock (_gate) return _spaces.Classify(spaceId).Kind;
+    }
+
+    /// <summary>
     /// The causal frontier for the reconciliation pull (contract W5). Hole-preserving: a gap is
     /// advertised AS a gap, so the peer resends what was lost instead of suppressing it forever.
     /// </summary>

@@ -33,6 +33,17 @@ public interface IFederationLink : IAsyncDisposable
     Task ConnectPeerAsync(string peerName, IPEndPoint remote, CancellationToken ct = default);
     ValueTask SendAsync(string toPeer, string box, ReadOnlyMemory<byte> bytes, CancellationToken ct = default);
     System.Threading.Channels.ChannelReader<LinkInbound> Inbound { get; }
+
+    /// <summary>
+    /// An identifier for the CURRENT transport session with a peer, or null if none.
+    /// <para>
+    /// Capability declarations are scoped to the session that made them. Inferring a session change
+    /// from connection state does not hold: a peer that reconnects before a local send notices the
+    /// old connection failed leaves that state untouched, and its first board frame is then admitted
+    /// on the PREVIOUS session's declaration. The transport is the only thing that actually knows.
+    /// </para>
+    /// </summary>
+    string? SessionIdOf(string peer) => null;
 }
 
 /// <summary>Adapts the existing, unchanged <see cref="QuicLinkTransport"/> to <see cref="IFederationLink"/>.</summary>
@@ -46,6 +57,7 @@ public sealed class QuicFederationLink : IFederationLink
     public Task ConnectPeerAsync(string p, IPEndPoint r, CancellationToken ct = default) => _t.ConnectPeerAsync(p, r, ct);
     public ValueTask SendAsync(string p, string box, ReadOnlyMemory<byte> b, CancellationToken ct = default) => _t.SendAsync(p, box, b, ct);
     public System.Threading.Channels.ChannelReader<LinkInbound> Inbound => _t.Inbound;
+    public string? SessionIdOf(string peer) => _t.SessionIdOf(peer);
     public ValueTask DisposeAsync() => _t.DisposeAsync();
 }
 
@@ -107,6 +119,13 @@ public sealed class FederationService : IAsyncDisposable
     /// surface reports.
     /// </summary>
     private readonly System.Collections.Concurrent.ConcurrentDictionary<string, byte> _connected = new(StringComparer.Ordinal);
+
+    /// <summary>
+    /// The transport session each cached capability declaration belongs to. A declaration is valid
+    /// only for the session that made it; a session change invalidates it by construction, which
+    /// inferring the change from connection state could not reliably do.
+    /// </summary>
+    private readonly System.Collections.Concurrent.ConcurrentDictionary<string, string> _peerSession = new(StringComparer.Ordinal);
 
     private bool _bound;
     private bool _opCrossed;
@@ -171,12 +190,31 @@ public sealed class FederationService : IAsyncDisposable
     /// </summary>
     private void RequireVerifiableTerm(FederationOp op, AttributionResult attribution)
     {
-        if (op.Term is null) return;
+        if (op.Term is not { } term) return;
+
+        // ONLY A LIVE-SPACE TERM CAN WIN, SO ONLY A LIVE-SPACE TERM NEEDS THIS PROTECTION.
+        //
+        // TWO OF MY OWN FIXES CONTRADICTED EACH OTHER HERE. Round 11 made every ingestion path
+        // refuse an unverified leadership-bearing op — right, for a term that could become the
+        // permanent winner. Round 12 made the adapter carry the scheduler fossil's term into the
+        // LEGACY space — also right, because FR-016/FR-027 require an unrecognised or legacy term to
+        // be RETAINED and reported unordered, never dropped.
+        //
+        // Together they DELETED the fossil. `sched:&lt;actor&gt;` has no publishable SPKI, so replay
+        // and tail refused it and it vanished from the fold: the one operation the STOP ORDER exists
+        // for, removed by the machinery built to contain it — and undetectably, because an absent op
+        // looks like an op that was never there.
+        //
+        // A legacy or unknown-space term is INCOMPARABLE to every live term by construction, so it
+        // cannot install a permanent winner however it is attributed. Retaining it costs nothing and
+        // is what the requirement says.
+        if (_fold.SpaceKindOf(term.SpaceId) != SpaceKind.Live) return;
+
         throw new AttributionRefusedException(new AttributionResult(
             AttributionVerdict.UnverifiedOrigin,
-            $"operation from '{op.Origin}' carries a TERM but its origin cannot be verified — "
-            + "publish that peer's spki. A leadership-bearing operation is monotone: accepting one "
-            + "unverified can install a permanent winner that no later correction removes."));
+            $"operation from '{op.Origin}' carries a LIVE-space term but its origin cannot be "
+            + "verified — publish that peer's spki. A live leadership-bearing operation is monotone: "
+            + "accepting one unverified can install a permanent winner no later correction removes."));
     }
 
     /// <summary>The origin key for a node id: a configured peer's, or this host's own.</summary>
@@ -437,6 +475,14 @@ public sealed class FederationService : IAsyncDisposable
         foreach (var entry in _peers.Entries)
         {
             if (!_admitted.ContainsKey(entry.NodeId)) continue;
+
+            // OUTBOUND IS GATED TOO. The merge gate protected what we ACCEPT; nothing protected what
+            // we SEND. A pinned peer that never declared term-space awareness — or declared it
+            // FALSE — stayed in _admitted, so board data went to it anyway and an older peer could
+            // merge the operation under the prohibited ordering rule. The STOP ORDER is about what
+            // gets merged ANYWHERE, not only about what gets merged here.
+            if (DeclaredCapabilitiesOf(entry.NodeId) is not { TermSpaceAware: true }) continue;
+
             try { await _link.SendAsync(entry.NodeId, BoardBox, bytes, ct).ConfigureAwait(false); }
             catch
             {
@@ -856,15 +902,17 @@ public sealed class FederationService : IAsyncDisposable
         if (entry is null) return;
         _admitted[entry.NodeId] = 0;
 
-        // A FRESH CONNECTION INVALIDATES THE PREVIOUS SESSION'S DECLARATION.
+        // CAPABILITY STATE IS KEYED TO THE TRANSPORT SESSION, NOT INFERRED FROM _connected.
         //
-        // If a peer restarted and reconnected before a local send noticed the old connection had
-        // failed, _peerCaps still held its previous "TermSpaceAware = true". QUIC box streams are
-        // independently ordered, so the NEW session could deliver a board frame before its hello and
-        // be admitted on the OLD session's word — defeating the per-session fail-closed gate exactly
-        // when it matters. Seeing traffic from a peer we did not consider connected is that signal.
-        if (!_connected.ContainsKey(entry.NodeId))
+        // Inferring it was my previous attempt and it does not hold: a peer that reconnects BEFORE a
+        // local send notices the old connection failed leaves _connected populated, so nothing was
+        // cleared and the new session's first board frame passed the gate on the OLD session's
+        // declaration. A declaration belongs to the session that made it, so it is stored WITH that
+        // session's identity and a change invalidates it by construction rather than by inference.
+        string session = _link.SessionIdOf(entry.NodeId) ?? string.Empty;
+        if (_peerSession.TryGetValue(entry.NodeId, out var previous) && previous != session)
             _peerCaps.TryRemove(entry.NodeId, out _);
+        _peerSession[entry.NodeId] = session;
 
         _connected[entry.NodeId] = 0;   // a frame just arrived on it, so the link is live
     }

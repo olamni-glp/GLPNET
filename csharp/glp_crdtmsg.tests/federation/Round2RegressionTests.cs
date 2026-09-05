@@ -149,6 +149,12 @@ public sealed class Round2RegressionTests
         var svc = new FederationService(Cfg(Peer("olamnit", "olamnit", "192.168.0.136:47890")),
                                         link, NewFold(), new InMemoryBoardLog());
         await svc.DialAsync(id);
+        // R13-02: outbound board data is gated on a current declaration, so the peer has
+        // to declare — as a real one does — before a push is expected.
+        link.PushInbound(new LinkInbound(id,
+            HelloProtocol.Encode(new PeerCapabilities(true, LiveEpoch), isReply: true),
+            HelloProtocol.Box));
+        await svc.ReceiveOneAsync();
         await svc.AppendAndPushAsync(Op(id, 1));
 
         Assert.Equal(id, link.Sent.Single(s => s.Box == FederationService.BoardBox).To);
@@ -228,6 +234,14 @@ public sealed class Round2RegressionTests
         var svc = new FederationService(cfg, link, NewFold(), new InMemoryBoardLog(), clock);
 
         Assert.Equal(AdmissionOutcome.Admitted, await svc.DialAsync(id));
+
+        // The peer DECLARES, as a real one does. Without it R13-02 skips the push entirely, so the
+        // send never fails, the link is never marked down, and this test would be measuring the
+        // outbound gate instead of the re-dial it is named for.
+        link.PushInbound(new LinkInbound(id,
+            HelloProtocol.Encode(new PeerCapabilities(true, LiveEpoch), isReply: true), HelloProtocol.Box));
+        await svc.ReceiveOneAsync();
+
         int dialsAfterFirst = link.Dialled.Count;
 
         link.FailSends = true;                                  // the established connection drops
@@ -1016,6 +1030,12 @@ public sealed class Round2RegressionTests
         var svc = new FederationService(Cfg(Peer("olamnit", "olamnit", "192.168.0.136:47890")),
                                         link, NewFold(), new InMemoryBoardLog(), clock);
         await svc.DialAsync(id);
+        // R13-02: outbound board data is gated on a current declaration, so the peer has
+        // to declare — as a real one does — before a push is expected.
+        link.PushInbound(new LinkInbound(id,
+            HelloProtocol.Encode(new PeerCapabilities(true, LiveEpoch), isReply: true),
+            HelloProtocol.Box));
+        await svc.ReceiveOneAsync();
 
         var op = Op(NodeId("gavriella"), 1);
         await svc.AppendAndPushAsync(op);
@@ -1045,6 +1065,12 @@ public sealed class Round2RegressionTests
         var svc = new FederationService(Cfg(Peer("olamnit", "olamnit", "192.168.0.136:47890")),
                                         link, NewFold(), new InMemoryBoardLog(), clock);
         await svc.DialAsync(id);
+        // R13-02: outbound board data is gated on a current declaration, so the peer has
+        // to declare — as a real one does — before a push is expected.
+        link.PushInbound(new LinkInbound(id,
+            HelloProtocol.Encode(new PeerCapabilities(true, LiveEpoch), isReply: true),
+            HelloProtocol.Box));
+        await svc.ReceiveOneAsync();
 
         var op = Op(NodeId("gavriella"), 1);
         await svc.AppendAndPushAsync(op);
@@ -1101,6 +1127,12 @@ public sealed class Round2RegressionTests
             var svc = new FederationService(Cfg(Peer("olamnit", "olamnit", "192.168.0.136:47890")),
                                             link, NewFold(), new InMemoryBoardLog(), clock);
             await svc.DialAsync(id);
+            // R13-02: outbound board data is gated on a current declaration, so the peer has
+            // to declare — as a real one does — before a push is expected.
+            link.PushInbound(new LinkInbound(id,
+                HelloProtocol.Encode(new PeerCapabilities(true, LiveEpoch), isReply: true),
+                HelloProtocol.Box));
+            await svc.ReceiveOneAsync();
 
             // The daemon's tail. The file starts empty, exactly as at daemon start.
             var writer = new SchedulerBoardLog(root, "gavriella");
@@ -1144,6 +1176,12 @@ public sealed class Round2RegressionTests
             var svc = new FederationService(Cfg(Peer("olamnit", "olamnit", "192.168.0.136:47890")),
                                             link, NewFold(), new InMemoryBoardLog(), clock);
             await svc.DialAsync(id);
+            // R13-02: outbound board data is gated on a current declaration, so the peer has
+            // to declare — as a real one does — before a push is expected.
+            link.PushInbound(new LinkInbound(id,
+                HelloProtocol.Encode(new PeerCapabilities(true, LiveEpoch), isReply: true),
+                HelloProtocol.Box));
+            await svc.ReceiveOneAsync();
 
             using var cts = new CancellationTokenSource();
             var tail = svc.RunLogTailAsync(path, cts.Token);
@@ -1173,6 +1211,12 @@ public sealed class Round2RegressionTests
             var svc = new FederationService(Cfg(Peer("olamnit", "olamnit", "192.168.0.136:47890")),
                                             link, fold, new InMemoryBoardLog(), clock);
             await svc.DialAsync(id);
+            // R13-02: outbound board data is gated on a current declaration, so the peer has
+            // to declare — as a real one does — before a push is expected.
+            link.PushInbound(new LinkInbound(id,
+                HelloProtocol.Encode(new PeerCapabilities(true, LiveEpoch), isReply: true),
+                HelloProtocol.Box));
+            await svc.ReceiveOneAsync();
 
             var op = Op(NodeId("gavriella"), 1);
             fold.Apply(op);                                   // the daemon already knows it

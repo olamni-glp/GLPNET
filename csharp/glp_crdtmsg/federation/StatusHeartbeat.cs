@@ -98,7 +98,21 @@ public sealed record StatusHeartbeat
         {
             if (!File.Exists(path)) return null;
             var hb = JsonSerializer.Deserialize<StatusHeartbeat>(File.ReadAllText(path));
-            return hb is not null && hb.IsFreshAt(now) ? hb : null;
+            if (hb is null) return null;
+
+            // A TERMINAL POLICY REFUSAL DOES NOT EXPIRE.
+            //
+            // The freshness window exists because a LIVE measurement from a dead process is a lie.
+            // A host-policy refusal is the opposite: the daemon published it and then EXITED, by
+            // design, telling the operator to run `status` — so nothing will ever refresh it, and
+            // discarding it after 30 seconds destroyed the only record of the single failure FR-023
+            // exists to name. An operator arriving a minute later saw "unknown" instead.
+            //
+            // It is still marked as terminal rather than live, so it can never be mistaken for a
+            // running daemon.
+            if (hb.PolicyRefused is not null) return hb;
+
+            return hb.IsFreshAt(now) ? hb : null;
         }
         catch (Exception ex) when (ex is IOException or JsonException or UnauthorizedAccessException)
         {

@@ -144,6 +144,12 @@ public sealed class Round4RegressionTests
             var svc = new FederationService(Cfg(Peer("olamnit", "olamnit", "192.168.0.136:47890")),
                                             link, NewFold(), new InMemoryBoardLog(), clock);
             await svc.DialAsync(id);
+            // R13-02: outbound board data is gated on a current declaration, so the peer has
+            // to declare — as a real one does — before a push is expected.
+            link.PushInbound(new LinkInbound(id,
+                HelloProtocol.Encode(new PeerCapabilities(true, LiveEpoch), isReply: true),
+                HelloProtocol.Box));
+            await svc.ReceiveOneAsync();
 
             var own = new SchedulerBoardLog(root, "gavriella", BoardWriteMode.LaneSegment);
             Directory.CreateDirectory(Path.GetDirectoryName(own.WritePath)!);
@@ -193,6 +199,12 @@ public sealed class Round4RegressionTests
             var svc = new FederationService(Cfg(Peer("olamnit", "olamnit", "192.168.0.136:47890")),
                                             link, fold, new InMemoryBoardLog(), clock);
             await svc.DialAsync(id);
+            // R13-02: outbound board data is gated on a current declaration, so the peer has
+            // to declare — as a real one does — before a push is expected.
+            link.PushInbound(new LinkInbound(id,
+                HelloProtocol.Encode(new PeerCapabilities(true, LiveEpoch), isReply: true),
+                HelloProtocol.Box));
+            await svc.ReceiveOneAsync();
 
             var own = new SchedulerBoardLog(root, "gavriella", BoardWriteMode.LaneSegment);
             Directory.CreateDirectory(Path.GetDirectoryName(own.WritePath)!);
@@ -313,6 +325,12 @@ public sealed class Round4RegressionTests
                                         link, NewFold(), new InMemoryBoardLog());
         await svc.BindAsync();
         await svc.DialAsync(id);
+        // R13-02: outbound board data is gated on a current declaration, so the peer has
+        // to declare — as a real one does — before a push is expected.
+        link.PushInbound(new LinkInbound(id,
+            HelloProtocol.Encode(new PeerCapabilities(true, LiveEpoch), isReply: true),
+            HelloProtocol.Box));
+        await svc.ReceiveOneAsync();
 
         var op = Op(NodeId("gavriella"), 1);
         await svc.AppendAndPushAsync(op);

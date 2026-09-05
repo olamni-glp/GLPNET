@@ -285,6 +285,11 @@ public static class Program
         // federated under a freshly-minted one that no peer had pinned — the configured setting
         // inert while appearing effective.
         string path = cfg.EffectiveIdentityPath;
+        // APPLY THE STRICT SETTING HERE TOO. `serve` set it and `identity` did not, so in a fresh
+        // process an ACL violation stayed a warning even for an operator who had configured
+        // fail-closed. A security control that depends on which verb you happened to run is not one.
+        NodeIdentityStore.RequireOwnerOnlyKey = cfg.RequireOwnerOnlyKey;
+
         var store = new NodeIdentityStore(path);
         bool existed = store.Exists;
         var cert = store.LoadOrMint(Environment.MachineName.ToLowerInvariant());

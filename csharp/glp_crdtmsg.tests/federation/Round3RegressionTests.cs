@@ -370,6 +370,12 @@ public sealed class Round3RegressionTests
             var svc = new FederationService(Cfg(Peer("olamnit", "olamnit", "192.168.0.136:47890")),
                                             link, NewFold(), new InMemoryBoardLog(), clock);
             await svc.DialAsync(id);
+            // R13-02: outbound board data is gated on a current declaration, so the peer has
+            // to declare — as a real one does — before a push is expected.
+            link.PushInbound(new LinkInbound(id,
+                HelloProtocol.Encode(new PeerCapabilities(true, LiveEpoch), isReply: true),
+                HelloProtocol.Box));
+            await svc.ReceiveOneAsync();
 
             using var cts = new CancellationTokenSource();
             var tail = svc.RunLogTailAsync(new[] { path }, cts.Token);
@@ -414,6 +420,12 @@ public sealed class Round3RegressionTests
             var svc = new FederationService(Cfg(Peer("olamnit", "olamnit", "192.168.0.136:47890")),
                                             link, NewFold(), new InMemoryBoardLog(), clock);
             await svc.DialAsync(id);
+            // R13-02: outbound board data is gated on a current declaration, so the peer has
+            // to declare — as a real one does — before a push is expected.
+            link.PushInbound(new LinkInbound(id,
+                HelloProtocol.Encode(new PeerCapabilities(true, LiveEpoch), isReply: true),
+                HelloProtocol.Box));
+            await svc.ReceiveOneAsync();
 
             var own = new SchedulerBoardLog(root, "gavriella");
             Directory.CreateDirectory(Path.GetDirectoryName(own.WritePath)!);

@@ -116,6 +116,16 @@ public sealed class QuicLinkTransport : IBoxLinkTransport, IAsyncDisposable
 
     public ChannelReader<LinkInbound> Inbound => _inbound.Reader;
 
+    /// <summary>
+    /// A stable identity for the CURRENT connection to <paramref name="peer"/>, or null if there is
+    /// none. Changes whenever the underlying QuicConnection is replaced, which is precisely the
+    /// event that must invalidate a cached capability declaration.
+    /// </summary>
+    public string? SessionIdOf(string peer) =>
+        _conns.TryGetValue(peer, out var c)
+            ? System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(c).ToString("x8")
+            : null;
+
     /// <summary>Advisory liveness: when a presence ping from <paramref name="peer"/> last arrived.</summary>
     public DateTimeOffset? LastSeen(string peer) => _lastSeen.TryGetValue(peer, out var t) ? t : null;
 

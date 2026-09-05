@@ -160,6 +160,12 @@ public sealed class Round5RegressionTests
             var svc = new FederationService(Cfg(Peer("olamnit", "olamnit", "192.168.0.136:47890")),
                                             link, NewFold(), log, clock);
             await svc.DialAsync(id);
+            // R13-02: outbound board data is gated on a current declaration, so the peer has
+            // to declare — as a real one does — before a push is expected.
+            link.PushInbound(new LinkInbound(id,
+                HelloProtocol.Encode(new PeerCapabilities(true, LiveEpoch), isReply: true),
+                HelloProtocol.Box));
+            await svc.ReceiveOneAsync();
 
             Directory.CreateDirectory(Path.GetDirectoryName(log.WritePath)!);
             File.WriteAllText(log.WritePath, "");
@@ -351,6 +357,136 @@ public sealed class Round5RegressionTests
         Assert.Null(fold.WinningTerm());
     }
 
+    // ---- R13-02: outbound board data must be gated on the peer's declaration -------------------
+
+    /// <summary>
+    /// The merge gate protected what we ACCEPT; nothing protected what we SEND. A pinned peer that
+    /// never declared term-space awareness — or declared it FALSE — stayed in <c>_admitted</c>, so
+    /// board data went to it anyway and an older peer could merge under the prohibited ordering
+    /// rule. The STOP ORDER is about what gets merged ANYWHERE, not only here.
+    /// </summary>
+    [Fact]
+    public async Task BoardDataIsNotSentToAPeerThatHasNotDeclaredAwareness()
+    {
+        string id = NodeId("olamnit");
+        var link = new RecordingLink("A");
+        var svc = new FederationService(Cfg(Peer("olamnit", "olamnit", "192.168.0.136:47890")),
+                                        link, NewFold(), new InMemoryBoardLog());
+        await svc.DialAsync(id);
+
+        await svc.AppendAndPushAsync(Op(NodeId("gavriella"), 1));
+        Assert.DoesNotContain(link.Sent, x => x.Box == FederationService.BoardBox);
+
+        // AND AN EXPLICIT "NOT AWARE" IS ALSO NOT ENOUGH.
+        link.PushInbound(new LinkInbound(id,
+            HelloProtocol.Encode(new PeerCapabilities(TermSpaceAware: false, null), isReply: true),
+            HelloProtocol.Box));
+        await svc.ReceiveOneAsync();
+        await svc.AppendAndPushAsync(Op(NodeId("gavriella"), 2));
+        Assert.DoesNotContain(link.Sent, x => x.Box == FederationService.BoardBox);
+
+        // POSITIVE CONTROL: once it declares AWARE, board data flows.
+        link.PushInbound(new LinkInbound(id,
+            HelloProtocol.Encode(new PeerCapabilities(true, LiveEpoch), isReply: true), HelloProtocol.Box));
+        await svc.ReceiveOneAsync();
+        await svc.AppendAndPushAsync(Op(NodeId("gavriella"), 3));
+        Assert.Contains(link.Sent, x => x.Box == FederationService.BoardBox);
+    }
+
+    // ---- R13-08: a terminal policy refusal must outlive the daemon that published it ------------
+
+    /// <summary>
+    /// The freshness window exists because a LIVE measurement from a dead process is a lie. A
+    /// host-policy refusal is the opposite: the daemon publishes it and then EXITS by design,
+    /// telling the operator to run `status` — so nothing will ever refresh it, and expiring it after
+    /// 30 seconds destroyed the only record of the one failure FR-023 exists to name.
+    /// </summary>
+    [Fact]
+    public void ATerminalPolicyRefusalIsStillReadableLongAfterTheDaemonExits()
+    {
+        string dir = Path.Combine(Path.GetTempPath(), "ynet_pr", Guid.NewGuid().ToString("n")[..8]);
+        string path = Path.Combine(dir, "serving-status.json");
+        try
+        {
+            var now = DateTimeOffset.UtcNow;
+            var refusal = new PolicyRefusal("Smart App Control",
+                PolicyRefusal.SmartAppControlHResult, "blocked");
+
+            StatusHeartbeat.From(new FederationStatus { ListenerBound = Tri.No, PolicyRefused = refusal },
+                                 0, now).Publish(path);
+
+            // Long past the liveness window — the daemon is gone and is never coming back.
+            var later = now + StatusHeartbeat.Freshness + TimeSpan.FromMinutes(10);
+            var read = StatusHeartbeat.ReadFresh(later, path);
+
+            Assert.NotNull(read);
+            Assert.Equal("Smart App Control", read!.PolicyRefused!.Policy);
+
+            // POSITIVE CONTROL: an ORDINARY stale measurement still expires, so this is an exemption
+            // for a terminal record and not a hole in the staleness rule.
+            StatusHeartbeat.From(new FederationStatus { ListenerBound = Tri.Yes }, 0, now).Publish(path);
+            Assert.Null(StatusHeartbeat.ReadFresh(later, path));
+        }
+        finally { try { Directory.Delete(dir, true); } catch { } }
+    }
+
+    // ---- R13-01: two of my own fixes contradicted each other and DELETED the fossil ------------
+
+    /// <summary>
+    /// The fossil must survive REPLAY, not merely <c>fold.Apply</c>.
+    /// <para>
+    /// My round-12 test asserted the adapter kept the term and called <c>fold.Apply</c> directly —
+    /// so it passed while the real ingestion path REJECTED the same operation. Round 11 had made
+    /// every path refuse an unverified leadership-bearing op, and `sched:&lt;actor&gt;` has no
+    /// publishable SPKI, so replay and tail dropped the fossil entirely: the one operation the STOP
+    /// ORDER exists for, deleted by the machinery built to contain it.
+    /// </para>
+    /// <para>
+    /// A legacy or unknown-space term is incomparable to every live term by construction, so it can
+    /// never install a permanent winner and FR-016/FR-027 require it RETAINED. Only a LIVE-space
+    /// term needs a verified origin.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public void TheFossilSurvivesStartupReplayAndStillCannotWin()
+    {
+        using var doc = JsonDocument.Parse(
+            "{\"actor\":\"gavriella\",\"op_id\":\"gavriella:000009\",\"op_type\":\"leader_claim\","
+            + "\"seq\":9,\"term\":5961694}");
+        var fossil = SchedulerBoardLog.AdaptSchedulerLine(doc.RootElement)!;
+
+        var fold = NewFold();
+        var svc = new FederationService(Cfg(), new RecordingLink("A"), fold, new InMemoryBoardLog());
+
+        // THROUGH ADMISSION — the path that was deleting it.
+        Assert.Equal(1, svc.ReplayIntoFold(new[] { fossil }));
+        Assert.True(fold.Contains(fossil.OpId));
+        Assert.Equal(0, svc.RefusedOps);
+
+        // Retained, reported unordered, and unable to win.
+        Assert.Equal(OrderingDisposition.UnorderedLegacy, fold.DispositionOf(fossil));
+        Assert.Null(fold.WinningTerm());
+    }
+
+    /// <summary>
+    /// POSITIVE CONTROL: an unverified LIVE-space term is still refused. Without this the fix above
+    /// would read as "stop checking terms", which is the opposite of what it does.
+    /// </summary>
+    [Fact]
+    public void AnUnverifiedLiveSpaceTermIsStillRefusedOnReplay()
+    {
+        string id = NodeId("stranger");
+        var live = FederationOp.Create(new Dot(id, 1), id, "claim", Body,
+            term: new Term(LiveEpoch, long.MaxValue, id));
+
+        var fold = NewFold();
+        var svc = new FederationService(Cfg(), new RecordingLink("A"), fold, new InMemoryBoardLog());
+
+        Assert.Equal(0, svc.ReplayIntoFold(new[] { live }));
+        Assert.False(fold.Contains(live.OpId));
+        Assert.Equal(1, svc.RefusedOps);
+    }
+
     // ---- R6-04: a permission refusal must not be retried as lock contention --------------------
 
     /// <summary>
@@ -525,6 +661,12 @@ public sealed class Round5RegressionTests
                                         link, NewFold(), new InMemoryBoardLog());
 
         await svc.DialAsync(id);
+        // R13-02: outbound board data is gated on a current declaration, so the peer has
+        // to declare — as a real one does — before a push is expected.
+        link.PushInbound(new LinkInbound(id,
+            HelloProtocol.Encode(new PeerCapabilities(true, LiveEpoch), isReply: true),
+            HelloProtocol.Box));
+        await svc.ReceiveOneAsync();
         Assert.Equal(FederationHealth.Federating, svc.Health);
 
         // The established connection closes.
@@ -618,6 +760,12 @@ public sealed class Round5RegressionTests
             var svc = new FederationService(Cfg(Peer("olamnit", "olamnit", "192.168.0.136:47890")),
                                             link, fold, new InMemoryBoardLog(), clock);
             await svc.DialAsync(id);
+            // R13-02: outbound board data is gated on a current declaration, so the peer has
+            // to declare — as a real one does — before a push is expected.
+            link.PushInbound(new LinkInbound(id,
+                HelloProtocol.Encode(new PeerCapabilities(true, LiveEpoch), isReply: true),
+                HelloProtocol.Box));
+            await svc.ReceiveOneAsync();
 
             // A backlog comfortably larger than one chunk.
             string path = Path.Combine(root, "big.jsonl");
