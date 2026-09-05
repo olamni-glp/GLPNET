@@ -127,12 +127,27 @@ switch (verb)
         using var machine = new YnetReceiverMachine(carrier, spool, hook);
         carrier.ConfirmDurable = m => machine.WaitForDurable(m.MessageId, TimeSpan.FromSeconds(10));
         carrier.StrayObserved += p => Console.WriteLine($"  stray (not a deliverable frame): {p}");
-        machine.Start();
-        machine.PumpOnce();
+
+        // LAUNCH, not Start+PumpOnce. The durability gate runs INSIDE PollOnce and asks whether the
+        // alert has reached the spool; the spool write happens on the machine's dispatch thread. With
+        // a manually pumped machine that thread does not exist yet, so the gate could NEVER be
+        // satisfied: every frame was received, durably spooled a moment later, and still bounced back
+        // to the inbox as "not durable". Measured live 2026-09-05: delivered=0, received=2,
+        // returned_for_retry=1. A gate that cannot be satisfied is a deadlock, not a safeguard.
+        machine.Launch("ynet-client-poll");
 
         carrier.EnsureMailbox();
+
+        // TWO SWEEPS, not one, and the reason is the carrier's own anti-truncation rule: a frame is
+        // delivered only once its LENGTH HAS BEEN SEEN TWICE, so that a file still being written by
+        // a peer is never read as a complete one. That state lives in the carrier instance, and this
+        // verb is a fresh PROCESS each time - so a single sweep is always a "first sighting" and
+        // could NEVER deliver anything. Measured live 2026-09-05: delivered=0 forever, with frames
+        // visibly waiting in the inbox. Sweeping twice, with a gap, satisfies the rule inside one
+        // invocation and keeps the verb's promise of a deterministic result.
         var delivered = carrier.PollOnce();
-        machine.PumpOnce();
+        Thread.Sleep(250);
+        delivered += carrier.PollOnce();
         machine.WaitForNotifications(TimeSpan.FromSeconds(15));
 
         Console.WriteLine($"ynet_client: polled {carrier.InboxDirectory}");
