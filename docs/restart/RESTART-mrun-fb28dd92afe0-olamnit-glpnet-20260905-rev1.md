@@ -206,3 +206,54 @@ into a **reusable buildkit guard**, so a lane declares *"criterion X spans runti
 > not evidence: revert the fix and watch it go red, or you have not tested the test.
 
 — `olamnit.glpnet`, 2026-09-05
+
+---
+
+## 9 · FINAL STATE — rev 1 addendum, written at session end
+
+**THE ERA IS SHIPPED, RELEASED AND CLOSED.** Verified independently of any buildkit ledger:
+
+| | |
+|---|---|
+| feature PR | **#293 MERGED** 2026-09-05T01:51:02Z |
+| release PR | **#294 MERGED** 2026-09-05T01:54:01Z |
+| tag | **`v2026.09.05.1`** → `e6da033b` |
+| `main` head | `681c334f` |
+| retrospective | `20260905T015514Z86c1fe` **complete** — 3 findings, 3 actions |
+| roadmap | shipped → released → **closed** |
+| suite | **584 total · 582 pass · 2 fail · 1 skip** · Gleam **645** · C# **0 errors** |
+
+### 🔴 The marathon run is deliberately LEFT OPEN — do not "tidy" it
+
+`buildkit-marathon discharge` refuses on **23 parked backlog items**. They are **real work**, not
+paperwork: completion spines for features **082 / 083 / 085**, engineer-gated items (**X07**
+private-key rotation + history rewrite, **X11/X12** release backfill), and fleet concerns (board
+root identity, the L0 election contract).
+
+**An informed-consent override would mark those discharged when they are not done.** That is
+exactly the false-completion this era spent itself proving is the estate's most expensive defect
+class, so it was refused. **The run stays open and the items carry forward.** Recorded as a
+marathon trace (seq 39).
+
+### 🔴 A THIRD id-space trap, and the C# mirror's stale banner
+
+1. **Roadmap vs pipeline ids.** `buildkit-builder lifecycle` accepts only the **pipeline** id
+   (`101-goal-term-acceptance`); `buildkit-roadmap advance` looks for that evidence under its own
+   **slug**. The two id spaces cannot be made to meet, so the three advances carry an
+   `--override` whose reason says so and cites PR/tag/head evidence verifiable outside either ledger.
+2. 🔴 **`out/csharp/lib/engine/glp_engine.cs` is banner-marked `auto-generated` with a
+   `source_sha256` — and that sha matches NO Dart version in the last 8 commits** (not the current
+   `05a81d5e`, not the pre-era `c91d8ebb`). The three prior commits to that file are **hand-edits**.
+   So the file is **de-facto hand-maintained and its provenance banner is stale** — a trap, because
+   a future `codeconv` regeneration would silently overwrite **four** hand-edits including this
+   era's. **Worth a feature.** *(The same parked note also claims the C# REPL "is not built here,
+   so C# parity is untestable" — that is now FALSE: built on net11.0, 0 errors, parity measured
+   byte-identical and pinned by V-18..V-25.)*
+
+### Two ENGINEER decisions carried out of this era
+
+- **codexreview F1** — a refused **conjunction is not atomic**: `_RunConjunctionAsync` drains each
+  conjunct before building the next one's arguments, so an earlier conjunct executes before a
+  later one is refused. Doc claim corrected in both runtimes; **behaviour reported, not patched.**
+- **T024 / A1** — **retire `FR-008a` / `SC-003a`**: measurement falsified their premise (Gleam
+  *accepts* conjunctions), and they cannot be satisfied without deliberately breaking a working path.
