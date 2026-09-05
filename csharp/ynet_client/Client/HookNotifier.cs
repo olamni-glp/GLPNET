@@ -33,34 +33,63 @@ public sealed class HookNotifier : IDisposable
     }
 
     /// <summary>The most recent attempt, whenever it completed.</summary>
-    public HookAttempt? Last { get; private set; }
+    /// <remarks>
+    /// Written on the pump thread and read by callers, so it is published with a release/acquire
+    /// pair rather than a plain field write — an auto-property gave the reader no barrier at all.
+    /// </remarks>
+    public HookAttempt? Last => Volatile.Read(ref _last);
 
     /// <summary>Notifications dropped because the notifier was saturated. The alerts are not lost.</summary>
     public long Dropped => Interlocked.Read(ref _dropped);
 
     /// <summary>Notifications actually attempted.</summary>
-    public long Attempted { get; private set; }
+    public long Attempted => Interlocked.Read(ref _completed);
 
     /// <summary>Queue one announcement. Never blocks the caller.</summary>
     public void Enqueue(PendingAlert alert)
     {
         if (_queue.IsAddingCompleted || !_queue.TryAdd(alert))
+        {
             Interlocked.Increment(ref _dropped);
+            return;
+        }
+
+        // Counted as outstanding the moment it is ADMITTED, not when the pump notices it. See
+        // WaitForIdle for why that ordering is the whole fix.
+        Interlocked.Increment(ref _admitted);
     }
 
-    /// <summary>Block until the queue drains or the timeout expires. For tests and shutdown.</summary>
+    /// <summary>
+    /// Block until every admitted announcement has been fully processed, or the timeout expires.
+    ///
+    /// THE RACE THIS EXISTS TO CLOSE (measured 2026-09-05, feature 106). The previous test was
+    /// <c>_queue.Count == 0 &amp;&amp; !_busy</c>, and there is a window between the pump TAKING an
+    /// item off the queue — which drops Count to 0 — and the pump setting <c>_busy</c>. A caller
+    /// sampling inside that window is told the notifier is idle while the hook has not run, and
+    /// then reads a null <c>Last</c>. The window is a few instructions wide, so 52 green tests
+    /// never opened it; adding ten concurrently-running tests preempted the pump thread inside it
+    /// on the first run.
+    ///
+    /// Counting admitted-vs-completed removes the window rather than narrowing it: an item is
+    /// outstanding from admission until its <c>finally</c>, with no interval where it is neither
+    /// queued nor in flight.
+    /// </summary>
     public bool WaitForIdle(TimeSpan timeout)
     {
         var deadline = DateTime.UtcNow + timeout;
         while (DateTime.UtcNow < deadline)
         {
-            if (_queue.Count == 0 && !_busy) return true;
+            if (IsIdle) return true;
             Thread.Sleep(5);
         }
-        return _queue.Count == 0 && !_busy;
+        return IsIdle;
     }
 
-    private volatile bool _busy;
+    private bool IsIdle => Interlocked.Read(ref _completed) == Interlocked.Read(ref _admitted);
+
+    private HookAttempt? _last;
+    private long _admitted;
+    private long _completed;
 
     private void Pump()
     {
@@ -68,15 +97,15 @@ public sealed class HookNotifier : IDisposable
         {
             foreach (var alert in _queue.GetConsumingEnumerable())
             {
-                _busy = true;
                 try
                 {
-                    Attempted++;
-                    Last = _hook.Notify(alert);
+                    Volatile.Write(ref _last, _hook.Notify(alert));
                 }
                 finally
                 {
-                    _busy = false;
+                    // Last is published BEFORE the item is marked complete, so a caller that
+                    // observes idle can never then observe a stale or null Last.
+                    Interlocked.Increment(ref _completed);
                 }
             }
         }
