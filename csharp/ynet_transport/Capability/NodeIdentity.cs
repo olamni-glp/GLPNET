@@ -32,7 +32,7 @@ public enum KeyState { Active, Migrating, Retired }
 /// node id nodeId = SHA-256(SPKI). Ed25519-primary with an ECDsa/P-256 exceptional-case fallback
 /// (DEC-CRYPTO-1), both behind <see cref="INodeSigner"/>. REAL + TESTED (T005/T012).
 /// </summary>
-public sealed class NodeIdentity : INodeSigner, IDisposable
+public sealed partial class NodeIdentity : INodeSigner, IDisposable
 {
     // Exactly one of these is non-null, selected by Algorithm.
     private readonly Ed25519PrivateKeyParameters? _edPriv;

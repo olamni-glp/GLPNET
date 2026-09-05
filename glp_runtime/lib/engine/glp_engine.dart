@@ -31,6 +31,42 @@ import 'package:glp_runtime/multiagent/mad_context.dart';
 import 'package:glp_runtime/compiler/project_linker.dart';
 
 /// Result of running a goal
+/// A goal term the front end cannot faithfully represent.
+///
+/// Implements: specs/101-goal-term-acceptance/spec.md FR-005, FR-006.
+///
+/// The message names what the PROGRAMMER typed. FR-006 forbids notifying solely
+/// via an internal class name — `Unsupported list head type: UnderscoreTerm` tells
+/// the programmer nothing actionable about the goal they entered.
+///
+/// Raised during goal-argument construction. For a SINGLE goal that is before the goal
+/// is scheduled, so nothing runs. 🔴 FOR A CONJUNCTION IT IS NOT: the conjunction driver
+/// sets up and DRAINS each conjunct in one loop, so an earlier conjunct has already
+/// executed by the time a later one is refused. Found by adversarial review 2026-09-05
+/// (finding F1) after an earlier version of this comment claimed otherwise; the claim was
+/// wrong and is corrected rather than quietly dropped. FR-007 still holds — the session
+/// stays usable — but a refused conjunction is NOT atomic. Reported as a defect rather
+/// than fixed here: making it atomic means hoisting every conjunct's argument setup ahead
+/// of the first drain, which changes when shared logic variables are materialised in a
+/// driver this feature does not own. See specs/101-goal-term-acceptance/analysis.md A7.
+class GoalTermError implements Exception {
+  final String message;
+  GoalTermError(this.message);
+  @override
+  String toString() => message;
+}
+
+/// Render a goal-term AST node as the programmer would recognise it (FR-006).
+String _describeGoalTerm(Object? term) {
+  if (term == null) return 'nothing';
+  if (term is ConstTerm) return '${term.value}';
+  if (term is VarTerm) return term.isReader ? '${term.name}?' : term.name;
+  if (term is UnderscoreTerm) return term.isReader ? '_?' : '_';
+  if (term is StructTerm) return '${term.functor}/${term.args.length}';
+  if (term is ListTerm) return 'a list';
+  return term.toString();
+}
+
 class ExecutionResult {
   final ExecutionStatus status;
   final Map<String, rt.Term?> bindings;
@@ -923,6 +959,36 @@ class GlpEngine {
     );
   }
 
+  /// Materialise an anonymous variable `_` appearing in a goal term.
+  ///
+  /// Implements: specs/101-goal-term-acceptance/spec.md FR-001, FR-003, FR-004.
+  ///
+  /// Per docs/typed-glp-manual.md §9.1 the anonymous variable is "a fresh writer
+  /// with no paired reader, so that a value assigned to it is discarded". So this
+  /// returns the WRITER half. A reader would suspend forever waiting on a writer
+  /// that does not exist.
+  ///
+  /// Deliberately NOT recorded in `queryVarWriters`: that map drives result
+  /// reporting, and `_` has no name to report against (FR-004 by construction,
+  /// not by filtering afterwards).
+  ///
+  /// Each call allocates its own heap variable and nothing keys it by name, so
+  /// two occurrences of `_` in one goal can never alias (FR-003 by construction).
+  rt.Term _anonymousGoalWriter(GlpRuntime runtime) {
+    final (writerId, _) = runtime.heap.allocateVariable();
+    return rt.VarRef(writerId);
+  }
+
+  /// Guard for `_?` in a goal term. The language does not permit an anonymous
+  /// reader (manual §9.1: "Only anonymous writers are permitted"), and this
+  /// feature does not change that (FR-012) — it only makes the refusal legible.
+  Never _refuseAnonymousReader(String position) {
+    throw GoalTermError(
+        'anonymous reader `_?` is not a valid term in $position — '
+        'an anonymous variable is a writer nobody reads, so `_?` reads nothing. '
+        'Use `_` to discard a value, or a named variable to keep it.');
+  }
+
   void _setupArgument(
     GlpRuntime runtime,
     Term arg,
@@ -969,8 +1035,13 @@ class GlpEngine {
               as rt.StructTerm;
       runtime.heap.bindWriterStruct(writerId, structValue.functor, structValue.args);
       argSlots[argSlot] = rt.VarRef(readerId);
+    } else if (arg is UnderscoreTerm) {
+      // FR-001: `_` is accepted at a top-level goal argument.
+      if (arg.isReader) _refuseAnonymousReader('a goal argument');
+      argSlots[argSlot] = _anonymousGoalWriter(runtime);
     } else {
-      throw Exception('Unsupported argument type: ${arg.runtimeType}');
+      throw GoalTermError(
+          'cannot use ${_describeGoalTerm(arg)} as a goal argument');
     }
   }
 
@@ -1020,8 +1091,13 @@ class GlpEngine {
               as rt.StructTerm;
       runtime.heap.bindWriterStruct(writerId, structValue.functor, structValue.args);
       argSlots[argSlot] = rt.VarRef(readerId);
+    } else if (arg is UnderscoreTerm) {
+      // FR-001: `_` is accepted at a top-level goal argument.
+      if (arg.isReader) _refuseAnonymousReader('a goal argument');
+      argSlots[argSlot] = _anonymousGoalWriter(runtime);
     } else {
-      throw Exception('Unsupported argument type: ${arg.runtimeType}');
+      throw GoalTermError(
+          'cannot use ${_describeGoalTerm(arg)} as a goal argument');
     }
   }
 
@@ -1074,8 +1150,13 @@ class GlpEngine {
                 as rt.StructTerm;
         runtime.heap.bindWriterStruct(writerId, structValue.functor, structValue.args);
         argTerms.add(rt.VarRef(readerId));
+      } else if (arg is UnderscoreTerm) {
+        // FR-001: `_` is accepted inside a structure in a goal.
+        if (arg.isReader) _refuseAnonymousReader('a structure argument');
+        argTerms.add(_anonymousGoalWriter(runtime));
       } else {
-        throw Exception('Unsupported struct argument type: ${arg.runtimeType}');
+        throw GoalTermError(
+            'cannot use ${_describeGoalTerm(arg)} as a structure argument');
       }
     }
 
@@ -1131,8 +1212,13 @@ class GlpEngine {
                 as rt.StructTerm;
         runtime.heap.bindWriterStruct(writerId, structValue.functor, structValue.args);
         argTerms.add(rt.VarRef(readerId));
+      } else if (arg is UnderscoreTerm) {
+        // FR-001: `_` is accepted inside a structure in a goal.
+        if (arg.isReader) _refuseAnonymousReader('a structure argument');
+        argTerms.add(_anonymousGoalWriter(runtime));
       } else {
-        throw Exception('Unsupported struct argument type: ${arg.runtimeType}');
+        throw GoalTermError(
+            'cannot use ${_describeGoalTerm(arg)} as a structure argument');
       }
     }
 
@@ -1174,8 +1260,13 @@ class GlpEngine {
       headTerm = _buildListTerm(runtime, head, queryVarWriters, varNameToId);
     } else if (head is StructTerm) {
       headTerm = _buildStructTerm(runtime, head, queryVarWriters, varNameToId);
+    } else if (head is UnderscoreTerm) {
+      // FR-001: `_` is accepted as a list element in a goal.
+      if (head.isReader) _refuseAnonymousReader('a list element');
+      headTerm = _anonymousGoalWriter(runtime);
     } else {
-      throw Exception('Unsupported list head type: ${head.runtimeType}');
+      throw GoalTermError(
+          'cannot use ${_describeGoalTerm(head)} as a list element');
     }
 
     rt.Term tailTerm;
@@ -1196,8 +1287,24 @@ class GlpEngine {
         }
         tailTerm = rt.VarRef(tail.isReader ? readerId : writerId);
       }
+    } else if (tail is UnderscoreTerm && !tail.isReader) {
+      // FR-001: `_` is a legal list tail — a writer nobody reads.
+      tailTerm = _anonymousGoalWriter(runtime);
     } else {
-      tailTerm = rt.ConstTerm(null);
+      // FR-005: previously `tailTerm = rt.ConstTerm(null)`, which SILENTLY
+      // discarded an improper tail and ran the goal against a DIFFERENT term
+      // than the one typed — `[a|foo]` returned exactly what `[a|[]]` returned.
+      // A wrong answer, not an error. Refuse instead.
+      //
+      // RULED 2026-09-04 (engineer ruling Q-101-02, "refusal is the answer"): an improper
+      // tail in a GOAL TERM is permanently invalid, and this refusal IS the specification.
+      // It was previously recorded as an open §1.14 question awaiting Udi; it is now closed
+      // and was deliberately NOT referred. Scope is the goal-term front end only — FR-012
+      // is unchanged and nothing about clause heads, guards or bodies is decided here.
+      throw GoalTermError(
+          'list tail is neither a list nor a variable: '
+          '${_describeGoalTerm(tail)} — the goal was not run. '
+          'A list must end in [] or a variable.');
     }
 
     return rt.StructTerm('.', [headTerm, tailTerm]);
@@ -1239,8 +1346,13 @@ class GlpEngine {
     } else if (head is StructTerm) {
       headTerm =
           _buildStructTermForConj(runtime, head, queryVarWriters, varNameToId);
+    } else if (head is UnderscoreTerm) {
+      // FR-001: `_` is accepted as a list element in a goal.
+      if (head.isReader) _refuseAnonymousReader('a list element');
+      headTerm = _anonymousGoalWriter(runtime);
     } else {
-      throw Exception('Unsupported list head type: ${head.runtimeType}');
+      throw GoalTermError(
+          'cannot use ${_describeGoalTerm(head)} as a list element');
     }
 
     rt.Term tailTerm;
@@ -1261,8 +1373,24 @@ class GlpEngine {
         }
         tailTerm = tail.isReader ? rt.VarRef(readerId) : rt.VarRef(writerId);
       }
+    } else if (tail is UnderscoreTerm && !tail.isReader) {
+      // FR-001: `_` is a legal list tail — a writer nobody reads.
+      tailTerm = _anonymousGoalWriter(runtime);
     } else {
-      tailTerm = rt.ConstTerm(null);
+      // FR-005: previously `tailTerm = rt.ConstTerm(null)`, which SILENTLY
+      // discarded an improper tail and ran the goal against a DIFFERENT term
+      // than the one typed — `[a|foo]` returned exactly what `[a|[]]` returned.
+      // A wrong answer, not an error. Refuse instead.
+      //
+      // RULED 2026-09-04 (engineer ruling Q-101-02, "refusal is the answer"): an improper
+      // tail in a GOAL TERM is permanently invalid, and this refusal IS the specification.
+      // It was previously recorded as an open §1.14 question awaiting Udi; it is now closed
+      // and was deliberately NOT referred. Scope is the goal-term front end only — FR-012
+      // is unchanged and nothing about clause heads, guards or bodies is decided here.
+      throw GoalTermError(
+          'list tail is neither a list nor a variable: '
+          '${_describeGoalTerm(tail)} — the goal was not run. '
+          'A list must end in [] or a variable.');
     }
 
     return rt.StructTerm('.', [headTerm, tailTerm]);

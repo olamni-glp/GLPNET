@@ -151,6 +151,29 @@ Each resumes mid-thread with `claude --continue --autocompact 1000000` — **nev
 Before rebooting, re-check `layout` — if it is 2 again, `set-layout 1` and say so; do not silently
 flip it a fourth time.
 
+## 6C · 🔴 MEASURED 19:05Z — **SWAP IS 100% EXHAUSTED. THIS IS AN ARGUMENT *FOR* THE REBOOT.**
+
+```
+free -m      total 12323   used 7473   available 4850
+swap         total  4095   used 4091   free 4          <- 99.9% consumed
+vmstat       si=48  so=0                               <- pages actively faulting back IN
+```
+
+**Not caused by this lane's builds.** `dotnet build-server shutdown` reclaimed ~nothing (swap
+4095→4091), so the pressure is **structural**: 15 Claude lanes resident on one 12.3 GB host. This
+corroborates ruling `Q-glpnet-04`'s recorded oversubscription finding with a fresh measurement.
+
+**Two consequences for the reboot, and they point the same way:**
+1. 🟢 **A reboot CLEARS exhausted swap.** Right now the host is paging under a full swap file with no
+   headroom; that is precisely the state a restart fixes. **This raises the value of rebooting soon.**
+2. ⚠️ **The `/bk-onrestart` relaunch of 15 lanes is what refills it.** Expect the same pressure to
+   rebuild after the tabs come back. If a lane dies silently post-reboot, **suspect the OOM killer
+   before suspecting `bk-onrestart`** — and check `dmesg -T | grep -i oom` before filing a defect
+   against the relauncher.
+
+⚠️ **A background task was killed this session by the low-memory reaper** (a redundant waiter; no work
+lost). That is the first observed casualty of this condition on this host.
+
 ## 7 · WHAT'S NEXT — in this marathon, and beyond
 
 **In the run** (`next:` still points at S3, which `Q-33` **parked** — do not re-derive it):
