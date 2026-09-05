@@ -147,3 +147,31 @@ exists**) is the iroh route. Both are already on the roadmap: **do not mint them
 ---
 
 *Written by shiras/glpnet for its own successor. Resume with: `resume marathon`.*
+
+---
+
+## 7 · ADDENDUM 01:25Z — session end state
+
+- **Tree clean, pushed.** `develop` merged a peer push cleanly (no conflicts): `@olamnit-glpnet` /
+  `@ariellas-glpnet` landed `specs/101-goal-term-acceptance`, `specs/103-stable-federation-identity`
+  and a restart rev.
+- 🔴 **`specs/103` is NOT a duplicate of 102 — check before you "consolidate" them.** 103 is the
+  **federation TLS certificate** keypair (`LoadOrCreateDevCert`, my `c2303104`); 102 is the **YNET
+  node identity** keypair (`LoadOrMint`). Different objects, **same defect class** — they are sites 1
+  and 3 in the 00:40Z broadcast's table. Merging them would lose one of the two fixes.
+- **Marathon era S2 open:** `mrun-e76f86453d93`, feature
+  `ynet-minted-lane-identity-resolve-address-independent`, seq 4, **4 items captured** (the
+  three-site defect class, the growing `spec_path` gap, the degraded co backend, the unratified
+  UDP 47890).
+- **Roadmap sync round 72:** 14 lines from 4 peer files imported, nothing refused/deferred/invalid,
+  barrier **5/4 hosts**, exports committed and peer-reachable.
+- **Takt, measured:** ALL ERAS mean **17.24 h**, p50 **20.29 h** over 7 eras — and **105 eras are
+  unmeasurable**, listed rather than counted as zero. Era S2 ran ≈3 h, well inside the band, because
+  its scope was one ruled feature in files this lane owns.
+- ⚠️ **The codex review of feature 102 did NOT complete** — killed at the 1500 s timeout under host
+  load (exit 143), zero output. **Feature 102 is therefore UNREVIEWED by codex.** The
+  self-review it did get found and fixed one real P1 (write-then-rename). **Re-run it first thing
+  after the reboot, when the host is quiet:** it is the one pipeline stage this era is missing.
+- **Four BK-STD-2 questions are open and conformant** (`Q-43`..`Q-46`, validator says 4/4):
+  the scope collision I disclosed, the directive-vs-allocation contradiction, the refused
+  feature-020 rebroadcast, and the era quota whose penalty clause taxes disclosure.
