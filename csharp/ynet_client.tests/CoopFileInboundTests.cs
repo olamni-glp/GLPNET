@@ -44,6 +44,10 @@ public sealed class CoopFileInboundTests : IDisposable
         plane.EnsureMailbox();
 
         DropFrame("glpnet~4b0d1757bc75", "shiras-glpnet--0001.frame", "hello");
+        // Two sweeps: the first observes the length, the second corroborates it. A frame is never
+        // delivered on a single sighting, because a single sighting cannot tell a complete frame
+        // from one still being written.
+        Assert.Equal(0, plane.PollOnce());
         Assert.Equal(1, plane.PollOnce());
 
         var msg = Assert.Single(got);
@@ -61,8 +65,9 @@ public sealed class CoopFileInboundTests : IDisposable
         plane.EnsureMailbox();
 
         DropFrame("glpnet~4b0d1757bc75", "peer--a.frame", "x");
-        plane.PollOnce();
-        plane.PollOnce();   // the frame is claimed; a second sweep must find nothing
+        plane.PollOnce();   // observe length
+        plane.PollOnce();   // corroborate -> deliver + claim
+        plane.PollOnce();   // claimed; further sweeps must find nothing
         plane.PollOnce();
 
         Assert.Equal(1, count);
@@ -132,7 +137,8 @@ public sealed class CoopFileInboundTests : IDisposable
         DropFrame("glpnet~4b0d1757bc75", "b--2.frame", "2");
         DropFrame("glpnet~4b0d1757bc75", "README.md", "not a frame");
 
-        Assert.Equal(2, plane.PollOnce());
+        Assert.Equal(0, plane.PollOnce());   // lengths observed
+        Assert.Equal(2, plane.PollOnce());   // lengths corroborated -> delivered
         Assert.Equal(2, got.Count);
         Assert.Equal(1, plane.StrayCount);
     }
@@ -198,5 +204,109 @@ public sealed class CoopFileInboundTests : IDisposable
         DropFrame("glpnet~4b0d1757bc75", "peer--live.frame", "x");
 
         Assert.True(seen.Wait(TimeSpan.FromSeconds(5)), "the pump did not deliver within 5s");
+    }
+
+    // ---- codexreview 2026-09-05 regressions ----
+
+    // P1: Path.Combine does NOT confine. "..\victim" escaped the coop root entirely, and a rooted
+    // lane discarded it. Both values come from environment variables, so this was reachable config.
+    [Theory]
+    [InlineData("../victim")]
+    [InlineData(@"..\victim")]
+    [InlineData("sub/../../victim")]
+    public void A_lane_directory_that_escapes_the_coop_root_is_refused(string lane)
+    {
+        Assert.Throws<ArgumentException>(() => new CoopFileInbound(_root, lane));
+    }
+
+    [Fact]
+    public void An_absolute_lane_directory_is_refused_rather_than_silently_replacing_the_root()
+    {
+        var rooted = Path.Combine(Path.GetTempPath(), "elsewhere-" + Guid.NewGuid().ToString("n"));
+        Assert.Throws<ArgumentException>(() => new CoopFileInbound(_root, rooted));
+    }
+
+    [Fact]
+    public void A_nested_lane_directory_inside_the_root_is_still_allowed()
+    {
+        using var plane = new CoopFileInbound(_root, "_m6/glpnet~4b0d1757bc75");
+        plane.EnsureMailbox();
+        Assert.True(Directory.Exists(plane.InboxDirectory));
+        Assert.StartsWith(Path.GetFullPath(_root), plane.InboxDirectory, StringComparison.OrdinalIgnoreCase);
+    }
+
+    // P1: a frame still being written could be claimed and delivered TRUNCATED as if complete -
+    // a silent wrong answer. Delivery now requires the length to be stable across two sweeps.
+    [Fact]
+    public void A_frame_that_is_still_growing_is_not_delivered_until_its_length_settles()
+    {
+        using var plane = Plane();
+        var got = new List<YnetMessage>();
+        plane.Received += got.Add;
+        plane.EnsureMailbox();
+
+        var inbox = Path.Combine(_root, "glpnet~4b0d1757bc75", "inbox");
+        var f = Path.Combine(inbox, "peer--partial.frame");
+        File.WriteAllText(f, "half");
+
+        Assert.Equal(0, plane.PollOnce());          // first sighting - length not yet corroborated
+        Assert.Empty(got);
+
+        File.WriteAllText(f, "half and the rest");  // it GREW: still not stable
+        Assert.Equal(0, plane.PollOnce());
+        Assert.Empty(got);
+
+        Assert.Equal(1, plane.PollOnce());          // unchanged since last sweep - now it is complete
+        Assert.Equal("half and the rest", Encoding.UTF8.GetString(Assert.Single(got).Body.Span));
+    }
+
+    // P1 DISCLOSED, NOT FIXED: origin comes from a filename the SENDER chooses. This test exists to
+    // demonstrate the spoof rather than hide it. Authenticating a sender needs a signed envelope,
+    // which belongs to the canonical client (Q-glpnetshiras-50), not to a rival built here.
+    [Fact]
+    public void DISCLOSED_origin_is_unauthenticated_and_a_peer_can_spoof_another_lanes_name()
+    {
+        using var plane = Plane();
+        var got = new List<YnetMessage>();
+        plane.Received += got.Add;
+        plane.EnsureMailbox();
+
+        // Written by ANYONE who can reach the inbox - the name is the only evidence of sender.
+        DropFrame("glpnet~4b0d1757bc75", "shiras-glpnet--urgent.frame", "not actually from shiras");
+        plane.PollOnce(); plane.PollOnce();
+
+        Assert.Equal("shiras-glpnet", Assert.Single(got).Origin);   // <- the spoof succeeds
+        Assert.False(plane.OriginIsAuthenticated);                  // <- and the plane SAYS so
+    }
+
+    // P2: two concurrent Open() calls both passed the null check, started two pumps, and Close()
+    // then cancelled only the last token - leaving one pump running past disposal.
+    [Fact]
+    public void Concurrent_Open_calls_start_exactly_one_pump()
+    {
+        using var plane = Plane();
+        Parallel.For(0, 16, _ => plane.Open());
+        plane.Close();
+
+        // If a second pump had survived Close(), it would keep claiming frames after shutdown.
+        DropFrame("glpnet~4b0d1757bc75", "peer--afterclose.frame", "x");
+        Thread.Sleep(200);
+        Assert.True(File.Exists(Path.Combine(_root, "glpnet~4b0d1757bc75", "inbox", "peer--afterclose.frame")));
+    }
+
+    // P2: retained stray NAMES are bounded, but the reported TOTAL must stay exact - otherwise
+    // bounding the leak would quietly bound the number an operator reads.
+    [Fact]
+    public void Stray_names_are_bounded_but_the_reported_total_stays_exact()
+    {
+        using var plane = Plane();
+        plane.EnsureMailbox();
+
+        var n = CoopFileInbound.MaxRetainedStrayNames + 50;
+        for (var i = 0; i < n; i++) DropFrame("glpnet~4b0d1757bc75", $"stray-{i}.txt", "x");
+        plane.PollOnce();
+
+        Assert.Equal(n, plane.StrayCount);                                  // exact total
+        Assert.True(plane.Strays.Count <= CoopFileInbound.MaxRetainedStrayNames); // bounded names
     }
 }

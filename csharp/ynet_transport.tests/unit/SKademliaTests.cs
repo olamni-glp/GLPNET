@@ -202,4 +202,56 @@ public class SKademliaTests
         Assert.NotNull(nodes[3].Lookup(key, t0));                              // live now
         Assert.Null(nodes[3].Lookup(key, t0 + TimeSpan.FromMinutes(6)));       // expired later
     }
+
+    // codexreview 2026-09-05 P1: CanonicalBytes concatenated variable-length key and payload with no
+    // lengths, so it was NOT INJECTIVE - two different (key, payload) splits of one byte stream gave
+    // identical signed bytes, and ONE signature validated BOTH. The Q-olg15-02 namespace binding does
+    // not catch it, because the forged key stays inside the signer's own namespace.
+    [Fact]
+    public void Two_different_key_payload_splits_do_not_share_one_signature()
+    {
+        var now = DateTimeOffset.UnixEpoch;
+        using var owner = NodeIdentity.Generate();
+        var id = owner.NodeId.Value;
+
+        // Honest record: key "<id>/svc", payload 0x01 'evil'
+        var honest = SignedRecord.Create(
+            owner, Encoding.UTF8.GetBytes(id + "/svc"), RecordKind.KeyToRecord,
+            new byte[] { 0x01 }.Concat("evil"u8.ToArray()).ToArray(), now, TimeSpan.FromMinutes(10));
+        Assert.True(honest.VerifySelfCertified(now));
+
+        // Re-split the SAME stream one byte later: key "<id>/svc", payload 'evil'.
+        var forgedKey = Encoding.UTF8.GetBytes(id + "/svc").Concat(new byte[] { 0x01 }).ToArray();
+        var forged = honest with { Key = forgedKey, Payload = "evil"u8.ToArray() };
+
+        // Under a non-injective encoding these bytes are identical and the signature carries over.
+        Assert.False(forged.VerifySelfCertified(now));
+
+        _ = Overlay(4, out var nodes);
+        Assert.False(nodes[0].Store(forged, now));
+    }
+
+    // Positive control: length-prefixing must not have broken ordinary signing/verification.
+    [Fact]
+    public void Length_prefixing_did_not_break_honest_records()
+    {
+        var now = DateTimeOffset.UnixEpoch;
+        using var owner = NodeIdentity.Generate();
+        var reach = SignedRecord.CreateReachability(owner, "endpoint=ok"u8.ToArray(), now, TimeSpan.FromMinutes(10));
+        var k2r = SignedRecord.CreateKeyToRecord(owner, "svc", "payload"u8.ToArray(), now, TimeSpan.FromMinutes(10));
+        Assert.True(reach.VerifySelfCertified(now));
+        Assert.True(k2r.VerifySelfCertified(now));
+    }
+
+    // An empty payload and an empty key must not collide with a short non-empty one either.
+    [Fact]
+    public void An_empty_field_is_distinguishable_from_a_short_one()
+    {
+        var now = DateTimeOffset.UnixEpoch;
+        using var owner = NodeIdentity.Generate();
+        var empty = SignedRecord.CreateKeyToRecord(owner, "s", Array.Empty<byte>(), now, TimeSpan.FromMinutes(10));
+        Assert.True(empty.VerifySelfCertified(now));
+        var swapped = empty with { Payload = "x"u8.ToArray() };
+        Assert.False(swapped.VerifySelfCertified(now));
+    }
 }
