@@ -1,5 +1,51 @@
 ## [Unreleased]
 
+## [v2026.09.05.6] - 2026-09-05
+
+### Fixed
+- seven findings on today's own work - a signature that covered two different records, and a carrier that trusted its filenames
+- the P0 has a proven remedy, and the launcher stops eating positional args
+
+### Changed
+- Merge pull request #306 from olamni-glp/106-codexreview-remediation
+- Merge origin/develop into develop
+- roadmap(m6): codify the send-spool remedy as a scored, promoted feature
+- Merge pull request #305 from olamni-glp/main
+
+## [v2026.09.05.5] - 2026-09-05
+
+### Added
+- the cross-lane carrier - this lane's receiver could only ever hear itself
+- COOP broadcast fan-out and YNET vote audit, both positive-controlled in suite Section W
+- adopt the shipped QHSM YNET client rather than write a fifth one - and doctor reports MET on a host running nothing
+- WP-02 configurable QUIC listener service - iroh sidecar at tier 0, msquic retained as fallback, bind-is-not-a-link reachability, loud refusal
+
+### Fixed
+- WaitForIdle could report done before the work happened - a green signal that was not evidence
+- bind EVERY record kind to its signer, and refuse an unbound kind - the P1 this lane has carried unfixed for three sessions
+- one TFM resolver for seven callers - a guard only one of them could see was not a guard
+- six codexreview findings remediated - probe measures capability not presence, verify dials the owning provider, real deadline, no unobserved provider, bind-failure is not a skip, grep covers every changed file
+
+### Changed
+- Merge pull request #298 from olamni-glp/104-wp02-quic-listener-service
+- roadmap(glpnet): reconcile + link 104 + export; new sibling feature heads the board at WSJF 34.0; 33 not-closed
+- decisions(glpnet): four engineer rulings - Q-olg15-08 ratifies the per-kind signer-key binding into specs/051, Q-olg15-09 opens one sibling to 078 (WSJF 34.0, promoted), Q-olg15-07 permission rule added but does NOT lift the classifier
+- questions(glpnet): four BK-STD-2 engineer questions - PR298 permission, KeyToRecord key binding, 078 scope, next era
+- BK-STD-1 NOT-CLOSED table round 12 - 32 open, 22 without a spec
+- Merge remote-tracking branch 'origin/develop' into develop
+- Merge remote-tracking branch 'origin/develop' into 104-wp02-quic-listener-service
+- FLEET-T24 v3.0 and six BK-STD-2 rulings G31-01..06, including one whose premise I withdrew
+- fleet(m6): three engineer rulings, and a P0 - send and run hold the same origin lock so a lane meeting M6 cannot send
+- three BK-STD-2 questions - M6 carrier root, which client is canonical, and the btw hook
+- three M6 clients exist and the two halves of M6 are in different ones
+- restart(glpnet): rev3 - election holds LIFTED by Q-GLPNETG30-03, PR #298 now 64 behind develop and still classifier-blocked
+- Merge pull request #303 from olamni-glp/main
+- decisions(glpnet): Q-olg15-06 M6 - every lane and host needs a C# QHSM/QMSM code-based YNET client, never agent-based; roadmap feature scored 5.80/5400 and promoted; this lane reports M6 NOT MET
+- restart(glpnet): rev2 - era 104 WP-02 delivered, PR #298 merge blocked by classifier, five engineer rulings, codexreview false-green root-caused
+- decisions(glpnet): Q-olg15-05 engineer ruling - mailbox service is a Hyper-V container serving hundreds of millions of mailboxes over YNET cross-host plus kernel in-memory intra-host; roster-block framing voided; fleet failure criterion today
+- decisions(glpnet): four engineer rulings Q-olg15-01..04 - WP-02 first then differential gate, bind every record kind, iroh sidecar primary with msquic fallback, do not mint space_id
+- probe(ynet): P1 measured - a KeyToRecord signed under another node's key self-certifies, is stored and is served; plus union of the four Q-gsbk14 fleet rulings
+
 ## [v2026.09.05.4] - 2026-09-05
 
 ### Added

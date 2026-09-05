@@ -24,16 +24,45 @@ public sealed record SignedRecord(
     /// <summary>The signer's self-certified node id (must equal the DHT key for reachability records).</summary>
     public NodeId SignerNodeId => NodeIdentity.DeriveNodeId(SignerPublicKeySpki);
 
+    /// <summary>Domain separation tag: a signature over these bytes can never be replayed as any other structure.</summary>
+    private static ReadOnlySpan<byte> Domain => "ynet.dht.record.v2\n"u8;
+
+    /// <summary>
+    /// The bytes a record's signature covers.
+    ///
+    /// 🔴 EVERY VARIABLE-LENGTH FIELD IS LENGTH-PREFIXED, and that is a correctness requirement, not
+    /// a style choice. v1 concatenated `key` and `payload` raw, which is NOT INJECTIVE: two different
+    /// (key, payload) pairs can produce identical bytes, so ONE signature validates BOTH.
+    ///
+    /// The concrete forgery (codexreview, 2026-09-05, P1): a signer legitimately publishes
+    /// key=<c>&lt;owner&gt;/svc</c>, payload=<c>0x01 'evil'</c>. An attacker re-splits the same byte
+    /// stream as key=<c>&lt;owner&gt;/svc\x01</c>, payload=<c>'evil'</c>. Same bytes, same signature,
+    /// a DIFFERENT record at a DIFFERENT key - and it still sits inside the owner's namespace, so the
+    /// Q-olg15-02 binding does not catch it either. The binding decides WHERE a signer may write; it
+    /// cannot decide anything if the field boundaries are ambiguous.
+    ///
+    /// The domain tag additionally stops a signature over these bytes being replayed as a signature
+    /// over any other structure that might one day be signed by the same key.
+    /// </summary>
     private static byte[] CanonicalBytes(byte[] key, RecordKind kind, byte[] payload, DateTimeOffset expiresAt)
     {
         using var ms = new MemoryStream();
-        ms.Write(key);
-        ms.WriteByte((byte)kind);
-        ms.Write(payload);
-        Span<byte> exp = stackalloc byte[8];
+        ms.Write(Domain);
+        WriteLengthPrefixed(ms, key);
+        ms.WriteByte((byte)kind);           // fixed width - unambiguous without a prefix
+        WriteLengthPrefixed(ms, payload);
+        Span<byte> exp = stackalloc byte[8]; // fixed width
         System.Buffers.Binary.BinaryPrimitives.WriteInt64BigEndian(exp, expiresAt.ToUnixTimeSeconds());
         ms.Write(exp);
         return ms.ToArray();
+    }
+
+    private static void WriteLengthPrefixed(Stream ms, byte[] field)
+    {
+        Span<byte> len = stackalloc byte[4];
+        System.Buffers.Binary.BinaryPrimitives.WriteUInt32BigEndian(len, (uint)field.Length);
+        ms.Write(len);
+        ms.Write(field);
     }
 
     /// <summary>Create + sign a record with the owner's identity.</summary>
@@ -46,15 +75,41 @@ public sealed record SignedRecord(
     }
 
     /// <summary>
-    /// Create a reachability record whose DHT key is bound to the signer's node id (the only form
-    /// that self-certifies against key-spoofing — see VerifySelfCertified).
+    /// Create a reachability record whose DHT key is bound to the signer's node id (see
+    /// <see cref="KeyIsBoundToSigner"/>).
     /// </summary>
     public static SignedRecord CreateReachability(
         NodeIdentity signer, byte[] payload, DateTimeOffset now, TimeSpan ttl)
     {
-        var key = System.Text.Encoding.ASCII.GetBytes(signer.NodeId.Value);
-        return Create(signer, key, RecordKind.Reachability, payload, now, ttl);
+        return Create(signer, ReachabilityKey(signer.NodeId), RecordKind.Reachability, payload, now, ttl);
     }
+
+    /// <summary>
+    /// Create a key-to-record entry under the signer's OWN namespace (Q-olg15-02: bind every kind).
+    /// The DHT key is <c>&lt;signerNodeId&gt;/&lt;name&gt;</c>, so no signer can publish under another
+    /// signer's namespace. <paramref name="name"/> must be non-empty; it is otherwise unconstrained.
+    /// </summary>
+    public static SignedRecord CreateKeyToRecord(
+        NodeIdentity signer, string name, byte[] payload, DateTimeOffset now, TimeSpan ttl)
+    {
+        if (string.IsNullOrEmpty(name))
+            throw new ArgumentException("a key-to-record name must be non-empty", nameof(name));
+        return Create(signer, KeyToRecordKey(signer.NodeId, name), RecordKind.KeyToRecord, payload, now, ttl);
+    }
+
+    /// <summary>The DHT key a reachability record signed by <paramref name="signer"/> must carry.</summary>
+    public static byte[] ReachabilityKey(NodeId signer)
+        => System.Text.Encoding.ASCII.GetBytes(signer.Value);
+
+    /// <summary>The DHT key a key-to-record entry signed by <paramref name="signer"/> must carry.</summary>
+    public static byte[] KeyToRecordKey(NodeId signer, string name)
+        => System.Text.Encoding.UTF8.GetBytes(signer.Value + NamespaceSeparator + name);
+
+    /// <summary>
+    /// Separates the owning node id from the name in a key-to-record DHT key. A node id is 64 lowercase
+    /// hex characters, so this byte can never occur inside one — the split is unambiguous.
+    /// </summary>
+    public const char NamespaceSeparator = '/';
 
     /// <summary>
     /// Verify self-certification: the signature validates against the embedded public key AND, for a
@@ -73,15 +128,49 @@ public sealed record SignedRecord(
     {
         if (now is { } clock && clock >= ExpiresAt) return false; // expired — no replay
 
-        // A reachability record's DHT key IS the signer's node id; anything else is a spoof attempt.
-        if (Kind == RecordKind.Reachability &&
-            !Key.AsSpan().SequenceEqual(System.Text.Encoding.ASCII.GetBytes(SignerNodeId.Value)))
-        {
-            return false;
-        }
+        // EVERY kind must bind its DHT key to its signer, and an unbound kind is refused (Q-olg15-02).
+        if (!KeyIsBoundToSigner()) return false;
+
         // Algorithm-agnostic verify (DEC-CRYPTO-1): the signer may be Ed25519 (primary) or P-256
         // (fallback); dispatch is by the SPKI key type, not hardcoded to ECDsa.
         return NodeIdentity.VerifySpki(
             SignerPublicKeySpki, CanonicalBytes(Key, Kind, Payload, ExpiresAt), Signature);
+    }
+
+    /// <summary>
+    /// Is this record's DHT key one that its signer is entitled to write under?
+    ///
+    /// A valid signature proves only WHO wrote the record, never WHERE they may write it. Without a
+    /// key binding, any node can mint a validly-signed record under a victim's key, and every store
+    /// and lookup path accepts it (Q-olg15-02, engineer ruling 2026-09-05: "bind every kind, refuse
+    /// unbound").
+    ///
+    /// | kind            | key the signer may write under        |
+    /// |-----------------|---------------------------------------|
+    /// | Reachability    | <c>&lt;nodeId&gt;</c> exactly         |
+    /// | KeyToRecord     | <c>&lt;nodeId&gt;/&lt;name&gt;</c>, name non-empty |
+    /// | (any other)     | none — refused                        |
+    ///
+    /// 🔴 The default arm is deliberately a REFUSAL, not a pass. A new <see cref="RecordKind"/> added
+    /// without a binding rule here fails closed rather than inheriting the hole this method closed.
+    /// </summary>
+    public bool KeyIsBoundToSigner()
+    {
+        var owner = SignerNodeId.Value;
+        return Kind switch
+        {
+            RecordKind.Reachability => Key.AsSpan().SequenceEqual(ReachabilityKey(SignerNodeId)),
+            RecordKind.KeyToRecord  => KeyIsInNamespaceOf(owner),
+            _ => false, // unbound kind — refuse (see remarks)
+        };
+    }
+
+    /// <summary>Key is exactly <c>owner + separator + non-empty name</c>, compared over raw bytes.</summary>
+    private bool KeyIsInNamespaceOf(string owner)
+    {
+        var prefix = System.Text.Encoding.UTF8.GetBytes(owner + NamespaceSeparator);
+        // strictly longer than the prefix: an empty name is not a namespace member.
+        if (Key.Length <= prefix.Length) return false;
+        return Key.AsSpan(0, prefix.Length).SequenceEqual(prefix);
     }
 }

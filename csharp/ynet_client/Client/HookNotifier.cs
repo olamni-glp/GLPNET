@@ -33,71 +33,76 @@ public sealed class HookNotifier : IDisposable
     }
 
     /// <summary>The most recent attempt, whenever it completed.</summary>
-    /// <remarks>
-    /// Written on the pump thread and read by callers, so it is published with a release/acquire
-    /// pair rather than a plain field write — an auto-property gave the reader no barrier at all.
-    /// </remarks>
-    public HookAttempt? Last => Volatile.Read(ref _last);
+    public HookAttempt? Last { get; private set; }
 
     /// <summary>Notifications dropped because the notifier was saturated. The alerts are not lost.</summary>
     public long Dropped => Interlocked.Read(ref _dropped);
 
     /// <summary>Notifications actually attempted.</summary>
-    public long Attempted => Interlocked.Read(ref _completed);
+    public long Attempted { get; private set; }
 
     /// <summary>Queue one announcement. Never blocks the caller.</summary>
     public void Enqueue(PendingAlert alert)
     {
-        // Counted as outstanding BEFORE the item can possibly be taken, then withdrawn if it is
-        // refused.
-        //
-        // The obvious order - TryAdd, then increment - MOVED the false-idle window instead of
-        // closing it: between a successful TryAdd and the increment, the pump can take the item,
-        // run it, and increment _completed, so a caller sampling there sees admitted == completed
-        // == 0 and is told the notifier is idle while the notification is still in flight. That is
-        // the same defect one step earlier, and an adversarial review caught it in the fix for it.
-        //
-        // Over-counting for a few instructions is the SAFE direction: WaitForIdle waits slightly
-        // too long. Under-counting reports work finished that has not started.
-        Interlocked.Increment(ref _admitted);
-        if (_queue.IsAddingCompleted || !_queue.TryAdd(alert))
+        // Count the item OUTSTANDING before it is queued. Counting after would reopen the very gap
+        // this counter exists to close (see WaitForIdle).
+        Interlocked.Increment(ref _outstanding);
+
+        // 🔴 EVERY failure path after that increment must release it, INCLUDING a throw.
+        // IsAddingCompleted is a check, not a lock: Dispose() can complete the queue between that
+        // check and TryAdd, and TryAdd then THROWS InvalidOperationException rather than returning
+        // false. The first version only handled the `false` case, so a shutdown racing an enqueue
+        // left _outstanding positive forever and WaitForIdle blocked to its timeout on work that was
+        // never queued (codexreview 2026-09-05, P2).
+        var queued = false;
+        try
         {
-            Interlocked.Decrement(ref _admitted);
-            Interlocked.Increment(ref _dropped);
+            queued = !_queue.IsAddingCompleted && _queue.TryAdd(alert);
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or ObjectDisposedException)
+        {
+            queued = false; // the queue closed underneath us; treated as a drop, same as a refusal
+        }
+        finally
+        {
+            if (!queued)
+            {
+                Interlocked.Decrement(ref _outstanding);
+                Interlocked.Increment(ref _dropped);
+            }
         }
     }
 
     /// <summary>
-    /// Block until every admitted announcement has been fully processed, or the timeout expires.
+    /// Block until every queued announcement has been ATTEMPTED, or the timeout expires.
     ///
-    /// THE RACE THIS EXISTS TO CLOSE (measured 2026-09-05, feature 106). The previous test was
-    /// <c>_queue.Count == 0 &amp;&amp; !_busy</c>, and there is a window between the pump TAKING an
-    /// item off the queue — which drops Count to 0 — and the pump setting <c>_busy</c>. A caller
-    /// sampling inside that window is told the notifier is idle while the hook has not run, and
-    /// then reads a null <c>Last</c>. The window is a few instructions wide, so 52 green tests
-    /// never opened it; adding ten concurrently-running tests preempted the pump thread inside it
-    /// on the first run.
+    /// 🔴 This used to test <c>_queue.Count == 0 &amp;&amp; !_busy</c>, and that has a window in which it
+    /// returns true having waited for nothing: the pump takes an item (Count drops to 0) and has not
+    /// yet set <c>_busy</c>. An observer sampling between those two statements sees an idle notifier
+    /// while the notification has not been attempted at all, so <see cref="Last"/> is still null or
+    /// stale when the caller reads it. Measured as an intermittent failure of
+    /// <c>A_FAILING_hook_does_not_lose_the_message</c> — roughly one run in three, 2026-09-05.
     ///
-    /// Counting admitted-vs-completed removes the window rather than narrowing it: an item is
-    /// outstanding from admission until its <c>finally</c>, with no interval where it is neither
-    /// queued nor in flight.
+    /// A single outstanding counter, incremented BEFORE the enqueue and decremented only AFTER the
+    /// handler returns, has no such window: the item is counted continuously from before it is
+    /// visible to the pump until after its effect is published. A "done" from this method is now
+    /// evidence that the work happened.
     /// </summary>
     public bool WaitForIdle(TimeSpan timeout)
     {
         var deadline = DateTime.UtcNow + timeout;
         while (DateTime.UtcNow < deadline)
         {
-            if (IsIdle) return true;
+            if (Interlocked.Read(ref _outstanding) == 0) return true;
             Thread.Sleep(5);
         }
-        return IsIdle;
+        return Interlocked.Read(ref _outstanding) == 0;
     }
 
-    private bool IsIdle => Interlocked.Read(ref _completed) == Interlocked.Read(ref _admitted);
+    /// <summary>Announcements queued but not yet attempted. Zero is the only idle state.</summary>
+    public long Outstanding => Interlocked.Read(ref _outstanding);
 
-    private HookAttempt? _last;
-    private long _admitted;
-    private long _completed;
+    private long _outstanding;
 
     private void Pump()
     {
@@ -107,24 +112,35 @@ public sealed class HookNotifier : IDisposable
             {
                 try
                 {
-                    Volatile.Write(ref _last, _hook.Notify(alert));
+                    Attempted++;
+                    Last = _hook.Notify(alert);
                 }
                 finally
                 {
-                    // Last is published BEFORE the item is marked complete, so a caller that
-                    // observes idle can never then observe a stale or null Last.
-                    Interlocked.Increment(ref _completed);
+                    // AFTER Last is published, so an observer that sees zero outstanding can read it.
+                    Interlocked.Decrement(ref _outstanding);
                 }
             }
         }
         catch (ObjectDisposedException)
         {
-            // shutdown
+            AbandonOutstanding(); // shutdown
         }
         catch (InvalidOperationException)
         {
-            // adding completed while enumerating; shutdown
+            AbandonOutstanding(); // adding completed while enumerating; shutdown
         }
+    }
+
+    /// <summary>
+    /// The pump is gone, so anything still counted will never be attempted. Release the counter and
+    /// count those announcements as dropped — a waiter must not block on work that cannot happen,
+    /// and the drop must appear in the number that reports drops. The ALERTS remain in the spool.
+    /// </summary>
+    private void AbandonOutstanding()
+    {
+        var abandoned = Interlocked.Exchange(ref _outstanding, 0);
+        if (abandoned > 0) Interlocked.Add(ref _dropped, abandoned);
     }
 
     public void Dispose()

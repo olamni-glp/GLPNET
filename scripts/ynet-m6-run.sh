@@ -25,4 +25,28 @@ if [[ ! -f "$CLI" ]]; then
 fi
 
 cd "$REPO"
-exec dotnet "$CLI" "${1:-run}" --lane "$LANE" --node "$NODE" --coop "$COOP" "${@:2}"
+
+# The defaults are APPENDED, and only when the caller has not already supplied them.
+#
+# They used to be spliced in immediately after the subcommand, which put them ahead of any
+# positional argument -- so `ynet-m6-run.sh ack <id> --lane L` became
+# `ynet-client ack --lane L --node N --coop C <id> --lane L`, the CLI read `--lane` as the alert id,
+# and every ack failed with "no such alert: --lane". Appending also means an explicitly passed
+# --lane/--node/--coop wins over this lane's default rather than being silently overridden.
+SUB="${1:-run}"
+shift || true
+ARGS=("$@")
+
+supplied() {
+  local flag="$1" a
+  for a in "${ARGS[@]+"${ARGS[@]}"}"; do
+    [[ "$a" == "$flag" ]] && return 0
+  done
+  return 1
+}
+
+supplied --lane || ARGS+=(--lane "$LANE")
+supplied --node || ARGS+=(--node "$NODE")
+supplied --coop || ARGS+=(--coop "$COOP")
+
+exec dotnet "$CLI" "$SUB" "${ARGS[@]+"${ARGS[@]}"}"
