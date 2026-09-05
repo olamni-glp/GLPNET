@@ -169,6 +169,9 @@ public sealed partial class NodeIdentity
         // Released only after the key is on disk, so a waiting loser never sees the claim vanish
         // before there is something to load.
         TryDelete(claimPath);
+        // Ruling Q-47: record the circumstances of every mint. The reboot that lost this lane's id
+        // could not be explained because nothing recorded the mint that replaced it.
+        AppendMintAudit(laneName, path, origin);
         return minted;
     }
 
