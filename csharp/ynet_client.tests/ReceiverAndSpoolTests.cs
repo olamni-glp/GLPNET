@@ -240,6 +240,34 @@ public sealed class ReceiverAndSpoolTests : IDisposable
         Assert.False(plane.Deliver(Msg("m-1")));
     }
 
+
+    [Fact]
+    public void A_write_leaves_no_temp_file_behind_and_uses_a_unique_temp_name()
+    {
+        // Adopted from @shiras-glpnet's TOCTOU finding: a FIXED temp name is shared by every
+        // concurrent writer. This asserts the observable consequence — the directory holds exactly
+        // the alert, with no ".tmp" sibling for a second writer to collide with or a reader to trip on.
+        var spool = new PendingAlertSpool(_dir);
+        spool.Raise("m-1", "o", "s");
+        spool.Raise("m-1", "o", "s");
+
+        var files = Directory.GetFiles(_dir).Select(Path.GetFileName).ToArray();
+        Assert.Single(files);
+        Assert.DoesNotContain(files, f => f!.Contains(".tmp", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Concurrent_writers_to_one_spool_never_produce_a_torn_read()
+    {
+        var spool = new PendingAlertSpool(_dir);
+        Parallel.For(0, 40, i => spool.Raise($"m-{i % 8}", "o", $"summary {i}"));
+
+        // Every surviving file must still parse: a torn write would be quarantined as unreadable.
+        var pending = spool.Undrained();
+        Assert.Equal(8, pending.Count);
+        Assert.DoesNotContain(Directory.GetFiles(_dir), f => f.EndsWith(".unreadable", StringComparison.Ordinal));
+    }
+
     // ---- the bounded mailbox ------------------------------------------------------------------
 
     [Fact]

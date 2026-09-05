@@ -128,9 +128,43 @@ public sealed class PendingAlertSpool
     private void Write(PendingAlert alert)
     {
         var path = PathFor(alert.AlertId);
-        var tmp = path + ".tmp";
-        File.WriteAllText(tmp, JsonSerializer.Serialize(alert, Json));
-        File.Move(tmp, path, overwrite: true);
+
+        // Two corrections adopted from @shiras-glpnet's TOCTOU finding (commit cd085e3c,
+        // 2026-09-05T11:58Z), after running their grep against this file rather than assuming a
+        // brand-new class was exempt. Their third point — that File.Move(overwrite: false) is not
+        // an atomic exclusive claim — does not apply here, because this writer claims nothing and
+        // replaces deliberately.
+        //
+        // 1. A UNIQUE temp name. "path + .tmp" is shared by every concurrent writer of the same
+        //    alert, so two processes (a running receiver and a one-shot inject) could interleave
+        //    a half-written file into the rename.
+        // 2. FLUSH TO DISK before the rename. File.WriteAllText returns once the bytes are with
+        //    the OS, not once they are on the medium — so a power loss could rename a durable-
+        //    looking name onto content that was never written. This class exists precisely to
+        //    promise "durable before the agent is told", and that promise is what the flush buys.
+        var tmp = $"{path}.tmp-{Environment.ProcessId}-{Guid.NewGuid().ToString("N")[..8]}";
+        try
+        {
+            var bytes = System.Text.Encoding.UTF8.GetBytes(JsonSerializer.Serialize(alert, Json));
+            using (var fs = new FileStream(tmp, FileMode.CreateNew, FileAccess.Write, FileShare.None))
+            {
+                fs.Write(bytes, 0, bytes.Length);
+                fs.Flush(flushToDisk: true);
+            }
+            File.Move(tmp, path, overwrite: true);
+        }
+        catch
+        {
+            TryDeleteQuietly(tmp);
+            throw;
+        }
+    }
+
+    private static void TryDeleteQuietly(string path)
+    {
+        try { if (File.Exists(path)) File.Delete(path); }
+        catch (IOException) { /* a leftover temp file must never mask the original failure */ }
+        catch (UnauthorizedAccessException) { /* likewise */ }
     }
 
     private string PathFor(string alertId) => Path.Combine(Directory, alertId + ".json");
