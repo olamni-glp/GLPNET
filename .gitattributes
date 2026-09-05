@@ -34,3 +34,16 @@ specs/*/contracts/conformance/*.json  text eol=lf
 # dirty with ZERO content change (measured 2026-08-18) — noise that can mask a
 # real parity diff, the same hazard the four-source timing elision closed.
 test/parity/cross_runtime/results/*.out text eol=lf
+
+# Generated full-snapshot exports: keep them versioned and byte-exact (the eol=lf
+# pin above is what the Ed25519 signatures depend on), but keep their CONTENT out
+# of `git diff`. Measured 2026-09-02: the delta v2026.09.02.3..develop was
+# 16,342,444 bytes, of which 99.5% was six 69,269-line export snapshots; with
+# `-diff` the same delta is 82,720 bytes (198x smaller). That bloat is what made
+# `/bk-codexreview` overflow its 10,485,760-byte prompt cap and record
+# findings_count=0 as a CLEAN REVIEW THAT NEVER RAN, which in turn made the
+# BK-STD-4 PATCH bar unreachable without a directive override.
+# `-diff` is display-only: it changes no bytes, no checkout, no merge driver and
+# no signature. It only stops git from emitting these machine-written snapshots
+# as diff hunks to tools that read `git diff`.
+.specify/roadmap-sync/exports/*.json         -diff

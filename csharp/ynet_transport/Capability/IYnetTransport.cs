@@ -14,6 +14,21 @@ public interface IYnetTransport
     Result<ReadOnlyMemory<byte>> Receive(LinkHandle link);
     void Close(LinkHandle link);
 
+    // --- resolution (feature 102, FR-102-5/6) ---
+
+    /// <summary>
+    /// <c>resolve(id) -> address | Refused(reason)</c>: map an address-INDEPENDENT node id to where
+    /// that node currently is, WITHOUT opening a channel (contrast <c>Connect</c>, which dials).
+    /// Side-effect free, so a caller may cache it, publish it, or act on the refusal.
+    ///
+    /// <para>Default: refuse <see cref="RefusalReason.FurtherResolverRequired"/>. A node with no
+    /// address resolver attached genuinely cannot answer, and saying so is a valid answer — it never
+    /// fabricates an address (FR-017) and never throws. The default also keeps this addition
+    /// non-breaking for an implementer outside this repo.</para>
+    /// </summary>
+    Result<NodeAddress> Resolve(NodeId id)
+        => Result<NodeAddress>.Refuse(RefusalReason.FurtherResolverRequired);
+
     // --- discovery (US3) ---
     Result<Unit> DhtStore(Dht.SignedRecord record);
     Result<Dht.SignedRecord> DhtLookup(ReadOnlyMemory<byte> key);

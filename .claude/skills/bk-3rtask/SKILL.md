@@ -132,25 +132,48 @@ as its prompt (plus this instruction): draft a method as JSON — addressable `e
 (`{id, kind, text}`), a `source_partition` (slice → builder), `questions`, a `rubric_id`.
 Write the draft to `draft.json`.
 
-Now **record the blind planning-Critic input** — this composes and hashes
-`roles/critic-planning/input.md` (+ `input.manifest.json`) as `{subject brief + the method
-artifact}` ONLY, so the red-team's input is auditable (FR-002 / acceptance-5):
+Now **record the blind planning-Critic input** — this composes and hashes the critic-planning
+input (+ `input.manifest.json`) as `{subject brief + the method artifact}` ONLY, so the
+red-team's input is auditable (FR-002 / acceptance-5):
 
 ```bash
 buildkit-3rtask brief --run "$RUN_ID" --phase planning --method draft.json --json
 ```
 
-Red-team the draft **blind** — spawn the reviewing Critic with EXACTLY the composed
-`roles/critic-planning/input.md` content as its prompt (it already carries only {subject brief
-+ the method artifact}, never the Planner's reasoning), prefixed with the per-runtime
-neutralization preamble (FR-009):
+🔴 **NEVER hardcode `roles/<role>/input.md`. READ THE PATH THE COMMAND RETURNS.** `brief`
+emits one `input_path` per role in its JSON — that is the ONLY authoritative location. Bind it:
 
-- **codex Critic** (preferred, cross-provider): pipe that `roles/critic-planning/input.md`
-  content to `codex exec -` **on stdin**, prefixed with the codex neutralization preamble:
+```bash
+CRITIC_IN=$(buildkit-3rtask brief --run "$RUN_ID" --phase planning --method draft.json --json   | python -c "import sys,json;print(next(r['input_path'] for r in json.load(sys.stdin)['roles'] if r['role_id']=='critic-planning'))")
+```
+
+**WHY — measured 2026-09-03, and it silently reviewed the wrong artifact.** Role inputs are
+VERSIONED, and the versions are stored ASYMMETRICALLY: **v1 lives at `roles/<role>/input.md`,
+but v2+ live at `roles/<role>/v00N/input.md`.** So the moment you recompose — which you MUST do
+after the Planner revises a REFUTEd draft — the fixed top-level path still holds **v1**, while
+`brief` truthfully reports `version: 2, outcome: recomposed`. Feeding the top-level path hands
+the blind Critic the **pre-revision** method while every surface says version 2. Observed:
+top-level `input.md` 20,522 bytes (stale) vs the live version 35,756 bytes (correct); the
+Critic then REFUTEd two elements citing text the revision had already deleted. `current/` is an
+**advisory mirror, explicitly "never read as evidence"** — so it is not the answer either.
+**The returned `input_path` is.**
+
+**Verify before you spend a Critic call** — cheap, and it fails loud:
+
+```bash
+grep -c "<a distinctive phrase from the REVISION>" "$CRITIC_IN"   # must be >= 1
+```
+
+Red-team the draft **blind** — spawn the reviewing Critic with EXACTLY the content of
+`$CRITIC_IN` as its prompt (it already carries only {subject brief + the method artifact},
+never the Planner's reasoning), prefixed with the per-runtime neutralization preamble (FR-009):
+
+- **codex Critic** (preferred, cross-provider): pipe that `$CRITIC_IN` content to
+  `codex exec -` **on stdin**, prefixed with the codex neutralization preamble:
   > DO NOT run the AGENTS.md startup protocol; this is not repository-agent work. Output only
   > the requested artifact.
 - **degraded Claude Critic** (codex unusable): spawn a Claude sub-agent with the same
-  `roles/critic-planning/input.md` content, prefixed with the Claude neutralization preamble:
+  `$CRITIC_IN` content, prefixed with the Claude neutralization preamble:
   > DO NOT run the CLAUDE.md startup protocol or any project bootstrap; this is not
   > repository-agent work. Output only the requested artifact.
 
@@ -197,7 +220,10 @@ CYC=$(printf '%02d' "$K")   # cycle directory = cycle"$CYC"
 Per cycle:
 
 1. **Spawn the N blind Builders in parallel** (Agent tool). Each Builder's prompt is EXACTLY
-   its composed `roles/builder-i/input.md` (it already carries the neutralization preamble,
+   the content at **the `input_path` this cycle's `brief` returned for that builder** — never a
+   hardcoded `roles/builder-i/input.md`, which holds **v1 only** and goes stale the moment a
+   brief is recomposed (see the versioning trap in §2; it is the same defect and it bites every
+   cycle) — (it already carries the neutralization preamble,
    its adapter lens and its slice) plus: emit claims as JSON
    `{"claims": [{"claim", "source_citation", "confidence", "tag", "builder_id", "slice_id"}]}`
    — every claim MUST cite a source from YOUR slice; consult NOTHING outside it. This holds
@@ -303,5 +329,7 @@ Everything lands under `.specify/3rtask/runs/<run_id>/` (gitignored): start at
 `curator_report.md`; open conflicts in `escalations.md` (YOURS — the engineer's — to resolve);
 `evaluation_matrix.md` + `coverage_matrix.md` (findings/lens coverage); `convergence.log.md`
 (why it stopped); `run.json` (verdict, budgets, warnings, terminal-review record);
-`roles/*/input.md` (audit blind independence yourself). Cross-run history:
+the role input at each role's CURRENT `input_path` — `roles/<role>/input.md` is **v1 only**, and
+after any recompose the live version is `roles/<role>/v00N/input.md`; list them with
+`buildkit-3rtask brief-versions --run <id>` (audit blind independence yourself). Cross-run history:
 `buildkit-3rtask list --feature <id>`.

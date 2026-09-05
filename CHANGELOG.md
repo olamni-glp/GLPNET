@@ -1,5 +1,132 @@
 ## [Unreleased]
 
+## [v2026.09.05.2] - 2026-09-05
+
+### Added
+- Connect now dials a real QUIC wire by node id - the seam swap that needed Resolve to exist
+- the lane node id was ephemeral and there was no Resolve - both fixed, measured across three processes
+- publish node_id and spki beside the pin - adopting gavriella-glpnet's measured finding that a pin is not a node id and a hash cannot verify a signature
+- C# runtime parity, the cross-runtime test that was never written, and Gleam's missing test file
+- answer "who consumes this L0 symbol?" across every repo, and name the roots searched
+- Gleam accepts `_` in goal terms; improper-tail refusal reworded, not relaxed
+- accept `_` in goal terms and REFUSE improper list tails instead of silently answering them
+
+### Fixed
+- write-then-rename the node key - a power cut mid-write would have changed the lane id, which is the defect this feature exists to prevent
+- persist the per-host QUIC identity so an exchanged SPKI pin survives restart (Q-GLPNETA21-01)
+
+### Changed
+- promote CS0649/CS0169 to errors in all 12 library projects; glp_link, glp_crdtmsg, ynet_transport rebuilt with 0 errors
+- fleet(glpnet): ACK sweep 20260905T0815Z - T24 v1.0 amendments C-4/row-21/s9, WP-02 ARIELLAS status, Q48 complied, CS0649 measured 0/22; plus 4 BK-STD-2 questions Q-GLPNETA23
+- Merge remote-tracking branch 'origin/develop' into develop
+- restart(glpnet): rev14 - pin defect fixed and pushed, W18 escalation refuted by building it and re-scoped, two lanes converged on one implementation
+- restart(glpnet): session-end addendum - 103 is not 102, codex review did not complete, four questions open
+- roadmap(glpnet): sync round 72 - 14 lines from 4 peer files imported, barrier 5/4 hosts, exports committable and peer-reachable
+- Merge branch 'develop' of https://github.com/olamni-glp/GLPNET into develop
+- disclosure(102): I may have built into gavriella-glpnet's allocated era - reported against myself before anyone found it
+- restart(101): rev1 addendum - final shipped state, the deliberate non-discharge, and a THIRD id-space trap plus the C# mirror's stale auto-generated banner
+- close(101): retrospective complete, roadmap closed, era discharged - v2026.09.05.1 released
+- Merge pull request #295 from olamni-glp/main
+- Merge pull request #293 from olamni-glp/101-goal-term-acceptance
+- merge: develop into 101-goal-term-acceptance - decisions ledger resolved as a UNION, not a side
+- codexreview(101): four adversarial findings - two fixed, two reported, and one of them falsified a claim this era wrote
+- tasks+analyze(101): the two stage artifacts, written honestly after the fact - and one spec defect measurement falsified
+- ruling(101): apply Q-101-02 "refusal is the answer" - the improper tail is CLOSED, and deliberately NOT referred to Udi
+- merge(develop): integrate 17 peer commits incl. era-102 ynet Resolve + node-key persistence
+- decisions(glpnet): six BK-STD-2 engineer questions Q-GLPNETA22-01..06, validator conformant
+- questions(glpnet): Q-43..Q-46 BK-STD-2 conformant - a scope collision I created, a directive-vs-allocation contradiction, a refused rebroadcast, and a quota whose penalty taxes disclosure
+- restart(glpnet): era S2 prep - reboot re-verified 15/15 paths by measurement, plus the automount hazard on the coop root
+- plan and tasks - the decisions worth recording, including the one place where persisting the key is the wrong answer
+- broadcast(102): the stale-pin defect has a transport root cause, fixed and measured across three processes; plus my own two-roots failure, twice more
+- codify the 101 finding as a scored+promoted feature - differential-cross-runtime-acceptance-gate
+- roadmap(glpnet): sync round 72 (22 peer files, 102 records), BK-STD-1 not-closed table (36), plus the broadcast that the ephemeral-pin defect is fixed and the zero-consumers claim is already refuted
+- spec + tasks written from the code and measurements, codify note on repeat-invariance as a defect detector
+- merge(103): stable federation identity - persisted per-host QUIC keypair, two codex cycles green, 217/217 glp_link tests
+- harden(federation): codex cycle 2 - DACL applied before any key byte is written, null-SID refuses instead of inheriting, interrupted rotation diagnosed, cert disposed
+- harden(federation): codex findings - atomic rename claim closes the concurrent-remint race, owner-only DACL and 0600-at-creation close the key-exposure window
+- correction of record - "fixed" was written before two of three runtimes were
+- swap is 100% exhausted on shiras - measured, structural, and an argument FOR the reboot
+- broadcast(l0): the zero-consumers claim is refuted by execution - the host exists, builds, and its tests exercise the hooks
+- correct the finding - the olamnit SLO fix is committed and PR #608 is open
+- publish the measured-not-declared finding - kernel/mailbox/QHSM stack verified by execution, SLO gate root-caused by controlled experiment, fix staged in olamnit and blocked from commit
+- codify(slo): a declaration standing in for a measurement, three times in one day
+- Merge pull request #292 from olamni-glp/main
+- spec(101): clarify - 4 engineer rulings encoded, 3 spec tensions resolved
+- docs(fleet)+fix(gitattributes): board-identity census, its correction, and the -diff pin for export snapshots
+- never hardcode roles/<role>/input.md - it is v1 only and goes stale
+- spec(101): front-end goal-term acceptance completeness - specify stage
+
+## [v2026.09.05.1] - 2026-09-05
+
+### Added
+- Connect now dials a real QUIC wire by node id - the seam swap that needed Resolve to exist
+- the lane node id was ephemeral and there was no Resolve - both fixed, measured across three processes
+- publish node_id and spki beside the pin - adopting gavriella-glpnet's measured finding that a pin is not a node id and a hash cannot verify a signature
+- C# runtime parity, the cross-runtime test that was never written, and Gleam's missing test file
+- answer "who consumes this L0 symbol?" across every repo, and name the roots searched
+- Gleam accepts `_` in goal terms; improper-tail refusal reworded, not relaxed
+- accept `_` in goal terms and REFUSE improper list tails instead of silently answering them
+
+### Fixed
+- write-then-rename the node key - a power cut mid-write would have changed the lane id, which is the defect this feature exists to prevent
+- persist the per-host QUIC identity so an exchanged SPKI pin survives restart (Q-GLPNETA21-01)
+
+### Changed
+- Merge pull request #293 from olamni-glp/101-goal-term-acceptance
+- merge: develop into 101-goal-term-acceptance - decisions ledger resolved as a UNION, not a side
+- codexreview(101): four adversarial findings - two fixed, two reported, and one of them falsified a claim this era wrote
+- tasks+analyze(101): the two stage artifacts, written honestly after the fact - and one spec defect measurement falsified
+- ruling(101): apply Q-101-02 "refusal is the answer" - the improper tail is CLOSED, and deliberately NOT referred to Udi
+- merge(develop): integrate 17 peer commits incl. era-102 ynet Resolve + node-key persistence
+- decisions(glpnet): six BK-STD-2 engineer questions Q-GLPNETA22-01..06, validator conformant
+- questions(glpnet): Q-43..Q-46 BK-STD-2 conformant - a scope collision I created, a directive-vs-allocation contradiction, a refused rebroadcast, and a quota whose penalty taxes disclosure
+- restart(glpnet): era S2 prep - reboot re-verified 15/15 paths by measurement, plus the automount hazard on the coop root
+- plan and tasks - the decisions worth recording, including the one place where persisting the key is the wrong answer
+- broadcast(102): the stale-pin defect has a transport root cause, fixed and measured across three processes; plus my own two-roots failure, twice more
+- codify the 101 finding as a scored+promoted feature - differential-cross-runtime-acceptance-gate
+- roadmap(glpnet): sync round 72 (22 peer files, 102 records), BK-STD-1 not-closed table (36), plus the broadcast that the ephemeral-pin defect is fixed and the zero-consumers claim is already refuted
+- spec + tasks written from the code and measurements, codify note on repeat-invariance as a defect detector
+- merge(103): stable federation identity - persisted per-host QUIC keypair, two codex cycles green, 217/217 glp_link tests
+- harden(federation): codex cycle 2 - DACL applied before any key byte is written, null-SID refuses instead of inheriting, interrupted rotation diagnosed, cert disposed
+- harden(federation): codex findings - atomic rename claim closes the concurrent-remint race, owner-only DACL and 0600-at-creation close the key-exposure window
+- correction of record - "fixed" was written before two of three runtimes were
+- swap is 100% exhausted on shiras - measured, structural, and an argument FOR the reboot
+- broadcast(l0): the zero-consumers claim is refuted by execution - the host exists, builds, and its tests exercise the hooks
+- correct the finding - the olamnit SLO fix is committed and PR #608 is open
+- publish the measured-not-declared finding - kernel/mailbox/QHSM stack verified by execution, SLO gate root-caused by controlled experiment, fix staged in olamnit and blocked from commit
+- codify(slo): a declaration standing in for a measurement, three times in one day
+- Merge pull request #292 from olamni-glp/main
+- spec(101): clarify - 4 engineer rulings encoded, 3 spec tensions resolved
+- docs(fleet)+fix(gitattributes): board-identity census, its correction, and the -diff pin for export snapshots
+- never hardcode roles/<role>/input.md - it is v1 only and goes stale
+- spec(101): front-end goal-term acceptance completeness - specify stage
+## [v2026.09.04.5] - 2026-09-04
+
+### Fixed
+- persisted per-host QUIC identity, and the probe that was lying on Linux
+
+### Changed
+- broadcast(glpnet): QUIC listener verified bound on a second host, plus a critical ephemeral-cert defect that breaks the authorised pin exchange at the next reboot
+- restart(glpnet): rev13 refreshed to session-end state, plus a warning that the on-disk mirror is not a valid detector
+- sitrep(glpnet): standardized tables A-D, 50/135, four gated steps trace to one unruled question, plus a stale-mirror tooling defect
+- restart-prep rewritten for the ruled next era (minted identity + Resolve), plus the 15:20Z ACK sweep and 15:30Z four-ruling broadcast mirrored into the repo
+- restart(glpnet): rev13 - marathon 42 to 50 by measurement, W18 escalation reduced to a cherry-pick, preservation gap closed
+- roadmap(glpnet): reconcile-dedupe-export round 71, BK-STD-1 not-closed table (30), and a measured roadmap-vs-git divergence on six landed features
+- ack(glpnet): stop order acked and held, board carries zero terms, two peer-table defects live on ariellas, W18 contradiction resolved by measurement
+- Q-39..42 decided - identity+Resolve era next, one-window onrestart re-applied, PBFT for ALL purposes adopted on SHIRAS (supersedes authorisation-only), interim coordinator by designation; roadmap sync rounds 69-70 (86 lines from 24 peer files imported, iroh tier-0 promoted)
+- Merge pull request #290 from olamni-glp/main
+
+## [v2026.09.04.4] - 2026-09-04
+
+### Added
+- QUIC fallback chain with ngtcp2 as the Linux ultimate tier
+
+### Fixed
+- codex 20260904T144004Z - retryable msquic registration, file-path override honoured, RID-derived staging, --check mirrors runtime loader locations, bounded frame reads in chain test; P1 (chain not wired into YnetTransportCapability.Connect) recorded as era-102 scope
+
+### Changed
+- Merge pull request #288 from olamni-glp/main
+
 ## [v2026.09.04.3] - 2026-09-04
 
 ### Added

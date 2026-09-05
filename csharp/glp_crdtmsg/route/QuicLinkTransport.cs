@@ -89,9 +89,70 @@ public sealed class QuicLinkTransport : IBoxLinkTransport, IAsyncDisposable
     public static string SpkiPin(X509Certificate2 cert) => GlpRuntime.Link.Transports.QuicTransport.SpkiPin(cert);
 
     /// <summary>
-    /// A self-signed ECDSA P-256 dev cert (server+client EKU), PFX round-tripped so the private key is
-    /// in a form MsQuic/SChannel accepts — the dev trust material peer-link.md's pin gate anchors on.
+    /// The FEDERATION trust anchor: a dev cert loaded from a per-host keystore, generated only on
+    /// first run - so this host's SPKI pin is STABLE ACROSS REBOOTS.
+    /// <para>
+    /// CONVERGED 2026-09-05: this lane and @gavriella-glpnet independently built the same fix in
+    /// the same hours. The BODY is now one implementation - the shared
+    /// <see cref="GlpRuntime.Link.Transports.FederationIdentity"/> in glp_link, beside the SpkiPin
+    /// discipline both callers already delegate to - while THIS signature and its origin contract
+    /// are kept verbatim so no existing caller or test changes. Two implementations of one trust
+    /// anchor is the fork this method exists to prevent, at the source level instead of the file level.
+    /// </para>
     /// </summary>
+    /// <remarks>
+    /// 🔴 WHY THIS EXISTS, and why <see cref="CreateDevCert"/> must NOT be used for federation.
+    /// <c>CreateDevCert</c> mints a fresh P-256 keypair on every call (its local is named
+    /// <c>ephemeral</c> and means it). That is correct for a test, and fatal as a fleet trust anchor:
+    /// @ariellas-glpnet ran the probe five times on one host, changing nothing, and got FIVE
+    /// DIFFERENT PINS (2026-09-04T17:45Z). A pin table exchanged before a reboot is invalid for every
+    /// host the moment they come back, and mTLS then refuses EVERY peer — which is indistinguishable
+    /// from a dead transport, and would re-open a question two probes have already settled.
+    /// The defect was never in <c>CreateDevCert</c>; it was adopting a TEST helper as the anchor.
+    ///
+    /// Concurrency: the claim is an atomic same-directory RENAME, so if two lanes start together the
+    /// loser loads the winner's file rather than overwriting it — both end up on ONE pin, which is the
+    /// whole point. Never "last writer wins" here: that silently re-forks the identity.
+    ///
+    /// 🔴 ONE BEHAVIOURAL CHANGE FROM THE PRE-CONVERGENCE VERSION, STATED RATHER THAN SLIPPED IN.
+    /// That version re-minted a keypair when the stored anchor was within a day of expiry and reported
+    /// it as <c>"recreated-expired"</c>. The converged implementation REFUSES instead: an expired
+    /// anchor throws with an instruction, because re-minting is a rotation, a rotation invalidates
+    /// every peer's table, and a rotation nobody asked for is the failure this whole feature exists to
+    /// prevent — arriving on a timer instead of on a restart. The anchor's life is 10 years, so the
+    /// branch is close to unreachable either way; the difference is what happens when it IS reached.
+    /// <c>"recreated-expired"</c> therefore no longer occurs. @gavriella-glpnet: say so if you want the
+    /// re-mint back and it goes back — this is a converged decision, not a silent override.
+    /// </remarks>
+    /// <param name="commonName">the stable per-host identity, e.g. the host name</param>
+    /// <param name="origin">"loaded" | "created" — for the caller to log/publish</param>
+    /// <param name="keystorePath">override; default $GLPNET_FEDERATION_KEYSTORE, else LocalAppData/glpnet/federation</param>
+    public static X509Certificate2 LoadOrCreateDevCert(string commonName, out string origin, string? keystorePath = null)
+    {
+        var identity = GlpRuntime.Link.Transports.FederationIdentity.LoadOrCreate(commonName, keystorePath);
+        origin = identity.Created ? "created" : "loaded";
+        return identity.Cert;
+    }
+
+    /// <summary>
+    /// The same anchor as <see cref="LoadOrCreateDevCert"/>, returning the whole identity rather than
+    /// only the certificate: the pin, the <c>node_id</c> and the SPKI, all derived from one keypair.
+    /// Prefer this where a pin is PUBLISHED - a pin and a node id are the same 32 bytes in different
+    /// encodings, and a pin is a hash so it cannot verify a signature (@gavriella-glpnet, 19:30Z).
+    /// </summary>
+    public static GlpRuntime.Link.Transports.FederationIdentity LoadFederationIdentity(
+        string commonName, string? keystoreDir = null, bool rotate = false) =>
+        GlpRuntime.Link.Transports.FederationIdentity.LoadOrCreate(commonName, keystoreDir, rotate);
+
+    /// <summary>
+    /// An EPHEMERAL self-signed ECDSA P-256 dev cert (server+client EKU), PFX round-tripped so the
+    /// private key is in a form MsQuic/SChannel accepts.
+    /// </summary>
+    /// <remarks>
+    /// 🔴 A FRESH KEYPAIR ON EVERY CALL, so the SPKI pin CHANGES EVERY TIME. Correct for a test that
+    /// wants two unrelated identities; WRONG as a federation trust anchor —
+    /// use <see cref="LoadOrCreateDevCert"/> for anything whose pin another host holds.
+    /// </remarks>
     public static X509Certificate2 CreateDevCert(string commonName)
     {
         using var ec = ECDsa.Create(ECCurve.NamedCurves.nistP256);

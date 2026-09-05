@@ -26,8 +26,18 @@
 
 using System.Net;
 using System.Security.Cryptography.X509Certificates;
-using GlpRuntime.CrdtMsg.Federation;
 using GlpRuntime.CrdtMsg.Route;
+using Ynet.Transport.Link;
+using Ynet.Transport.Capability;
+
+// 🔴 FIRST, AND THE ORDER IS LOAD-BEARING. QuicListener.IsSupported runs MsQuic's static
+// initialiser, and a DllImportResolver registered after that has NO effect. Touching
+// MsQuicProvider here forces the ynet_transport assembly to load — its [ModuleInitializer]
+// installs the resolver — BEFORE any System.Net.Quic type is read below.
+// Without this the probe reported IsSupported=False on SHIRAS while the very same host carries a
+// working libmsquic at ~/.local/lib and binds a real link. That false negative is precisely the
+// "there is no QUIC in this estate" conclusion two other probes have already falsified.
+var quicNative = MsQuicProvider.Instance.Probe();
 
 var bindArg = args.Length > 0 ? args[0] : "127.0.0.1:0";
 var parts = bindArg.Split(':');
@@ -38,6 +48,7 @@ Console.WriteLine("== glp_quic_probe — can this host bind a QUIC listener? =="
 Console.WriteLine($"   runtime   : .NET {Environment.Version}");
 Console.WriteLine($"   os        : {Environment.OSVersion}");
 Console.WriteLine($"   requested : {ip}:{port}" + (port == 0 ? "  (0 = let the OS choose)" : ""));
+Console.WriteLine($"   msquic    : {(quicNative.Supported ? "resolved" : "UNRESOLVED")} — {quicNative.Detail}");
 Console.WriteLine();
 
 // ---- 1. capability -------------------------------------------------------
@@ -63,36 +74,70 @@ if (!QuicLinkTransport.IsSupported)
 // pin-checks the DIALER's cert too. A listener without pins would admit anyone who can reach the
 // port, which is precisely the "mere reachability MUST NOT admit" property the transport's own
 // tests assert.
-// THE PERSISTED IDENTITY, NOT A FRESH ONE PER RUN.
-//
-// This used QuicLinkTransport.CreateDevCert, which mints a NEW keypair on every call — so the pin
-// printed below was different every time the probe ran, and any peer that pinned it was stale
-// before the message reached them. @ariellas-glpnet measured exactly this independently (five runs,
-// five pins) and correctly called it a fleet-wide trust-anchor defect: a test helper had been
-// adopted as the thing peers pin.
-//
-// NodeIdentityStore mints once and loads thereafter, so the pin below is STABLE and publishable —
-// and it is the SAME identity `ynet-federation` uses, which is the point. Two components on one
-// host presenting two identities is how a peer ends up pinning the one that is not listening.
-// HONOUR identity_path. Loading the DEFAULT key while the daemon loads a configured one recreates
-// the two-identities-per-host failure this change exists to remove — the probe would publish a pin
-// for a key the listener does not hold.
-var probeCfg = FederationConfig.Load();
-X509Certificate2 cert = new NodeIdentityStore(probeCfg.EffectiveIdentityPath)
-    .LoadOrMint(Environment.MachineName.ToLowerInvariant());
-
-string nodeId = NodeIdentityStore.DeriveNodeId(cert);
+// 🔴 THE PIN PRINTED HERE IS PUBLISHED TO THE FLEET AND HELD BY PEERS, so it MUST survive a reboot.
+// It did not: CreateDevCert mints a fresh keypair per call, and @ariellas-glpnet measured five runs
+// on one host producing FIVE DIFFERENT PINS (2026-09-04T17:45Z). Every pin published from this probe
+// before that fix expired at the next restart, and mTLS would then have refused every peer — a
+// failure indistinguishable from a dead transport. The probe now reports this host's PERSISTED
+// federation identity. Pass --ephemeral for a pure bind test whose pin nobody will hold.
+bool ephemeral = args.Contains("--ephemeral");
+string certOrigin = "ephemeral";
+X509Certificate2 cert = ephemeral
+    ? QuicLinkTransport.CreateDevCert("glpnet-probe")
+    : QuicLinkTransport.LoadOrCreateDevCert(Environment.MachineName.ToLowerInvariant(), out certOrigin);
 string pin = QuicLinkTransport.SpkiPin(cert);
-
-Console.WriteLine($"   node id             : {nodeId}");
 Console.WriteLine($"   local cert SPKI pin : {pin}");
-Console.WriteLine($"   key                 : {probeCfg.EffectiveIdentityPath}");
+Console.WriteLine(ephemeral
+    ? "   ⚠ EPHEMERAL (--ephemeral): this pin dies with the process. DO NOT PUBLISH IT."
+    : $"   identity            : PERSISTED ({certOrigin}) — stable across reboots, safe to publish");
+if (certOrigin == "recreated-expired")
+    Console.WriteLine("   🔴 the stored anchor had EXPIRED and was re-minted: THIS HOST'S PIN HAS CHANGED — re-publish it.");
+// Publish all THREE, from ONE derivation. A pin and a node id are the same 32 bytes in different
+// encodings, and an operator who pastes one into the other's field gets every valid peer refused by
+// what LOOKS like a security event (@gavriella-glpnet, 2026-09-04T19:30Z). The SPKI is separate
+// again: a pin is a HASH and cannot verify a signature, so without it an admitted peer can forge ops
+// in another admitted peer's name.
+if (!ephemeral)
+{
+    var federation = QuicLinkTransport.LoadFederationIdentity(Environment.MachineName.ToLowerInvariant());
+    // 🔴 LABELLED AS TLS, DELIBERATELY. Printing this beside the lane node id below under the bare
+    // name "node_id" is how an operator pastes a certificate hash into a YNET resolver and gets
+    // every genuine peer refused with IdentityMismatch — a config error wearing a security event's
+    // clothes. The two ids are different objects; the output now says so at the point of reading.
+    Console.WriteLine($"   TLS cert node id    : {federation.TlsNodeId}   (transport anchor ONLY)");
+    Console.WriteLine($"   TLS cert spki (b64) : {federation.TlsSpki}");
+    Console.WriteLine($"   keystore            : {federation.PfxPath}");
+    Console.WriteLine("   ⚠ this is the CERTIFICATE's id. It is NOT the lane node id below, it must");
+    Console.WriteLine("     never be entered into INodeAddressResolver, and it cannot verify board ops.");
+}
 Console.WriteLine("   (a peer must carry this pin to be admitted; reachability alone is refused)");
-Console.WriteLine("   STABLE across runs — this is the persisted federation identity, not a fresh");
-Console.WriteLine("   dev cert. It is safe to publish, and `ynet-federation identity` prints the same.");
+Console.WriteLine("   (re-run this probe — a pin that CHANGES is the Q-GLPNETA21-01 defect returning)");
 Console.WriteLine();
 
-var transport = new QuicLinkTransport(nodeId, cert, new Dictionary<string, string>());
+// ---- 2b. the LANE NODE ID (feature 102 / ruling Q-glpnetshiras-39) -------
+// The cert pin above says "this host's TLS anchor". It does not say WHO this lane is: nodeId =
+// H(pubkey) is the address-INDEPENDENT name a peer resolves, votes on, and files board ops under.
+// NodeIdentity.Generate() minted a fresh keypair per call — the same defect the cert had — so the
+// id changed at every process start and no pin table could survive a reboot. LoadOrMint persists it.
+var laneName = Environment.GetEnvironmentVariable("YNET_LANE")
+               ?? Environment.MachineName.ToLowerInvariant() + ".glpnet";
+using var nodeIdentity = NodeIdentity.LoadOrMint(laneName, out var idOrigin);
+Console.WriteLine("== lane node identity (feature 102) ==");
+Console.WriteLine($"   lane                : {laneName}");
+Console.WriteLine($"   nodeId = H(pubkey)  : {nodeIdentity.NodeId}");
+Console.WriteLine($"   algorithm           : {nodeIdentity.Algorithm}");
+Console.WriteLine($"   origin              : {idOrigin}");
+Console.WriteLine(idOrigin switch
+{
+    IdentityOrigin.Loaded => "   ✅ PERSISTED — run this probe again and the id above is identical.",
+    IdentityOrigin.Minted => "   first use on this host: minted and written. Re-run to see it load.",
+    _ => "   🔴 the stored key was UNREADABLE and re-minted: THIS LANE'S NODE ID HAS CHANGED — re-publish it.",
+});
+Console.WriteLine("   Resolve(nodeId) -> address is served by INodeAddressResolver; an unbound id is");
+Console.WriteLine("   refused RecordNotFound, and a refusal is a valid answer — never a fabricated address.");
+Console.WriteLine();
+
+var transport = new QuicLinkTransport("glpnet-probe", cert, new Dictionary<string, string>());
 using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(20));
 
 try
@@ -122,7 +167,11 @@ Console.WriteLine();
 Console.WriteLine("   bind endpoint     : IPEndPoint  — 0.0.0.0:<port> to accept from other hosts");
 Console.WriteLine("                       (127.0.0.1 binds loopback ONLY and cannot federate)");
 Console.WriteLine("   server certificate: X509Certificate2 with a private key");
-Console.WriteLine("                       the persisted NodeIdentityStore identity (stable across runs)");
+Console.WriteLine("                       QuicLinkTransport.LoadOrCreateDevCert(<host>) - persisted, stable");
+Console.WriteLine("                       (or LoadFederationIdentity(<host>) for pin + node_id + spki)");
+Console.WriteLine("                       NOT CreateDevCert - it mints a fresh keypair per call, so");
+Console.WriteLine("                       its pin dies at the next restart and mTLS then refuses");
+Console.WriteLine("                       EVERY peer, which looks exactly like a dead transport.");
 Console.WriteLine("   peer pins         : IReadOnlyDictionary<peer, spkiPin>");
 Console.WriteLine("                       EMPTY DICTIONARY = admit nobody. This is the safe default");
 Console.WriteLine("                       and it is why a reachable listener is not an open one.");
