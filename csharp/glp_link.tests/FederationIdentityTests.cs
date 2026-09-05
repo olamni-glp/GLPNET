@@ -272,10 +272,10 @@ public sealed class FederationIdentityTests : IDisposable
     {
         var identity = FederationIdentity.LoadOrCreate("host-a", _dir);
 
-        Assert.Equal(32, Convert.FromHexString(identity.NodeId).Length);
-        Assert.Equal(Convert.FromBase64String(identity.Pin), Convert.FromHexString(identity.NodeId));
-        Assert.NotEqual(identity.Pin, identity.NodeId);                  // never interchangeable as strings
-        Assert.Equal(identity.NodeId, identity.NodeId.ToLowerInvariant()); // ordinal tables need one case
+        Assert.Equal(32, Convert.FromHexString(identity.TlsNodeId).Length);
+        Assert.Equal(Convert.FromBase64String(identity.Pin), Convert.FromHexString(identity.TlsNodeId));
+        Assert.NotEqual(identity.Pin, identity.TlsNodeId);                  // never interchangeable as strings
+        Assert.Equal(identity.TlsNodeId, identity.TlsNodeId.ToLowerInvariant()); // ordinal tables need one case
     }
 
     /// <summary>
@@ -287,7 +287,7 @@ public sealed class FederationIdentityTests : IDisposable
     {
         var identity = FederationIdentity.LoadOrCreate("host-a", _dir);
 
-        var spki = Convert.FromBase64String(identity.Spki);
+        var spki = Convert.FromBase64String(identity.TlsSpki);
         Assert.Equal(
             System.Security.Cryptography.SHA256.HashData(spki),
             Convert.FromBase64String(identity.Pin));

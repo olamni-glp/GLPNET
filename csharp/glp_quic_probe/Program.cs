@@ -100,9 +100,15 @@ if (certOrigin == "recreated-expired")
 if (!ephemeral)
 {
     var federation = QuicLinkTransport.LoadFederationIdentity(Environment.MachineName.ToLowerInvariant());
-    Console.WriteLine($"   node_id (hex)       : {federation.NodeId}");
-    Console.WriteLine($"   spki (base64)       : {federation.Spki}");
+    // 🔴 LABELLED AS TLS, DELIBERATELY. Printing this beside the lane node id below under the bare
+    // name "node_id" is how an operator pastes a certificate hash into a YNET resolver and gets
+    // every genuine peer refused with IdentityMismatch — a config error wearing a security event's
+    // clothes. The two ids are different objects; the output now says so at the point of reading.
+    Console.WriteLine($"   TLS cert node id    : {federation.TlsNodeId}   (transport anchor ONLY)");
+    Console.WriteLine($"   TLS cert spki (b64) : {federation.TlsSpki}");
     Console.WriteLine($"   keystore            : {federation.PfxPath}");
+    Console.WriteLine("   ⚠ this is the CERTIFICATE's id. It is NOT the lane node id below, it must");
+    Console.WriteLine("     never be entered into INodeAddressResolver, and it cannot verify board ops.");
 }
 Console.WriteLine("   (a peer must carry this pin to be admitted; reachability alone is refused)");
 Console.WriteLine("   (re-run this probe — a pin that CHANGES is the Q-GLPNETA21-01 defect returning)");

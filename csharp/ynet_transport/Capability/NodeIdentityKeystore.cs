@@ -65,28 +65,33 @@ public sealed partial class NodeIdentity
     {
         ArgumentException.ThrowIfNullOrEmpty(laneName);
 
-        var dir = keystorePath
-            ?? Environment.GetEnvironmentVariable(KeystoreEnvVar)
-            ?? SysPath.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                "glpnet", "ynet");
+        var dir = ResolveKeystoreDir(keystorePath);
         Directory.CreateDirectory(dir);
 
-        // The lane name is caller-supplied and lands in a path; keep it to a filesystem-safe stem.
-        var stem = string.Concat(laneName.Select(c => char.IsLetterOrDigit(c) || c is '-' or '_' or '.' ? c : '_'));
-        var path = SysPath.Combine(dir, stem + ".nodekey");
+        // 🔴 REJECT, don't sanitise. Mapping every unsupported character to '_' is NOT injective:
+        // `a/b` and `a?b` both become `a_b`, so two configured lanes silently share ONE key file and
+        // therefore ONE node id — one signing identity answering for two lanes, which is the identity
+        // fork this whole type exists to prevent, arriving through the front door. A name we cannot
+        // represent losslessly is a configuration error, and it is said out loud.
+        var path = SysPath.Combine(dir, RequireLaneStem(laneName) + ".nodekey");
 
         origin = IdentityOrigin.Minted;
 
         if (File.Exists(path))
         {
+            // 🔴 A key we cannot READ is not a key that is WRONG. TryLoadPkcs8 now throws on a
+            // storage-layer failure (locked file, permission, transient I/O) and returns false ONLY
+            // for bytes it actually parsed and rejected. Before this split, a peer lane holding the
+            // file open for one moment was enough to delete it and mint a new id — turning a
+            // transient, self-healing condition into a PERMANENT identity change that invalidates
+            // every pin in the fleet. Fail closed: refuse to run rather than rotate by accident.
             if (TryLoadPkcs8(path, out var loaded))
             {
                 origin = IdentityOrigin.Loaded;
                 return loaded!;
             }
-            // Unreadable key material. Mint a new one — but say so: the node id has CHANGED and every
-            // peer holding the old pin is now wrong about this lane.
+            // Genuinely malformed key material. Mint a new one — but say so: the node id has CHANGED
+            // and every peer holding the old pin is now wrong about this lane.
             origin = IdentityOrigin.RemintedCorrupt;
             File.Delete(path);
         }
@@ -117,6 +122,13 @@ public sealed partial class NodeIdentity
 
             using (var fs = new System.IO.FileStream(temp, options))
             {
+                // The DACL goes on while the file is still EMPTY — the Windows half of the
+                // UnixCreateMode above. Writing first and tightening after would publish the private
+                // key under the directory's INHERITED ACL for the width of the write. That window is
+                // brief, but a race is not made safe by being short, and under an explicit
+                // keystorePath or $YNET_NODE_KEYSTORE the directory may be one anybody can read.
+                if (OperatingSystem.IsWindows())
+                    RestrictToCurrentUser(temp);
                 fs.Write(pkcs8);
                 fs.Flush(flushToDisk: true); // the rename must not beat the bytes to disk
             }
@@ -149,6 +161,113 @@ public sealed partial class NodeIdentity
         return minted;
     }
 
+    /// <summary>
+    /// The durable directory this lane's key lives in. Order: explicit argument, then
+    /// <c>$YNET_NODE_KEYSTORE</c>, then <c>LocalApplicationData/glpnet/ynet</c>.
+    /// </summary>
+    /// <remarks>
+    /// 🔴 <b>Never returns a relative path, and never falls back to a temporary one.</b> On a
+    /// headless Unix service <c>LocalApplicationData</c> can be empty; <c>Path.Combine</c> then
+    /// yields the RELATIVE <c>glpnet/ynet</c>, so the same lane gets a different identity per
+    /// working directory and a repo clean deletes it. A temp-directory fallback is worse still: it
+    /// is reaped on a schedule the fleet does not control, so every published pin expires without
+    /// anyone touching the code. Both are refused with an actionable message instead.
+    /// </remarks>
+    internal static string ResolveKeystoreDir(string? keystorePath = null)
+    {
+        // An EXPLICIT location — the argument or the env var — is the caller's deliberate choice and
+        // is honoured as given, including a temporary one: that is the seam tests and deployments
+        // use. What is refused below is only the DEFAULT silently degrading into somewhere
+        // undurable, because nobody chose that and nobody can see it happen.
+        var chosen = keystorePath;
+        if (string.IsNullOrWhiteSpace(chosen))
+            chosen = Environment.GetEnvironmentVariable(KeystoreEnvVar);
+        if (!string.IsNullOrWhiteSpace(chosen))
+            return SysPath.GetFullPath(chosen.Trim());
+
+        var baseDir = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+        if (string.IsNullOrWhiteSpace(baseDir))
+            throw new InvalidOperationException(
+                "no durable home for the YNET node key: LocalApplicationData is empty on this "
+                + "host (typical of a headless service account). Set $" + KeystoreEnvVar
+                + " to an ABSOLUTE, persistent directory. Refusing to fall back to a relative path: "
+                + "'glpnet/ynet' resolves against the WORKING DIRECTORY, so the lane would carry a "
+                + "different identity per launch directory and a repo clean would delete it.");
+
+        var full = SysPath.GetFullPath(SysPath.Combine(baseDir, "glpnet", "ynet"));
+        if (IsUnderTemp(full))
+            throw new InvalidOperationException(
+                "refusing to place the YNET node key under a temporary directory by DEFAULT ("
+                + full + "): LocalApplicationData resolves inside temp on this host. Temp is reaped "
+                + "on a policy this fleet does not control, so the lane's node id would change with "
+                + "no code change and every published pin would go stale. Set $" + KeystoreEnvVar
+                + " to a persistent directory to choose this deliberately.");
+        return full;
+    }
+
+    private static bool IsUnderTemp(string full)
+    {
+        var temp = SysPath.GetFullPath(SysPath.GetTempPath())
+            .TrimEnd(SysPath.DirectorySeparatorChar, SysPath.AltDirectorySeparatorChar);
+        if (temp.Length == 0) return false;
+        var cmp = OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
+        return full.Equals(temp, cmp)
+            || full.StartsWith(temp + SysPath.DirectorySeparatorChar, cmp);
+    }
+
+    /// <summary>
+    /// The filename stem for a lane, or a refusal. Accepts only characters that round-trip to
+    /// exactly one file: letters, digits, <c>-</c>, <c>_</c>, <c>.</c>. See the call site for why a
+    /// lossy substitution is not an acceptable alternative.
+    /// </summary>
+    internal static string RequireLaneStem(string laneName)
+    {
+        foreach (var c in laneName)
+        {
+            if (char.IsLetterOrDigit(c) || c is '-' or '_' or '.') continue;
+            throw new ArgumentException(
+                "lane name '" + laneName + "' contains " + Describe(c) + ", which cannot appear in a "
+                + "keystore filename. Two lane names that differ only in such characters would map "
+                + "to ONE key file and therefore ONE node id — a single signing identity answering "
+                + "for both lanes. Use only letters, digits, '-', '_' and '.' (e.g. 'shiras.glpnet').",
+                nameof(laneName));
+        }
+        // '.' and '..' name directories, not files; and a leading '.' hides the key on Unix.
+        if (laneName is "." or "..")
+            throw new ArgumentException(
+                "lane name '" + laneName + "' is a directory reference, not a name.", nameof(laneName));
+        return laneName;
+    }
+
+    private static string Describe(char c)
+        => char.IsControl(c) || char.IsWhiteSpace(c)
+            ? "the character U+" + ((int)c).ToString("X4")
+            : "'" + c + "'";
+
+    /// <summary>Replace the file's DACL with a single full-control ACE for the current user and
+    /// break inheritance — the Windows half of "owner-only", mirroring the federation keystore.</summary>
+    [System.Runtime.Versioning.SupportedOSPlatform("windows")]
+    private static void RestrictToCurrentUser(string path)
+    {
+        using var identity = System.Security.Principal.WindowsIdentity.GetCurrent();
+        var owner = identity.User
+            // Fail rather than fall back to the inherited ACL: silently storing a private key under
+            // whatever the parent directory permits is exactly what this method prevents, and the
+            // caller cannot see that it happened.
+            ?? throw new InvalidOperationException(
+                "cannot restrict the YNET node keystore file: the current Windows identity has no "
+                + "user SID to grant it to. Refusing to write private key material under an "
+                + "inherited ACL.");
+
+        var security = new System.Security.AccessControl.FileSecurity();
+        security.SetAccessRuleProtection(isProtected: true, preserveInheritance: false);
+        security.AddAccessRule(new System.Security.AccessControl.FileSystemAccessRule(
+            owner,
+            System.Security.AccessControl.FileSystemRights.FullControl,
+            System.Security.AccessControl.AccessControlType.Allow));
+        new FileInfo(path).SetAccessControl(security);
+    }
+
     private static void TryDelete(string path)
     {
         try { File.Delete(path); }
@@ -164,16 +283,17 @@ public sealed partial class NodeIdentity
 
     /// <summary>
     /// Rebuild an identity from PKCS#8 DER, dispatching on the parsed key type so an Ed25519 and a
-    /// P-256 keystore load over one path. Returns false on ANY read/parse failure (fail-closed): the
-    /// caller re-mints and reports it, rather than a half-initialised identity escaping.
+    /// P-256 keystore load over one path. Returns false ONLY for bytes that were read and rejected;
+    /// a storage-layer failure THROWS, because the caller treats false as "re-mint" and a transient
+    /// I/O error must never rotate this lane's node id.
     /// </summary>
     private static bool TryLoadPkcs8(string path, out NodeIdentity? identity)
     {
         identity = null;
-        byte[] der;
-        try { der = File.ReadAllBytes(path); }
-        catch (IOException) { return false; }
-        catch (UnauthorizedAccessException) { return false; }
+        // 🔴 A storage failure is NOT a corrupt key. Propagating it is the whole point: the caller's
+        // false-branch DELETES the file and mints a new id, so swallowing a transient lock or a
+        // permission error here would convert it into a permanent, fleet-visible identity change.
+        var der = File.ReadAllBytes(path);
 
         if (der.Length == 0) return false;
 
