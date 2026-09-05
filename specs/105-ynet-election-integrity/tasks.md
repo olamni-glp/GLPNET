@@ -115,17 +115,76 @@ a zero", and the first reading here came from a `grep` and said 0.
 **T012/T013.** Section W runs the control in the suite; the corrected audit is republished to
 `<COOP_ROOT>/_standards/`, replacing the copy that enforced the withdrawn `actor == voter` rule.
 
-## Codexreview — **INCONCLUSIVE, NOT CLEAN** (2026-09-05T15:20Z)
+## Codexreview — round 1 was INCONCLUSIVE; rounds 2 and 3 RAN, and found 18 defects
 
-`codex exec` ran and returned **zero findings**. That is **not** a clean review.
+### Round 1 (2026-09-05T15:20Z) — **INCONCLUSIVE, NOT CLEAN**
 
-The transcript shows **six** `rejected: blocked by policy` errors — codex could not run its own
-line-numbering command, fell back to dumping the file, and produced no analysis. A review that was
-prevented from reading its subject and reported nothing is **INCONCLUSIVE**; recording it as
-"0 findings" would be the same defect as reporting a `grep`'s exit status as a build's.
+`codex exec` ran and returned **zero findings**. That was **not** a clean review, and it was
+recorded as inconclusive rather than clean. That decision is the only reason the rest of this
+section exists.
 
-**Era 105 is therefore implemented and NOT codex-reviewed.** It must not ship on this result.
-Re-run with the sandbox policy relaxed, or with a different second instrument, before `/bk-ship`.
+### 🔴 THE ROOT CAUSE, found 2026-09-05T16:05Z — **the repo disabled its own second instrument**
+
+The `blocked by policy` errors were real but were **not** the reason. The reason is that
+**`AGENTS.md` told codex to stop.** Its transcript ends:
+
+> *"I have read AGENTS.md, docs/DISCIPLINE.md, docs/typed-glp-manual.md, and
+> docs/glp-cheat-sheet.md completely. Per AGENTS.md, I am stopping before reading any review-scope
+> files."*
+
+The mandatory-reading rule ends in **"STOP AND WAIT ... until Gabi gives direction"** — correct for
+an interactive session, fatal for a non-interactive one whose direction *was* the prompt it was
+started with. `AGENTS.md` was also **111 days stale** and instructed codex to use
+`C:/pglite/research/glpnet`, which `CLAUDE.md` now marks **STRICTLY PROHIBITED**.
+
+**Remedy (engineer ruling, 2026-09-05):** `AGENTS.md` regenerated as a thin pointer to `CLAUDE.md`
+plus an explicit non-interactive carve-out. **Verified by measurement, not assumed:** round 3 was
+run with a **bare prompt containing no override text at all**, and codex proceeded straight to the
+review — so the fix is in the file, not in whoever writes the prompt.
+
+### Round 2 (16:07Z) — **11 findings, 5 HIGH**. Round 3 (17:00Z) — **7 more, 2 HIGH**.
+
+Every round-3 finding was in **round 2's fixes** or in code round 2 had not reached. A fix is a
+code change and carries the same defect rate as any other; this is the same result this repo has
+recorded before and it should stop being surprising.
+
+| # | sev | finding | disposition |
+|---|---|---|---|
+| 1 | **HIGH** | an **incomplete** delegation proof (`voter` + `voter_sig`, no `voter_spki`) was downgraded to a **direct actor vote** — strip a field off someone else's delegated vote and it becomes yours | **FIXED**; control proven to fail pre-fix |
+| 2 | **HIGH** | franchise ids **truncated to 12 chars before comparison**, so F6 could exclude an innocent franchise sharing a prefix | **FIXED** — identities are never truncated for comparison, only for display |
+| 3 | HIGH | `PollOnce` could run **concurrently with the background pump** and deliver a frame twice; the comment claimed it was impossible | **FIXED** — refused, not commented |
+| 4 | HIGH | `Open`/`Close` were **check-then-set on a `volatile bool`** — two threads could each start a pump and `Close` stop only one | **FIXED** — serialized |
+| 5 | HIGH | a `.frame` containing `{}` parsed into empty defaults and was **delivered as `unknown-origin`** — a message manufactured from an empty file | **FIXED** — unaddressed frames are strays |
+| 6 | **HIGH** | **a frame was consumed before its alert was durable.** `Received` only enqueues; on the mailbox-overflow path the loss was *certain*, not racy | **FIXED** — `ConfirmDurable` gate; the frame stays in the inbox until the record exists |
+| 7 | **HIGH** | `Origin` was never checked against `SenderNode`/`SenderActor`, so a frame could **claim any origin it liked** and be displayed as coming from the victim | **FIXED** — they must agree |
+| 8 | MED | **F4 grouped by host, not franchise** — two different franchises on one host voting once each was reported as a repeat submission (a *wrong finding* on a shared audit) | **FIXED**; control proven to fail pre-fix |
+| 9 | MED | the admitted/completed counters **moved the `WaitForIdle` window rather than closing it** — the increment came after `TryAdd` | **FIXED** — count before admitting, withdraw on refusal |
+| 10 | MED | a `record_id` reused with **different content** was silently dropped: renaming a file could change the tally | **FIXED** — reported as a conflict |
+| 11 | MED | candidate ids truncated into report keys, so two candidates sharing a prefix **overwrote each other** | **FIXED** |
+| 12 | MED | `doctor` classified by **filename suffix alone** and exited 0 on an inbox the receiver treated as strays | **FIXED** — one shared classifier |
+| 13–18 | MED/LOW | five tests that **could not fail** (an idempotence test on a carrier with no pump; a dedupe assertion counting unique dictionary keys; the stress probe below), and an unbounded stray list | **FIXED or DELETED** |
+
+### 🔴 F3 vs F6 was a SPEC GAP, not a bug — referred, not guessed
+
+Round 2 reported that F3 was evaluated *after* F6's exclusions and could hide a real conflict.
+**FR-006 does not say which order applies**, and the obvious fix would have made every F6 also fire
+F3 — regressing the F3/F6 distinction established the previous day. It was referred as a BK-STD-2
+engineer question rather than decided here.
+
+**Engineer ruling (2026-09-05):** F3 fires when a host holds **two or more distinct franchises**
+that between them name more than one candidate, computed **before** F6 exclusion. Implemented, with
+both controls: the positive case (a host whose conflict survives only pre-exclusion) and the
+negative one (a lone self-conflicting franchise stays purely F6). Proven to fail against the old
+ordering.
+
+### One control was deleted rather than kept
+
+A 400-iteration stress probe was written as the regression control for finding 9. Run against the
+**pre-fix** implementation it **passed** — it discriminated nothing, so it was removed rather than
+kept as a green decoration. The instrument that actually finds that defect is **the full suite run
+in parallel**, and the file says so.
+
+**Era 105 is now codex-reviewed.** Three rounds, 18 findings, all dispositioned.
 
 ## T014 — full suite, 2026-09-05T15:40Z
 

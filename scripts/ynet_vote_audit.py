@@ -107,7 +107,7 @@ def _canonical(d: dict) -> bytes:
 
 
 def load_oplog(root: pathlib.Path):
-    """Return (votes, hellos-by-node-id), deduped by record_id.
+    """Return (votes, hellos-by-node-id, record_id conflicts), deduped by record_id.
 
     The oplog carries genuine byte-duplicates of the same record_id across node
     files; counting those separately would inflate a tally, so dedupe is part of
@@ -115,7 +115,8 @@ def load_oplog(root: pathlib.Path):
     """
     votes: list[dict] = []
     hellos: dict = collections.defaultdict(list)
-    seen: set = set()
+    seen: dict = {}
+    conflicts: list[str] = []
     for f in sorted(root.glob("*.jsonl")):
         for lineno, line in enumerate(f.read_text(encoding="utf-8").splitlines(), 1):
             line = line.strip()
@@ -128,15 +129,24 @@ def load_oplog(root: pathlib.Path):
                 continue
             rid = o.get("record_id")
             if rid is not None:
+                # FR-010 deduplication, but a repeat is only benign when it is the SAME record.
+                # Keying on the id alone meant two files carrying the same record_id with DIFFERENT
+                # contents - different candidates, even - silently kept whichever file sorted first,
+                # so RENAMING A FILE could change the tally with nothing reported. A conflicting
+                # reuse is now a finding rather than a silent choice. Found by adversarial review
+                # 2026-09-05.
+                fingerprint = _canonical(o)
                 if rid in seen:
+                    if seen[rid] != fingerprint:
+                        conflicts.append(f"{f.name}:{lineno} record_id {str(rid)[:16]}")
                     continue
-                seen.add(rid)
+                seen[rid] = fingerprint
             kind = o.get("kind") or o.get("op")
             if kind == "vote":
                 votes.append(o)
             elif kind == "hello":
                 hellos[o.get("node_id")].append(o)
-    return votes, hellos
+    return votes, hellos, conflicts
 
 
 def resolve_franchise(v: dict):
@@ -144,8 +154,21 @@ def resolve_franchise(v: dict):
     from cryptography.hazmat.primitives.serialization import load_der_public_key
 
     spki, sig, voter = v.get("voter_spki"), v.get("voter_sig"), v.get("voter")
-    if not (spki and sig and voter):
+
+    # A proof is PRESENT if ANY delegation field is present - not only if all three are.
+    #
+    # This previously read `if not (spki and sig and voter)`, which required all three before a
+    # proof was considered present at all. A vote carrying `voter` and `voter_sig` but NO
+    # `voter_spki` therefore fell through to `return actor, "direct"` and was COUNTED FOR THE
+    # ACTOR. That is precisely the downgrade FR-003/FR-004 and engineer ruling G31-06 forbid
+    # ("REFUSED if present-and-failing, NEVER fall back to actor"), and it is reachable by simply
+    # omitting a field: strip the spki from someone else's delegated vote and it silently becomes
+    # your own. Found by adversarial review 2026-09-05.
+    if not (spki or sig or voter):
         return v.get("actor"), "direct"
+    if not (spki and sig and voter):
+        missing = ", ".join(n for n, x in (("voter_spki", spki), ("voter_sig", sig), ("voter", voter)) if not x)
+        return None, f"REFUSED-incomplete-proof(missing {missing})"
     try:
         load_der_public_key(bytes.fromhex(spki)).verify(
             bytes.fromhex(sig), _canonical({k: v.get(k) for k in VOTER_SIGNED_FIELDS})
@@ -160,7 +183,7 @@ def resolve_franchise(v: dict):
 
 
 def audit(root: pathlib.Path, only_term):
-    votes, hellos = load_oplog(root)
+    votes, hellos, id_conflicts = load_oplog(root)
     if not votes:
         return {"error": f"no vote records found under {root}"}, 2
 
@@ -177,6 +200,10 @@ def audit(root: pathlib.Path, only_term):
         by_term[v.get("term")].append(v)
 
     report = {"oplog": str(root), "terms": []}
+    # A record_id reused with DIFFERENT content is reported once, at the top level: it is a
+    # property of the OPLOG, not of any one term, and it means the tally depends on file ordering.
+    if id_conflicts:
+        report["record_id_conflicts"] = id_conflicts
     worst = 0
     for term in sorted(by_term, key=lambda t: (t is None, t)):
         if only_term is not None and term != only_term:
@@ -194,6 +221,9 @@ def audit(root: pathlib.Path, only_term):
         tally = collections.defaultdict(lambda: collections.defaultdict(list))
         # franchise -> candidate -> [ts]  (FR-008: a franchise must name ONE candidate per term)
         by_franchise = collections.defaultdict(lambda: collections.defaultdict(list))
+        # Which host each admitted franchise belongs to. F3 is computed from this rather than from
+        # `tally`, because `tally` has had F6's exclusions applied to it by then.
+        host_of_franchise: dict = {}
         for v in sorted(recs, key=lambda x: x.get("ts", "")):
             if "__unparseable__" in v:
                 row["records"].append({"unparseable": v["__unparseable__"]})
@@ -215,8 +245,13 @@ def audit(root: pathlib.Path, only_term):
                 row["findings"].append(("F2", f"{v.get('ts')} franchise {fr[:12]}"))
                 worst = max(worst, 1)
                 continue
-            tally[v.get("candidate")][host].append(((fr or "")[:12], v.get("ts")))
+            # Store the FULL franchise id. It was previously truncated to 12 chars here, and F6's
+            # exclusion below compares against that truncation - so two distinct franchises sharing
+            # a 12-char prefix would both be excluded when only one offended. An identifier used for
+            # comparison is never truncated; truncation is a DISPLAY concern only.
+            tally[v.get("candidate")][host].append((fr, v.get("ts")))
             by_franchise[fr][v.get("candidate")].append(v.get("ts"))
+            host_of_franchise[fr] = host
 
         # FR-008 / F6: a franchise that named more than one candidate is EXCLUDED from every
         # candidate, not tie-broken. Counting the first, the last, or the lexicographically
@@ -236,34 +271,73 @@ def audit(root: pathlib.Path, only_term):
             # Remove every submission this franchise made, from every candidate and host bucket.
             for cand in list(tally):
                 for host in list(tally[cand]):
-                    tally[cand][host] = [e for e in tally[cand][host] if e[0] != (fr or "")[:12]]
+                    tally[cand][host] = [e for e in tally[cand][host] if e[0] != fr]
                     if not tally[cand][host]:
                         del tally[cand][host]
                 if not tally[cand]:
                     del tally[cand]
 
-        # F4: a franchise submitting twice for the same candidate is deduped, and said so.
+        # F4 (FR-007): ONE FRANCHISE submitting more than once for the same candidate.
+        #
+        # This counted entries per HOST bucket, so two DIFFERENT franchises on one host each voting
+        # once for the same candidate - which is normal, and is exactly what FR-005's "count each
+        # host at most once per candidate" exists to handle - was reported as a repeated submission.
+        # A wrong finding on a shared audit is as damaging as a missed one: it is quoted by other
+        # hosts. Grouping by franchise is what FR-007 actually says. Found by adversarial review
+        # 2026-09-05.
         for cand, hosts in tally.items():
             for host, entries in hosts.items():
-                if len(entries) > 1:
-                    row["findings"].append(
-                        ("F4", f"host {host} submitted {len(entries)}x for {str(cand)[:12]} "
-                               f"({', '.join(t for _, t in entries)}) — deduped to 1")
-                    )
-        # F3: one host backing two different candidates in one term.
-        host_cands = collections.defaultdict(set)
-        for cand, hosts in tally.items():
-            for host in hosts:
-                host_cands[host].add(cand)
-        for host, cands in host_cands.items():
-            if len(cands) > 1:
-                row["findings"].append(
-                    ("F3", f"host {host} voted for {len(cands)} candidates: "
-                           f"{sorted(str(c)[:12] for c in cands)}")
-                )
-                worst = max(worst, 1)
+                per_franchise = collections.defaultdict(list)
+                for fr_id, ts in entries:
+                    per_franchise[fr_id].append(ts)
+                for fr_id, stamps in per_franchise.items():
+                    if len(stamps) > 1:
+                        row["findings"].append(
+                            ("F4", f"franchise {str(fr_id)[:12]} on host {host} submitted "
+                                   f"{len(stamps)}x for {str(cand)[:12]} "
+                                   f"({', '.join(stamps)}) — deduped to 1")
+                        )
+        # F3 (FR-006, engineer ruling 2026-09-05): one host whose franchises disagree.
+        #
+        # THE RULE, and why it is this one and not either obvious alternative:
+        #   fires when a host holds TWO OR MORE DISTINCT franchises AND those franchises between
+        #   them name more than one candidate — computed BEFORE F6's exclusions.
+        #
+        # Computed from `tally` AFTER exclusion (the previous behaviour) a real conflict could be
+        # hidden: franchise X names A and B, franchise Y on the same host names C; F6 removes X,
+        # and F3 then sees only C and reports the host clean, when the host genuinely backed three
+        # candidates through two franchises.
+        #
+        # Computed over every vote with no franchise-count condition, the opposite failure appears:
+        # a single franchise naming two candidates IS "a host naming two candidates", so every F6
+        # would also fire F3. That is exactly the false positive that left F3 untested by its own
+        # shape until 2026-09-04 — the original F3 fixture turned out to be an F6.
+        #
+        # Requiring >= 2 DISTINCT franchises keeps the two findings disjoint: F6 is one franchise
+        # naming two candidates; F3 is two franchises on one host disagreeing.
+        host_franchises = collections.defaultdict(dict)
+        for fr, cands in by_franchise.items():
+            host = host_of_franchise.get(fr)
+            if host is not None:
+                host_franchises[host][fr] = set(cands)
+        for host, franchises in host_franchises.items():
+            if len(franchises) < 2:
+                continue
+            named = set().union(*franchises.values())
+            if len(named) <= 1:
+                continue
+            row["findings"].append(
+                ("F3", f"host {host} holds {len(franchises)} franchises naming {len(named)} "
+                       f"candidates between them: {sorted(str(c)[:12] for c in named)} "
+                       f"(franchises {sorted(str(f)[:12] for f in franchises)})")
+            )
+            worst = max(worst, 1)
 
-        row["tally_hosts"] = {(c or "?")[:12]: sorted(h) for c, h in tally.items()}
+        # Key by the FULL candidate id. Truncating to 12 chars here silently merged two distinct
+        # candidates that shared a prefix into one row, with one host set overwriting the other -
+        # a wrong report rather than an error. `candidate_short` carries the display form.
+        row["tally_hosts"] = {c: sorted(h) for c, h in tally.items()}
+        row["candidate_short"] = {c: (c or "?")[:12] for c in tally}
         # Derive the exit status from the findings themselves rather than setting it at each
         # emit site: a new finding code added without touching this line would otherwise default
         # to non-fatal silently, which is how a check stops gating without anyone noticing.
@@ -339,11 +413,26 @@ def _fixture(tmp: pathlib.Path):
     # untested.
     _, _, idE = mk()
     _, _, idF = mk()
+    # Host Q: the ordering case (engineer ruling 2026-09-05). idG is a self-conflicting franchise
+    # (an F6) and idH is a SECOND franchise on the same host naming a third candidate. The host
+    # genuinely backed three candidates through two franchises, so F3 must fire ALONGSIDE F6 -
+    # computing F3 from the post-exclusion tally reported this host clean.
+    _, _, idG = mk()
+    _, _, idH = mk()
+    # Host R: TWO DISTINCT franchises voting ONCE EACH for the SAME candidate. Entirely benign -
+    # FR-005 counts the host once - and it must NOT fire F4, which is a per-FRANCHISE rule. F4
+    # counted entries per HOST bucket until 2026-09-05 and reported this as a repeat submission.
+    _, _, idI = mk()
+    _, _, idJ = mk()
     recs += [
         {"kind": "hello", "node_id": idC, "record_id": "hC2", "host": "M", "lane": "m.c"},
         {"kind": "hello", "node_id": idD, "record_id": "hD", "host": "N", "lane": "n.d"},
         {"kind": "hello", "node_id": idE, "record_id": "hE", "host": "P", "lane": "p.e"},
         {"kind": "hello", "node_id": idF, "record_id": "hF", "host": "P", "lane": "p.f"},
+        {"kind": "hello", "node_id": idG, "record_id": "hG", "host": "Q", "lane": "q.g"},
+        {"kind": "hello", "node_id": idH, "record_id": "hH", "host": "Q", "lane": "q.h"},
+        {"kind": "hello", "node_id": idI, "record_id": "hI", "host": "R", "lane": "r.i"},
+        {"kind": "hello", "node_id": idJ, "record_id": "hJ", "host": "R", "lane": "r.j"},
     ]
 
     # 1 valid delegation, 1 valid direct, 1 forged delegation, 1 unknown franchise,
@@ -365,9 +454,24 @@ def _fixture(tmp: pathlib.Path):
         # produce F4 and NOT F6, or "always report a conflict" would satisfy T002.
         {"kind": "vote", "record_id": "v8", "ts": "T8", "term": 7, "candidate": "cand", "actor": idD},
         {"kind": "vote", "record_id": "v9", "ts": "T9", "term": 7, "candidate": "cand", "actor": idD},
+        # T-INCOMPLETE: a PARTIAL delegation proof. `voter` and `voter_sig` are present and the
+        # `voter_spki` needed to check them is NOT. This must be REFUSED, never counted for the
+        # actor: before 2026-09-05 the presence test required all three fields, so stripping the
+        # spki off someone else's delegated vote silently turned it into the stripper's own vote.
+        # `actor` is deliberately a franchise with a hello, so if it WERE downgraded it would be
+        # counted rather than caught by F2.
+        {"kind": "vote", "record_id": "v10", "ts": "T10", "term": 7, "candidate": "other",
+         "actor": idB, "voter": idA, "voter_sig": "00" * 64},
+        # Host Q: F6 (idG names two) AND F3 (idG + idH are two franchises naming three candidates).
+        {"kind": "vote", "record_id": "v11", "ts": "T11", "term": 7, "candidate": "cand", "actor": idG},
+        {"kind": "vote", "record_id": "v12", "ts": "T12", "term": 7, "candidate": "other", "actor": idG},
+        {"kind": "vote", "record_id": "v13", "ts": "T13", "term": 7, "candidate": "third", "actor": idH},
+        # Host R: two franchises, one vote each, same candidate. Benign - must NOT be F4 or F3.
+        {"kind": "vote", "record_id": "v14", "ts": "T14", "term": 7, "candidate": "cand", "actor": idI},
+        {"kind": "vote", "record_id": "v15", "ts": "T15", "term": 7, "candidate": "cand", "actor": idJ},
     ]
     (tmp / "fx.jsonl").write_text("\n".join(json.dumps(r) for r in recs) + "\n", encoding="utf-8")
-    return {"conflicting": idC, "repeating": idD}
+    return {"conflicting": idC, "repeating": idD, "q_conflicting": idG, "q_other": idH}
 
 
 def self_test() -> int:
@@ -393,13 +497,25 @@ def self_test() -> int:
                 fails.append(f"conflicted franchise still counted for {cand}: excluded means excluded")
         # --- T003 (FR-007): the NEGATIVE control. A benign repeat is F4, never F6. ---
         f6_all = " ".join(d for c, d in t["findings"] if c == "F6")
+        f4_all = " ".join(d for c, d in t["findings"] if c == "F4")
+        f3_all = " ".join(d for c, d in t["findings"] if c == "F3")
         if ids["repeating"][:12] in f6_all:
             fails.append("F6 fired on a BENIGN repeat (same candidate twice) — it must be F4 only")
-        f4_all = " ".join(d for c, d in t["findings"] if c == "F4")
         if "n" not in f4_all:
             fails.append("F4 did not fire on the benign same-candidate repeat")
-        if [h for c, hosts in t["tally_hosts"].items() for h in hosts if h == "n"].count("n") != 1:
-            fails.append("the benign repeat did not deduplicate to exactly one host vote")
+        # The benign repeat must be reported as exactly TWO submissions by ONE franchise.
+        # The previous assertion counted host keys in tally_hosts, which are unique by construction
+        # - it would have passed with deduplication removed entirely, so it observed nothing.
+        if "submitted 2x" not in f4_all:
+            fails.append("F4 did not report the benign repeat as exactly 2 submissions")
+        if "franchise" not in f4_all:
+            fails.append("F4 did not name the FRANCHISE — F4 is a per-franchise rule (FR-007)")
+        # NEGATIVE CONTROL: host R holds two franchises voting once each for the same candidate.
+        # That is benign and must not be F4 (per-franchise) or F3 (they agree).
+        if "host r" in f4_all.lower():
+            fails.append("F4 fired on host R — two DIFFERENT franchises voting once each is not a repeat")
+        if "host r" in f3_all.lower():
+            fails.append("F3 fired on host R — two franchises naming the SAME candidate do not disagree")
 
         if recs["T1"]["how"] != "delegated" or recs["T1"]["host"] != "h":
             fails.append("T1: a VALID delegation must resolve to the delegating host")
@@ -407,12 +523,35 @@ def self_test() -> int:
             fails.append("T2: a vote with no proof must resolve as a DIRECT vote")
         if recs["T3"]["franchise"] is not None:
             fails.append("T3: a FORGED delegation must be REFUSED, never downgraded to the actor")
+        # The control for the incomplete-proof downgrade. Two things must both hold: the vote is
+        # refused, AND it is refused for the RIGHT REASON - a check that merely refused everything
+        # would satisfy the first alone.
+        if recs["T10"]["franchise"] is not None:
+            fails.append("T10: an INCOMPLETE delegation proof must be REFUSED, never counted for the actor")
+        if not recs["T10"]["how"].startswith("REFUSED-incomplete-proof"):
+            fails.append(f"T10: refused for the wrong reason: {recs['T10']['how']}")
+        if "voter_spki" not in recs["T10"]["how"]:
+            fails.append("T10: the refusal must NAME the missing field")
+        # NEGATIVE CONTROL for that control: T2 has no proof fields at all and must stay DIRECT.
+        # Without this, "refuse anything mentioning a voter" would pass the three checks above.
+        if recs["T2"]["how"] != "direct":
+            fails.append("T2: a vote with NO proof fields must still resolve as DIRECT")
         if "F1" not in codes:
             fails.append("F1 did not fire on the forged delegation")
         if "F2" not in codes:
             fails.append("F2 did not fire on the franchise with no hello")
         if "F3" not in codes:
             fails.append("F3 did not fire on the host backing two candidates")
+        # --- the F3/F6 ORDERING controls (engineer ruling 2026-09-05) ---
+        # POSITIVE: host Q had a self-conflicting franchise excluded by F6 AND a second franchise
+        # naming a third candidate. F3 must still see it. Computed after exclusion, it did not.
+        if "host q" not in f3_all.lower():
+            fails.append("F3 did not fire on host Q, whose conflict survives only BEFORE F6 exclusion")
+        # NEGATIVE: host M holds ONE franchise that named two candidates. That is an F6 and must
+        # NOT also be reported as F3, or the two findings collapse into each other and F3 becomes
+        # untestable by its own shape again.
+        if "host m" in f3_all.lower():
+            fails.append("F3 fired on host M — a LONE self-conflicting franchise is F6, never F3")
         if code == 0:
             fails.append("audit() returned 0 on a fixture with three real findings")
 
@@ -421,8 +560,9 @@ def self_test() -> int:
             print(f"SELF-TEST FAIL: {f}", file=sys.stderr)
         return 1
     print("self-test: PASS — a valid delegation is COUNTED, a forged one is REFUSED (not "
-          "downgraded), a franchise naming two candidates is EXCLUDED not tie-broken, a benign "
-          "repeat is F4 and NOT F6, and F1/F2/F3/F6 all fire")
+          "downgraded), an INCOMPLETE proof is REFUSED and names the missing field while a "
+          "no-proof vote stays DIRECT, a franchise naming two candidates is EXCLUDED not "
+          "tie-broken, a benign repeat is F4 and NOT F6, and F1/F2/F3/F6 all fire")
     return 0
 
 

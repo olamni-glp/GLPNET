@@ -74,6 +74,9 @@ try
             }
 
             using var machine = new YnetReceiverMachine(plane, spool, hook);
+            // The carrier must not remove a frame from the inbox until its alert is durable.
+            if (carrier is not null)
+                carrier.ConfirmDurable = m => machine.WaitForDurable(m.MessageId, TimeSpan.FromSeconds(10));
             machine.Faulted += ex => Console.Error.WriteLine($"machine fault: {ex.GetType().Name}: {ex.Message}");
             machine.Launch("ynet-client-receiver");
 
@@ -107,6 +110,7 @@ try
             var hook = new AgentHook(Environment.GetEnvironmentVariable("YNET_CLIENT_HOOK"));
             using var carrier = CoopFileInbound.Manual(Self(), CoopRoot());
             using var machine = new YnetReceiverMachine(carrier, spool, hook);
+            carrier.ConfirmDurable = m => machine.WaitForDurable(m.MessageId, TimeSpan.FromSeconds(10));
             machine.Start();
             machine.PumpOnce();
 
@@ -118,7 +122,8 @@ try
 
             Console.WriteLine($"ynet_client: polled {carrier.InboxDirectory}");
             Console.WriteLine($"ynet_client: delivered={delivered}   received={machine.MessagesReceived}   " +
-                              $"pending_now={spool.Count}   strays={carrier.StrayFiles.Count}");
+                              $"pending_now={spool.Count}   strays={carrier.StrayFiles.Count}   " +
+                              $"retained_for_retry={carrier.UndurableRetained}");
             foreach (var s in carrier.StrayFiles)
                 Console.WriteLine($"  stray (not a frame, NOT delivered): {s}");
             return 0;
@@ -156,9 +161,10 @@ try
             using var carrier = CoopFileInbound.Manual(self, CoopRoot());
             carrier.Open();
             // Report what is there WITHOUT consuming it: doctor must be safe to run at any time.
-            var inboxFiles = Directory.Exists(carrier.InboxDirectory)
-                ? Directory.EnumerateFiles(carrier.InboxDirectory).Select(Path.GetFileName).ToArray()
-                : Array.Empty<string?>();
+            // Classification comes from the carrier, so doctor cannot disagree with the receiver:
+            // it used to classify by filename suffix alone and call a corrupt `.frame` a waiting
+            // frame, exiting 0 on an inbox the receiver would treat as a stray.
+            var (frames, strays) = carrier.Inspect();
             carrier.Close();
 
             Console.WriteLine($"ynet_client doctor");
@@ -167,12 +173,10 @@ try
             Console.WriteLine($"  inbox      {carrier.InboxDirectory}");
             Console.WriteLine($"  processed  {carrier.ProcessedDirectory}");
             Console.WriteLine($"  spool      {spool.Directory}  ({spool.Count} pending)");
-            var frames = inboxFiles.Count(f => f is not null && f.EndsWith(".frame", StringComparison.Ordinal));
-            var strays = inboxFiles.Length - frames;
-            Console.WriteLine($"  waiting    {frames} frame(s), {strays} non-frame file(s)");
-            foreach (var f in inboxFiles.Where(f => f is not null && !f.EndsWith(".frame", StringComparison.Ordinal)))
-                Console.WriteLine($"    stray: {f}");
-            return strays > 0 ? 3 : 0;      // a mis-addressed mailbox is a REPORTABLE state, not a pass
+            Console.WriteLine($"  waiting    {frames} frame(s), {strays.Count} undeliverable file(s)");
+            foreach (var f in strays)
+                Console.WriteLine($"    stray (not a deliverable frame): {f}");
+            return strays.Count > 0 ? 3 : 0;  // a mis-addressed mailbox is a REPORTABLE state, not a pass
         }
 
         case "inject":

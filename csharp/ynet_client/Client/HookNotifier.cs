@@ -48,15 +48,23 @@ public sealed class HookNotifier : IDisposable
     /// <summary>Queue one announcement. Never blocks the caller.</summary>
     public void Enqueue(PendingAlert alert)
     {
+        // Counted as outstanding BEFORE the item can possibly be taken, then withdrawn if it is
+        // refused.
+        //
+        // The obvious order - TryAdd, then increment - MOVED the false-idle window instead of
+        // closing it: between a successful TryAdd and the increment, the pump can take the item,
+        // run it, and increment _completed, so a caller sampling there sees admitted == completed
+        // == 0 and is told the notifier is idle while the notification is still in flight. That is
+        // the same defect one step earlier, and an adversarial review caught it in the fix for it.
+        //
+        // Over-counting for a few instructions is the SAFE direction: WaitForIdle waits slightly
+        // too long. Under-counting reports work finished that has not started.
+        Interlocked.Increment(ref _admitted);
         if (_queue.IsAddingCompleted || !_queue.TryAdd(alert))
         {
+            Interlocked.Decrement(ref _admitted);
             Interlocked.Increment(ref _dropped);
-            return;
         }
-
-        // Counted as outstanding the moment it is ADMITTED, not when the pump notices it. See
-        // WaitForIdle for why that ordering is the whole fix.
-        Interlocked.Increment(ref _admitted);
     }
 
     /// <summary>

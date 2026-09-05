@@ -133,6 +133,17 @@ public sealed class CoopFileInbound : IYnetInbound, IDisposable
     private CancellationTokenSource? _cts;
     private Thread? _pump;
     private volatile bool _open;
+    private int _pumpsStarted;
+
+    /// <summary>
+    /// How many background pump threads this carrier has ever started. Exposed to the test
+    /// assembly because "Open() is idempotent" is otherwise unfalsifiable from outside: managed
+    /// thread names are not enumerable, and the previous idempotence test asserted nothing at all.
+    /// </summary>
+    internal int PumpsStarted => Volatile.Read(ref _pumpsStarted);
+
+    /// <summary>True while the background pump thread is still running.</summary>
+    internal bool PumpAlive => _pump?.IsAlive ?? false;
 
     /// <param name="pollInterval">
     /// How often the background pump sweeps the inbox. <see cref="TimeSpan.Zero"/> selects MANUAL
@@ -167,6 +178,25 @@ public sealed class CoopFileInbound : IYnetInbound, IDisposable
     public int FramesDelivered { get; private set; }
 
     /// <summary>
+    /// Asked, after delivery, whether the message is now DURABLY recorded. Returning false leaves
+    /// the frame in the inbox to be retried on the next sweep - the frame is the only copy until
+    /// something durable holds it. Null means "no durability owner", which is correct for an
+    /// in-memory plane and preserves the previous behaviour.
+    /// </summary>
+    public Func<YnetMessage, bool>? ConfirmDurable { get; set; }
+
+    /// <summary>Frames delivered but NOT confirmed durable, and therefore left for a retry.</summary>
+    public long UndurableRetained => Interlocked.Read(ref _undurable);
+
+    private long _undurable;
+
+    private void NoteUndurable(string name)
+    {
+        Interlocked.Increment(ref _undurable);
+        _ = name;   // retained deliberately: the file itself is the record, it is still in the inbox
+    }
+
+    /// <summary>
     /// A3: every non-frame file seen in the inbox, BY NAME. Silence here is a measurement, not an
     /// assumption — an empty list means the inbox was read and held only frames.
     /// </summary>
@@ -175,34 +205,54 @@ public sealed class CoopFileInbound : IYnetInbound, IDisposable
         get { lock (_strays) return _strays.ToArray(); }
     }
 
+    // Open/Close/PollOnce are serialized on this. `volatile bool` made _open VISIBLE across
+    // threads but did not make check-then-set ATOMIC: two threads could both see _open == false,
+    // both start a pump, and one would overwrite _cts/_pump so that Close() stopped only the
+    // survivor while the orphan delivered forever. Found by adversarial review 2026-09-05.
+    private readonly Lock _gate = new();
+
     public void Open()
     {
-        if (_open) return;                                 // idempotent, per IYnetInbound
-        Directory.CreateDirectory(InboxDirectory);
-        Directory.CreateDirectory(ProcessedDirectory);
-        _open = true;
-
-        if (_interval <= TimeSpan.Zero) return;            // manual mode: the caller pumps
-
-        _cts = new CancellationTokenSource();
-        var token = _cts.Token;
-        _pump = new Thread(() => Pump(token))
+        lock (_gate)
         {
-            IsBackground = true,
-            Name = "ynet-coop-carrier",
-        };
-        _pump.Start();
+            if (_open) return;                             // idempotent, per IYnetInbound
+            Directory.CreateDirectory(InboxDirectory);
+            Directory.CreateDirectory(ProcessedDirectory);
+            _open = true;
+
+            if (_interval <= TimeSpan.Zero) return;        // manual mode: the caller pumps
+
+            _cts = new CancellationTokenSource();
+            var token = _cts.Token;
+            _pump = new Thread(() => Pump(token))
+            {
+                IsBackground = true,
+                Name = "ynet-coop-carrier",
+            };
+            _pumpsStarted++;
+            _pump.Start();
+        }
     }
 
     public void Close()
     {
-        if (!_open) return;                                // idempotent
-        _open = false;
-        var cts = _cts;
+        Thread? pump;
+        CancellationTokenSource? cts;
+        lock (_gate)
+        {
+            if (!_open) return;                            // idempotent
+            _open = false;
+            cts = _cts;
+            pump = _pump;
+            _cts = null;
+            _pump = null;
+        }
+
         if (cts is null) return;                           // manual mode: nothing to stop
-        _cts = null;
         cts.Cancel();
-        _pump?.Join(TimeSpan.FromSeconds(5));
+        // Joined OUTSIDE the gate: the pump takes the gate in PollOnce, so joining while holding
+        // it would deadlock the very shutdown it is meant to complete.
+        pump?.Join(TimeSpan.FromSeconds(5));
         cts.Dispose();
     }
 
@@ -214,7 +264,7 @@ public sealed class CoopFileInbound : IYnetInbound, IDisposable
         {
             try
             {
-                PollOnce();
+                PollOnceCore();
             }
             catch (Exception)
             {
@@ -232,6 +282,32 @@ public sealed class CoopFileInbound : IYnetInbound, IDisposable
     /// </summary>
     public int PollOnce()
     {
+        // The two modes are mutually exclusive, and saying so in a comment did not make it true:
+        // a caller could invoke PollOnce while the background pump was running, both could
+        // enumerate and DELIVER the same frame before either moved it to processed/, and the
+        // message was raised TWICE. The comment claimed the duplicate was structurally impossible.
+        // It is now actually refused. Found by adversarial review 2026-09-05.
+        if (_interval > TimeSpan.Zero && _open)
+            throw new InvalidOperationException(
+                "PollOnce() is for MANUAL mode only. This carrier is running a background pump, and " +
+                "sweeping the same inbox from two threads delivers a frame twice. Construct it with " +
+                "CoopFileInbound.Manual(...) to drive it yourself.");
+
+        return PollOnceCore();
+    }
+
+    private int PollOnceCore()
+    {
+        // Serialized so two manual callers - or a manual caller and the pump during shutdown -
+        // cannot interleave a delivery with the move that makes it exactly-once.
+        lock (_gate)
+        {
+            return Sweep();
+        }
+    }
+
+    private int Sweep()
+    {
         Directory.CreateDirectory(InboxDirectory);
         Directory.CreateDirectory(ProcessedDirectory);
 
@@ -239,34 +315,44 @@ public sealed class CoopFileInbound : IYnetInbound, IDisposable
         foreach (var path in Directory.EnumerateFiles(InboxDirectory).OrderBy(p => p, StringComparer.Ordinal))
         {
             var name = Path.GetFileName(path);
-            if (!name.EndsWith(".frame", StringComparison.Ordinal))
-            {
-                NoteStray(name);                            // A3: seen and named, never silently skipped
-                continue;
-            }
 
-            YnetFrame? frame;
-            try
-            {
-                frame = JsonSerializer.Deserialize<YnetFrame>(File.ReadAllText(path));
-            }
-            catch (Exception)
-            {
-                NoteStray(name);                            // a .frame that is not a frame is still a stray
-                continue;
-            }
-
+            // A3: seen and NAMED, never silently skipped. A non-frame file, a `.frame` that is not
+            // valid JSON, and a `.frame` that parses but carries no identity are all strays -
+            // `{}` parses cleanly into a record of empty defaults, and delivering that as
+            // "unknown-origin" manufactured a message out of an empty file.
+            var frame = Classify(path);
             if (frame is null)
             {
                 NoteStray(name);
                 continue;
             }
 
-            Received?.Invoke(new YnetMessage(
+            var message = new YnetMessage(
                 MessageId: Path.GetFileNameWithoutExtension(name),
-                Origin: string.IsNullOrEmpty(frame.Origin) ? "unknown-origin" : frame.Origin,
+                Origin: frame.Origin,
                 Summary: $"{frame.Signal}: {frame.Body}",
-                Body: Encoding.UTF8.GetBytes(frame.Body)));
+                Body: Encoding.UTF8.GetBytes(frame.Body));
+
+            Received?.Invoke(message);
+
+            // THE FRAME IS THE ONLY COPY UNTIL THE ALERT IS DURABLE.
+            //
+            // Received only ENQUEUES onto the receiver machine's mailbox; the spool write happens
+            // later, on the machine's own thread. Consuming here regardless meant that a spool
+            // write which failed - disk full, permissions, a lock timeout - or a process that died
+            // in between, lost the message from BOTH places: the frame was already out of the
+            // inbox and could never be retried. On the bounded-mailbox OVERFLOW path the loss was
+            // not even a race, it was certain: Post refuses, nothing is ever recorded under this
+            // message id, and the carrier moved the frame anyway.
+            //
+            // So the frame stays where it is until the owner of durability says the record exists.
+            // A carrier with no gate keeps the old behaviour, which is correct for the loopback
+            // plane where there is no file to lose. Found by adversarial review 2026-09-05.
+            if (ConfirmDurable is not null && !ConfirmDurable(message))
+            {
+                NoteUndurable(name);
+                continue;                                   // left in the inbox; next sweep retries
+            }
 
             FramesDelivered++;
             delivered++;
@@ -294,12 +380,83 @@ public sealed class CoopFileInbound : IYnetInbound, IDisposable
         }
     }
 
+    /// <summary>
+    /// The most stray names retained. A producer creating uniquely-named junk would otherwise grow
+    /// this list for the life of the process. The COUNT stays exact (StrayCount) because that is
+    /// what tells a lane it is being mis-addressed; only the NAMES are capped.
+    /// </summary>
+    private const int MaxRetainedStrayNames = 256;
+
+    /// <summary>Total non-frame files seen, including any whose names were not retained.</summary>
+    public long StrayCount => Interlocked.Read(ref _strayCount);
+
+    private long _strayCount;
+
     private void NoteStray(string name)
     {
         lock (_strays)
         {
-            if (!_strays.Contains(name)) _strays.Add(name);
+            if (_strays.Contains(name)) return;
+            Interlocked.Increment(ref _strayCount);
+            if (_strays.Count < MaxRetainedStrayNames) _strays.Add(name);
         }
+    }
+
+    /// <summary>One non-consuming look at the inbox: how many deliverable frames, and what else.</summary>
+    /// <remarks>
+    /// Shares <see cref="Classify"/> with the sweep on purpose. `doctor` previously classified by
+    /// FILENAME SUFFIX alone, so a `.frame` holding invalid JSON - or `{}` - was reported as a
+    /// waiting frame and doctor exited 0, while the receiver would treat it as a stray. Two
+    /// classifiers meant the diagnostic disagreed with the thing it was diagnosing.
+    /// </remarks>
+    public (int Frames, IReadOnlyList<string> Strays) Inspect()
+    {
+        if (!Directory.Exists(InboxDirectory)) return (0, Array.Empty<string>());
+
+        var frames = 0;
+        var strays = new List<string>();
+        foreach (var path in Directory.EnumerateFiles(InboxDirectory).OrderBy(p => p, StringComparer.Ordinal))
+        {
+            if (Classify(path) is null) strays.Add(Path.GetFileName(path));
+            else frames++;
+        }
+        return (frames, strays);
+    }
+
+    /// <summary>Read one inbox file as a frame, or null when it is not a deliverable frame.</summary>
+    private static YnetFrame? Classify(string path)
+    {
+        if (!Path.GetFileName(path).EndsWith(".frame", StringComparison.Ordinal)) return null;
+        try
+        {
+            var frame = JsonSerializer.Deserialize<YnetFrame>(File.ReadAllText(path));
+            return frame is not null && IsAddressed(frame) ? frame : null;
+        }
+        catch (Exception)
+        {
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// A frame must say who sent it. Missing identity is refused rather than defaulted: a frame
+    /// that cannot be attributed cannot be acted on, and inventing "unknown-origin" for it hides
+    /// a malformed producer behind a plausible-looking message.
+    /// </summary>
+    private static bool IsAddressed(YnetFrame f)
+    {
+        if (string.IsNullOrWhiteSpace(f.Origin)
+            || string.IsNullOrWhiteSpace(f.SenderNode)
+            || string.IsNullOrWhiteSpace(f.SenderActor))
+            return false;
+
+        // Origin is what every downstream consumer attributes the message to, and SenderNode /
+        // SenderActor are what a verifier would key on. Accepting a frame whose Origin disagrees
+        // with them let a sender claim ANY origin it liked - Origin="victim/victim.actor" with
+        // SenderNode="attacker" was delivered, and displayed, as coming from the victim. Requiring
+        // them to agree makes the attribution one field instead of two that can disagree silently.
+        // Found by adversarial review 2026-09-05.
+        return string.Equals(f.Origin, $"{f.SenderNode}/{f.SenderActor}", StringComparison.Ordinal);
     }
 }
 
