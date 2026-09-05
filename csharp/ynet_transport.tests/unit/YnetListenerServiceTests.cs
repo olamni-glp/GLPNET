@@ -86,47 +86,101 @@ public class YnetListenerServiceTests
         Assert.Contains("SKIPPED tier 0", report.Describe());
     }
 
-    // ---- SC-003: with a stub sidecar reachable, iroh WINS at tier 0 ----
-    // This is what proves FR-004 rather than restating it: without it, "iroh is registered at tier 0"
-    // is a claim about a list, not a measurement of selection.
-    [Fact]
-    public async Task SC003_a_reachable_sidecar_makes_iroh_probe_available_and_rank_first()
-    {
-        using var stub = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
-        stub.Bind(new IPEndPoint(IPAddress.Loopback, 0));
-        stub.Listen(64);
-        var stubEp = (IPEndPoint)stub.LocalEndPoint!;
+    // ---- SC-003: tier-0 selection is MEASURED, and presence is not mistaken for capability ----
+    // codexreview F1: the first version of this test stood up a bare TCP listener and asserted iroh
+    // "wins". That proved only that a port accepts. Probe's contract is "can this provider CARRY A
+    // LINK here, right now", so the stub now has to speak the capability handshake, and the adapter
+    // has to admit whether it implements carriage. Three cases, three different refusals.
 
-        // A real sidecar ACCEPTS. Without this loop the first Probe fills the accept backlog and
-        // every later Probe times out — which is how this test failed the first time it ran, and is
-        // worth keeping: an unaccepting listener is indistinguishable from an absent one after the
-        // backlog fills, which is itself a "bound but not serving" case.
-        using var stopAccepting = new CancellationTokenSource();
-        var accepting = Task.Run(async () =>
+    /// <summary>A stub sidecar that speaks (or deliberately mis-speaks) the capability handshake.</summary>
+    private static async Task<(IPEndPoint Ep, CancellationTokenSource Stop, Task Loop)> StubSidecar(string? capsLine)
+    {
+        var listener = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+        listener.Bind(new IPEndPoint(IPAddress.Loopback, 0));
+        listener.Listen(64);
+        var ep = (IPEndPoint)listener.LocalEndPoint!;
+        var stop = new CancellationTokenSource();
+
+        var loop = Task.Run(async () =>
         {
             try
             {
-                while (!stopAccepting.IsCancellationRequested)
-                    (await stub.AcceptAsync(stopAccepting.Token)).Dispose();
+                while (!stop.IsCancellationRequested)
+                {
+                    using var conn = await listener.AcceptAsync(stop.Token);
+                    var buf = new byte[256];
+                    var n = await conn.ReceiveAsync(buf, SocketFlags.None, stop.Token);
+                    if (n > 0 && capsLine is not null)
+                        await conn.SendAsync(System.Text.Encoding.ASCII.GetBytes(capsLine), SocketFlags.None, stop.Token);
+                }
             }
             catch (OperationCanceledException) { }
             catch (ObjectDisposedException) { }
             catch (SocketException) { }
+            finally { listener.Dispose(); }
         });
 
-        var iroh = new IrohSidecarProvider(stubEp, TimeSpan.FromSeconds(2));
+        await Task.Yield();
+        return (ep, stop, loop);
+    }
 
-        var availability = iroh.Probe();
-        Assert.True(availability.Supported);                            // measured, not assumed
-        Assert.Contains("reachable", availability.Detail);
+    [Fact]
+    public async Task SC003a_a_socket_that_accepts_but_says_nothing_is_NOT_available()
+    {
+        var (ep, stop, loop) = await StubSidecar(capsLine: null);   // accepts, never answers
+        try
+        {
+            var iroh = new IrohSidecarProvider(ep, TimeSpan.FromMilliseconds(400));
+            var a = iroh.Probe();
+            Assert.False(a.Supported);                              // presence is NOT capability
+            Assert.Contains("handshake", a.Detail);
+        }
+        finally { stop.Cancel(); await loop; }
+    }
 
-        var chain = new QuicProviderChain(new IQuicProvider[] { MsQuicProvider.Instance, iroh });
-        Assert.Equal(iroh.Name, chain.Providers[0].Name);               // tier 0 sorts first
-        Assert.True(chain.TrySelect(out var selected, out _));
-        Assert.Equal("iroh-sidecar", selected!.Name);                   // and tier 0 is SELECTED
+    [Fact]
+    public async Task SC003b_a_sidecar_that_speaks_but_this_build_cannot_carry_links_refuses_precisely()
+    {
+        var (ep, stop, loop) = await StubSidecar($"{IrohSidecarProvider.Protocol} CAPS quic-link\n");
+        try
+        {
+            // carriesLinks:false — the honest state of this build today.
+            var iroh = new IrohSidecarProvider(ep, TimeSpan.FromSeconds(2), carriesLinks: false);
+            var a = iroh.Probe();
+            Assert.False(a.Supported);
+            Assert.Contains("does not implement link carriage", a.Detail);
+        }
+        finally { stop.Cancel(); await loop; }
+    }
 
-        stopAccepting.Cancel();
-        await accepting;
+    [Fact]
+    public async Task SC003c_when_the_sidecar_speaks_AND_the_build_carries_links_iroh_is_SELECTED_at_tier_0()
+    {
+        var (ep, stop, loop) = await StubSidecar($"{IrohSidecarProvider.Protocol} CAPS quic-link,dht\n");
+        try
+        {
+            // carriesLinks:true — proves FR-004's SELECTION mechanism is real today, so that when
+            // carriage lands the tier-0 preference is already measured rather than assumed.
+            var iroh = new IrohSidecarProvider(ep, TimeSpan.FromSeconds(2), carriesLinks: true);
+            Assert.True(iroh.Probe().Supported);
+
+            var chain = new QuicProviderChain(new IQuicProvider[] { MsQuicProvider.Instance, iroh });
+            Assert.Equal(iroh.Name, chain.Providers[0].Name);       // tier 0 sorts first
+            Assert.True(chain.TrySelect(out var selected, out _));
+            Assert.Equal("iroh-sidecar", selected!.Name);           // and tier 0 is SELECTED
+        }
+        finally { stop.Cancel(); await loop; }
+    }
+
+    [Fact]
+    public void SC003d_the_production_instance_is_unavailable_here_and_says_exactly_why()
+    {
+        // The honest state on OLAMNIT: no sidecar process, no Rust toolchain. The refusal must be
+        // actionable, not merely negative.
+        var a = IrohSidecarProvider.Instance.Probe();
+        Assert.False(a.Supported);
+        Assert.Contains("iroh sidecar not usable", a.Detail);
+        Assert.Contains("Rust", a.Detail);
     }
 
     // ---- SC-004: bound but unreachable is its own outcome, never Ok ----
@@ -214,6 +268,10 @@ public class YnetListenerServiceTests
             SysPath.Combine(root, "csharp", "ynet_transport", "Listener", "ListenerConfig.cs"),
             SysPath.Combine(root, "csharp", "ynet_transport", "Listener", "ListenerReport.cs"),
             SysPath.Combine(root, "csharp", "ynet_transport", "Link", "IrohSidecarProvider.cs"),
+            // codexreview F6: QuicProviderChain.cs is a CHANGED file of this feature and was
+            // omitted, so election logic added there would have passed the feature's own
+            // no-election test. The list must cover every file the feature touches.
+            SysPath.Combine(root, "csharp", "ynet_transport", "Link", "QuicProviderChain.cs"),
         };
 
         // "leader" appears in no forbidden form; the words below would each indicate a lane-local

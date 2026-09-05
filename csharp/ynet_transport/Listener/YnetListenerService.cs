@@ -77,25 +77,30 @@ public sealed class YnetListenerService
             }
             catch (QuicUnavailableException ex)
             {
-                // Probed available, could not serve. Record it as a skip with the real reason.
-                var why = QuicAvailability.No(
-                    $"probed available but bind failed: {ex.GetBaseException().Message}");
-                skipped.Add((provider.Name, provider.Tier, why));
-                diagnoses[^1] = (provider.Name, provider.Tier, why);
+                // codexreview F5: a provider that was ATTEMPTED and failed was not "passed over".
+                // Recording it as a skipped tier made Describe() print SKIPPED and FellBack=true for
+                // a tier that did run, which misreports what happened. It belongs in Diagnoses only.
+                diagnoses[^1] = (provider.Name, provider.Tier, QuicAvailability.No(
+                    $"probed available but bind failed: {ex.GetBaseException().Message}"));
             }
             catch (Exception ex)
             {
                 var why = QuicAvailability.No($"bind failed: {ex.GetBaseException().Message}");
-                skipped.Add((provider.Name, provider.Tier, why));
                 diagnoses[^1] = (provider.Name, provider.Tier, why);
 
                 // A bind failure that is not a capability gap (port in use, permission denied) is
                 // reported as BindFailed rather than swallowed into Refused.
+                //
+                // codexreview F4: Provider is null here ON PURPOSE. FR-003 requires the provider to
+                // be OBSERVED FROM THE HANDLE, and there is no handle on this path — naming the loop
+                // variable would report an unobserved provider as an observed one. The name goes in
+                // Detail, where it reads as diagnosis rather than as evidence.
                 if (ex is System.Net.Sockets.SocketException)
                 {
                     return (new ListenerReport(
-                        config.ServiceName, ListenerOutcome.BindFailed, null, provider.Name,
-                        skipped, diagnoses, why.Detail), null);
+                        config.ServiceName, ListenerOutcome.BindFailed, null, null,
+                        skipped, diagnoses,
+                        $"bind attempted on {provider.Name} (tier {(int)provider.Tier}): {why.Detail}"), null);
                 }
             }
         }
@@ -156,8 +161,21 @@ public sealed class YnetListenerService
     /// round-tripped byte. Returns false rather than throwing: an unreachable listener is a
     /// measurement outcome, not an exception.
     /// </summary>
-    public async Task<bool> ProbeReachabilityAsync(IQuicListenerHandle handle, CancellationToken ct)
+    /// <param name="dialer">
+    /// codexreview F2: the provider that OWNS <paramref name="handle"/>. Verification must dial the
+    /// same stack that bound the listener. Re-selecting from the chain could pick a different tier
+    /// (e.g. one that probes available but cannot connect) and report a perfectly reachable listener
+    /// as BoundUnreachable — a false RED, which is as wrong as a false green.
+    /// When null, the owning provider is resolved from the handle's ProviderName.
+    /// </param>
+    public async Task<bool> ProbeReachabilityAsync(
+        IQuicListenerHandle handle, CancellationToken ct, IQuicProvider? dialer = null)
     {
+        dialer ??= _chain.Providers.FirstOrDefault(
+            p => string.Equals(p.Name, handle.ProviderName, StringComparison.Ordinal));
+
+        if (dialer is null) return false;   // cannot dial the owning stack -> not proven reachable
+
         var target = handle.LocalEndPoint;
 
         // 0.0.0.0 is not dialable; dial loopback on the same port. This is deliberately weaker than
@@ -171,7 +189,7 @@ public sealed class YnetListenerService
         IWireChannel? server = null;
         try
         {
-            client = await _chain.ConnectAsync(target, ct).ConfigureAwait(false);
+            client = await dialer.ConnectAsync(target, ct).ConfigureAwait(false);
             server = await accept.ConfigureAwait(false);
 
             var payload = new byte[] { 0x59, 0x4E, 0x45, 0x54 }; // "YNET"
@@ -180,12 +198,17 @@ public sealed class YnetListenerService
             // reachability check that hangs is a check that never reports, which is the failure
             // mode this method exists to expose.
             client.WriteFrame(payload);
-            var got = await Task.Run(() => server.ReadFrame(), ct).ConfigureAwait(false);
+            // codexreview F3: WaitAsync is what makes the deadline real. Task.Run(..., ct) only
+            // declines to START once cancelled; it cannot interrupt a ReadFrame already blocked,
+            // so without WaitAsync a peer that never sends hangs BindAndVerifyAsync past its
+            // timeout. The worker thread is left to drain, which is why the channel is disposed
+            // in the finally block below.
+            var got = await Task.Run(server.ReadFrame).WaitAsync(ct).ConfigureAwait(false);
             if (got is null || !got.AsSpan().SequenceEqual(payload)) return false;
 
             // and back — a one-way path is not a link
             server.WriteFrame(payload);
-            var back = await Task.Run(() => client.ReadFrame(), ct).ConfigureAwait(false);
+            var back = await Task.Run(client.ReadFrame).WaitAsync(ct).ConfigureAwait(false);
             return back is not null && back.AsSpan().SequenceEqual(payload);
         }
         catch (OperationCanceledException)
