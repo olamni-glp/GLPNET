@@ -316,18 +316,17 @@ public class SignedRecordTests
         Assert.False(spoof.VerifySelfCertified()); // key != H(signer pubkey) -> rejected
     }
 
-    // ---- DEFECT PROBE (shiras-qhstate 20260905T0240Z ACK-COMPLIANCE) ----
-    // Fleet finding: "delete node_id and the signature still verifies" — a signer that can be
-    // erased or substituted. GLPNET has no erasable node_id field (SignerNodeId is DERIVED from
-    // the signed-against SPKI), so that exact attack has no field to delete. These two probes
-    // measure whether the SUBSTITUTION half of the same defect class survives here.
+    // ---- Q-olg15-02 CLOSED (was DEFECT PROBE, shiras-qhstate 20260905T0240Z ACK-COMPLIANCE) ----
+    // Fleet finding: "delete node_id and the signature still verifies" — a signer that can be erased
+    // or substituted. GLPNET has no erasable node_id field (SignerNodeId is DERIVED from the
+    // signed-against SPKI), so that exact attack has no field to delete. This probe measured the
+    // SUBSTITUTION half of the same defect class, and it USED TO PASS.
     //
-    // 🔴 THESE ASSERT THE CURRENT BEHAVIOUR, NOT THE DESIRED BEHAVIOUR. If the KeyToRecord
-    // signer binding is added, BOTH must be inverted to Assert.False / rejected. They exist so
-    // the hole stays visible instead of being papered over.
+    // Engineer ruling Q-olg15-02 (2026-09-05): bind every kind, refuse unbound. The assert below is
+    // the inversion the probe's own comment called for.
 
     [Fact]
-    public void DEFECT_PROBE_KeyToRecord_signed_by_any_key_under_any_key_still_self_certifies()
+    public void KeyToRecord_signed_by_one_key_under_another_key_is_refused()
     {
         using var victim = NodeIdentity.Generate();
         using var attacker = NodeIdentity.Generate();
@@ -337,10 +336,19 @@ public class SignedRecordTests
         var spoof = SignedRecord.Create(
             attacker, victimKey, RecordKind.KeyToRecord, "evil-payload"u8.ToArray(), Now, TimeSpan.FromHours(1));
 
-        // The Reachability guard in VerifySelfCertified is conditional on Kind == Reachability,
-        // so KeyToRecord carries NO signer<->key binding at all.
-        Assert.True(spoof.VerifySelfCertified());              // <-- the hole
+        Assert.False(spoof.VerifySelfCertified());             // the binding now covers this kind
         Assert.NotEqual(victim.NodeId, spoof.SignerNodeId);    // and the author is not the key owner
+    }
+
+    // The signature still proves authorship — the fix constrains WHERE a signer may write, it does
+    // not weaken WHO signed. A signer writing in its own namespace still verifies.
+    [Fact]
+    public void KeyToRecord_in_the_signers_own_namespace_still_verifies()
+    {
+        using var owner = NodeIdentity.Generate();
+        var rec = SignedRecord.CreateKeyToRecord(owner, "svc/broker", "addr"u8.ToArray(), Now, TimeSpan.FromHours(1));
+        Assert.True(rec.VerifySelfCertified(Now));
+        Assert.Equal(owner.NodeId, rec.SignerNodeId);
     }
 
     // codexreview: an expired record must not verify when a clock is supplied.

@@ -66,15 +66,16 @@ public class SKademliaTests
         Assert.Null(nodes[3].Lookup(Encoding.ASCII.GetBytes(victim.NodeId.Value), now));
     }
 
-    // ---- DEFECT PROBE (shiras-qhstate 20260905T0240Z ACK-COMPLIANCE) ----
-    // The Reachability spoof above IS refused. This probe measures the SAME spoof under the OTHER
-    // record kind. VerifySelfCertified's signer<->key binding is guarded by
-    // `Kind == RecordKind.Reachability`, so KeyToRecord carries no binding at all.
+    // ---- Q-olg15-02 CLOSED (was DEFECT PROBE, shiras-qhstate 20260905T0240Z ACK-COMPLIANCE) ----
+    // The probe below measured the SAME spoof as the Reachability test above, under the OTHER record
+    // kind. It used to assert that the spoof SUCCEEDED, because VerifySelfCertified's signer<->key
+    // binding was guarded by `Kind == RecordKind.Reachability` and KeyToRecord carried no binding.
     //
-    // 🔴 ASSERTS CURRENT BEHAVIOUR, NOT DESIRED BEHAVIOUR. Invert both asserts when the binding
-    // is extended to KeyToRecord. Kept so the hole stays visible instead of being papered over.
+    // Engineer ruling Q-olg15-02 (2026-09-05): bind every kind, refuse unbound. The asserts below are
+    // the INVERSION the probe's own comment called for. Measured first: KeyToRecord had ZERO
+    // production producers, so no live record legitimately used a non-signer key.
     [Fact]
-    public void DEFECT_PROBE_a_KeyToRecord_keyed_under_someone_elses_node_id_is_stored_and_served()
+    public void A_KeyToRecord_keyed_under_someone_elses_node_id_is_refused()
     {
         _ = Overlay(4, out var nodes);
         var now = DateTimeOffset.UnixEpoch;
@@ -84,15 +85,92 @@ public class SKademliaTests
         var spoof = SignedRecord.Create(
             owner,
             Encoding.ASCII.GetBytes(victim.NodeId.Value), // the VICTIM's key
-            RecordKind.KeyToRecord,                        // <-- the only difference from the test above
+            RecordKind.KeyToRecord,
             "endpoint=evil"u8.ToArray(), now, TimeSpan.FromMinutes(10));
 
-        Assert.True(spoof.VerifySelfCertified(now));  // <-- the hole: no signer<->key binding
-        Assert.True(nodes[0].Store(spoof, now));      // <-- stored under a key its signer does not own
-        var served = nodes[3].Lookup(Encoding.ASCII.GetBytes(victim.NodeId.Value), now);
+        Assert.False(spoof.VerifySelfCertified(now));  // the binding now covers this kind
+        Assert.False(nodes[0].Store(spoof, now));      // and the DHT refuses to store it
+        Assert.Null(nodes[3].Lookup(Encoding.ASCII.GetBytes(victim.NodeId.Value), now));
+    }
+
+    // POSITIVE CONTROL: the fix must not make KeyToRecord unusable. A signer writing in its OWN
+    // namespace still stores, still serves, and still verifies end to end.
+    [Fact]
+    public void A_KeyToRecord_in_the_signers_own_namespace_stores_and_serves()
+    {
+        _ = Overlay(4, out var nodes);
+        var now = DateTimeOffset.UnixEpoch;
+        using var owner = NodeIdentity.Generate();
+
+        var rec = SignedRecord.CreateKeyToRecord(owner, "svc/oracle", "endpoint=ok"u8.ToArray(), now, TimeSpan.FromMinutes(10));
+
+        Assert.True(rec.VerifySelfCertified(now));
+        Assert.True(nodes[0].Store(rec, now));
+
+        var served = nodes[3].Lookup(SignedRecord.KeyToRecordKey(owner.NodeId, "svc/oracle"), now);
         Assert.NotNull(served);
-        Assert.Equal(owner.NodeId, served!.SignerNodeId);   // author is NOT the key owner
-        Assert.NotEqual(victim.NodeId, served.SignerNodeId);
+        Assert.Equal(owner.NodeId, served!.SignerNodeId);
+    }
+
+    // A victim's namespace PREFIX is not enough: the attacker must own the node id that prefixes the
+    // key. Signing with the attacker's key while writing under the victim's prefix is still refused.
+    [Fact]
+    public void A_KeyToRecord_inside_a_victims_namespace_is_refused()
+    {
+        var now = DateTimeOffset.UnixEpoch;
+        using var attacker = NodeIdentity.Generate();
+        using var victim = NodeIdentity.Generate();
+
+        var spoof = SignedRecord.Create(
+            attacker,
+            SignedRecord.KeyToRecordKey(victim.NodeId, "svc/oracle"), // victim's namespace
+            RecordKind.KeyToRecord,
+            "endpoint=evil"u8.ToArray(), now, TimeSpan.FromMinutes(10));
+
+        Assert.False(spoof.VerifySelfCertified(now));
+    }
+
+    // The bare node id is the REACHABILITY key, not a KeyToRecord key. An empty name is not a
+    // namespace member, so a KeyToRecord may not squat on its owner's own reachability slot.
+    [Fact]
+    public void A_KeyToRecord_may_not_squat_on_the_reachability_key()
+    {
+        var now = DateTimeOffset.UnixEpoch;
+        using var owner = NodeIdentity.Generate();
+
+        var bare = SignedRecord.Create(
+            owner, SignedRecord.ReachabilityKey(owner.NodeId), RecordKind.KeyToRecord,
+            "x"u8.ToArray(), now, TimeSpan.FromMinutes(10));
+        Assert.False(bare.VerifySelfCertified(now));
+
+        var emptyName = SignedRecord.Create(
+            owner, Encoding.UTF8.GetBytes(owner.NodeId.Value + "/"), RecordKind.KeyToRecord,
+            "x"u8.ToArray(), now, TimeSpan.FromMinutes(10));
+        Assert.False(emptyName.VerifySelfCertified(now));
+    }
+
+    // A prefix that merely STARTS with the owner's id is not the owner's namespace either — the
+    // separator must be present, or `<id>evil` would pass a naive StartsWith check.
+    [Fact]
+    public void A_KeyToRecord_key_that_only_starts_with_the_owner_id_is_refused()
+    {
+        var now = DateTimeOffset.UnixEpoch;
+        using var owner = NodeIdentity.Generate();
+
+        var noSeparator = SignedRecord.Create(
+            owner, Encoding.UTF8.GetBytes(owner.NodeId.Value + "evil"), RecordKind.KeyToRecord,
+            "x"u8.ToArray(), now, TimeSpan.FromMinutes(10));
+        Assert.False(noSeparator.VerifySelfCertified(now));
+    }
+
+    // CreateKeyToRecord refuses an empty name at the source rather than minting a record that
+    // VerifySelfCertified would silently reject later.
+    [Fact]
+    public void CreateKeyToRecord_refuses_an_empty_name()
+    {
+        using var owner = NodeIdentity.Generate();
+        Assert.Throws<ArgumentException>(() => SignedRecord.CreateKeyToRecord(
+            owner, "", "x"u8.ToArray(), DateTimeOffset.UnixEpoch, TimeSpan.FromMinutes(10)));
     }
 
     [Fact]
