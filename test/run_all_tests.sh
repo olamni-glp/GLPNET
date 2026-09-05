@@ -21,6 +21,7 @@
 #   O - Bonds V2 Multi-Isolate Tests (dart test, one isolate per agent)
 #   P - Module Boundary Enforcement Tests (exported vs private procedures)
 #   Q - AOT REPL exe regression smoke (root self.glp path resolution)
+#   W - Fleet-tooling positive controls (the audits must be able to FAIL)
 
 set -e
 
@@ -2670,6 +2671,92 @@ $v_cs"
     else
         skip "V-18..V-23 (101 cross-runtime Dart vs C# parity)" "C# REPL not built ($CSREPL_BIN) — build with: dotnet build out/csharp/glp_runtime_net.sln"
     fi
+fi
+set -e
+
+echo ""
+
+# =============================================================================
+# Section W: Fleet-tooling positive controls
+# =============================================================================
+# Era 102's closing lesson was "an audit that cannot fail is not an audit": the
+# CS0649 sweep reported 13 of 13 clean because its regex matched inside
+# `TreatWarningsAsErrors>`, so it could not have said no. The fleet tools added
+# here are audits of shared, irreplaceable state (the YNET oplog; the COOP
+# mailbox), and an audit of shared state that has silently stopped auditing is
+# worse than none, because its green is quoted by other hosts.
+#
+# So the CONTROL is what is pinned, not the finding. W-1 runs the vote audit
+# against a fixture carrying one conformant record and six that each break
+# exactly one rule, and requires every rule to fire. W-2 requires the tool to
+# return a NON-ZERO exit on that fixture — a tool that prints failures and exits
+# 0 tells the truth on stdout and a lie to the caller.
+# W-3 pins the broadcast fan-out's refusal-to-overwrite, which exists because a
+# hand-written fan-out destroyed 2990 lines across fourteen channels on
+# 2026-08-16.
+section "W" "Fleet-tooling positive controls"
+echo ""
+set +e
+PY_BIN=${PY_BIN:-$(command -v python3 || command -v python)}
+if [ -z "$PY_BIN" ]; then
+    skip "Section W (fleet-tooling positive controls)" "no python interpreter on PATH"
+else
+    w1=$(PYTHONUTF8=1 "$PY_BIN" "$SCRIPT_DIR/../scripts/ynet_vote_audit.py" --self-test 2>&1)
+    w1rc=$?
+    check "W-1: ynet_vote_audit self-test — every conformance check can FIRE" "self-test: PASS" "$w1"
+    if [ $w1rc -eq 0 ]; then
+        echo "  PASS: W-2: ynet_vote_audit self-test exits 0 when its own controls hold"
+        PASS=$((PASS + 1))
+    else
+        echo "  FAIL: W-2: ynet_vote_audit self-test exited $w1rc"
+        FAIL=$((FAIL + 1))
+    fi
+
+    # W-3: the fan-out must REFUSE a destination that already exists. Proven by
+    # broadcasting into a temp root twice: the second pass must refuse, not clobber.
+    w3root=$(mktemp -d)
+    mkdir -p "$w3root/lane-a" "$w3root/lane-b"
+    w3msg="$w3root/BROADCAST-19700101T0000Z-test-test-POSITIVE-CONTROL.md"
+    printf 'original
+' > "$w3msg"
+    PYTHONUTF8=1 "$PY_BIN" "$SCRIPT_DIR/../scripts/coop_broadcast.py" "$w3msg" --root "$w3root" >/dev/null 2>&1
+    printf 'REPLACED
+' > "$w3msg"
+    w3=$(PYTHONUTF8=1 "$PY_BIN" "$SCRIPT_DIR/../scripts/coop_broadcast.py" "$w3msg" --root "$w3root" 2>&1)
+    check "W-3: coop_broadcast REFUSES to overwrite an existing destination" "REFUSED-exists" "$w3"
+    check_not "W-4: the refused destination still holds the ORIGINAL bytes" "REPLACED" "$(cat "$w3root/lane-a/$(basename "$w3msg")" 2>/dev/null)"
+    rm -rf "$w3root"
+
+    # W-5/W-6: an over-long destination path must be refused BEFORE any write.
+    # The first version of this tool wrote the .md and then threw on the .license
+    # sidecar (OSError 22, path > MAX_PATH), leaving an UNLICENSED .md that the
+    # fleet licence gate rejects — a half-written pair is worse than no write.
+    # The budget is now checked for every destination up front, so a fan-out is
+    # all-or-nothing. W-6 is the half that matters: refusing loudly is only
+    # correct if it also wrote NOTHING.
+    # The fixture must exceed the BUDGET while every individual component stays
+    # creatable — a single 300-char filename is refused by the filesystem itself
+    # and would test nothing.
+    w5root=$(mktemp -d)
+    w5lane="lane-$(printf '%*s' 100 '' | tr ' ' 'y')"
+    w5name="BROADCAST-19700101T0000Z-t-t-$(printf '%*s' 120 '' | tr ' ' 'Z').md"
+    w5msg="$w5root/$w5name"
+    mkdir -p "$w5root/$w5lane" 2>/dev/null && printf 'too long\n' > "$w5msg" 2>/dev/null || w5msg=""
+    if [ -n "$w5msg" ] && [ -f "$w5msg" ]; then
+        w5=$(PYTHONUTF8=1 "$PY_BIN" "$SCRIPT_DIR/../scripts/coop_broadcast.py" "$w5msg" --root "$w5root" 2>&1)
+        check "W-5: coop_broadcast REFUSES an over-long destination path" "REFUSED" "$w5"
+        w5n=$(find "$w5root/$w5lane" -type f 2>/dev/null | wc -l)
+        if [ "$w5n" -eq 0 ]; then
+            echo "  PASS: W-6: the refused fan-out wrote NOTHING (no unlicensed orphan)"
+            PASS=$((PASS + 1))
+        else
+            echo "  FAIL: W-6: refused fan-out still wrote $w5n file(s) into a channel"
+            FAIL=$((FAIL + 1))
+        fi
+    else
+        skip "W-5..W-6 (path-budget guard)" "filesystem would not create the over-long fixture"
+    fi
+    rm -rf "$w5root"
 fi
 set -e
 
