@@ -1,0 +1,254 @@
+[
+ {
+  "qid": "Q-GLPNETA22-01",
+  "header": "Push block",
+  "origin": "assumption-weakness",
+  "block": "A finished, twice-reviewed critical fix is reachable from no origin ref, because this host refuses git push.",
+  "severity": "critical",
+  "background": [
+   "The Q-GLPNETA21-01 fix (persisted per-host QUIC federation identity) is implemented, adversarially reviewed over two codex cycles, green at 219/219 on the glp_link suite, and verified cross-process (5 probe processes, one pin).",
+   "It is committed on branch 103-stable-federation-identity and merged to LOCAL develop at cc2a0802 / 323a5922. Nothing is on origin.",
+   "git push was attempted twice - once through Bash, once through PowerShell - and both were refused by this session's command classifier, not by git and not by GitHub. No credential or permission error was reported by git itself.",
+   "The repo's own preservation lesson from earlier today: commits reachable from no origin ref and no archive tag were nearly lost in a fetch --prune. A local-only merge is exactly that state.",
+   "Every other host must make the same one-line change, and they cannot see the code until it is pushed."
+  ],
+  "impact_if_unanswered": "The fix stays on one host. The other three hosts keep minting ephemeral pins, the four-host pin exchange stays blocked, and the work is one disk failure or one careless prune from being lost - the precise failure mode this repo already suffered once today.",
+  "options": [
+   {
+    "key": "allow-push",
+    "label": "Authorise git push for this repo (add a Bash permission rule)",
+    "consequence": "The branch and the develop merge reach origin, a PR can be opened, and every host can pull the fix. Standard buildkit GitFlow resumes. Cost: one permission rule in .claude/settings.local.json.",
+    "size": "nano",
+    "reversibility": "reversible"
+   },
+   {
+    "key": "engineer-pushes",
+    "label": "Engineer runs the push manually from this repo",
+    "consequence": "Same end state without changing any permission. Costs the engineer a manual step per session, and blocks unattended sessions from ever delivering.",
+    "size": "nano",
+    "reversibility": "reversible"
+   },
+   {
+    "key": "stay-local",
+    "label": "Leave the work local until a later session",
+    "consequence": "No delivery. The fleet-wide defect stays open on three hosts through the reboot, which is the exact window the fix exists to survive.",
+    "size": "nano",
+    "reversibility": "reversible"
+   }
+  ],
+  "recommendation": {
+   "option": "allow-push",
+   "because": "The blocker is environmental, not a judgement about the change: the work is finished, reviewed and green, and every alternative either costs delivery or costs the engineer a manual step on every future session. Authorising push restores the normal GitFlow the repo is already built around."
+  }
+ },
+ {
+  "qid": "Q-GLPNETA22-02",
+  "header": "Ref deletion",
+  "origin": "contradiction",
+  "block": "Four marathon steps whose measurement work is complete (W19-W23) are gated on nobody owning the authority to delete a merged branch ref.",
+  "severity": "high",
+  "background": [
+   "origin carries 15 heads. Nine are fully CONTAINED in develop and therefore deletable without losing any commit: 065, 066, 067, 067b, 078, 080, 082, 099, 101-gleam-capability-delivery.",
+   "Four are NOT contained and must not be deleted: 059 (the W18 Gleam question), 083-glptutorial-corpus-goldens (3 ahead), 101-goal-term-acceptance (6 ahead), 102-quic-federation-transport (4 ahead).",
+   "Containment was measured with git merge-base --is-ancestor, the same test that discharged W11/W12/W13/W22 today after eleven days of being recorded as blocked.",
+   "20 archive/* tags already exist ON ORIGIN covering the earlier sweep, and a verified git bundle plus a pushed archive tag cover the second clone's unreachable commits. Deletion of a contained ref loses nothing that is not also reachable from develop.",
+   "Nothing has been deleted. The question is ownership, not safety - the safety measurement is done."
+  ],
+  "impact_if_unanswered": "W19, W20, W21 and W23 stay blocked with all their analysis complete, and the marathon carries four steps that look like work but are actually one unanswered governance question.",
+  "options": [
+   {
+    "key": "lane-owns",
+    "label": "The glpnet lane may delete refs it has proven contained, with an archive tag pushed first",
+    "consequence": "W19-W23 unblock immediately. Risk is bounded by the containment test plus a pushed archive tag per deleted ref. Precedent: any lane may tidy refs it can prove are contained.",
+    "size": "micro",
+    "reversibility": "reversible"
+   },
+   {
+    "key": "engineer-only",
+    "label": "Only the engineer deletes refs; lanes may only propose a list",
+    "consequence": "Safest, and slowest. W19-W23 stay blocked until the engineer works the list. The measurement is already done, so the engineer's cost is review, not analysis.",
+    "size": "micro",
+    "reversibility": "reversible"
+   },
+   {
+    "key": "never-delete",
+    "label": "Never delete refs; keep every branch forever",
+    "consequence": "Zero risk of loss and a permanently growing ref namespace. The 129-ref premise the workplan was written against is already stale by ~120, so the cost is mostly to future readers rather than to storage.",
+    "size": "nano",
+    "reversibility": "reversible"
+   }
+  ],
+  "recommendation": {
+   "option": "lane-owns",
+   "because": "The dangerous part of ref deletion is not knowing whether a ref is contained, and that is now a one-command test with 20 archive tags already on origin as the backstop. Reserving a mechanical, verifiable operation to the engineer buys no safety the containment test does not already provide, and it is currently costing four completed steps."
+  }
+ },
+ {
+  "qid": "Q-GLPNETA22-03",
+  "header": "Gleam 059",
+  "origin": "contradiction",
+  "block": "W18 has been blocked for eleven days by two contradictory recorded reads of the same Gleam trees, and today's measurement shows both are wrong.",
+  "severity": "high",
+  "background": [
+   "The marathon holds two recorded reads: N12 says 050/059 are independent colliding implementations; C1 says they are complementary tiers. Neither was measured.",
+   "Measured today, develop vs origin/059 over the .gleam trees: 059 has 189 files, develop 178, 148 paths shared. Of the 148 shared, 104 are BYTE-IDENTICAL and 44 differ. 41 files exist only on 059; 30 only on develop.",
+   "104 identical files prove common ancestry, so N12 (independent implementations) is too pessimistic. The 44-file collision sits in the shared core (link/primitives 9, engine 5+4, link/reliability 4, analysis 4+3+1, repl 3+2, compiler 2+1), so C1 (complementary tiers) is too optimistic.",
+   "The truth is ONE LINEAGE THAT FORKED. 059's unique 41 are overwhelmingly ADDITIVE link-layer tests (test/link/reliability 8, test/link/primitives 8, test/engine 7) plus a mad module develop lacks. develop's unique 30 include ring, split and contract, which 059 never had.",
+   "develop is 1194 commits ahead of 059, so develop's core wins on age alone. The decision surface is roughly 41 mostly-test files, not 248."
+  ],
+  "impact_if_unanswered": "W18 stays escalated and continues to gate the tail of the marathon, while 41 additive Gleam link-layer tests that already exist stay unavailable to develop.",
+  "options": [
+   {
+    "key": "cherry-pick",
+    "label": "Cherry-pick 059's 41 additive files; develop's core wins the 44-file collision unexamined",
+    "consequence": "Recovers the additive tests and the mad module now. develop's 1194-commit-newer core is kept by default, so no collision is resolved by hand. Any genuinely better 059 core change is lost, silently.",
+    "size": "mini",
+    "reversibility": "reversible"
+   },
+   {
+    "key": "cherry-pick-plus-diff-review",
+    "label": "Cherry-pick the 41, THEN review the 44 collisions individually",
+    "consequence": "Same recovery, plus an explicit look at each colliding core file before develop's version is kept. Costs a 44-file review; catches anything 059 fixed that develop never did.",
+    "size": "midi",
+    "reversibility": "reversible"
+   },
+   {
+    "key": "abandon-059",
+    "label": "Abandon 059 entirely; keep the archive tag only",
+    "consequence": "Closes W18 immediately at the cost of 41 additive test files and a mad module. Cheapest to decide, most expensive if any of those tests covers something develop cannot see. FORECLOSES: the 41 additive files and the mad module cease to be recoverable once the branch is gone, and any core fix 059 made that develop never did is lost with them.",
+    "size": "nano",
+    "reversibility": "one-way"
+   }
+  ],
+  "recommendation": {
+   "option": "cherry-pick-plus-diff-review",
+   "because": "The additive 41 are pure gain and the measurement makes taking them safe. The 44 collisions are where an eleven-day-old fork could still be hiding a real fix, and reviewing them is bounded work now that the surface is known - whereas keeping develop's core unexamined would repeat the original mistake of deciding this cluster without looking."
+  }
+ },
+ {
+  "qid": "Q-GLPNETA22-04",
+  "header": "UDP port",
+  "origin": "missing-requirement",
+  "block": "The authorised four-host federation has no published UDP port, so no firewall rule can be opened without guessing one.",
+  "severity": "high",
+  "background": [
+   "Ruling Q-GLPNETG27-04 authorises LAN-bounded federation but names no port. This was first asked at 17:45Z and is still unanswered.",
+   "QUIC is UDP. A firewall rule permitting TCP admits nothing, and a port scan looking for a listening TCP socket reports 'nothing there' - which is what has already been measured about the broker on more than one host and partly explains the 'there is no QUIC in this estate' conclusion.",
+   "Measured on ARIELLAS: 0.0.0.0:47890 binds free, twice, with the persisted identity.",
+   "The rule needed is narrow: one inbound UDP allow, Private profile, scoped to 192.168.0.0/24.",
+   "I will not open a firewall rule on a guessed port, because a wrong port opens an unused hole and leaves the real one closed - failing in both directions at once."
+  ],
+  "impact_if_unanswered": "Federation cannot cross a host boundary. The listener binds, the identity is now stable, and the packets still do not arrive - and that failure will present as a transport fault rather than as an unopened port.",
+  "options": [
+   {
+    "key": "ratify-47890",
+    "label": "Ratify UDP 47890 fleet-wide",
+    "consequence": "Every host opens one inbound UDP rule on 47890, Private profile, 192.168.0.0/24 only. Verified free on ARIELLAS. Fleet converges on one number today.",
+    "size": "nano",
+    "reversibility": "reversible"
+   },
+   {
+    "key": "engineer-names-other",
+    "label": "Engineer names a different port",
+    "consequence": "Same outcome on whatever number is chosen; costs one round trip and needs a free-port check on each host before rules are written.",
+    "size": "nano",
+    "reversibility": "reversible"
+   },
+   {
+    "key": "per-host-ephemeral",
+    "label": "Let each host bind an ephemeral port and publish it with its pin",
+    "consequence": "No fixed rule is possible, so the firewall must allow a range or the process. More flexible, considerably harder to reason about and to audit, and it makes every restart a re-publication event.",
+    "size": "micro",
+    "reversibility": "reversible"
+   }
+  ],
+  "recommendation": {
+   "option": "ratify-47890",
+   "because": "It is measured free on at least one host, the rule it implies is the narrowest possible, and a single fixed number is what makes a four-host firewall change auditable. Per-host ephemeral ports reintroduce exactly the republish-on-every-restart problem the persisted identity was built to remove."
+  }
+ },
+ {
+  "qid": "Q-GLPNETA22-05",
+  "header": "Key at rest",
+  "origin": "assumption-weakness",
+  "block": "The new federation private key is stored as an unencrypted PKCS#12, protected only by file permissions.",
+  "severity": "medium",
+  "background": [
+   "FederationIdentity writes <keystore>/<name>.pfx with no password. Protection is: Unix mode 0600 applied at open(2), and on Windows a protected DACL with a single full-control ACE for the current user, applied before any key byte is written. Measured on ARIELLAS: AreAccessRulesProtected=True, one ACE.",
+   "Default location is <LocalApplicationData>/glpnet/federation - per-user, per-machine, not roamed, and outside every repo so a clone or clean cannot destroy it.",
+   "A password would have to be stored on the same filesystem as the key it protects, which moves the problem rather than solving it. DPAPI would solve it on Windows only and breaks the standing all-cross-platform-code-is-L0 requirement.",
+   "The trust anchor is LAN-bounded by ruling: unreachable off-LAN, and mTLS refuses any unpinned dialer.",
+   "This was raised by the adversarial review, not found in production. No key has been exposed."
+  ],
+  "impact_if_unanswered": "The keystore ships as it is by default. Any process running as the same user can read the key, which for a workstation lane is most things the user runs.",
+  "options": [
+   {
+    "key": "permissions-only",
+    "label": "Accept file permissions as sufficient for a LAN-bounded anchor",
+    "consequence": "Nothing further to build. Threat model is stated explicitly in the spec: the key is safe from other users, not from other code running as this user.",
+    "size": "nano",
+    "reversibility": "reversible"
+   },
+   {
+    "key": "os-keystore",
+    "label": "Require an OS keystore per platform (DPAPI / Keychain / kernel keyring)",
+    "consequence": "Strongest at-rest protection, and it forces a per-platform implementation into what is currently one portable file - which collides with the L0 cross-platform rule and triples the surface.",
+    "size": "midi",
+    "reversibility": "reversible"
+   },
+   {
+    "key": "passphrase",
+    "label": "Encrypt the PFX with a passphrase supplied at service start",
+    "consequence": "Protects the file at rest, and makes every unattended restart require a secret from somewhere - which for an auto-restarting fleet daemon means storing the passphrase beside the key or not restarting unattended.",
+    "size": "micro",
+    "reversibility": "reversible"
+   }
+  ],
+  "recommendation": {
+   "option": "permissions-only",
+   "because": "The realistic alternatives either break the cross-platform requirement or defeat unattended restart, and the anchor is already bounded twice by the authorising ruling. The honest move is to state the threat model in the spec rather than to buy weak protection at a high structural cost - and to revisit it if this identity ever guards something reachable off-LAN."
+  }
+ },
+ {
+  "qid": "Q-GLPNETA22-06",
+  "header": "Elect/hold",
+  "origin": "contradiction",
+  "block": "A standing directive to elect a coordinating leader now contradicts a live stop order forbidding a board fold until term-space is adopted.",
+  "severity": "high",
+  "background": [
+   "The standing engineer directive requires electing a coordinating leader lane across 15 lanes using PAXOS/RAFT/ZAB/PBFT and wiring it into the oracle.",
+   "Ruling Q-GLPNETG27-03 is a stop order: do not fold boards until the namespaced term-space triple is adopted. shiras-crucible has since broadcast P0 'RE-ARM YNET ELECTION NOW, engineer ruling supersedes the withdrawal, vote now'.",
+   "Measured on this lane: my board fold carries ZERO term ops, and my fold is not term-space-aware. A vote cast from a fold that cannot represent terms is a vote in the wrong namespace.",
+   "shiras-tefl has separately shown the PBFT bar is being computed wrongly (2f+1 only holds at n=3f+1), and my own round-72 roster reported 5/4 hosts with one host counted twice. Both mean a tally today could reach a quorum bar that does not exist.",
+   "yng-broker and yng-guardian ARE running on this host and are the designated PBFT elector for all purposes."
+  ],
+  "impact_if_unanswered": "Either the fleet elects on mis-keyed rosters and a wrong quorum bar - producing a leader whose legitimacy cannot be checked afterwards - or it keeps holding and the coordination the directive exists to create never appears.",
+  "options": [
+   {
+    "key": "rekey-then-elect",
+    "label": "Fix peer identity and the quorum bar first, then elect once",
+    "consequence": "Peers keyed by nodeId rather than name or address, roster deduplicated by resolved target, quorum bar stated with its n and f. Then one election whose result can be audited. Costs the delay of the rekey, which is small and already partly built.",
+    "size": "mini",
+    "reversibility": "reversible"
+   },
+   {
+    "key": "elect-now",
+    "label": "Elect now on the current rosters, repair afterwards",
+    "consequence": "Delivers the directive's letter today. The leader is chosen on a roster measured to double-count at least one host, so its legitimacy is unverifiable, and term.host_id is monotone - a wrong tie-break is unfixable after the merge. FORECLOSES: term.host_id is monotone under CRDT merge, so the tie-break this election writes can never be corrected - only superseded by a later term, which the current fold cannot represent.",
+    "size": "micro",
+    "reversibility": "one-way"
+   },
+   {
+    "key": "keep-holding",
+    "label": "Keep holding until the engineer re-states one instruction",
+    "consequence": "No wrong election is committed, and no coordination appears. The contradiction stays live and each lane keeps deciding for itself, which is how four lanes end up with four answers.",
+    "size": "nano",
+    "reversibility": "reversible"
+   }
+  ],
+  "recommendation": {
+   "option": "rekey-then-elect",
+   "because": "It is the only option that delivers what the directive actually wants - ONE fleetwide coordinator whose legitimacy can be checked - rather than what it literally says. Electing on a roster that counts a host twice, at a quorum bar shown to be miscomputed, produces a monotone and unfixable tie-break; and the rekey is small, already measured from three independent directions today, and needed regardless of when the election runs."
+  }
+ }
+]

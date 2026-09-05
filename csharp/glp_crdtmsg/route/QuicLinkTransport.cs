@@ -90,7 +90,15 @@ public sealed class QuicLinkTransport : IBoxLinkTransport, IAsyncDisposable
 
     /// <summary>
     /// The FEDERATION trust anchor: a dev cert loaded from a per-host keystore, generated only on
-    /// first run — so this host's SPKI pin is STABLE ACROSS REBOOTS.
+    /// first run - so this host's SPKI pin is STABLE ACROSS REBOOTS.
+    /// <para>
+    /// CONVERGED 2026-09-05: this lane and @gavriella-glpnet independently built the same fix in
+    /// the same hours. The BODY is now one implementation - the shared
+    /// <see cref="GlpRuntime.Link.Transports.FederationIdentity"/> in glp_link, beside the SpkiPin
+    /// discipline both callers already delegate to - while THIS signature and its origin contract
+    /// are kept verbatim so no existing caller or test changes. Two implementations of one trust
+    /// anchor is the fork this method exists to prevent, at the source level instead of the file level.
+    /// </para>
     /// </summary>
     /// <remarks>
     /// 🔴 WHY THIS EXISTS, and why <see cref="CreateDevCert"/> must NOT be used for federation.
@@ -102,76 +110,39 @@ public sealed class QuicLinkTransport : IBoxLinkTransport, IAsyncDisposable
     /// from a dead transport, and would re-open a question two probes have already settled.
     /// The defect was never in <c>CreateDevCert</c>; it was adopting a TEST helper as the anchor.
     ///
-    /// Concurrency: the keystore is written CreateNew, so if two lanes start together the loser of
-    /// the race loads the winner's file rather than overwriting it — both end up on ONE pin, which is
-    /// the whole point. Never "last writer wins" here: that silently re-forks the identity.
+    /// Concurrency: the claim is an atomic same-directory RENAME, so if two lanes start together the
+    /// loser loads the winner's file rather than overwriting it — both end up on ONE pin, which is the
+    /// whole point. Never "last writer wins" here: that silently re-forks the identity.
     ///
-    /// Expiry is REPORTED, never silent. A regenerated pin is a fleet-visible event: the caller gets
-    /// <paramref name="origin"/> = "created" or "recreated-expired" and must re-publish its pin.
+    /// 🔴 ONE BEHAVIOURAL CHANGE FROM THE PRE-CONVERGENCE VERSION, STATED RATHER THAN SLIPPED IN.
+    /// That version re-minted a keypair when the stored anchor was within a day of expiry and reported
+    /// it as <c>"recreated-expired"</c>. The converged implementation REFUSES instead: an expired
+    /// anchor throws with an instruction, because re-minting is a rotation, a rotation invalidates
+    /// every peer's table, and a rotation nobody asked for is the failure this whole feature exists to
+    /// prevent — arriving on a timer instead of on a restart. The anchor's life is 10 years, so the
+    /// branch is close to unreachable either way; the difference is what happens when it IS reached.
+    /// <c>"recreated-expired"</c> therefore no longer occurs. @gavriella-glpnet: say so if you want the
+    /// re-mint back and it goes back — this is a converged decision, not a silent override.
     /// </remarks>
     /// <param name="commonName">the stable per-host identity, e.g. the host name</param>
-    /// <param name="origin">"loaded" | "created" | "recreated-expired" — for the caller to log/publish</param>
+    /// <param name="origin">"loaded" | "created" — for the caller to log/publish</param>
     /// <param name="keystorePath">override; default $GLPNET_FEDERATION_KEYSTORE, else LocalAppData/glpnet/federation</param>
     public static X509Certificate2 LoadOrCreateDevCert(string commonName, out string origin, string? keystorePath = null)
     {
-        var dir = keystorePath
-            ?? Environment.GetEnvironmentVariable("GLPNET_FEDERATION_KEYSTORE")
-            ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                            "glpnet", "federation");
-        Directory.CreateDirectory(dir);
-
-        // The CN is user-supplied and lands in a path; keep it to a filesystem-safe stem.
-        var stem = string.Concat(commonName.Select(c => char.IsLetterOrDigit(c) || c is '-' or '_' ? c : '_'));
-        var path = Path.Combine(dir, stem + ".pfx");
-
-        if (File.Exists(path))
-        {
-            var existing = X509CertificateLoader.LoadPkcs12(File.ReadAllBytes(path), null,
-                X509KeyStorageFlags.Exportable);
-            if (existing.NotAfter > DateTime.Now.AddDays(1))
-            {
-                origin = "loaded";
-                return existing;
-            }
-            existing.Dispose();   // expired (or expiring within a day): mint a new one, LOUDLY
-            origin = "recreated-expired";
-        }
-        else
-        {
-            origin = "created";
-        }
-
-        // A federation anchor is pinned by SPKI, not chained, so a long life costs nothing and every
-        // expiry is a fleet-wide pin rotation. 30 days (CreateDevCert's) would rotate monthly.
-        using var ec = ECDsa.Create(ECCurve.NamedCurves.nistP256);
-        var req = new CertificateRequest($"CN={commonName}", ec, HashAlgorithmName.SHA256);
-        req.CertificateExtensions.Add(new X509BasicConstraintsExtension(false, false, 0, true));
-        req.CertificateExtensions.Add(new X509KeyUsageExtension(
-            X509KeyUsageFlags.DigitalSignature | X509KeyUsageFlags.KeyEncipherment, true));
-        req.CertificateExtensions.Add(new X509EnhancedKeyUsageExtension(
-            new OidCollection { new Oid("1.3.6.1.5.5.7.3.1"), new Oid("1.3.6.1.5.5.7.3.2") }, false));
-        var now = DateTimeOffset.UtcNow;
-        using var minted = req.CreateSelfSigned(now.AddMinutes(-1), now.AddYears(5));
-        var pfx = minted.Export(X509ContentType.Pfx);
-
-        try
-        {
-            using var fs = new FileStream(path, FileMode.CreateNew, FileAccess.Write, FileShare.None);
-            if (!OperatingSystem.IsWindows())
-                File.SetUnixFileMode(path, UnixFileMode.UserRead | UnixFileMode.UserWrite);  // it holds a private key
-            fs.Write(pfx);
-        }
-        catch (IOException) when (File.Exists(path))
-        {
-            // Another process created it between our File.Exists check and here. THEIRS WINS — a
-            // second pin for one host is the exact fork this method exists to prevent.
-            origin = "loaded";
-            return X509CertificateLoader.LoadPkcs12(File.ReadAllBytes(path), null,
-                X509KeyStorageFlags.Exportable);
-        }
-
-        return X509CertificateLoader.LoadPkcs12(pfx, null, X509KeyStorageFlags.Exportable);
+        var identity = GlpRuntime.Link.Transports.FederationIdentity.LoadOrCreate(commonName, keystorePath);
+        origin = identity.Created ? "created" : "loaded";
+        return identity.Cert;
     }
+
+    /// <summary>
+    /// The same anchor as <see cref="LoadOrCreateDevCert"/>, returning the whole identity rather than
+    /// only the certificate: the pin, the <c>node_id</c> and the SPKI, all derived from one keypair.
+    /// Prefer this where a pin is PUBLISHED - a pin and a node id are the same 32 bytes in different
+    /// encodings, and a pin is a hash so it cannot verify a signature (@gavriella-glpnet, 19:30Z).
+    /// </summary>
+    public static GlpRuntime.Link.Transports.FederationIdentity LoadFederationIdentity(
+        string commonName, string? keystoreDir = null, bool rotate = false) =>
+        GlpRuntime.Link.Transports.FederationIdentity.LoadOrCreate(commonName, keystoreDir, rotate);
 
     /// <summary>
     /// An EPHEMERAL self-signed ECDSA P-256 dev cert (server+client EKU), PFX round-tripped so the

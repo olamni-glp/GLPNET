@@ -407,8 +407,59 @@ When Gabi says `#remember <something>`, add that information to this file so it 
 
 ### Known limitations
 
-- **`=..` not allowed in clause bodies** (parser bug). Works in clause heads only.
-- **Structs inside lists in REPL goals fail**: `distribute_indexed([send(1,a), send(2,b)], Y, Z).` errors with "Unsupported list head type: StructTerm". Simple lists, nested lists, and variables-in-lists work; struct elements don't. Location: `glp_repl.dart` `_buildListTermForConj` / `_buildListTerm`.
+🔴 **Re-measure before trusting any entry here.** Of the three limitations recorded in this
+block before 2026-09-02, **two were already false** and one was **understated**. Notes rot;
+the runtime does not tell you when a note goes stale. Every surviving claim below is now
+pinned by a test in `test/run_all_tests.sh` **Section V** — if a capability regresses, the
+suite fails and names it (feature 101, SC-005).
+
+- ~~**`=..` not allowed in clause bodies** (parser bug). Works in clause heads only.~~
+  **RETIRED 2026-09-02, re-confirmed 2026-09-04 — this was FALSE.** A module whose clause
+  bodies contain only `Term =.. Parts?` / `Parts ..= Term?` loads cleanly through the whole
+  pipeline (SRSW → PE → type check → compile). Pinned by **V-14**: the fixture
+  `programs/tests/typed/goal_term_acceptance.glp` has a body-position `=..` and would not
+  load if the claim were true.
+- ~~**Structs inside lists in REPL goals fail** … "Unsupported list head type: StructTerm" …
+  Location: `glp_repl.dart`.~~
+  **RETIRED 2026-09-02, re-confirmed 2026-09-04 — this was FALSE.** `first_item([send(1,a),
+  send(2,b)], Y).` → `Y = some(send(1, a))`. Conjunctive and nested-list forms also work;
+  both list builders already branch on struct heads. Pinned by **V-15**.
+  **The cited location was also wrong** — the goal builders live in
+  `glp_runtime/lib/engine/glp_engine.dart`, not `glp_repl.dart`.
+- ~~**Anonymous `_` rejected in top-level goals** (recorded as C#-only).~~
+  **FIXED 2026-09-04 (feature 101).** It was **cross-runtime**, not C#-only: Dart failed at
+  **four** positions (top-level argument, inside a structure, list element, conjunction path)
+  and the code surface was **eight sites** in two parallel families. `_` is now accepted at
+  every position a named variable is, reports no binding (it has no name), and each
+  occurrence is independent. Pinned by **V-1..V-5**.
+- ~~**Improper list tail in a goal**~~ — **PREVIOUSLY UNRECORDED, FIXED 2026-09-04.** Dart and
+  C# **silently coerced an improper tail to nil and reported success**: `first_item([send(1,a)|foo], Y).`
+  returned byte-identically to `[send(1,a)|[]]`. **A wrong answer, not an error.** Now refused
+  with a message naming the term typed. **RULED 2026-09-04 (`Q-101-02`, "refusal is the
+  answer"): an improper tail in a GOAL TERM is PERMANENTLY INVALID — the refusal is the
+  specification, not a placeholder.** This entry previously recorded it as an open §1.14
+  question awaiting Udi; it was deliberately **not** referred, and is closed. Scope is the
+  goal-term front end only: **FR-012 is unchanged** and nothing about what clause heads,
+  guards or bodies accept was decided. Pinned by **V-6/V-7**.
+  (Gleam was the only runtime that never returned a wrong answer for either defect — it
+  refused both loudly and had already flagged them §1.14.)
+
+🔴 **CORRECTION OF RECORD, 2026-09-04 (later the same day).** The two entries above were
+written after the **Dart** half landed and are phrased as if the fix had reached every
+runtime. It had not. Re-measured on the same day: **C# was still unfixed** — all six throw
+sites present and **both** tail-coercion sites still returning the silent wrong answer — and
+the **Gleam** half had shipped with **no test file at all**. Neither gap was visible, because
+nothing in the suite had ever started a second runtime: **SC-003's three-runtime agreement was
+carried by a claim, not a measurement.** Both are now closed, and the obligation is measured
+rather than asserted — **V-18..V-23** run the same goal script through the Dart *and* C# REPLs
+and require the transcripts to be **byte-identical** (with a non-empty guard first, since two
+empty transcripts also compare equal); the Gleam half is pinned in-language by
+`glp_gleam/test/glp/engine/goal_boot_101_test.gleam` (20 checks, negative controls included).
+**The lesson is the same one this feature exists to teach: "fixed" measured in one runtime is
+not "fixed", and an unmeasured criterion goes stale exactly like an unmeasured note.**
+A further stale artifact is named rather than silently corrected: `goal_boot.gleam`'s header
+still says its conjunction path is "STILL DEFERRED". Measured — it is not; `setup_goals`
+routes every argument through the same `setup_args`, and `_` in a conjunction boots normally.
 
 See `docs/known-issues.md` for the full list.
 
