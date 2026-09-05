@@ -81,18 +81,45 @@ public sealed class FederationIdentityTests : IDisposable
     }
 
     /// <summary>
-    /// A sidecar that disagrees with the cert is REFUSED, not silently believed. Publishing one pin
-    /// and presenting another is how a pin table goes dead without anyone noticing.
+    /// 🔴 CONTRACT CHANGED BY RULING Q-glpnetshiras-48. A sidecar that disagrees with the cert is
+    /// REFRESHED FROM THE KEY AND REPORTED — it is no longer refused. The pin is a pure function of
+    /// the key, so a stale cache cannot make a correct key wrong; what it can do is mislead an
+    /// operator reading the file, which is why the drift is surfaced instead of silently repaired.
+    /// Refusing was strictly worse: it wedged a start over trust material that was never wrong.
     /// </summary>
     [Fact]
-    public void MismatchedFingerprint_IsRefused()
+    public void MismatchedFingerprint_IsRefreshedFromTheKeyAndReportedLoudly()
+    {
+        var original = FederationIdentity.LoadOrCreate("host-a", _dir);
+        var fpPath = Path.Combine(_dir, "host-a.fingerprint");
+        File.WriteAllText(fpPath, "not-the-real-pin");
+
+        var reloaded = FederationIdentity.LoadOrCreate("host-a", _dir);
+
+        // the KEY decided, and it decided the same thing it decided the first time
+        Assert.Equal(original.Pin, reloaded.Pin);
+        // ...and the drift was reported, not swallowed
+        Assert.Equal(PinCacheState.Refreshed, reloaded.PinCache);
+        Assert.True(reloaded.RequiresRepublication);
+        Assert.Equal("not-the-real-pin", reloaded.StaleCachedPin);
+        Assert.NotNull(reloaded.PinCacheDiagnosis);
+        // ...and the cache now agrees with the key
+        Assert.Equal(original.Pin, File.ReadAllText(fpPath).Trim());
+    }
+
+    /// <summary>
+    /// The whole point of the ruling: a disagreeing cache must never STOP a host. Before the change
+    /// this threw, and a concurrent cold start hit it in 2 of 20 measured runs.
+    /// </summary>
+    [Fact]
+    public void MismatchedFingerprint_DoesNotRefuseTheStart()
     {
         FederationIdentity.LoadOrCreate("host-a", _dir);
         File.WriteAllText(Path.Combine(_dir, "host-a.fingerprint"), "not-the-real-pin");
 
-        var ex = Assert.Throws<InvalidOperationException>(
-            () => FederationIdentity.LoadOrCreate("host-a", _dir));
-        Assert.Contains("inconsistent", ex.Message, StringComparison.OrdinalIgnoreCase);
+        var ex = Record.Exception(() => FederationIdentity.LoadOrCreate("host-a", _dir));
+
+        Assert.Null(ex);
     }
 
     /// <summary>
@@ -115,10 +142,14 @@ public sealed class FederationIdentityTests : IDisposable
         File.WriteAllText(fpPath, original.Pin);
         File.SetLastWriteTimeUtc(fpPath, File.GetLastWriteTimeUtc(pfxPath).AddMinutes(-5));
 
-        var ex = Assert.Throws<InvalidOperationException>(
-            () => FederationIdentity.LoadOrCreate("host-a", _dir));
-        Assert.Contains("INTERRUPTED ROTATION", ex.Message, StringComparison.Ordinal);
-        Assert.Contains("rotate: true", ex.Message, StringComparison.Ordinal);
+        // The DIAGNOSIS survives the ruling — only its delivery changed, from a refusal to a report.
+        // "inconsistent" alone would still send an operator hunting for corruption that is really an
+        // interrupted command, so the actionable reading is kept.
+        var reloaded = FederationIdentity.LoadOrCreate("host-a", _dir);
+
+        Assert.Equal(PinCacheState.Refreshed, reloaded.PinCache);
+        Assert.Contains("INTERRUPTED ROTATION", reloaded.PinCacheDiagnosis!, StringComparison.Ordinal);
+        Assert.Contains("rotate: true", reloaded.PinCacheDiagnosis!, StringComparison.Ordinal);
     }
 
     /// <summary>The other direction: a pin published for a key this host does not hold must NOT be
@@ -131,27 +162,51 @@ public sealed class FederationIdentityTests : IDisposable
         File.WriteAllText(fpPath, "SomeOtherHostsPin=");
         File.SetLastWriteTimeUtc(fpPath, DateTime.UtcNow.AddHours(1));
 
-        var ex = Assert.Throws<InvalidOperationException>(
-            () => FederationIdentity.LoadOrCreate("host-a", _dir));
-        Assert.Contains("does not hold", ex.Message, StringComparison.Ordinal);
-        Assert.DoesNotContain("INTERRUPTED ROTATION", ex.Message, StringComparison.Ordinal);
+        var reloaded = FederationIdentity.LoadOrCreate("host-a", _dir);
+
+        Assert.Equal(PinCacheState.Refreshed, reloaded.PinCache);
+        Assert.Contains("does not hold", reloaded.PinCacheDiagnosis!, StringComparison.Ordinal);
+        Assert.DoesNotContain("INTERRUPTED ROTATION", reloaded.PinCacheDiagnosis!, StringComparison.Ordinal);
     }
 
-    /// <summary>An empty sidecar is corruption, not an absent one — fail closed.</summary>
+    /// <summary>
+    /// An empty sidecar is a COLD CACHE, not corruption — there is no secret in it to lose. It is
+    /// re-derived like an absent one, and reported as Rederived rather than Refreshed, because
+    /// nothing disagreed: there was simply nothing there.
+    /// </summary>
     [Fact]
-    public void EmptyFingerprint_IsRefused()
+    public void EmptyFingerprint_IsRederivedFromTheKey()
+    {
+        var original = FederationIdentity.LoadOrCreate("host-a", _dir);
+        var fpPath = Path.Combine(_dir, "host-a.fingerprint");
+        File.WriteAllText(fpPath, "   ");
+
+        var reloaded = FederationIdentity.LoadOrCreate("host-a", _dir);
+
+        Assert.Equal(original.Pin, reloaded.Pin);
+        Assert.Equal(PinCacheState.Rederived, reloaded.PinCache);
+        Assert.False(reloaded.RequiresRepublication);   // nothing was WRONG, only absent
+        Assert.Equal(original.Pin, File.ReadAllText(fpPath).Trim());
+    }
+
+    /// <summary>A cache that AGREES is reported as Fresh and nothing is rewritten.</summary>
+    [Fact]
+    public void AgreeingFingerprint_IsFresh()
     {
         FederationIdentity.LoadOrCreate("host-a", _dir);
-        File.WriteAllText(Path.Combine(_dir, "host-a.fingerprint"), "   ");
 
-        Assert.Throws<InvalidOperationException>(() => FederationIdentity.LoadOrCreate("host-a", _dir));
+        var reloaded = FederationIdentity.LoadOrCreate("host-a", _dir);
+
+        Assert.Equal(PinCacheState.Fresh, reloaded.PinCache);
+        Assert.False(reloaded.RequiresRepublication);
+        Assert.Null(reloaded.StaleCachedPin);
     }
 
     /// <summary>
     /// A pfx whose sidecar is absent is REPAIRED, not refused and not reminted: the pin is a pure
     /// function of the cert, so re-deriving it invents nothing, whereas minting would change the
     /// host's published identity. This is also the window a concurrent starter observes between the
-    /// two atomic renames. (A sidecar that DISAGREES is the dangerous case, and still throws.)
+    /// two atomic renames. (A sidecar that DISAGREES is refreshed and REPORTED — ruling Q-48.)
     /// </summary>
     [Fact]
     public void MissingFingerprintSidecar_IsRederivedFromTheCert_NotReminted()

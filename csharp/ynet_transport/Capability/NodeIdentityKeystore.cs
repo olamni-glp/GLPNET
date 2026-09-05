@@ -99,13 +99,32 @@ public sealed partial class NodeIdentity
         var minted = Generate(algorithm);
         var pkcs8 = minted.ExportPkcs8PrivateKey();
 
-        // 🔴 WRITE-THEN-RENAME, not write-in-place. A crash midway through an in-place write leaves a
-        // TRUNCATED .nodekey, which the next load reads as corrupt and re-mints — i.e. a power cut
-        // during first use would change this lane's node id. The temp file is unique, so it never
-        // collides; the move is atomic and NON-overwriting, so a first-use race still resolves to ONE
-        // key with the loser loading the winner's (FR-102-2). Both properties at once, which
-        // CreateNew-and-write and rename-over-the-top each give only half of.
+        // 🔴 TWO SEPARATE PROPERTIES, TWO SEPARATE MECHANISMS — and conflating them was a real defect.
+        //
+        // DURABILITY is why this writes to a temp file and renames: a crash midway through an
+        // in-place write leaves a TRUNCATED .nodekey, which the next load rejects and re-mints, so a
+        // power cut during first use would change this lane's node id.
+        //
+        // EXCLUSIVITY needs a DIFFERENT mechanism. This code previously asserted that
+        // `File.Move(overwrite: false)` was "atomic and NON-overwriting" and leaned on it to settle
+        // a first-use race (FR-102-2). 🔴 THAT CLAIM IS FALSE on this runtime: the non-overwriting
+        // form is a check-then-rename, so two concurrent callers can BOTH pass the existence check
+        // and both rename. Measured in the sibling federation keystore, which made the identical
+        // assumption: 16 concurrent first-starts produced TWO DISTINCT identities for one host.
+        // FileMode.CreateNew is the only portable primitive here that the kernel actually
+        // serialises (O_CREAT|O_EXCL on POSIX, CREATE_NEW on Windows), so the claim is taken with
+        // that, and only the claim's winner writes the key.
         var temp = path + "." + Environment.ProcessId.ToString() + "-" + Guid.NewGuid().ToString("N")[..8] + ".tmp";
+        var claimPath = path + ".claim";
+
+        if (!TryClaim(claimPath))
+        {
+            // Lost the race. Adopt the winner's key; NEVER mint one — a second id for one lane is
+            // two votes, and that is the exact fork this method exists to prevent.
+            minted.Dispose();
+            CryptographicOperations.ZeroMemory(pkcs8);
+            return AdoptTheWinner(path, claimPath, out origin);
+        }
 
         try
         {
@@ -133,24 +152,13 @@ public sealed partial class NodeIdentity
                 fs.Flush(flushToDisk: true); // the rename must not beat the bytes to disk
             }
 
-            File.Move(temp, path, overwrite: false);
-        }
-        catch (IOException) when (File.Exists(path))
-        {
-            // Another process got there first. THEIRS WINS — a second id for one lane is the exact
-            // fork this method exists to prevent.
-            TryDelete(temp);
-            if (TryLoadPkcs8(path, out var winner))
-            {
-                minted.Dispose();
-                origin = IdentityOrigin.Loaded;
-                return winner!;
-            }
-            throw; // the winner wrote something unreadable: surface it rather than fork the identity
+            // Safe to overwrite: the claim guarantees this caller is the only writer here.
+            File.Move(temp, path, overwrite: true);
         }
         catch
         {
-            TryDelete(temp); // never leave key material in a stray temp file
+            TryDelete(temp);       // never leave key material in a stray temp file
+            TryDelete(claimPath);  // release the claim so the next start can retry
             throw;
         }
         finally
@@ -158,6 +166,12 @@ public sealed partial class NodeIdentity
             CryptographicOperations.ZeroMemory(pkcs8);
         }
 
+        // Released only after the key is on disk, so a waiting loser never sees the claim vanish
+        // before there is something to load.
+        TryDelete(claimPath);
+        // Ruling Q-47: record the circumstances of every mint. The reboot that lost this lane's id
+        // could not be explained because nothing recorded the mint that replaced it.
+        AppendMintAudit(laneName, path, origin);
         return minted;
     }
 
@@ -266,6 +280,47 @@ public sealed partial class NodeIdentity
             System.Security.AccessControl.FileSystemRights.FullControl,
             System.Security.AccessControl.AccessControlType.Allow));
         new FileInfo(path).SetAccessControl(security);
+    }
+
+    /// <summary>
+    /// Take an exclusive claim, or return false. <see cref="FileMode.CreateNew"/> is the only
+    /// portable primitive here the kernel genuinely serialises; anything of the form "does it
+    /// exist? then act" has a window between the two halves.
+    /// </summary>
+    private static bool TryClaim(string claimPath)
+    {
+        try
+        {
+            using var _ = new System.IO.FileStream(claimPath, new FileStreamOptions
+            {
+                Mode = FileMode.CreateNew, Access = FileAccess.Write, Share = FileShare.None,
+            });
+            return true;
+        }
+        catch (IOException) { return false; }
+        catch (UnauthorizedAccessException) { return false; }
+    }
+
+    /// <summary>
+    /// A caller that lost the claim waits for the winner's key and adopts it. It must never mint.
+    /// </summary>
+    private static NodeIdentity AdoptTheWinner(string path, string claimPath, out IdentityOrigin origin)
+    {
+        var deadline = DateTime.UtcNow.AddSeconds(30);
+        while (!File.Exists(path) && DateTime.UtcNow < deadline)
+            Thread.Sleep(15);
+
+        if (File.Exists(path) && TryLoadPkcs8(path, out var winner))
+        {
+            origin = IdentityOrigin.Loaded;
+            return winner!;
+        }
+
+        throw new InvalidOperationException(
+            $"node key '{path}' is CLAIMED but was never published: '{claimPath}' is held and no "
+            + "readable key appeared within 30s. The process that claimed it died between taking the "
+            + "claim and writing the key. Refusing to mint a replacement — that is how one lane "
+            + $"acquires two node ids, which is two votes. Delete '{claimPath}' and start again.");
     }
 
     private static void TryDelete(string path)

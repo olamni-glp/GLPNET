@@ -116,7 +116,11 @@ public sealed class NodeIdentityStore
                 // another local account could read the private key during that window — and a
                 // concurrent LoadOrMint could observe the broadly-readable file and delete it.
                 // Permissions have to exist before the secret does.
-                string tmp = _path + ".tmp";
+                // 🔴 UNIQUE temp name. A FIXED one ("_path + .tmp") is shared by every concurrent
+                // minter, so one caller could truncate the file another was about to move into
+                // place. FileShare.None narrows that to the window between close and move; a unique
+                // name closes it.
+                string tmp = _path + ".tmp-" + Environment.ProcessId + "-" + Guid.NewGuid().ToString("N")[..8];
                 using (var fs = new FileStream(tmp, FileMode.Create, FileAccess.Write, FileShare.None))
                 {
                     if (!OperatingSystem.IsWindows())
@@ -128,8 +132,34 @@ public sealed class NodeIdentityStore
                 }
 
                 RestrictToOwner(tmp);              // verify BEFORE it is visible under its real name
-                File.Move(tmp, _path, overwrite: false);
-                RestrictToOwner(_path);
+
+                // 🔴 File.Move(overwrite: false) IS NOT AN ATOMIC EXCLUSIVE CLAIM — it is a
+                // check-then-rename, so two concurrent minters can BOTH pass the existence check and
+                // both rename, each returning a DIFFERENT certificate while the file holds only one
+                // of them. Measured in the sibling federation keystore, which made the identical
+                // assumption: 16 concurrent first-starts produced TWO identities for one host, and
+                // any peer pinned from the loser's return value pins a key this host does not hold.
+                // FileMode.CreateNew is the portable primitive the kernel actually serialises.
+                string claim = _path + ".claim";
+                if (!TryClaim(claim))
+                {
+                    File.Delete(tmp);
+                    throw new IOException("lost the identity claim; adopting the winner");  // -> retry loop takes the fast path
+                }
+
+                try
+                {
+                    File.Move(tmp, _path, overwrite: true);   // single writer, guaranteed by the claim
+                    RestrictToOwner(_path);
+                }
+                catch
+                {
+                    TryDeleteQuietly(tmp);
+                    TryDeleteQuietly(claim);                  // release so the next start can retry
+                    throw;
+                }
+
+                TryDeleteQuietly(claim);                      // released only once the key is readable
                 return cert;
             }
             catch (InsecureKeyPermissionsException)
@@ -145,6 +175,29 @@ public sealed class NodeIdentityStore
                 Thread.Sleep(20);   // another process is minting; it will be there when we get in
             }
         }
+    }
+
+    /// <summary>
+    /// Take an exclusive claim, or return false. <see cref="FileMode.CreateNew"/> maps to
+    /// <c>O_CREAT|O_EXCL</c> / <c>CREATE_NEW</c>, which the kernel serialises; anything shaped
+    /// "does it exist? then act" has a window between the two halves.
+    /// </summary>
+    private static bool TryClaim(string claimPath)
+    {
+        try
+        {
+            using var _ = new FileStream(claimPath, FileMode.CreateNew, FileAccess.Write, FileShare.None);
+            return true;
+        }
+        catch (IOException) { return false; }
+        catch (UnauthorizedAccessException) { return false; }
+    }
+
+    private static void TryDeleteQuietly(string path)
+    {
+        try { File.Delete(path); }
+        catch (IOException) { }
+        catch (UnauthorizedAccessException) { }
     }
 
     private static X509Certificate2 Mint(string commonName)

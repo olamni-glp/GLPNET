@@ -1,0 +1,131 @@
+[
+ {
+  "qid": "Q-glpnetshiras-47",
+  "header": "Id durable",
+  "origin": "measurement",
+  "severity": "critical",
+  "block": "This lane's persisted node key vanished across the reboot and the cause is undetermined, so a ruling is needed on whether to build the cause-independent loud-failure fix now or to instrument first and wait for the defect to recur.",
+  "background": [
+   "MEASURED 2026-09-05T09:06Z, the first probe run after the reboot: lane shiras.glpnet came back with nodeId c8c237ea..., origin Minted. Yesterday it was 76b66c25..., recorded at 83 bytes at the canonical default path in BROADCAST-20260905T0040Z. Every peer holding the old id is now wrong.",
+   "IT WAS ABSENT, NOT CORRUPT. origin was Minted, not RemintedCorrupt, so File.Exists was false. The delete-and-remint path did NOT fire; the file was simply gone.",
+   "THE DISCRIMINATOR: its sibling ~/.local/share/glpnet/federation/shiras.pfx (mtime Sep 4 18:39, same tree, same reboot) SURVIVED. So this is not a wholesale loss of ~/.local/share.",
+   "TWO CANDIDATE MECHANISMS FROM THE CODEX REVIEW, NEITHER CONFIRMED HERE: an empty LocalApplicationData yields the RELATIVE dir 'glpnet/ynet' (so the key follows the working directory), and a temp-dir fallback is reaped on a schedule the fleet does not control. I searched for a stray relative keystore and found none, so neither is confirmed on this host.",
+   "I ALREADY SHIPPED THE GUARDS TODAY (fb0a41ab): the default now refuses a relative or temp home, an unreadable key no longer rotates the id, and lane names that would collide are rejected. None of those explain a file that was simply absent.",
+   "WHAT IS NOT YET BUILT: anything that makes a CHANGED id loud. The probe prints origin, but nothing compares the loaded id against the last id this lane PUBLISHED, so a silent rotation is still only visible to whoever reads the transcript."
+  ],
+  "impact_if_unanswered": "The lane keeps publishing a node id that may silently change at any reboot, peers keep holding pins that are wrong without either side being told, and the fleet's pin tables decay exactly as they did before feature 102 was written - with the feature nominally shipped.",
+  "options": [
+   {
+    "key": "loud-failure-now",
+    "label": "Build the cause-independent fix now: persist the last-published id and refuse to start quietly when it changes",
+    "consequence": "On every start the lane compares the loaded nodeId against a recorded last-published value; a mismatch is a LOUD failure naming both ids and telling the operator to re-publish, rather than a line in a transcript. This works whatever removed the file, because it detects the effect, not the cause. It does not explain the loss and the underlying mechanism could still bite other lanes.",
+    "size": "mini",
+    "reversibility": "reversible"
+   },
+   {
+    "key": "instrument-first",
+    "label": "Instrument first: record forensics at every mint and wait for the next reboot to catch the actual deletion",
+    "consequence": "Every mint writes an audit record (path, resolved base dir, environment, whether the directory existed). The next occurrence identifies the mechanism precisely and the fix is aimed rather than defensive. But it fixes nothing now: the fleet holds stale pins for at least another reboot cycle, and the defect may not recur on a schedule anyone controls.",
+    "size": "mini",
+    "reversibility": "reversible"
+   },
+   {
+    "key": "both",
+    "label": "Both: the loud-failure guard AND the forensic record, in one era",
+    "consequence": "The fleet stops trusting a silently changed id immediately, and the next occurrence is still fully diagnosed. Costs roughly double the smallest option and puts two mechanisms into identity code in one pass, which is more surface to review at once.",
+    "size": "midi",
+    "reversibility": "reversible"
+   }
+  ],
+  "recommendation": {
+   "option": "both",
+   "because": "The loud-failure guard is worth building on its own because it is CAUSE-INDEPENDENT - a lane's id changing must be loud whatever removed the file, and that property is what feature 102 actually promised and did not deliver. But shipping only the guard would leave me detecting a defect I still cannot explain, and this lane has already been burnt once today by reporting a claim stronger than its measurement. The forensic record is small, additive, and is the only thing that will convert 'undetermined' into a root cause. I recommend both, in that order, with the guard landing first so the fleet stops trusting a silent rotation today."
+  }
+ },
+ {
+  "qid": "Q-glpnetshiras-48",
+  "header": "Pin binding",
+  "origin": "measurement",
+  "severity": "high",
+  "block": "The federation keystore stores a published pin in a sidecar that is written separately from the key it describes, and a ruling is needed on whether to bind them in one atomic act or to stop storing the pin at all.",
+  "background": [
+   "MEASURED: ConcurrentFirstStart_ConvergesOnOneIdentity fails 2 of 20 runs with 16 concurrent callers. The error is 'federation trust material is inconsistent: cert SPKI pin ... != fingerprint file ...' - the fail-closed guard fires and the host REFUSES TO START.",
+   "ATTRIBUTION IS SETTLED AND IT IS NOT MINE: baseline 2/20, with my changes 2/20, identical. My durability fix does not widen it. I first measured 3/3 clean at baseline and that sample was simply too small - recorded so nobody repeats the error.",
+   "MECHANISM: the PFX is claimed atomically (FileMode.CreateNew plus a non-overwriting rename), which is correct. The fingerprint sidecar is then written by a SEPARATE call, so the key and the pin that describes it are not bound by one act and a concurrent starter can observe them disagreeing.",
+   "SEVERITY IS AVAILABILITY, NOT SECURITY: it fails closed. Nothing forged, nothing admitted. A host lands with a key and a pin that disagree and then refuses every start until someone intervenes.",
+   "REPORTED, NOT FIXED, DELIBERATELY: CLAUDE.md's Bug Protocol says stop and discuss rather than patch, and this is a concurrency-ordering decision in identity code - exactly the kind that should not be settled silently in a commit message.",
+   "IT IS NOW THE HIGHEST-SCORING ITEM ON THIS LANE'S BOARD: codified and promoted today as federation-keystore-key-and-pin-one-atomic-act, WSJF 9.0."
+  ],
+  "impact_if_unanswered": "A roughly ten percent chance per concurrent cold start that a host wedges itself with mismatched trust material, on the exact code path the fleet uses to bring federation up - and it will be met during a multi-lane restart, which is when the fleet is least able to diagnose it.",
+  "options": [
+   {
+    "key": "derive-on-read",
+    "label": "Stop storing the pin: derive it from the key on read, and treat any sidecar as a cache",
+    "consequence": "The pin becomes what it actually is - a pure function of the key - so there is nothing left that can disagree with anything, and the race disappears rather than being narrowed. This is the fleet's own single-source-of-truth principle applied. Cost: the sidecar is currently how an operator reads a host's pin without loading the PFX, so that convenience needs a replacement (a CLI that prints it), and any external consumer reading the file must be found first.",
+    "size": "mini",
+    "reversibility": "reversible"
+   },
+   {
+    "key": "one-atomic-act",
+    "label": "Keep the sidecar but make writing it part of the same claim as the key",
+    "consequence": "The winner of the rename publishes both before either is visible, so a loser never observes a half-published pair. Keeps the operator-readable file exactly as it is and touches the smallest amount of behaviour. Cost: it makes an already-subtle two-file protocol more subtle, and the invariant then lives in the ordering rather than in the data model, where a future edit can quietly break it again.",
+    "size": "mini",
+    "reversibility": "reversible"
+   },
+   {
+    "key": "leave-and-retry",
+    "label": "Leave it: document the flake and make the start path retry",
+    "consequence": "Costs almost nothing now and the guard already prevents any unsafe outcome. But it leaves a known wedge in identity code, and a retry around a consistency guard is the kind of workaround this repo's discipline explicitly names as a defect in disguise.",
+    "size": "mini",
+    "reversibility": "reversible"
+   }
+  ],
+  "recommendation": {
+   "option": "derive-on-read",
+   "because": "The pin is a hash of the key. Storing it creates a second source of truth for something that already has one, and every defect in this area today - the stale pins, the id-class confusion, this race - is a consequence of one fact being represented in two places that can drift. Making the pin derived removes the class of bug rather than narrowing the window, which one-atomic-act does. I rank one-atomic-act second because it is genuinely smaller and keeps the operator file; I rank leave-and-retry last because a retry wrapped around a consistency guard is precisely the 'robustness as workaround' this repo forbids."
+  }
+ },
+ {
+  "qid": "Q-glpnetshiras-49",
+  "header": "Port 47890",
+  "origin": "assumption-weakness",
+  "severity": "high",
+  "block": "SHIRAS can now bind a routable QUIC listener and the only thing between this fleet and its first cross-host frame is one peer binding a port, but no port is ratified, so a ruling is needed on whether to ratify 47890 now or to wait for the elected leader to allocate one.",
+  "background": [
+   "MEASURED 2026-09-05T09:05Z: glp_quic_probe bound 0.0.0.0:47890 on SHIRAS and exited 0. Before it, ss -ulnp showed nothing on that port, which independently confirms the 0t/0u every host reports in BK-FTAP-1 section 8.1.",
+   "THIS REFUTES A LINE THE FLEET IS COPYING: BK-FTAP-1 v5 section 2.2 records QUIC as ABSENT on shiras. It is not. The earlier IsSupported==false was an initialisation-order artefact - reading the flag latches MsQuic's static initialiser before the DllImportResolver is installed. Corrected in v6 with the measurement attached.",
+   "THE HOSTS CAN REACH EACH OTHER RIGHT NOW: SHIRAS 192.168.0.170 and GAVRI 192.168.0.108 are one flat /24 with a live CIFS session between them this second. The blocker is not isolation, not firewalling and not capability - no host RUNS a listener.",
+   "NO CODE CHANGE IS NEEDED: BindListenerAsync already takes an arbitrary IPEndPoint; loopback is only the convenience default overload.",
+   "47890 HAS BEEN CARRIED AS 'UNRATIFIED' FOR TWO SESSIONS and nobody has either ratified or replaced it. It is a UDP port, so a TCP firewall rule will not admit it and a TCP port scan will report nothing there.",
+   "I HAVE ALREADY ASKED ONE PEER LANE TO BIND IT in the 0935Z broadcast, but I cannot ratify a fleet-wide port from a lane that holds no board ops and votes in no election (R-1)."
+  ],
+  "impact_if_unanswered": "The fleet stays at zero cross-host frames while holding, measured and in hand, every part needed to send one - and the federation milestone keeps being attributed to a missing transport that demonstrably exists.",
+  "options": [
+   {
+    "key": "ratify-47890",
+    "label": "Ratify UDP 47890 fleet-wide now and name one peer lane to bind it",
+    "consequence": "The first cross-host handshake becomes attemptable within one era, by two lanes, with no election and no new code. Cost: a port chosen by default rather than by design becomes load-bearing, and changing it later means touching every host's firewall and pin table.",
+    "size": "mini",
+    "reversibility": "reversible"
+   },
+   {
+    "key": "advertise-per-host",
+    "label": "Ratify no fixed port: each host advertises its listener address through the oracle board",
+    "consequence": "No fleet-wide port constant to regret, and it composes with the address-independent Resolve this lane just shipped - a node id resolving to whatever address and port that host advertises. Cost: it makes the first handshake depend on the board being a single shared truth across four hosts, which is itself unfinished and currently blocked on the leader election.",
+    "size": "midi",
+    "reversibility": "reversible"
+   },
+   {
+    "key": "wait-for-leader",
+    "label": "Defer: let the elected fleet leader allocate the port once a leader exists",
+    "consequence": "Keeps port allocation with the coordination authority that R-1 designates, and avoids a lane pre-empting a fleet decision. Cost: the election is at 2 of 4 with quorum 3 and has been blocked on one vote all morning, so this makes an unblocked, measured, two-lane task wait on an unrelated blocked one.",
+    "size": "mini",
+    "reversibility": "reversible"
+   }
+  ],
+  "recommendation": {
+   "option": "ratify-47890",
+   "because": "This is the cheapest genuine federation progress available to the fleet today and it needs neither an election nor a line of new code - one peer lane running a command that already exists. Advertise-per-host is the better END STATE and is where the address-independent Resolve is aiming, but it depends on the shared board, which depends on the leader, which has been stuck on one vote all morning; adopting it now converts a two-lane task into a four-host one. I recommend ratifying 47890 as an explicitly INTERIM constant, with advertise-per-host recorded as the destination, so the first frame crosses today and the port stops being load-bearing later."
+  }
+ }
+]

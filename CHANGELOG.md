@@ -1,5 +1,31 @@
 ## [Unreleased]
 
+## [v2026.09.05.4] - 2026-09-05
+
+### Added
+- roster_bar - dedupe a roster by RESOLVED target and state every quorum bar with its n and f
+- the glpnet M6 client - a C# QHSM YNET receiver that runs with no agent attached
+- a changed node id is now LOUD, and every mint leaves a forensic record - the reboot that lost this lane's id was visible only in a transcript
+
+### Fixed
+- close all 8 codex cycle-1 findings - 7 P1, four of which falsified claims I published this morning
+- my own spool had two of the three defects in the peer TOCTOU finding I had just read
+- a THIRD identity store had the same non-atomic claim, plus a shared fixed temp name - found by running my own broadcast's grep against my own lane
+- derive the pin from the key, and replace a TOCTOU File.Move with an atomic CreateNew claim - 16 concurrent starts were minting TWO identities for one host
+
+### Changed
+- restart(glpnet): rev15 final - codex cycle 1 found 8 (7 P1) and all are fixed; cycle 2 reviewed NOTHING and is recorded INCONCLUSIVE, not clean
+- fleet(glpnet): correction - my mailbox broadcast was fourth not first, the election reversal is acked, and roster_bar turns out to be an election precondition
+- restart(glpnet): rev15 - M6 client delivered and glpnet is no longer NOT MET, WP-02 rekey part one landed, the carrier adapter is claimed and is one adapter wide
+- Merge branch 'develop' of https://github.com/olamni-glp/GLPNET into develop
+- restart(glpnet): era S3 prep - three rulings implemented, and File.Move(overwrite:false) was never an atomic claim in any of three identity stores
+- Merge branch 'develop' of https://github.com/olamni-glp/GLPNET into develop
+- fleet(glpnet): engineer correction broadcast - mailbox is a HyperV container at 100Ms scale, two planes; M6 QHSM client mandatory; the L0 unified-mailbox contract already exists and lacks exactly one QUIC carrier adapter
+- broadcast(fleet): engineer correction - the mailbox service is a HyperV container for 100s of millions of mailboxes, and M6 requires a code-based C# QHSM/QMSM receiver in every lane
+- close(102): retrospective - the review instrument saturated, a zero from a failed build is not a zero, and an audit that cannot fail is not an audit
+- Merge pull request #301 from olamni-glp/main
+- questions(glpnet): Q-47..Q-49 - the reboot that lost a node id, the pin/key race I found but did not fix, and the port that is one command from the fleet's first cross-host frame
+
 ## [v2026.09.05.3] - 2026-09-05
 
 ### Added
