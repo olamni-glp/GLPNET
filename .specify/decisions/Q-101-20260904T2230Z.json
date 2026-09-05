@@ -1,0 +1,118 @@
+{
+  "schema_version": "1",
+  "set_id": "Q-101-20260904T2230Z",
+  "lane": "olamnit",
+  "repo": "glpnet",
+  "raised_at": "2026-09-04T22:30:00+00:00",
+  "context": "Feature 101 (front-end goal-term acceptance) is implemented and green in all three runtimes and the cross-runtime criterion is now measured rather than asserted. These four blocks are what remains, and none of them can be closed by this lane alone: two are engineer decisions about scope and ordering, one needs host privilege this session does not have, and one is a language-semantics question that is Udi's under DISCIPLINE.md 1.14. Every claim below was measured on 2026-09-04 on OLAMNIT; where something was not measured it says so.",
+  "questions": [
+    {
+      "id": "Q-101-01",
+      "kind": "ruling",
+      "header": "Ship 101",
+      "question": "Feature 101 is complete and measured in all three runtimes: the Dart and C# REPL transcripts for the full goal-shape script are byte-identical, Gleam is pinned by 20 in-language checks, the suite went 566 to 582 and Gleam 625 to 645. The only two failures in the run are Section T's service-box drills ('peer message received (SC-001 window)'), which I attributed rather than assumed: I stashed this era's C# change, rebuilt, re-ran the drill, and it failed 5/2 identically. They are pre-existing, host-specific, and caused by absent QUIC trust material (glpquick.pfx) on OLAMNIT, not by this era. Do you want 101 shipped through the GitFlow now with those two disclosed, or held until the trust material is restored so the suite is fully green first?",
+      "blocks": ["101 ship", "101 close", "era close", "the next era opening on this lane"],
+      "escalate_after_hours": 4,
+      "multi_select": false,
+      "options": [
+        {
+          "label": "Ship with the two disclosed",
+          "recommended": true,
+          "means": "buildkit ship the 101 branch now, recording the two Section T failures in the release notes as pre-existing-and-attributed, with the stash-rebuild-rerun evidence cited. The era closes and the lane opens its next one.",
+          "cost": "Cuts a release whose suite is not 100% green, which weakens 'green means green' unless the disclosure is read. Mitigated only by the attribution actually being in the notes rather than in a transcript."
+        },
+        {
+          "label": "Hold until trust material restored",
+          "means": "Keep 101 on its branch until glpquick.pfx is present on OLAMNIT and Section T passes, then ship a fully green suite.",
+          "cost": "Blocks a finished, measured feature on an unrelated missing certificate owned by another workstream, with no ETA. The tracked private-key issue has been open across several sessions."
+        },
+        {
+          "label": "Ship, and fix Section T first",
+          "means": "Restore or regenerate the QUIC trust material as part of this era, get Section T green, then ship one fully green release.",
+          "cost": "Expands a finished era's scope into certificate handling, which is exactly the 'while I am at it' widening the discipline forbids; and the tracked-private-key question has its own unresolved history-rewrite dimension."
+        }
+      ]
+    },
+    {
+      "id": "Q-101-02",
+      "kind": "ruling",
+      "header": "Tail meaning",
+      "question": "An improper list tail in a goal (for example [a|foo]) is now REFUSED in all three runtimes with a message naming the term typed. Before this era Dart and C# silently coerced it to nil and ANSWERED the goal, returning byte-identically to [a|[]] - a wrong answer rather than an error. The refusal stops the substitution, but it deliberately assigns the construct NO meaning, because deciding what an improper tail MEANS is a language-definition question and DISCIPLINE.md 1.14 reserves those for Udi. Do you want that question put to Udi now, or does refusal stand as the permanent answer?",
+      "blocks": ["closing L4 in docs/known-issues.md", "any future goal-term work that touches list tails"],
+      "escalate_after_hours": 48,
+      "multi_select": false,
+      "options": [
+        {
+          "label": "Refusal is the answer",
+          "recommended": true,
+          "means": "Record that an improper tail is permanently invalid in a goal term and close the item. No 1.14 referral; the refusal message becomes the specification.",
+          "cost": "Forecloses a construct without Udi seeing the question. If FCP or the paper gives improper tails a meaning, we would be refusing something the language actually permits, and the refusal would then need reversing."
+        },
+        {
+          "label": "Refer to Udi, keep refusing",
+          "means": "Draft the 1.14 proposal for Udi with the measured evidence, and keep refusing in the meantime so no wrong answer can be produced while it is open.",
+          "cost": "Leaves an item open indefinitely on Udi's availability; the refusal already prevents harm, so the referral buys correctness of the record rather than safety."
+        },
+        {
+          "label": "Refer, and pause the refusal",
+          "means": "Ask Udi and revert to the previous behaviour until he rules.",
+          "cost": "Reinstates a SILENT WRONG ANSWER as the interim state. This is the one option that is strictly worse than doing nothing and is listed only to be rejected explicitly."
+        }
+      ]
+    },
+    {
+      "id": "Q-101-03",
+      "kind": "risk-acceptance",
+      "header": "QUIC block",
+      "question": "A routable QUIC listener is proven working on OLAMNIT - five of five cases including 192.168.0.136:47890, each a full handshake plus a verified bidirectional byte echo. But cross-host federation still cannot be measured here, for two reasons this session cannot fix: no inbound Allow rule exists for UDP/47890, and Windows silently auto-created TWO inbound BLOCK rules for the QUIC binary the first time it ran, with no prompt. This session is not elevated. A per-binary Block is invisible from inside the process and beats a port Allow, so the runbook's one-liner is necessary but NOT sufficient - which plausibly also explains the fleet report that yng-broker and yng-guardian are running with no socket bound. How do you want this carried?",
+      "expires_after_days": 7,
+      "escalate_after_hours": 12,
+      "multi_select": false,
+      "options": [
+        {
+          "label": "You run both, elevated",
+          "recommended": true,
+          "means": "You run the Allow one-liner AND remove the auto-created per-binary Block rules on each host, in an elevated shell. I have broadcast the detection one-liner fleet-wide with ACK-on-compliance so every host reports present-or-absent before anyone blames QUIC again.",
+          "cost": "Needs your time on four hosts, and re-running any new daemon binary can re-create a Block rule, so this recurs until binaries are pre-authorised or code-signed."
+        },
+        {
+          "label": "Accept unmeasured for a week",
+          "means": "Carry cross-host QUIC as explicitly UNMEASURED for seven days, with the local proof standing as evidence that the transport itself is sound.",
+          "cost": "SC-001-class criteria stay unmeasured fleet-wide, and the estate keeps making leadership and federation decisions on a board no host has proven it can reach."
+        },
+        {
+          "label": "Code-sign as part of ship",
+          "means": "Adopt the already-proposed code-signing route in buildkit ship, so daemon binaries are pre-authorised and stop attracting per-binary Block rules.",
+          "cost": "A substantially larger piece of work than two firewall commands, and it does not unblock this week's measurement."
+        }
+      ]
+    },
+    {
+      "id": "Q-101-04",
+      "kind": "prioritisation",
+      "header": "Next era",
+      "question": "The codified finding from this era is now on the roadmap, scored WSJF 19.5 / RICE 774000 - the highest WSJF on this board by nearly a factor of three, next is 7.0 - because a multi-runtime or multi-host acceptance criterion tested on ONE of them is restated rather than measured, and that class has produced three measured false greens in six days across three lanes. It competes with bk-onrestart fleet resume (WSJF 7.0, already specified) and the GLP REPL front/middle/back over YNET mailboxes (RICE 3000), which is the roadmap item that already covers the terminal programme you described. Which should this lane take as its mandatory next era?",
+      "blocks": ["the next era allocation on olamnit.glpnet", "the restart brief this session writes"],
+      "escalate_after_hours": 6,
+      "multi_select": false,
+      "options": [
+        {
+          "label": "Differential acceptance gate",
+          "recommended": true,
+          "means": "Harden this era's reference implementation into a reusable buildkit guard, so any lane can declare a criterion spans runtimes or hosts and the suite REFUSES to report it green from one of them. Highest score, and it protects every other lane's evidence including the fleet criteria currently carried by claims.",
+          "cost": "It is infrastructure, not product: it ships no user-visible GLP capability, and its value only appears the next time it catches something."
+        },
+        {
+          "label": "GLP REPL front/middle/back",
+          "means": "Take the existing promoted roadmap item that covers the GLP REPL over YNET realtime mailboxes - the piece of the terminal programme that genuinely belongs to this repo.",
+          "cost": "Depends on YNET mailbox and QUIC federation being reachable cross-host, which Q-101-03 shows is not yet measurable from here. Starting it now risks building against an unproven transport."
+        },
+        {
+          "label": "bk-onrestart fleet resume",
+          "means": "Take the already-specified 085 fleet-resume feature, which you have named as needing completion across the four-host fleet in the next two eras.",
+          "cost": "It is a buildkit and fleet-operations feature living in a GLP language repo; the lane fit is poor and another lane may already hold it."
+        }
+      ]
+    }
+  ]
+}

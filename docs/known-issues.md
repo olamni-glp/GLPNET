@@ -412,13 +412,50 @@ deliberate MVP boundary recorded here (Constitution VIII traceability):
   041** (which touches zero GLP runtime or test-program files). Feature 041's validation is the C#
   xUnit gates (253 tests green). The GLP suite needs the Windows runner (`glp_runtime/glp_repl.exe` or
   `dart run bin/glp_repl.dart`) wired into `run_all_tests.sh` — an escalation for Gabi, out of 041 scope.
-- **C# REPL rejects a bare `_` in a top-level goal (feature 050)** — a query argument that is the
-  anonymous writer `_` fails with `System.InvalidOperationException: Unsupported argument type:
-  UnderscoreTerm` (`out/csharp/.../glp_engine.cs` `_SetupArgument`), before any goal work runs. Use a
-  named variable instead: `main(producer, R).`, not `main(producer, _).` (the clause head still binds
-  `R = []`). Affects only the interactive REPL goal parser — `_` inside a loaded `.glp` clause is fine.
-  Relevant to the 050 two-host acceptance run (T043): drive the producer/consumer goals with named
-  vars. The Dart REPL is not affected in the same way.
+- ~~**C# REPL rejects a bare `_` in a top-level goal (feature 050)**~~ — **SUPERSEDED 2026-09-04 by
+  feature 101. Two parts of this entry were WRONG and are corrected here rather than deleted (FR-010).**
+  1. **"The Dart REPL is not affected in the same way" is FALSE.** Re-measured on build `54219ce8`:
+     Dart failed at **four** goal positions — top-level argument (`Unsupported argument type`), inside
+     a structure (`Unsupported struct argument type`), as a list element (`Unsupported list head type`),
+     and on the conjunction path. The defect was **cross-runtime**, and locating it showed **eight**
+     code sites in two parallel families (`_setupArgument`/`_setupConjunctionArg`,
+     `_buildStructTerm`/`…ForConj`, `_buildListTerm`/`…ForConj` head **and** tail) in
+     `glp_runtime/lib/engine/glp_engine.dart`.
+  2. **The recommended workaround is no longer needed.** `_` is now accepted at every position a named
+     variable is accepted, in single and conjunctive goals; each occurrence is independent (no
+     aliasing), and an anonymous argument reports **no binding**, since it has no name to report
+     against. Pinned by `test/run_all_tests.sh` **Section V** (V-1..V-5).
+  `_?` (anonymous reader) **remains invalid** — the language permits only anonymous *writers*
+  (`docs/typed-glp-manual.md` §9.1). Only its error message changed, from an internal class name to
+  one naming what the programmer typed (V-8).
+
+- **Improper list tail in a goal was silently answered, not refused (found + fixed 2026-09-04,
+  feature 101; previously unrecorded)** — Dart **and** C# coerced a malformed list tail to nil and
+  reported success: `first_item([send(1,a)|foo], Y).` returned **byte-identically** to
+  `first_item([send(1,a)|[]], Y).`. **A wrong answer, not an error** — nothing on screen indicated a
+  substitution, so it could not be noticed and corrupted any conclusion drawn from the session.
+  Sites: Dart `glp_engine.dart` tail-`else` → `rt.ConstTerm(null)` (two copies); C#
+  `glp_engine.cs:1347,1430`. Now **refused** with a message naming the offending term, and the session
+  stays usable afterwards. Pinned by V-6/V-7/V-9.
+  🔴 **CORRECTION, same day.** "Now refused" was true of **Dart only** when this entry was written.
+  The **C# sites named just above were still live** — both tails still coerced to
+  `new RtConstTerm(null)` and still answered the goal — for several hours after this entry claimed
+  otherwise, and the **Gleam** half had shipped with **no test**. The gap survived because no suite
+  check had ever run a second runtime. C# now mirrors Dart at all eight sites, and the cross-runtime
+  obligation is **measured**: **V-18..V-23** diff the Dart and C# transcripts of one goal script and
+  require them byte-identical. Verified as a real detector, not a vacuous one — with the C# change
+  reverted and rebuilt, V-20 fails and prints the divergence, V-22 fails, and V-23 fails on the
+  leaked class name.
+  **RULED 2026-09-04, engineer ruling `Q-101-02` ("refusal is the answer") — CLOSED, and deliberately
+  NOT referred to Udi.** An improper tail in a **goal term** is **permanently invalid**; the refusal
+  message is the specification rather than a placeholder for a pending decision. The considered and
+  rejected alternative was to refer it under §1.14 and keep refusing meanwhile; it was rejected because
+  the refusal already prevents the harm, so a referral would have bought correctness of the record at
+  the price of an item open indefinitely on availability. **Scope is the goal-term front end only —
+  FR-012 is unchanged**, and nothing about what clause heads, guards or bodies accept was decided.
+  This change also stops the system substituting a different term than the one typed.
+  **Gleam was the only runtime that never returned a wrong answer here**: it refused both this and the
+  `_` shapes loudly and had already recorded them as deliberately-mirrored gaps flagged §1.14.
 - **QUIC-unsupported host fails a `"quic"` link loud, never downgrades (feature 050)** — the genuine
   `QuicTransport` gates every path on `QuicTransport.IsSupported` (`QuicListener.IsSupported &&
   QuicConnection.IsSupported`, i.e. MsQuic present in the .NET runtime). On a host without it, a GLP

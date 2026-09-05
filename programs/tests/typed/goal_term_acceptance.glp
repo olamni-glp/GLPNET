@@ -1,0 +1,50 @@
+%% Goal-term acceptance completeness — feature 101 regression fixture.
+%%
+%% Implements: specs/101-goal-term-acceptance/spec.md (FR-001..FR-009, SC-001..SC-006)
+%% Exercised by: test/run_all_tests.sh Section V
+%%
+%% This module is deliberately minimal. Its job is to give the REPL procedures
+%% whose goal ARGUMENTS can carry every shape the front end must accept or refuse.
+%% The defects being pinned are in goal-argument materialisation, not in the
+%% clause language, so the clauses themselves stay ordinary.
+%%
+%% Every procedure covers ALL alternatives of its argument type — the type checker
+%% requires totality, so the empty-list case is answered with an explicit `none`
+%% rather than left uncovered.
+
+Msg ::= send(Integer, Constant).
+MsgList ::= [] ; [Msg | MsgList].
+MsgOpt ::= none ; some(Msg).
+
+%% Returns the first element of a message list.
+%% Used to place `_` at a top-level argument, inside a structure, as a list
+%% element, and as a list tail.
+procedure first_item(MsgList?, MsgOpt).
+first_item([], none).
+first_item([X | _], some(X?)).
+
+%% A second procedure so conjunctive goals have two distinct calls to make
+%% (FR-002: each `_` occurrence must stay independent across a conjunction).
+procedure second_item(MsgList?, MsgOpt).
+second_item([], none).
+second_item([_], none).
+second_item([_, X | _], some(X?)).
+
+%% Plain-constant list variant, so the accept/refuse shapes can be exercised
+%% without a struct element as well.
+Atoms ::= [] ; [Constant | Atoms].
+AtomOpt ::= no_atom ; an_atom(Constant).
+
+procedure first_atom(Atoms?, AtomOpt).
+first_atom([], no_atom).
+first_atom([X | _], an_atom(X?)).
+
+%% `=..` in a clause BODY. Recorded in CLAUDE.md and docs/known-issues.md as
+%% "not allowed (parser bug). Works in clause heads only"; re-measured 2026-09-02
+%% on build 54219ce8 and again here — it works. This clause exists so the retired
+%% claim is pinned by a test rather than by a note (SC-005). If `=..` in a body
+%% ever regresses, this module stops loading and Section V fails.
+Parts ::= [] ; [Constant | Parts].
+
+procedure decompose(Msg?, Parts).
+decompose(T, P?) :- P =.. T?.
