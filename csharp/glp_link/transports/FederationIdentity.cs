@@ -52,6 +52,19 @@ namespace GlpRuntime.Link.Transports;
 /// <param name="Created">True iff this call MINTED a keypair — a first run, or an explicit
 /// rotation. False iff it loaded material that already existed. It is NOT a "first run" flag on
 /// its own: a rotating caller already knows it asked to rotate.</param>
+/// <remarks>
+/// 🔴 <b>TWO IDENTITIES, ONE HOST — and they are not interchangeable.</b> Everything on this record
+/// derives from the host's <b>TLS certificate</b>: it anchors the QUIC transport and is what an SPKI
+/// pin pins. It is <b>not</b> the identity <c>YnetSession</c> authenticates a peer by — that is the
+/// independent <c>NodeIdentity</c> Ed25519 keypair, whose <c>nodeId = H(pubkey)</c> is what a peer
+/// resolves, votes on and files board ops under.
+///
+/// <para>Putting a certificate-derived id into <c>INodeAddressResolver</c> gets a genuine connection
+/// refused with <c>IdentityMismatch</c>, and this SPKI cannot verify that lane's board signatures at
+/// all. That is the fleet's recurring <i>id-class</i> defect (a value that verifies, is signed by its
+/// rightful holder, and still names the wrong thing) at a FOURTH site — so the two are named apart
+/// here rather than left to a reader's discipline.</para>
+/// </remarks>
 public sealed record FederationIdentity(
     X509Certificate2 Cert, string Pin, string PfxPath, bool Created)
 {
@@ -62,8 +75,18 @@ public sealed record FederationIdentity(
     /// and the refusal presented as a pin mismatch — a configuration bug wearing a security event's
     /// clothes.** Exposing both encodings from ONE derivation is how that stops being possible.
     /// </summary>
-    public string NodeId => Convert.ToHexString(
+    public string TlsNodeId => Convert.ToHexString(
         SHA256.HashData(Cert.PublicKey.ExportSubjectPublicKeyInfo())).ToLowerInvariant();
+
+    /// <summary>
+    /// 🔴 <b>Do not use as a YNET node id.</b> Retained only so existing callers fail LOUDLY at
+    /// compile time rather than silently keep publishing a TLS hash into an id space that refuses
+    /// it. See <see cref="TlsNodeId"/> and the class remarks.
+    /// </summary>
+    [Obsolete("This is the TLS CERTIFICATE's id, not the YNET node id. Use TlsNodeId for the "
+        + "transport anchor, or NodeIdentity.NodeId for the identity YnetSession authenticates. "
+        + "Entering this value into INodeAddressResolver refuses every genuine peer.", error: true)]
+    public string NodeId => TlsNodeId;
 
     /// <summary>
     /// The full SubjectPublicKeyInfo, base64. **A pin is a hash and therefore cannot verify a
@@ -71,7 +94,16 @@ public sealed record FederationIdentity(
     /// including the leadership tie-break, which is monotone and unfixable after a CRDT merge.
     /// Publish this beside the pin so an op's claimed author can actually be checked.
     /// </summary>
-    public string Spki => Convert.ToBase64String(Cert.PublicKey.ExportSubjectPublicKeyInfo());
+    public string TlsSpki => Convert.ToBase64String(Cert.PublicKey.ExportSubjectPublicKeyInfo());
+
+    /// <summary>
+    /// 🔴 <b>Cannot verify a lane's board signatures.</b> This is the TLS certificate's public key;
+    /// ops are signed with the independent <c>NodeIdentity</c> keypair. Kept as a compile-time error
+    /// so the substitution is caught at the call site instead of at a peer's refusal.
+    /// </summary>
+    [Obsolete("This is the TLS CERTIFICATE's SPKI, not the YNET signing key. Use TlsSpki for the "
+        + "transport anchor, or NodeIdentity.PublicKeySpki to verify signatures.", error: true)]
+    public string Spki => TlsSpki;
 
     /// <summary>Env var overriding the keystore DIRECTORY (a deployment/test seam, not a default).</summary>
     public const string KeystoreEnvVar = "GLPNET_FEDERATION_KEYSTORE";
@@ -92,7 +124,16 @@ public sealed record FederationIdentity(
             return Path.GetFullPath(overridden.Trim());
         var baseDir = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
         if (string.IsNullOrWhiteSpace(baseDir))
-            baseDir = Path.Combine(Path.GetTempPath(), "glpnet-home");
+            // 🔴 NOT a temp fallback. This key is the anchor for an SPKI pin that other hosts hold
+            // for years; parking it under the OS temp directory means a reap policy this fleet does
+            // not control silently invalidates every exchanged pin, and mTLS then refuses every peer
+            // — indistinguishable from a dead transport, with nothing in the code having changed.
+            // An unusable environment is a configuration error and is reported as one.
+            throw new InvalidOperationException(
+                "no durable home for the federation identity: LocalApplicationData is empty on this "
+                + "host (typical of a headless service account). Set $" + KeystoreEnvVar
+                + " to an ABSOLUTE, persistent directory. Refusing a temporary-directory fallback: "
+                + "every SPKI pin published from it would expire at the next temp sweep.");
         return Path.Combine(baseDir, "glpnet", "federation");
     }
 
@@ -320,6 +361,12 @@ public sealed record FederationIdentity(
             if (OperatingSystem.IsWindows())
                 RestrictToCurrentUser(path);
             stream.Write(bytes, 0, bytes.Length);
+            // 🔴 Flush to STABLE STORAGE before the caller renames this temp file into place and
+            // reports the identity as created. Closing a stream only hands the bytes to the page
+            // cache: after an abrupt power loss the rename can survive while the contents do not,
+            // leaving a PFX that is present, zero-length or truncated, and unreadable — so the host
+            // cannot reproduce the pin it already published. Durability first, then the name.
+            stream.Flush(flushToDisk: true);
         }
     }
 

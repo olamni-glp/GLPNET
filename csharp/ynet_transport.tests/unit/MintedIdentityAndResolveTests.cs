@@ -191,12 +191,72 @@ public sealed class MintedLaneIdentityTests : IDisposable
     }
 
     // A lane name is caller-supplied and lands in a path: it must not escape the keystore dir.
+    // It is now REFUSED rather than sanitised — see Two_lane_names_cannot_collide_onto_one_key for
+    // why silently rewriting it was the more dangerous of the two behaviours.
     [Fact]
     public void Lane_name_cannot_traverse_out_of_the_keystore()
     {
-        using var seed = NodeIdentity.LoadOrMint("../../etc/evil", out _, _dir);
-        Assert.Single(Directory.GetFiles(_dir, "*.nodekey"));
+        Assert.Throws<ArgumentException>(() => NodeIdentity.LoadOrMint("../../etc/evil", out _, _dir));
+
+        // The refusal must happen BEFORE anything is written: no key, no stray directory, nothing
+        // for a later run to load and mistake for this lane's identity.
+        Assert.Empty(Directory.GetFiles(_dir, "*.nodekey"));
         Assert.Empty(Directory.GetDirectories(_dir));
+    }
+
+    // 🔴 The reason the rule is REJECT and not SANITISE. Mapping every unsupported character to '_'
+    // is not injective, so two DIFFERENT configured lanes collapse onto ONE key file and therefore
+    // ONE node id: a single signing identity answering for both, which is the identity fork the
+    // keystore exists to prevent — reached through configuration rather than through a race.
+    [Theory]
+    [InlineData("a/b", "a?b")]
+    [InlineData("shiras glpnet", "shiras:glpnet")]
+    public void Two_lane_names_cannot_collide_onto_one_key(string first, string second)
+    {
+        Assert.Throws<ArgumentException>(() => NodeIdentity.LoadOrMint(first, out _, _dir));
+        Assert.Throws<ArgumentException>(() => NodeIdentity.LoadOrMint(second, out _, _dir));
+        Assert.Empty(Directory.GetFiles(_dir, "*.nodekey"));
+    }
+
+    // Names that ARE representable must still work — a guard that refuses everything is not a guard.
+    [Theory]
+    [InlineData("shiras.glpnet")]
+    [InlineData("olamnit-yngcor")]
+    [InlineData("host_1.lane_2")]
+    public void Well_formed_lane_names_are_accepted(string lane)
+    {
+        using var id = NodeIdentity.LoadOrMint(lane, out var origin, _dir);
+        Assert.Equal(IdentityOrigin.Minted, origin);
+        Assert.True(File.Exists(System.IO.Path.Combine(_dir, lane + ".nodekey")));
+    }
+
+    // 🔴 A key we cannot READ is not a key that is WRONG. A storage-layer failure must propagate,
+    // because the caller's false-branch deletes the file and mints a new id: swallowing it would
+    // turn a transient, self-healing condition into a PERMANENT fleet-visible identity change.
+    // Proven by making the key unreadable rather than by asserting on the implementation.
+    [Fact]
+    public void Unreadable_storage_must_not_silently_rotate_the_node_id()
+    {
+        using (var seeded = NodeIdentity.LoadOrMint("shiras.glpnet", out var first, _dir))
+            Assert.Equal(IdentityOrigin.Minted, first);
+
+        var keyPath = System.IO.Path.Combine(_dir, "shiras.glpnet.nodekey");
+        var before = File.ReadAllBytes(keyPath);
+
+        if (OperatingSystem.IsWindows()) return; // chmod-based denial is a Unix construction
+        File.SetUnixFileMode(keyPath, UnixFileMode.None);
+        try
+        {
+            Assert.ThrowsAny<UnauthorizedAccessException>(
+                () => NodeIdentity.LoadOrMint("shiras.glpnet", out _, _dir));
+            // and, decisively, the key is STILL THERE: not deleted, not re-minted.
+            File.SetUnixFileMode(keyPath, UnixFileMode.UserRead | UnixFileMode.UserWrite);
+            Assert.Equal(before, File.ReadAllBytes(keyPath));
+        }
+        finally
+        {
+            File.SetUnixFileMode(keyPath, UnixFileMode.UserRead | UnixFileMode.UserWrite);
+        }
     }
 }
 

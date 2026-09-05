@@ -28,7 +28,7 @@
     <RootNamespace>GlpRuntime.ResultCodec</RootNamespace>
     <AssemblyName>glp_result_codec</AssemblyName>
     <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
-    <WarningsAsErrors>CS0649;CS0169</WarningsAsErrors>
+    <WarningsAsErrors>$(WarningsAsErrors);CS0649;CS0169</WarningsAsErrors>
   </PropertyGroup>
 
   <!-- The xUnit test project lives in tests/; keep its sources out of the lib build. -->

@@ -1,0 +1,185 @@
+[
+  {
+    "qid": "Q-GLPNETG28-01",
+    "header": "term-space",
+    "origin": "contradiction",
+    "severity": "critical",
+    "block": "The fold cannot order two hosts' leadership operations until the rule that assigns a term-space identifier is fixed.",
+    "background": [
+      "Ruling Q-GLPNETG27-03 fixed the term as (space_id, era_counter, host_id) but did not say who assigns space_id, nor when two hosts are in the same space.",
+      "FR-014 makes terms comparable ONLY within a space, so if space_id is per-host then no two terms are ever comparable and no leader can be elected on top of this transport.",
+      "If space_id is one global constant then the live fossil op 628016928ab854ae, carrying term 5961694 = floor(unix_ts/300), is in-space and wins permanently the moment boards fold.",
+      "Term ordering is monotone, so the first merge is the irreversible step; this must be settled before FR-018's merge gate can pass."
+    ],
+    "impact_if_unanswered": "The first cross-host fold cannot be attempted at all, so SC-001 is unreachable and ERA 102 cannot close.",
+    "options": [
+      {
+        "key": "epoch-scoped-shared-space",
+        "label": "Shared space per federation epoch",
+        "consequence": "One shared space_id minted by a recorded operator action and carried in config; the fossil op's implicit legacy space is a different space, so it is retained and reported unordered exactly as FR-016 requires, and a new epoch can be minted additively if the space is ever poisoned.",
+        "size": "mini",
+        "reversibility": "reversible"
+      },
+      {
+        "key": "single-global-space",
+        "label": "One constant space for the estate",
+        "consequence": "Simplest to implement, but the fossil term 5961694 becomes the permanent in-space maximum and forecloses every later legitimate leader claim below it, leaving only hand-crafted larger terms as an escape.",
+        "size": "micro",
+        "reversibility": "one-way"
+      },
+      {
+        "key": "per-host-space",
+        "label": "Each host owns its own space",
+        "consequence": "Trivially safe against the fossil, but terms become never cross-comparable, which forecloses leader election and PBFT on top of this transport - the stated consumers of the whole feature.",
+        "size": "micro",
+        "reversibility": "one-way"
+      }
+    ],
+    "recommendation": {
+      "option": "epoch-scoped-shared-space",
+      "because": "It is the only option that both lets live hosts compare terms and leaves the fossil incomparable-but-retained as FR-016 demands; the runner-up single-global-space buys a little simplicity and pays for it with a permanent, monotone, unrecoverable ordering defeat."
+    },
+    "decision": {
+      "option": "epoch-scoped-shared-space",
+      "date": "2026-09-04",
+      "rationale": "Engineer accepted the recommendation: space_id is minted per federation epoch by a recorded operator action and carried in config. The fossil op's implicit legacy space is a different space, so under FR-014 it is incomparable to live terms and stays retained-and-unordered per FR-016. Rejected single-global-space (one-way: term 5961694 becomes the permanent in-space maximum) and per-host-space (one-way: forecloses leader election and PBFT, the stated consumers)."
+    }
+  },
+  {
+    "qid": "Q-GLPNETG28-02",
+    "header": "2nd host",
+    "origin": "missing-requirement",
+    "severity": "critical",
+    "block": "SC-001 requires a physically separate second host and no peer host is currently running a federation listener that this lane can schedule.",
+    "background": [
+      "FR-022 explicitly disqualifies a two-roots-on-one-machine proof as cross-host evidence, so the mechanism proof already landed here (commit 72f56b44, full C# suite 190/190) does NOT satisfy SC-001.",
+      "Reachability is not the obstacle: all four hosts are routable IPv4 L2 neighbours on one flat /24 (Gavriella .108, Ariellas .142, Olamnit .136 and .129, shiras.local .170).",
+      "Bringing a listener up on a second host is work inside another host's lane, which this lane cannot start, and the inbound UDP rule authorised by ruling Q-GLPNETG27-04 still needs an elevated shell on this host.",
+      "The directive forbids deferrals, so how the era closes against a criterion that needs a co-operating peer has to be decided now rather than discovered at ship time."
+    ],
+    "impact_if_unanswered": "ERA 102 implements, reviews and ships fully but stalls at close on SC-001, producing exactly the deferral the directive forbids.",
+    "options": [
+      {
+        "key": "implement-here-broadcast-for-peer",
+        "label": "Build both ends here, broadcast an ACK-required peer ask",
+        "consequence": "Everything except SC-001 is proven locally and the operator runbook plus a dial-out client ship complete; an ACK-required broadcast goes to all hosts and SC-001 is measured the moment any peer stands up its listener, with the era's evidence bar left intact.",
+        "size": "midi",
+        "reversibility": "reversible"
+      },
+      {
+        "key": "block-on-peer-coordination",
+        "label": "Hold the era open until a peer answers",
+        "consequence": "SC-001 is measured before close so no criterion is ever reported unmet, at the cost of this era's close date becoming hostage to another host's schedule with no bound on the wait.",
+        "size": "mini",
+        "reversibility": "reversible"
+      },
+      {
+        "key": "redefine-sc-001-two-processes",
+        "label": "Accept the one-machine proof as sufficient",
+        "consequence": "The era closes immediately, but it forecloses the feature's own FR-022 and re-installs the false-green class that this era was opened to eliminate.",
+        "size": "nano",
+        "reversibility": "one-way"
+      }
+    ],
+    "recommendation": {
+      "option": "implement-here-broadcast-for-peer",
+      "because": "It keeps FR-022's evidence bar and delivers every artefact a peer needs in order to answer, whereas block-on-peer-coordination delivers the identical code but stops the lane dead while waiting for a host it cannot control."
+    },
+    "decision": {
+      "option": "implement-here-broadcast-for-peer",
+      "date": "2026-09-04",
+      "rationale": "Engineer accepted the recommendation: build both federation ends plus the operator runbook here, prove everything except SC-001 locally, and issue an ACK-required broadcast to all hosts; SC-001 is measured the moment any peer stands up its listener. Keeps FR-022's evidence bar intact without making the era's close hostage to another host's schedule. Rejected redefine-sc-001 as one-way."
+    }
+  },
+  {
+    "qid": "Q-GLPNETG28-03",
+    "header": "converge win",
+    "origin": "missing-requirement",
+    "severity": "high",
+    "block": "US1 and SC-001 both say an operation must cross within the convergence window without naming a number, so the acceptance test cannot be written.",
+    "background": [
+      "FR-009 requires an op appended on one host to appear in every federated peer's fold, but no time bound appears anywhere in the spec.",
+      "The bound picks the architecture rather than following it: push-on-append and periodic-pull differ by orders of magnitude and cannot be swapped after the fact without redoing the transport loop.",
+      "A lane reads the board to decide whether to start work, so any window longer than the time it takes to start duplicate work defeats the exact defect US1 names."
+    ],
+    "impact_if_unanswered": "The US1 acceptance scenario stays subjective and would be signed off by reading rather than by measurement, which is precisely the false-green mode this era exists to remove.",
+    "options": [
+      {
+        "key": "push-with-pull-backstop",
+        "label": "Push on append, 60s reconciliation pull backstop",
+        "consequence": "Assert 5s steady-state and 120s after a deliberate link outage; costs a second code path but makes FR-012's order-independence and FR-010's exactly-once observable under real link loss rather than assumed.",
+        "size": "midi",
+        "reversibility": "reversible"
+      },
+      {
+        "key": "push-on-append-5s",
+        "label": "Push on append only, assert 5s",
+        "consequence": "Smallest transport loop and the fastest steady-state number, but an op lost to a dropped link is never retried and the boards silently stay divergent with no repair path.",
+        "size": "mini",
+        "reversibility": "reversible"
+      },
+      {
+        "key": "periodic-pull-60s",
+        "label": "Periodic pull only, assert 120s",
+        "consequence": "Simplest and self-healing after any outage, but two lanes can both start the same work inside a two-minute window, which is the duplicate-claim defect the feature was opened to fix.",
+        "size": "micro",
+        "reversibility": "reversible"
+      }
+    ],
+    "recommendation": {
+      "option": "push-with-pull-backstop",
+      "because": "Push alone loses ops across a link drop with no repair, and pull alone is too slow to prevent the duplicate claim US1 names; the backstop is also what turns FR-012 into something a test can actually observe."
+    },
+    "decision": {
+      "option": "push-with-pull-backstop",
+      "date": "2026-09-04",
+      "rationale": "Engineer accepted the recommendation: push on append with a 60s reconciliation pull backstop. Acceptance asserts 5s steady-state and 120s after a deliberate link outage. Push alone loses ops across a link drop with no repair path; pull alone is too slow to prevent the duplicate claim US1 names."
+    }
+  },
+  {
+    "qid": "Q-GLPNETG28-04",
+    "header": "fossil op",
+    "origin": "contradiction",
+    "severity": "high",
+    "block": "The live leader_claim op 628016928ab854ae must be neutralised before the first merge and FR-017 forbids deleting it.",
+    "background": [
+      "The op carries term 5961694 derived from floor(unix_ts/300); its emitting code has since been deleted, yet the op itself still votes in the local fold.",
+      "Ruling Q-GLPNETG27-03 placed a STOP ORDER on folding any board across hosts until the fold is term-space aware, naming this op as the reason.",
+      "FR-017 requires correction by appending a superseding operation, because on an append-only board a removal is indistinguishable from a suppression.",
+      "No superseding operation form exists yet, so today there is a rule forbidding the merge and no mechanism capable of lifting it."
+    ],
+    "impact_if_unanswered": "The STOP ORDER stays in force, FR-018's merge gate refuses every merge, and no cross-host fold can be attempted at all.",
+    "options": [
+      {
+        "key": "retire-into-legacy-space",
+        "label": "Append a superseding op assigning it to a legacy space",
+        "consequence": "Under FR-014 the fossil becomes incomparable to live terms and is retained-and-reported-unordered exactly as FR-016 requires; the original op is untouched, so the append-only audit trail survives and the retirement is itself reviewable and re-correctable.",
+        "size": "mini",
+        "reversibility": "reversible"
+      },
+      {
+        "key": "append-higher-live-term",
+        "label": "Append a fresh claim with a term above it",
+        "consequence": "Needs no new op kind and immediately outranks the fossil, but it bakes the wall-clock magnitude permanently into the live space and forecloses ever starting the live counter from zero.",
+        "size": "nano",
+        "reversibility": "one-way"
+      },
+      {
+        "key": "tombstone-the-op",
+        "label": "Mark the operation withdrawn",
+        "consequence": "Cleanest-looking board and the least code, but it forecloses FR-017's append-only guarantee and makes a suppressed operation permanently indistinguishable from a corrected one.",
+        "size": "micro",
+        "reversibility": "one-way"
+      }
+    ],
+    "recommendation": {
+      "option": "retire-into-legacy-space",
+      "because": "It is the only option that lifts the STOP ORDER without either writing the fossil's wall-clock magnitude into the live space or breaking the append-only property that the board's whole auditability rests on."
+    },
+    "decision": {
+      "option": "retire-into-legacy-space",
+      "date": "2026-09-04",
+      "rationale": "Engineer accepted the recommendation: neutralise fossil op 628016928ab854ae by APPENDING a superseding op that assigns it to a named legacy term-space. Original op is never removed, so FR-017's append-only guarantee survives and the retirement is itself reviewable. Lifts the Q-GLPNETG27-03 STOP ORDER. Rejected higher-live-term and tombstone as one-way."
+    }
+  }
+]
