@@ -24,16 +24,45 @@ public sealed record SignedRecord(
     /// <summary>The signer's self-certified node id (must equal the DHT key for reachability records).</summary>
     public NodeId SignerNodeId => NodeIdentity.DeriveNodeId(SignerPublicKeySpki);
 
+    /// <summary>Domain separation tag: a signature over these bytes can never be replayed as any other structure.</summary>
+    private static ReadOnlySpan<byte> Domain => "ynet.dht.record.v2\n"u8;
+
+    /// <summary>
+    /// The bytes a record's signature covers.
+    ///
+    /// 🔴 EVERY VARIABLE-LENGTH FIELD IS LENGTH-PREFIXED, and that is a correctness requirement, not
+    /// a style choice. v1 concatenated `key` and `payload` raw, which is NOT INJECTIVE: two different
+    /// (key, payload) pairs can produce identical bytes, so ONE signature validates BOTH.
+    ///
+    /// The concrete forgery (codexreview, 2026-09-05, P1): a signer legitimately publishes
+    /// key=<c>&lt;owner&gt;/svc</c>, payload=<c>0x01 'evil'</c>. An attacker re-splits the same byte
+    /// stream as key=<c>&lt;owner&gt;/svc\x01</c>, payload=<c>'evil'</c>. Same bytes, same signature,
+    /// a DIFFERENT record at a DIFFERENT key - and it still sits inside the owner's namespace, so the
+    /// Q-olg15-02 binding does not catch it either. The binding decides WHERE a signer may write; it
+    /// cannot decide anything if the field boundaries are ambiguous.
+    ///
+    /// The domain tag additionally stops a signature over these bytes being replayed as a signature
+    /// over any other structure that might one day be signed by the same key.
+    /// </summary>
     private static byte[] CanonicalBytes(byte[] key, RecordKind kind, byte[] payload, DateTimeOffset expiresAt)
     {
         using var ms = new MemoryStream();
-        ms.Write(key);
-        ms.WriteByte((byte)kind);
-        ms.Write(payload);
-        Span<byte> exp = stackalloc byte[8];
+        ms.Write(Domain);
+        WriteLengthPrefixed(ms, key);
+        ms.WriteByte((byte)kind);           // fixed width - unambiguous without a prefix
+        WriteLengthPrefixed(ms, payload);
+        Span<byte> exp = stackalloc byte[8]; // fixed width
         System.Buffers.Binary.BinaryPrimitives.WriteInt64BigEndian(exp, expiresAt.ToUnixTimeSeconds());
         ms.Write(exp);
         return ms.ToArray();
+    }
+
+    private static void WriteLengthPrefixed(Stream ms, byte[] field)
+    {
+        Span<byte> len = stackalloc byte[4];
+        System.Buffers.Binary.BinaryPrimitives.WriteUInt32BigEndian(len, (uint)field.Length);
+        ms.Write(len);
+        ms.Write(field);
     }
 
     /// <summary>Create + sign a record with the owner's identity.</summary>

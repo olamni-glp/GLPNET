@@ -47,10 +47,29 @@ public sealed class HookNotifier : IDisposable
         // Count the item OUTSTANDING before it is queued. Counting after would reopen the very gap
         // this counter exists to close (see WaitForIdle).
         Interlocked.Increment(ref _outstanding);
-        if (_queue.IsAddingCompleted || !_queue.TryAdd(alert))
+
+        // 🔴 EVERY failure path after that increment must release it, INCLUDING a throw.
+        // IsAddingCompleted is a check, not a lock: Dispose() can complete the queue between that
+        // check and TryAdd, and TryAdd then THROWS InvalidOperationException rather than returning
+        // false. The first version only handled the `false` case, so a shutdown racing an enqueue
+        // left _outstanding positive forever and WaitForIdle blocked to its timeout on work that was
+        // never queued (codexreview 2026-09-05, P2).
+        var queued = false;
+        try
         {
-            Interlocked.Decrement(ref _outstanding);
-            Interlocked.Increment(ref _dropped);
+            queued = !_queue.IsAddingCompleted && _queue.TryAdd(alert);
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or ObjectDisposedException)
+        {
+            queued = false; // the queue closed underneath us; treated as a drop, same as a refusal
+        }
+        finally
+        {
+            if (!queued)
+            {
+                Interlocked.Decrement(ref _outstanding);
+                Interlocked.Increment(ref _dropped);
+            }
         }
     }
 
