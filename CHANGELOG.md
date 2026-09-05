@@ -1,5 +1,67 @@
 ## [Unreleased]
 
+## [v2026.09.05.3] - 2026-09-05
+
+### Added
+- operator console, runbook and evidence pack - 13 of 15 SCs measured, SC-001 named UNMEASURED rather than reported green
+- federation transport, term-space ordering and the four-state status surface - 265/265, up from a 190 baseline
+
+### Fixed
+- all 7 codex findings - a TLS cert id was sitting in the YNET node-id namespace, and a transient read error could permanently rotate this lane's identity
+- promote CS0649/CS0169 in all 14 non-test projects - my wave-29 'fixed the class' covered 1 of 13, and ariellas measured it
+- round-16 - a CancellationTokenSource DisposeAsync cancelled was never assigned, and CS0649 had said so since the first commit
+- round-15 class defects - an unauthenticated RETIREMENT was a deletion primitive, and I had turned a documented warning into a refusal
+- round-14 - the SAME fossil-deletion defect on the one door I had not routed through the shared rule
+- round-13 - TWO OF MY OWN FIXES CONTRADICTED EACH OTHER AND DELETED THE FOSSIL
+- all 7 round-12 findings - the adapter discarded the FOSSIL TERM the stop order exists for
+- all 4 round-11 findings - my dial-handshake fix could only ever time out
+- all 7 round-10 findings - three were OVER-CORRECTIONS in my own round-9 fixes
+- my static test seam was a race in the harness - two tests failed intermittently and neither had a defect
+- the QUIC probe minted a FRESH cert per run, so its published pin was stale before it arrived
+- round-9, and I RETRACT the convergence reading I gave an hour ago
+- round-8 - a waiter on the mint lock bypassed the key-permission refusal
+- all 8 round-7 findings - five of them in the round-6 fixes
+- my own epoch minter emitted a unix-ms-shaped id and my own guard passed it
+- all 5 round-6 findings - the yield finally fell, 14 to 5
+- round-5 findings including TWO regressions my own earlier fixes introduced tonight
+- all 12 round-4 findings plus the engineer ruling - federated ops now land in the lane segment the oracle actually reads
+- all 17 round-3 codexreview findings - three rounds on identical settings returned 1, then 14, then 17
+- two defects found by RUNNING the daemon that reading it did not surface - the tail folded without publishing, and the heartbeat went stale between 60s pull ticks
+- all 14 round-2 codexreview findings - the documented operator path could not authenticate, publish or report status, and the fold could diverge permanently
+- codex P1 - gate the PUSH path too, and make the pull leg actually exist on the wire
+- ENFORCE the merge gate in ReconcileAsync - FR-018 was declared, unit-tested, and never called from the path that actually merges
+- a crossing whose peer address was not captured is UNKNOWN, not 'no crossing observed' - the status surface was contradicting itself
+
+### Changed
+- Merge pull request #299 from olamni-glp/102-quic-federation-transport
+- Merge remote-tracking branch 'origin/develop' into 102-quic-federation-transport
+- evidence(102): second-instrument ship gate - analyzers, positive-controlled, no live defect; and a zero from a failed build is not a zero
+- wave-30 - a term-1 quorum closed 13 min after a P0 said it had not, and my own host cast the third vote
+- decisions(102): four BK-STD-2 engineer rulings G30-01..04 - term 1 VOID, election holds LIFTED, ship bar is a second instrument, firewall elevation authorised
+- Merge branch 'develop' of https://github.com/olamni-glp/GLPNET into develop
+- roadmap(glpnet): sync round 73 - 33 lines from 5 peer files, barrier 5/4 hosts; 102 advanced to reviewed on real codex evidence; 2 new defects codified and promoted
+- broadcast(glpnet): QUIC is not absent on SHIRAS - routable listener bound on 47890, and my own feature 102 did not survive the reboot
+- Merge pull request #297 from olamni-glp/main
+- restart notice - safe to restart, era 102 not shipped and the reason is an engineer question
+- correct BLOCKER 1 - push succeeded on retry, a classifier refusal is not durable
+- wave-29 brief - FLEET-T24 template published, a different instrument found what 15 review rounds missed
+- ynet_transport two-estate finding + L0 assembly coverage 7 of 384; roadmap export
+- FLEET-T24 action-plan template v1.0 - 35 of 35 source requirements mapped, 0 dropped
+- two engineer rulings - the class bar replaces the unreachable count bar, and SC-001 closes NAMED UNMEASURED
+- bring the restart brief current - seven rounds, 386 tests, 35 mutants, five of which needed the TEST fixed
+- record the full seven-round sequence - 1, 14, 17, 12, 14, 5, 8 - and that the ship bar is NOT met
+- wave-28 restart brief - five review rounds, four rulings, and the two mutants that survived
+- export round - 39 not-closed, 4 new features captured and promoted this session
+- record all four review defects in the evidence pack - every one was found in code the 265-green suite had already passed
+- analyze(102): 4 findings, 3 remediated - FR-016 had zero task coverage, append-then-ship lived only in a contract, and the Constitution Check defeated its own machine scan
+- tasks(102): 47 tasks in dependency order - US3 term ordering ships before US1 because merging under the old rule is the irreversible mistake
+- plan(102): implementation plan, research, data model and four contracts - additive C# reusing QuicLinkTransport, NodeIdentity and Dot/VersionVector
+- clarify(102): four BK-STD-2 rulings integrated - epoch-scoped term space, push+60s pull backstop, legacy-space retirement, broadcast-for-peer close path
+- Merge branch 'develop' into 102-quic-federation-transport
+- wave-27 handoff - ERA 102 opened and specified, four rulings recorded, I: proven a self-loopback, all 4 hosts routable on one /24
+- sync round 68 export - 58 new lines from 14 files, 0 refused; quic-federation-transport captured, linked and scored
+- spec(102): QUIC federation transport for the ynet oracle - specify complete
+
 ## [v2026.09.05.2] - 2026-09-05
 
 ### Added
