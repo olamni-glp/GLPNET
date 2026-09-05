@@ -27,7 +27,7 @@
     <RootNamespace>GlpRuntime.Link</RootNamespace>
     <AssemblyName>glp_link</AssemblyName>
     <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
-    <WarningsAsErrors>CS0649;CS0169</WarningsAsErrors>
+    <WarningsAsErrors>$(WarningsAsErrors);CS0649;CS0169</WarningsAsErrors>
   </PropertyGroup>
 
   <!-- The byte-parity serializer + the two MadContext seams the reliability

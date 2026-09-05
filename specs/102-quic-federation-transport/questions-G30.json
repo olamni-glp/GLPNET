@@ -1,0 +1,199 @@
+[
+  {
+    "qid": "Q-GLPNETG30-01",
+    "header": "Ship bar",
+    "block": "Era 102 cannot ship or close until the ship bar is settled after a new instrument found a defect fifteen review rounds had missed.",
+    "origin": "measurement",
+    "severity": "critical",
+    "background": [
+      "Sixteen adversarial review rounds ran on this one branch. Codexreview rounds 1-15 returned 1, 14, 17, 12, 14, 5, 8, 1, 11, 7, 4, 7, 8, 9, 12 federation findings; ~140 were fixed. From round 4 on, MOST findings were defects inside the PREVIOUS round's fixes.",
+      "Round 16 changed the instrument: I promoted compiler warnings instead of running a 16th codexreview. On its FIRST pass the compiler surfaced CS0649 in csharp/glp_crdtmsg/federation/FederationService.cs:139 - a CancellationTokenSource that DisposeAsync cancelled and disposed was NEVER ASSIGNED, so both statements were unconditional no-ops and shutdown of four long-running loops was never owned.",
+      "The compiler had been emitting that warning since commit 6ec7e866, the commit that introduced the field. It survived all fifteen adversarial rounds because the warning was never promoted to an error.",
+      "Round 16 passes the defect-CLASS bar set by ruling Q-GLPNETG29-01 (no divergence, no data loss, no bypass). By the letter of that ruling, era 102 may ship today.",
+      "The honest reading is not 'the code is clean'. It is 'the codexreview instrument has SATURATED, and every fresh instrument finds a fresh crop on its first pass.' Today a second lane (@ariellas-glpnet) independently measured that 0 of 22 projects promoted this warning class on develop, which corroborates the saturation reading rather than the cleanliness reading.",
+      "Cost evidence for a third instrument: promoting the class across all 14 non-test projects took ~40 minutes this session and produced 15/15 clean builds, 1324/1324 green tests, and a proven positive control."
+    ],
+    "impact_if_unanswered": "Era 102 stays open indefinitely. The roadmap slot stays held, the marathon run stays at seq 18 with four parked items, and no further era can be allocated to this lane.",
+    "options": [
+      {
+        "key": "third-instrument",
+        "label": "Run ONE more instrument of a different kind, then ship",
+        "consequence": "Runs mutation testing and/or .NET analyzers on the era-102 surface only. Directly tests the saturation hypothesis instead of assuming it. Costs roughly half a day; era 102 ships today or tomorrow either way.",
+        "size": "mini",
+        "reversibility": "reversible"
+      },
+      {
+        "key": "ship-on-class-bar",
+        "label": "Ship now on the class bar as already ruled",
+        "consequence": "Q-GLPNETG29-01 is satisfied on its own terms, so era 102 closes today and the slot frees immediately. Accepts that the ship decision rests on one pass of a brand-new instrument, which is the weakest evidence of cleanliness available.",
+        "size": "nano",
+        "reversibility": "reversible"
+      },
+      {
+        "key": "more-codexreview",
+        "label": "Run codexreview round 17 and keep going until a round is clean",
+        "consequence": "Continues the instrument that fifteen rounds of evidence say does not terminate; rounds 13-16 found only edge cases and my own over-corrections, so expected yield is low and expected new-defect injection is not zero.",
+        "size": "midi",
+        "reversibility": "reversible"
+      },
+      {
+        "key": "saturation-standard",
+        "label": "Codify a fleet ship bar of two independent instruments, then ship",
+        "consequence": "Makes the finding durable for every lane rather than only unblocking me, but raises the bar for every era in flight fleet-wide and forecloses shipping era 102 on the single-instrument evidence that ruling Q-GLPNETG29-01 currently permits.",
+        "size": "midi",
+        "reversibility": "one-way"
+      }
+    ],
+    "recommendation": {
+      "option": "third-instrument",
+      "because": "It beats ship-on-class-bar because it converts an assumption into a measurement for about half a day, and it beats more-codexreview because fifteen rounds are strong evidence that the exhausted instrument will not converge. If the third instrument finds nothing, that is real evidence of cleanliness; if it finds a crop, we learn the saturation reading is right before shipping rather than after."
+    },
+    "decision": {
+      "option": "third-instrument",
+      "date": "2026-09-05",
+      "rationale": "Engineer took the recommendation: a pass from a newly-introduced instrument is the weakest evidence of cleanliness, so run ONE more instrument of a different kind (mutation testing / analyzers) over the era-102 surface and ship on its result. This tests the saturation hypothesis rather than assuming it."
+    }
+  },
+  {
+    "qid": "Q-GLPNETG30-02",
+    "header": "Vote ident",
+    "block": "Whether the fleet currently has an elected term-1 leader depends on which of two disagreeing identity fields in one vote record is authoritative, and that is not a lane's call.",
+    "origin": "contradiction",
+    "severity": "critical",
+    "background": [
+      "I read all 17 records in D:/coop/ynet/oplog directly. Term 1 has six vote records. Candidate 1b23876b (shiras.yngraw's pinned id) now holds THREE votes; the P0 at 08:08Z states the quorum is 3 and that the best candidate had only 2.",
+      "The third vote landed at 2026-09-05T08:21:50Z, thirteen minutes AFTER that P0 was written, from GAVRIELLA's pinned id 88cb0251 - my own host. So the quorum may have closed unnoticed.",
+      "One of the three votes is malformed. Record 6f5ee98b @ 01:11:50Z has actor = node_id = 6f5ee98b, an id that appears in NO hello record anywhere in the oplog, while its inner voter field is 4b0d1757 (Olamnit's pinned id) and its voter_spki IS correctly bound to the key Olamnit published. The record is not a forgery; it carries two identity fields that disagree.",
+      "The admission path verifies with expect_node_id=op.get('actor') per the P0's own code quotation. So anything keying on actor sees a node never admitted and the tally is 2 (NO_LEADER); anything keying on voter sees Olamnit and the tally is 3 (leader seated). Same records, two different electorates.",
+      "Of the three votes, one is the candidate voting for itself (1b23876b for 1b23876b), one is the malformed record above, and only one (mine) is both well-formed and independent of the candidate. Standing correction C-2 already holds that no valid election has ever occurred.",
+      "Vote records carry no host and no lane field at all - all six omit both - so no vote can be attributed to a lane, and intra-host equivocation is undetectable by construction."
+    ],
+    "impact_if_unanswered": "A fleetwide leader may already be seated, or may not be, and no lane can tell which. Every lane that obeys or ignores that leader is acting on a guess, and the directive's requirement to maintain an effective fleetwide leader cannot be evaluated.",
+    "options": [
+      {
+        "key": "void-and-refix",
+        "label": "Void term 1; fix the vote schema, then re-run",
+        "consequence": "Adds mandatory host and lane fields to vote records and requires actor == voter, then opens term 2 on a schema where equivocation is detectable. No leader until then, which is the status quo the fleet has operated under all along.",
+        "size": "mini",
+        "reversibility": "reversible"
+      },
+      {
+        "key": "actor-authoritative",
+        "label": "actor is authoritative; the malformed vote is inadmissible",
+        "consequence": "Tally falls to 2 of 4, term 1 stays NO_LEADER, and the fleet keeps operating with no leader. Matches what the admission code actually verifies today, so it needs no code change.",
+        "size": "nano",
+        "reversibility": "reversible"
+      },
+      {
+        "key": "voter-authoritative",
+        "label": "voter is authoritative; the quorum is closed and 1b23876b leads",
+        "consequence": "Seats a fleetwide leader immediately on a quorum containing the candidate's own self-vote and one record whose actor was never admitted. Forecloses re-running term 1 cleanly, because a seated leader with a monotone term is not retractable without a fleet-wide term reset.",
+        "size": "nano",
+        "reversibility": "one-way"
+      }
+    ],
+    "recommendation": {
+      "option": "void-and-refix",
+      "because": "It beats voter-authoritative because seating a leader the whole fleet must obey on a quorum of one self-vote plus one unattributable actor is precisely the failure C-2 was written to prevent, and that seating is one-way. It beats actor-authoritative because that merely restates today's deadlock without removing the defect that produced it: the missing host and lane fields make the next term exactly as unauditable as this one."
+    },
+    "decision": {
+      "option": "void-and-refix",
+      "date": "2026-09-05",
+      "rationale": "Engineer took the recommendation: term 1 is VOID. A quorum containing the candidate's own self-vote plus one record whose actor never published a hello does not seat a leader. Vote records must carry host and lane and must satisfy actor==voter before any term counts."
+    }
+  },
+  {
+    "qid": "Q-GLPNETG30-03",
+    "header": "Elect-hold",
+    "block": "Today's directive makes holding PBFT elections a must-have with automatic failure, while a ruling issued this morning holds all election work and forbids campaigning, and I cannot obey both.",
+    "origin": "contradiction",
+    "severity": "high",
+    "background": [
+      "Today's directive states: 'AUTOMATIC failure for today includes failure to hold regular YNET PBFT elections and maintain an effective fleetwide leader and maintain a hostwide leader for each host', and separately instructs electing a coordinating leader lane using PAXOS/RAFT/ZAB/PBFT 'prototyped collaboratively'.",
+      "Ruling Q-gsbk14-01 (gavriella.buildkit, 2026-09-05T06:25Z, quoted verbatim in ariellas's 08:15Z sweep): 'The prototyping half of WP-05 is HELD. No lane builds an election and no lane campaigns. The period is spent on WP-02.' WP-02 is the QUIC listener, which is era 102 - this lane's current era.",
+      "Ruling Q-YNGH-01 forbids campaigning outright; three lanes have already retracted campaign instructions, and six declared elections have stood down.",
+      "A live P0 from @shiras-qhstate at 08:08Z today shows the fleet's #1 owed remediation (re-signing under sigv=2) is the direct cause of the fleet's #1 blocker: it promotes a second identity past the verification gate, trips the one-identity-per-host rule and refuses BOTH of a host's identities, removing that host from the electorate.",
+      "So the three things point in three directions: the directive says elect now, the ruling says hold and build the listener, and the P0 says the standard remediation can disenfranchise a host. Building a seventh rival election today would satisfy the directive's letter while violating two standing rulings."
+    ],
+    "impact_if_unanswered": "I default to the standing rulings and spend the period on era 102, which risks being scored as an automatic failure under today's directive. Or I build an election and violate two rulings. Either way one instruction is broken and the choice is currently mine, which it should not be.",
+    "options": [
+      {
+        "key": "fix-electorate",
+        "label": "Rulings govern; satisfy the directive by repairing the electorate, not by electing",
+        "consequence": "No lane builds a seventh election and no lane campaigns. The election goal is pursued by fixing what makes elections invalid - the vote schema of Q-GLPNETG30-02, the roster dedupe, the shared per-host keys - so the NEXT election is the first valid one. Era 102 continues as WP-02.",
+        "size": "mini",
+        "reversibility": "reversible"
+      },
+      {
+        "key": "directive-overrides",
+        "label": "The directive overrides; lift the hold and elect today",
+        "consequence": "Lifts Q-gsbk14-01 and Q-YNGH-01 fleet-wide and instructs lanes to campaign and vote today. Seats a leader on the current broken schema, and forecloses the clean first election because term numbers are monotone and a seated term cannot be un-seated without a fleet-wide reset.",
+        "size": "midi",
+        "reversibility": "one-way"
+      },
+      {
+        "key": "broker-only",
+        "label": "Only yng-broker/yng-guardian may elect; all other lanes hold",
+        "consequence": "Follows the directive's own designation of yng-broker/yng-guardian as the PBFT elector for all purposes, and keeps every other lane on the hold. Requires those daemons to actually hold a listening socket, which peers have measured they currently do not on any host.",
+        "size": "mini",
+        "reversibility": "reversible"
+      }
+    ],
+    "recommendation": {
+      "option": "fix-electorate",
+      "because": "It beats directive-overrides because seating a leader today on a schema where votes carry no lane, one voter has no hello and re-signing can disenfranchise a host would produce exactly the invalid election C-2 records six times over, and that step is one-way. It beats broker-only as a first move because both broker and guardian have been measured on multiple hosts to hold zero listening sockets, so designating them today changes nothing until the wiring exists - which is itself WP-02 work."
+    },
+    "decision": {
+      "option": "directive-overrides",
+      "date": "2026-09-05",
+      "rationale": "Engineer OVERRODE my recommendation (fix-electorate). The directive governs: the holds in Q-gsbk14-01 and Q-YNGH-01 are lifted and an election runs today. Read together with the Q-GLPNETG30-02 ruling, the coherent reading is: term 1 is void, the vote schema is fixed first, and the election runs TODAY under the fixed schema - not that a leader is seated on the broken one. Flagged to the engineer for correction if a different reading was meant."
+    }
+  },
+  {
+    "qid": "Q-GLPNETG30-04",
+    "header": "SC-001",
+    "block": "Era 102's last unmeasured acceptance criterion needs one elevated firewall command that this session cannot run.",
+    "origin": "missing-requirement",
+    "severity": "high",
+    "background": [
+      "SC-001 requires a QUIC dial between two PHYSICAL hosts. It has been parked as a marathon backlog item on the stated grounds that no second physical host was standing up a listener.",
+      "That ground no longer holds. @ariellas-glpnet reported at 08:15Z today, with timestamps, that the listener binds on ARIELLAS (192.168.0.142) at 0.0.0.0:47890, that its pin survives process restart (5 processes to 1 pin), and that node_id and spki are published beside the pin. Both lanes converged on one implementation in glp_link.",
+      "Wave-27 measured that all four hosts are routable IPv4 neighbours on one flat /24, so no NAT or routing problem stands between them. Note that I: on this host is an SMB loopback of its own D:, so drive-letter peer enumeration double-counts GAVRIELLA - the second host must be ARIELLAS or OLAMNIT by IPv4 literal.",
+      "The single remaining blocker on BOTH hosts is identical and non-technical: New-NetFirewallRule requires elevation, and neither lane's session is elevated. Ariellas measured Access is denied at 08:00Z; the same is true here. Until the rule exists every inbound QUIC datagram is dropped and SC-001 is unmeasurable by construction, not merely unmeasured.",
+      "Ruling Q-GLPNETG29-02 already permits era 102 to close with SC-001 recorded as NAMED UNMEASURED, so this is not a hard blocker on shipping - it is a choice between a measured criterion and a named gap."
+    ],
+    "impact_if_unanswered": "Era 102 ships with its headline acceptance criterion never once exercised across two real hosts, and the first true cross-host QUIC measurement is deferred to a later era that will have to re-establish all of this context.",
+    "options": [
+      {
+        "key": "elevate-now",
+        "label": "Run the elevated firewall rule on both hosts, then measure SC-001",
+        "consequence": "One elevated command per host opens UDP 47890 inbound; the dial transcript is then publishable to COOP today and SC-001 ships MEASURED rather than named. Requires the engineer to run it, since no lane session is elevated.",
+        "size": "nano",
+        "reversibility": "reversible"
+      },
+      {
+        "key": "ship-unmeasured",
+        "label": "Ship era 102 with SC-001 NAMED UNMEASURED",
+        "consequence": "Permitted by ruling Q-GLPNETG29-02 and closes the era today with no engineer action at all. The transport ships without ever having carried a packet between two physical machines.",
+        "size": "nano",
+        "reversibility": "reversible"
+      },
+      {
+        "key": "loopback-substitute",
+        "label": "Accept a loopback or same-host measurement as satisfying SC-001",
+        "consequence": "Removes the blocker immediately with no elevation, but forecloses SC-001 as a two-host criterion permanently: once recorded as met, no later era re-tests it, and the loopback path provably does not exercise the firewall, NIC or real network the criterion exists to cover.",
+        "size": "nano",
+        "reversibility": "one-way"
+      }
+    ],
+    "recommendation": {
+      "option": "elevate-now",
+      "because": "It beats ship-unmeasured because the cost is a single elevated command against a criterion that has blocked this era for multiple waves, and a second host is already standing a listener today - the window is open now and may not be next wave. It beats loopback-substitute decisively because a loopback cannot exercise the firewall, NIC or network path that SC-001 exists to prove, and recording it as met would permanently retire the only criterion that would ever catch that."
+    },
+    "decision": {
+      "option": "elevate-now",
+      "date": "2026-09-05",
+      "rationale": "Engineer took the recommendation and will run the elevated firewall rule. SC-001 ships MEASURED: ariellas already stands a listener on a second physical host, so one elevated command per host is the whole remaining gap."
+    }
+  }
+]

@@ -9,6 +9,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <AssemblyName>glp_quic_probe</AssemblyName>
     <RootNamespace>GlpQuicProbe</RootNamespace>
+    <WarningsAsErrors>$(WarningsAsErrors);CS0649;CS0169</WarningsAsErrors>
     <!-- Reuse the shipped transport rather than re-implementing a listener. The point of this
          probe is to prove THE PRODUCTION PATH binds, not that some other listener can. -->
   </PropertyGroup>

@@ -1,0 +1,48 @@
+{
+  "qid": "Q-GLPNETG29-02",
+  "utc": "2026-09-05T00:12:00Z",
+  "host": "GAVRIELLA",
+  "lane": "glpnet",
+  "feature": "102-quic-federation-transport",
+  "block": "SC-001 requires a claim visible on a second PHYSICAL host, which this lane cannot schedule.",
+  "background": [
+    "FR-022 disqualifies a same-machine crossing, and I: is an SMB loopback of this host's own D:, so the obvious second endpoint is this host wearing another name.",
+    "The acceptance test now waits for the peer to ACK that it folded the claim; before that it timed a local append and a socket write, which is achievable with the peer switched off.",
+    "Measuring it needs one peer to bind UDP/47890 and publish node_id + spki, plus an elevated inbound firewall rule on this host that the session cannot self-elevate."
+  ],
+  "impact_if_unanswered": "Era 102 cannot close, or closes with SC-001 falsely reported green.",
+  "options": [
+    {
+      "key": "close-unmeasured",
+      "label": "Close with SC-001 named UNMEASURED",
+      "consequence": "Era closes honestly; the criterion stays a named follow-up rather than a false green.",
+      "size": "micro",
+      "reversibility": "reversible"
+    },
+    {
+      "key": "measure-now",
+      "label": "Elevate and measure this session",
+      "consequence": "Needs the engineer's keyboard and a cooperating peer lane.",
+      "size": "midi",
+      "reversibility": "reversible"
+    },
+    {
+      "key": "block",
+      "label": "Block the era until SC-001 is green",
+      "consequence": "Converts a named follow-up into an open-ended block on another host's availability.",
+      "size": "maxi",
+      "reversibility": "reversible"
+    }
+  ],
+  "recommendation": {
+    "option": "close-unmeasured",
+    "because": "Ruling Q-GLPNETG28-02 already anticipated exactly this, and a named unmeasured criterion is honest where a green one would not be."
+  },
+  "decision": {
+    "option": "close-unmeasured",
+    "rationale": "Engineer ruled: close era 102 with SC-001 explicitly named UNMEASURED, carrying the exact step that would measure it.",
+    "date": "2026-09-05"
+  },
+  "severity": "high",
+  "origin": "missing-requirement"
+}
