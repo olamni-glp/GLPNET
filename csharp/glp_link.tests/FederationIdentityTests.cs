@@ -255,6 +255,48 @@ public sealed class FederationIdentityTests : IDisposable
     }
 
     /// <summary>
+    /// THE NEGATIVE CONTROL for the second-minter defect, written to FAIL against the previous
+    /// design. One round is not evidence about a race: the old code passed this test's shape most
+    /// of the time and split the identity only when a caller's keypair generation happened to
+    /// straddle the winner's claim release. So this runs MANY independent first-starts, each on a
+    /// virgin keystore, and fails if ANY round produces more than one pin or more than one minter.
+    ///
+    /// The defect it pins: the claim was taken AFTER keypair generation and released as soon as the
+    /// winner published, so a caller that had already observed "no pfx" could acquire a FRESH,
+    /// perfectly valid claim afterwards and mint a SECOND identity over the published one — with
+    /// Created: true, believing itself the host's minter. `Created` is asserted as well as `Pin`,
+    /// because a second minter that happens to be clobbered still hands its own pin to its caller.
+    /// </summary>
+    [Fact]
+    public void ConcurrentFirstStart_ConvergesOnOneIdentity_AcrossManyIndependentRounds()
+    {
+        // Sized DELIBERATELY, not by taste. At 24x12 this test reliably caught the defect but its
+        // own CPU cost pushed two unrelated, wall-clock-budgeted ingress tests over their thresholds
+        // when the whole suite ran — a regression test that destabilises its neighbours is a bad
+        // test even when it is right. 10x8 was re-verified to still FAIL against the pre-fix design
+        // (see the negative-control note above) while leaving the suite green.
+        const int rounds = 10;
+        const int startersPerRound = 8;
+
+        for (var round = 0; round < rounds; round++)
+        {
+            var roundDir = Path.Combine(_dir, "round-" + round);
+            var results = new FederationIdentity[startersPerRound];
+
+            Parallel.For(0, startersPerRound,
+                i => results[i] = FederationIdentity.LoadOrCreate("host-a", roundDir));
+
+            Assert.Single(results.Select(r => r.Pin).Distinct());
+            Assert.Equal(1, results.Count(r => r.Created));
+
+            // And the identity every caller was handed must be the one actually on disk — a
+            // second minter that lost the clobber still returned a pin no peer could verify.
+            var onDisk = File.ReadAllText(Path.Combine(roundDir, "host-a.fingerprint")).Trim();
+            Assert.Equal(results[0].Pin, onDisk);
+        }
+    }
+
+    /// <summary>
     /// What a RESTART actually is, from the keystore's point of view: nothing in memory, only the
     /// bytes on disk. Loading straight from the files must reproduce the same pin — this is the
     /// in-process proxy for the cross-process evidence (five probe processes, one pin).
