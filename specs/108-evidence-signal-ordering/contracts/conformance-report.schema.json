@@ -1,0 +1,155 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Evidence-signal conformance report (feature 108, FR-014/019/020)",
+  "type": "object",
+  "required": [
+    "generated_utc",
+    "manifest_sha256",
+    "surfaces",
+    "scan_only",
+    "manifest_only",
+    "regions_examined",
+    "regions_unexamined",
+    "totals",
+    "receipt_path"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "generated_utc": {
+      "type": "string"
+    },
+    "manifest_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "surfaces": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "classification",
+          "failed_frs",
+          "consumers",
+          "evidence"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "classification": {
+            "enum": [
+              "conforming",
+              "non-conforming",
+              "unproven"
+            ]
+          },
+          "failed_frs": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "consumers": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "evidence": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      }
+    },
+    "scan_only": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "path",
+          "line",
+          "symbol",
+          "kind"
+        ],
+        "properties": {
+          "path": {
+            "type": "string"
+          },
+          "line": {
+            "type": "integer"
+          },
+          "symbol": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "manifest_only": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "regions_examined": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "regions_unexamined": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "path",
+          "reason"
+        ],
+        "properties": {
+          "path": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "totals": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "conforming",
+        "non_conforming",
+        "unproven",
+        "errors"
+      ],
+      "properties": {
+        "conforming": {
+          "type": "integer"
+        },
+        "non_conforming": {
+          "type": "integer"
+        },
+        "unproven": {
+          "type": "integer"
+        },
+        "errors": {
+          "type": "integer"
+        }
+      }
+    },
+    "receipt_path": {
+      "type": "string"
+    }
+  }
+}

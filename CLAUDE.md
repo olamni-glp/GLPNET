@@ -635,5 +635,5 @@ See `docs/grassroots-testing-framework.md`. Theater-style: agents (from the GLP 
 <!-- BUILDKIT START -->
 For additional context about technologies to be used, project structure,
 shell commands, and other important information, read the current plan:
-`specs/102-quic-federation-transport/plan.md`
+`specs/108-evidence-signal-ordering/plan.md`
 <!-- BUILDKIT END -->

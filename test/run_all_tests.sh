@@ -2429,6 +2429,17 @@ set +e
 SBREPL_BIN="$SCRIPT_DIR/../out/csharp/glp_repl/bin/Debug/${GLPREPL_TFM}/glp_repl.exe"
 if [ "$GLPREPL_STALE" -eq 1 ] && [ -f "$SBREPL_BIN" ]; then
     unsearchable "Section T (064 service-box drills)" "$GLPREPL_STALE_WHY"
+elif [ ! -f "$SCRIPT_DIR/../glpquick-cert/glpquick.pfx" ]; then
+    # The drills REQUIRE QUIC trust material, and this section's own header says so. Absent it
+    # they exit non-zero and were recorded as a FAIL -- a red that means "the prerequisite is
+    # missing" while reading as "the drill found a defect". A missing prerequisite is a NOT-RUN,
+    # and this suite already has a class for that. On OLAMNIT `glpquick-cert/` holds only
+    # `glpquick.macaroon.key`; the .pfx is a tracked-private-key item that has never been here.
+    #
+    # This was invisible until 2026-09-06: the stale-binary gate had been suppressing Section T
+    # entirely, so the two FAILs only appeared once a rebuild let the section run at all. An
+    # unmeasured criterion goes stale exactly like an unmeasured note (feature 108).
+    unsearchable "Section T (064 service-box drills)" "QUIC trust material glpquick-cert/glpquick.pfx is ABSENT on this host — the drills require it and exit non-zero without it; that is a missing prerequisite, not a drill failure. Standalone gates: test/service_box/resume_drill.sh + test/service_box/history_drill.sh"
 elif [ -f "$SBREPL_BIN" ]; then
     output=$(bash "$SCRIPT_DIR/service_box/resume_drill.sh" 2>&1)
     check "T-1: US1 resume drill (auto-arm, diagnostics, SC-005 transcript)" "resume drill: PASS=7 FAIL=0" "$output"
@@ -2697,19 +2708,60 @@ echo ""
 section "W" "Fleet-tooling positive controls"
 echo ""
 set +e
-PY_BIN=${PY_BIN:-$(command -v python3 || command -v python)}
+# RESOLVE A PYTHON THAT ACTUALLY RUNS -- existence is not capability.
+#
+# `command -v python3` succeeds on this host and returns the Windows Store STUB
+# under WindowsApps, which is not Python: it prints "Python was not found" and
+# exits 49. Six Section W checks failed that way on 2026-09-06 and read as
+# content mismatches rather than as a missing interpreter, because the suite
+# had asked "does a path exist" instead of "does it work". That conflation is
+# feature 108's class, committed by this suite. So: probe every candidate by
+# RUNNING it, and take the first that answers.
+resolve_python() {
+    for cand in "$SCRIPT_DIR/../codeconv/.venv/Scripts/python.exe" \
+                "$(command -v python3 2>/dev/null)" \
+                "$(command -v python 2>/dev/null)" \
+                "$(command -v py 2>/dev/null)"; do
+        [ -n "$cand" ] || continue
+        if out=$("$cand" -c 'print("PYOK")' 2>/dev/null) && [ "$out" = "PYOK" ]; then
+            printf '%s' "$cand"
+            return 0
+        fi
+    done
+    return 1
+}
+PY_BIN=${PY_BIN:-$(resolve_python)}
 if [ -z "$PY_BIN" ]; then
     skip "Section W (fleet-tooling positive controls)" "no python interpreter on PATH"
 else
-    w1=$(PYTHONUTF8=1 "$PY_BIN" "$SCRIPT_DIR/../scripts/ynet_vote_audit.py" --self-test 2>&1)
-    w1rc=$?
-    check "W-1: ynet_vote_audit self-test — every conformance check can FIRE" "self-test: PASS" "$w1"
-    if [ $w1rc -eq 0 ]; then
-        echo "  PASS: W-2: ynet_vote_audit self-test exits 0 when its own controls hold"
-        PASS=$((PASS + 1))
+    # The vote audit REQUIRES `cryptography` and refuses (exit 2) rather than reporting an
+    # unverified tally. That refusal is correct behaviour, and recording it as a FAIL is its own
+    # falsehood: it makes a red mean "the controls did not fire" when the truth is "the check
+    # could not run". So pick an interpreter that HAS the dependency, and when none does, record
+    # a loud NOT-RUN with the reason -- which is what this suite's UNSEARCHABLE class is for.
+    VOTE_PY="$PY_BIN"
+    if ! PYTHONUTF8=1 "$VOTE_PY" -c 'import cryptography' >/dev/null 2>&1; then
+        for cand in "/d/bstdev/research/buildkit/.venv313/Scripts/python.exe" \
+                    "$(command -v python 2>/dev/null)"; do
+            [ -n "$cand" ] && [ -x "$cand" ] || continue
+            if PYTHONUTF8=1 "$cand" -c 'import cryptography' >/dev/null 2>&1; then
+                VOTE_PY="$cand"; break
+            fi
+        done
+    fi
+    if ! PYTHONUTF8=1 "$VOTE_PY" -c 'import cryptography' >/dev/null 2>&1; then
+        skip "W-1/W-2 (ynet_vote_audit self-test)" "no interpreter on this host has the 'cryptography' package the audit REQUIRES; the tool refuses rather than reporting an unverified tally, and an honest refusal is a NOT-RUN, never a FAIL"
     else
-        echo "  FAIL: W-2: ynet_vote_audit self-test exited $w1rc"
-        FAIL=$((FAIL + 1))
+        w1=$(PYTHONUTF8=1 "$VOTE_PY" "$SCRIPT_DIR/../scripts/ynet_vote_audit.py" --self-test 2>&1)
+        w1rc=$?
+        check "W-1: ynet_vote_audit self-test — every conformance check can FIRE" "self-test: PASS" "$w1"
+        if [ $w1rc -eq 0 ]; then
+            echo "  PASS: W-2: ynet_vote_audit self-test exits 0 when its own controls hold"
+            PASS=$((PASS + 1))
+        else
+            echo "  FAIL: W-2: ynet_vote_audit self-test exited $w1rc"
+            FAIL=$((FAIL + 1))
+        fi
     fi
 
     # W-3: the fan-out must REFUSE a destination that already exists. Proven by
@@ -2801,6 +2853,55 @@ set -e
 echo ""
 
 # =============================================================================
+# Section X: Evidence-signal ordering (feature 108)
+# =============================================================================
+# The complement of 078. 078 governs signals that state a VERDICT; this governs
+# signals that state none but are read as evidence anyway -- a wait returning, an
+# idle predicate, a liveness flag, an exit status, an emptiness.
+#
+# X-1/X-2 pin the CONTROLS, not the findings, for the same reason Section W does:
+# of the eight instances measured across the fleet on 2026-09-05/06, ZERO would
+# have been caught by a check that ran but had never been shown capable of
+# failing. The harness's negative controls are therefore the thing under test.
+#
+# X-3 runs the audit itself. It is EXPECTED to exit 1 while unproven surfaces
+# remain -- that is the honest state, not a failure of the suite -- so the check
+# is that it produced a report and that the report's own totals agree with the
+# exit code it returned. An audit that exited 0 while reporting a problem would
+# be measured instance 4, committed by the tool built to catch it.
+section "X" "Evidence-signal ordering (feature 108)"
+echo ""
+set +e
+PY_BIN=${PY_BIN:-$(resolve_python)}
+if [ -z "$PY_BIN" ]; then
+    skip "Section X (evidence-signal ordering)" "no python interpreter on PATH"
+else
+    x1=$(cd "$SCRIPT_DIR/.." && PYTHONUTF8=1 "$PY_BIN" -m pytest scripts/tests/ -q 2>&1 | tail -3)
+    check "X-1: conformance harness + audit tests all pass" "passed" "$x1"
+    check_not "X-2: no test in the harness failed" "failed" "$x1"
+
+    xrep="$SCRIPT_DIR/../.specify/evidence-signals/report.json"
+    rm -f "$xrep"
+    (cd "$SCRIPT_DIR/.." && PYTHONUTF8=1 "$PY_BIN" scripts/evidence_signal_audit.py >/dev/null 2>&1)
+    xrc=$?
+    if [ -f "$xrep" ]; then
+        echo "  PASS: X-3: the audit produced a report"
+        PASS=$((PASS + 1))
+    else
+        echo "  FAIL: X-3: the audit produced NO report (exit $xrc)"
+        FAIL=$((FAIL + 1))
+    fi
+    # X-4 is the one that matters: exit code and report content must agree.
+    xagree=$(cd "$SCRIPT_DIR/.." && PYTHONUTF8=1 "$PY_BIN" -c "
+import json,sys
+t=json.load(open('.specify/evidence-signals/report.json'))['totals']
+problem = t['errors'] or t['non_conforming'] or t['unproven']
+rc = int(sys.argv[1])
+print('AGREE' if (problem and rc != 0) or (not problem and rc == 0) else 'DISAGREE')
+" "$xrc" 2>&1)
+    check "X-4: the audit never exits 0 while reporting a problem" "AGREE" "$xagree"
+fi
+# =============================================================================
 # SUMMARY
 # =============================================================================
 TOTAL=$((PASS + FAIL))
@@ -2808,6 +2909,8 @@ NOTRUN=$((SKIP + UNSEARCHABLE))
 
 echo "======================================"
 echo "Total: $TOTAL | Passed: $PASS | Failed: $FAIL | Skipped: $SKIP | Unsearchable: $UNSEARCHABLE"
+echo ""
+
 echo "======================================"
 
 # 078 FR: never let a not-run check be read as a passing one. The counts above are of checks that
