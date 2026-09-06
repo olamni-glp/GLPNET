@@ -627,6 +627,29 @@
       "owner": "olamnit-glpnet",
       "disposition": "declared-unproven",
       "notes": "FOUND BY FEATURE 109's NEW $LASTEXITCODE PATTERN, and it is not a trivial find: the launcher decides whether the M6 receiver is healthy from `doctor`'s exit status alone, and the comment two lines above it cites measured instance 2 -- the conflation of 'running' with 'listening'. FR-008 says an exit status alone MUST NOT be sufficient to classify an outcome as RAN-AND-COMPLETE. Declared unproven rather than quietly fixed: the fix belongs to the launcher's own change, and inventing a conformance check for it inside this feature would be exactly the placeholder coverage Q-olg17-03 forbids."
+    },
+    {
+      "id": "differential-gate-normalise-worker-exit-status",
+      "path": "scripts/differential_gate.py",
+      "symbol": "apply_rules_guarded",
+      "kind": "exit-status",
+      "consumers": [
+        "scripts/differential_gate.py::_compare",
+        "test/run_all_tests.sh (Section Y)"
+      ],
+      "governed_by": [
+        "FR-007"
+      ],
+      "conformance_check": "scripts/tests/test_differential_gate.py::test_a_failing_normalisation_worker_is_NOT_MEASURED_naming_the_failure",
+      "negative_control": "scripts/tests/test_differential_gate.py::test_control_a_succeeding_normalisation_worker_returns_the_normalised_text",
+      "iterations": null,
+      "contention": null,
+      "rationale": null,
+      "disclosed_to": null,
+      "sites": 1,
+      "owner": "olamnit-glpnet",
+      "disposition": "owned",
+      "notes": "Introduced by feature 109's OWN codexreview remediation: real-transcript normalisation runs in a child process so a catastrophic declared regex can be KILLED rather than merely timed out around, and the child's exit status is then a decision. The audit found this site undeclared and REFUSED, which is the gate binding on the auditor's own code -- the opposite of the self-exemption that is measured instance 2. The check asserts a FAILING worker becomes NOT-MEASURED naming the failure (never a silent 'nothing changed'), and the control asserts a succeeding worker still returns the normalised text, so a harness that always cried failure would not pass both."
     }
   ],
   "sites_note": "`sites` declares how many scan hits of a (path, kind) an entry covers. Without it, one entry silenced every other hit of that kind in the file and the denominator shrank when you looked at it (adversarial review, 2026-09-06). The number is declared so widening coverage is visible."

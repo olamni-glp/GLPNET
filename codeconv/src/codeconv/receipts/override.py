@@ -18,7 +18,7 @@ re-export. Its public names, signatures and semantics are UNCHANGED, and feature
 tests are the regression proof of the move — 078 is not re-opened semantically (``Q-olg15-09``).
 
 Do not re-implement anything here. A copy would be the second mechanism FR-006b exists to
-prevent, and ``scripts/tests/test_adoption_gate_single_impl.py`` asserts these are the SAME
+prevent, and ``scripts/tests/test_evidence_signal_audit.py::test_fr013_the_adoption_and_override_rules_have_exactly_ONE_implementation`` asserts these are the SAME
 function objects, so a copy fails the suite rather than drifting silently.
 """
 

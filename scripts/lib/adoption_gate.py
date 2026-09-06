@@ -55,6 +55,16 @@ ADOPTION_STATES = ("adopted", "non-adopted")
 
 ADOPTION_MANIFEST_REL = os.path.join(".specify", "receipts", "adoption.json")
 
+# WHERE RECORDED OVERRIDES LIVE. Feature 109 shipped `record()` and `applies()` with no store and
+# no reader, so a refusal could never actually be cleared by an override in the running tool --
+# only in tests that constructed one in-process. That is exactly the "simulator in the test
+# harness, not enforcement in the tool" shape the feature exists to remove, so the path belongs
+# HERE, beside the rules, and not in whichever consumer happens to need it first.
+#
+# The file is OPTIONAL. Its absence means "no overrides recorded", which is the healthy state; it
+# is never an error, because making the healthy state an error is how a gate gets switched off.
+OVERRIDES_REL = os.path.join(".specify", "receipts", "overrides.json")
+
 
 class MissingDeclaration(Exception):
     """An area is absent from the adoption manifest -- an error, never a pass (FR-020)."""
@@ -158,21 +168,46 @@ class Override:
 
 
 def record(*, area: str, check: str, reason: str, briefing: str, rationale: str,
-           acknowledged: bool, expiry: str) -> Override:
+           acknowledged: bool, expiry: str, now: datetime | None = None) -> Override:
     """Record an engineer override; reject an incomplete one (FR-012, SC-006).
 
     Rejection happens HERE, at the point of recording -- not at the point of reliance. An
     override with no expiry that is only rejected when someone tries to use it has already
     been written down and believed.
+
+    ``now`` MIRRORS ``applies()``, and is here for the same reason it is there: a caller with a
+    pinned clock (a test, a replay of a recorded decision) must be able to ask the question as of
+    that clock rather than as of wall time. Defaulting to wall time keeps every existing caller's
+    behaviour, which is what makes the completeness check below an EXTENSION of 078 rather than a
+    re-opening of it (109 FR-024).
     """
     if not acknowledged:
         raise OverrideInvalid("an override requires explicit acknowledgement (FR-012)")
+    if not str(briefing).strip():
+        raise OverrideInvalid(
+            "an override requires a briefing -- informed consent needs the information (FR-012)")
     if not rationale.strip():
         raise OverrideInvalid(
             "an override requires a rationale -- no silent suppressions (SC-006)")
     if not expiry.strip():
         raise OverrideInvalid(
             "an override requires a mandatory expiry -- no indefinite override (FR-012)")
+    # ...and the expiry has to BE an expiry. Accepting any non-blank string meant `expires_on:
+    # "soon"` was recorded successfully and then silently inert at `applies()`, so an engineer
+    # was told the override was recorded and discovered at the next refusal that it never
+    # applied. That is validation at RELIANCE, which is what the paragraph above forbids.
+    try:
+        _exp = datetime.fromisoformat(expiry.strip())
+    except ValueError:
+        raise OverrideInvalid(
+            f"expiry {expiry!r} is not an ISO-8601 timestamp -- an unparseable expiry is inert, "
+            "and an inert override is a suppression nobody can audit (FR-012)")
+    if _exp.tzinfo is None:
+        _exp = _exp.replace(tzinfo=timezone.utc)
+    if _exp <= (now or datetime.now(timezone.utc)):
+        raise OverrideInvalid(
+            f"expiry {expiry!r} is in the past -- an override that has already expired cannot be "
+            "recorded, for the same reason one with no expiry cannot (FR-012)")
     return Override(
         briefing=briefing, acknowledged=acknowledged, rationale=rationale,
         scope=Scope(area=area, check=check, reason=reason), expiry=expiry,

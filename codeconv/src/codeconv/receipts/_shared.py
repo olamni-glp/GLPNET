@@ -11,7 +11,7 @@ the reaching. Engineer ruling ``Q-olg17-02`` (2026-09-06): extract a stdlib-only
 consume, rather than let feature 109 write a second copy of the rules (feature 108 FR-006b) or
 make the audit unable to run without a venv (feature 108 FR-014).
 
-FR-013 is proven, not asserted: ``scripts/tests/test_adoption_gate_single_impl.py`` requires the
+FR-013 is proven, not asserted: ``scripts/tests/test_evidence_signal_audit.py::test_fr013_the_adoption_and_override_rules_have_exactly_ONE_implementation`` requires the
 function objects reached through both paths to be **identical**. A second implementation cannot
 be introduced without failing it.
 """

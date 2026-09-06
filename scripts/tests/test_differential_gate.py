@@ -32,20 +32,28 @@ REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.realpath(__file__
 # Builders. A criterion is verbose by design (every normalisation must declare a rationale and a
 # control), so these keep the tests about the property under test.
 # ---------------------------------------------------------------------------
-def _emitter(text: str) -> dict:
-    """A participant that prints `text` and exits 0."""
+_NO_FRESHNESS = {"declared": "none", "why": "a synthetic test participant cannot be stale"}
+
+
+def _named(name: str, text: str, *, code: int = 0) -> dict:
+    """A participant that prints `text` and exits `code`.
+
+    The participant's NAME is embedded in the command so that two participants emitting identical
+    output are still two distinct commands. `load()` refuses two participants that resolve to the
+    same (command, cwd) — two labels on one runtime is not a differential — and a test fixture
+    that tripped that check would be testing the fixture, not the harness."""
     return {
-        "name": "emitter",
+        "name": name,
         "why": "test participant",
-        "command": [sys.executable, "-c", f"import sys; sys.stdout.write({text!r})"],
+        "command": [sys.executable, "-c",
+                    f"import sys; _who={name!r}; sys.stdout.write({text!r}); sys.exit({code})"],
         "cwd": REPO,
+        "freshness": dict(_NO_FRESHNESS),
     }
 
 
-def _named(name: str, text: str) -> dict:
-    p = _emitter(text)
-    p["name"] = name
-    return p
+def _emitter(text: str, *, code: int = 0) -> dict:
+    return _named("emitter", text, code=code)
 
 
 def _criterion(participants: list[dict], *, normalisations: list[dict] | None = None,
@@ -118,7 +126,8 @@ def test_missing_participant_names_the_participant_and_the_reason():
     crit = _criterion([
         _named("present", "→ succeeds\n"),
         {"name": "absent", "why": "a participant that is not installed",
-         "command": [os.path.join(REPO, "no", "such", "binary.exe")], "cwd": REPO},
+         "command": [os.path.join(REPO, "no", "such", "binary.exe")], "cwd": REPO,
+         "freshness": dict(_NO_FRESHNESS)},
     ])
     result = dg.evaluate(crit, _env())
     assert result["outcome"] == dg.NOT_MEASURED
@@ -133,7 +142,8 @@ def test_unresolvable_symbol_is_a_named_measurement_failure_not_a_crash():
     crit = _criterion([
         _named("present", "→ succeeds\n"),
         {"name": "symbolic", "why": "names a tool that does not resolve here",
-         "command": ["${NO_SUCH_SYMBOL}"], "cwd": REPO},
+         "command": ["${NO_SUCH_SYMBOL}"], "cwd": REPO,
+         "freshness": dict(_NO_FRESHNESS)},
     ])
     result = dg.evaluate(crit, _env())
     assert result["outcome"] == dg.NOT_MEASURED
@@ -338,10 +348,18 @@ def test_agree_is_never_reached_without_an_executed_negative_control():
         _criterion([_named("a", ""), _named("b", "")]),             # NOT-MEASURED
         _criterion([_named("a", "zzz\n"), _named("b", "zzz\n")]),   # inert control
     ]
+    # Counting the AGREE branch is what makes this test capable of failing. Without it, every
+    # assertion sits inside `if outcome == AGREE:` and an implementation that NEVER returns AGREE
+    # satisfies the test vacuously -- which is the same defect the test is about. Found by
+    # adversarial review 2026-09-06.
+    agreed = 0
     for crit in cases:
         r = dg.evaluate(crit, _env())
         if r["outcome"] == dg.AGREE:
+            agreed += 1
             assert r["negative_control"]["executed"] and r["negative_control"]["passed"]
+    assert agreed > 0, (
+        "no case reached MEASURED-AGREE, so this test asserted nothing about AGREE at all")
 
 
 # ===========================================================================
@@ -378,3 +396,226 @@ def test_every_shipped_normalisation_control_actually_passes():
     for crit in dg.load(path):
         for res in dg.check_normalisation_controls(crit["normalisations"]):
             assert res["passed"], f"{crit['id']}/{res['normalisation']}: {res['detail']}"
+
+
+# ===========================================================================
+# CODEXREVIEW REMEDIATION (2026-09-06)
+#
+# Every test below pins a defect that two independent adversarial reviewers REPRODUCED against
+# the shipped module. They are grouped here rather than scattered so the next reader can see, in
+# one place, what this harness got wrong about its own invariant on the first attempt.
+# ===========================================================================
+def test_normalisation_that_empties_both_transcripts_is_NOT_agreement():
+    """THE HEADLINE DEFECT. FR-004's guard was applied to the RAW transcript, but the comparison
+    runs on the NORMALISED text. A `keep_lines_matching` rule whose pattern matches nothing
+    reduces both sides to '', and '' == '' is agreement -- over two participants that emitted
+    completely different things.
+
+    The criterion's own negative control does not save it: an ADDITIVE perturbation injects a line
+    that survives the filter, so the perturbed comparison diverges honestly and the control reports
+    passed=True while the real comparison was over nothing."""
+    rule = {
+        "id": "keeps-nothing", "kind": "keep_lines_matching", "pattern": "^NEVER-MATCHES-THIS ",
+        "rationale": "deliberately over-narrow, for the test",
+        "negative_control": {"a": "NEVER-MATCHES-THIS 1", "b": "NEVER-MATCHES-THIS 2",
+                             "why": "the control matches, so the rule passes its own control"},
+    }
+    crit = _criterion([_named("a", "banner one\n"), _named("b", "TOTALLY DIFFERENT\n")],
+                      normalisations=[rule])
+    crit["negative_control"]["rule"] = {
+        "kind": "regex_sub", "pattern": "^", "replacement": "NEVER-MATCHES-THIS injected "}
+    result = dg.evaluate(crit, _env())
+    assert result["outcome"] == dg.NOT_MEASURED, (
+        "two transcripts emptied by normalisation must never be agreement")
+    assert "emptied" in result["reason"]
+    assert result["not_measured_participant"] in ("a", "b")
+
+
+def test_control_a_normalisation_that_keeps_content_still_compares():
+    """POSITIVE CONTROL for the test above: the same shape with a rule that keeps the result lines
+    must still reach a real verdict, or the guard would be satisfied by a harness that calls
+    everything vacuous."""
+    rule = {
+        "id": "keeps-results", "kind": "keep_lines_matching", "pattern": "^Y = ",
+        "rationale": "keep the binding lines",
+        "negative_control": {"a": "Y = 1", "b": "Y = 2", "why": "differing bindings must survive"},
+    }
+    crit = _criterion([_named("a", "banner\nY = 1\n"), _named("b", "banner\nY = 2\n")],
+                      normalisations=[rule])
+    crit["negative_control"]["rule"] = {
+        "kind": "regex_sub", "pattern": "^Y = 1", "replacement": "Y = PERTURBED"}
+    result = dg.evaluate(crit, _env())
+    assert result["outcome"] == dg.DIVERGE
+
+
+def test_two_participants_with_the_same_command_are_refused_at_load(tmp_path):
+    """One runtime started twice, under two labels, reached MEASURED-AGREE with every control
+    green -- satisfying a gate that exists precisely because nothing had ever started a second
+    runtime. Distinct NAMES are not distinct PARTICIPANTS."""
+    a = _named("dart", "same\n")
+    b = dict(a)
+    b["name"] = "csharp"          # different label, IDENTICAL command and cwd
+    crit = _criterion([a, b])
+    with pytest.raises(dg.DeclarationError) as exc:
+        dg.load(_write(tmp_path, [crit]))
+    assert "SAME command" in str(exc.value)
+
+
+def test_control_two_participants_with_different_commands_load(tmp_path):
+    """POSITIVE CONTROL: the check must not refuse a genuine two-runtime declaration."""
+    crit = _criterion([_named("a", "same\n"), _named("b", "same\n")])
+    assert len(dg.load(_write(tmp_path, [crit]))) == 1
+
+
+def test_identical_transcripts_but_different_exit_status_DIVERGE():
+    """The hand-written reference this generalises added V-24/V-25 because reading only filtered
+    stdout could not tell "answered correctly" from "answered correctly then died". Dropping that
+    in the generalisation would be a regression against the thing being generalised."""
+    crit = _criterion([_named("a", "Y = some(send(1, a))\n", code=0),
+                       _named("b", "Y = some(send(1, a))\n", code=1)])
+    result = dg.evaluate(crit, _env())
+    assert result["outcome"] == dg.DIVERGE
+    assert "EXIT STATUS" in result["divergence"]
+
+
+def test_control_identical_transcripts_and_equal_exit_status_AGREE():
+    """POSITIVE CONTROL for the exit-status comparison."""
+    crit = _criterion([_named("a", "Y = some(send(1, a))\n", code=0),
+                       _named("b", "Y = some(send(1, a))\n", code=0)])
+    assert dg.evaluate(crit, _env())["outcome"] == dg.AGREE
+
+
+def test_a_participant_with_no_freshness_declaration_is_refused_at_load(tmp_path):
+    """Absence is not freshness. Omitting the block skipped the check entirely -- the
+    absence-is-a-default shape this feature refuses one level up, in its own declaration format."""
+    p = _named("a", "x")
+    del p["freshness"]
+    crit = _criterion([p, _named("b", "x")])
+    with pytest.raises(dg.DeclarationError) as exc:
+        dg.load(_write(tmp_path, [crit]))
+    assert "Absence is not freshness" in str(exc.value)
+
+
+def test_a_declared_none_freshness_needs_a_reason(tmp_path):
+    p = _named("a", "x")
+    p["freshness"] = {"declared": "none"}
+    crit = _criterion([p, _named("b", "x")])
+    with pytest.raises(dg.DeclarationError) as exc:
+        dg.load(_write(tmp_path, [crit]))
+    assert "gives no reason" in str(exc.value)
+
+
+def test_staleness_refuses_when_a_source_is_newer_than_the_build(tmp_path):
+    """`_staleness` is what T058 and V-26 were about and had no test at all."""
+    import time
+    src = tmp_path / "src"
+    out = tmp_path / "out"
+    src.mkdir()
+    out.mkdir()
+    (out / "app.dll").write_text("built")
+    time.sleep(0.05)
+    (src / "a.cs").write_text("edited after the build")
+    part = {"name": "p", "why": "x", "command": ["x"], "cwd": str(tmp_path),
+            "freshness": {"newer_than": [str(src)], "artefacts": [str(out)],
+                          "suffixes": [".cs"]}}
+    why = dg._staleness(part, {"REPO": str(tmp_path)}, "x")
+    assert why and "NOT NEWER" in why
+
+
+def test_control_staleness_passes_when_the_build_is_newer(tmp_path):
+    """POSITIVE CONTROL: without this, the test above is satisfied by a `_staleness` that always
+    refuses."""
+    import time
+    src = tmp_path / "src"
+    out = tmp_path / "out"
+    src.mkdir()
+    out.mkdir()
+    (src / "a.cs").write_text("source")
+    time.sleep(0.05)
+    (out / "app.dll").write_text("built after the edit")
+    part = {"name": "p", "why": "x", "command": ["x"], "cwd": str(tmp_path),
+            "freshness": {"newer_than": [str(src)], "artefacts": [str(out)],
+                          "suffixes": [".cs"]}}
+    assert dg._staleness(part, {"REPO": str(tmp_path)}, "x") is None
+
+
+@pytest.mark.parametrize("bad,expect", [
+    ({"id": "r", "kind": "strip_line_prefix", "rationale": "x",
+      "negative_control": {"a": "1", "b": "2", "why": "w"}}, "requires 'prefix'"),
+    ({"id": "r", "kind": "keep_lines_matching", "rationale": "x",
+      "negative_control": {"a": "1", "b": "2", "why": "w"}}, "requires 'pattern'"),
+    ({"id": "r", "kind": "keep_lines_matching", "pattern": "([", "rationale": "x",
+      "negative_control": {"a": "1", "b": "2", "why": "w"}}, "does not compile"),
+])
+def test_a_malformed_rule_is_refused_at_load_not_a_traceback(tmp_path, bad, expect):
+    """load() validated the rule KIND and not its parameters, so a rule with no `pattern` loaded
+    fine and then died as a KeyError mid-run: a traceback and no report, where the design says
+    "refused at load, with a named reason"."""
+    crit = _criterion([_named("a", "x"), _named("b", "x")], normalisations=[bad])
+    with pytest.raises(dg.DeclarationError) as exc:
+        dg.load(_write(tmp_path, [crit]))
+    assert expect in str(exc.value)
+
+
+@pytest.mark.parametrize("entry", [None, "a string", 42])
+def test_a_non_object_criterion_entry_is_refused_not_a_traceback(tmp_path, entry):
+    """`k not in crit` is a SUBSTRING test on a string and a TypeError on None."""
+    path = os.path.join(str(tmp_path), "criteria.json")
+    with open(path, "w", encoding="utf-8") as fh:
+        json.dump({"schema": "glpnet/differential-criteria/1", "criteria": [entry]}, fh)
+    with pytest.raises(dg.DeclarationError) as exc:
+        dg.load(path)
+    assert "must be an object" in str(exc.value)
+
+
+def test_a_catastrophic_normalisation_pattern_is_NOT_MEASURED_not_a_hang():
+    """A pattern that passes its own short control in microseconds can run for hours on a real
+    transcript, and Python cannot interrupt a regex in-process. Measured 2026-09-06 with
+    `^(a+)+$`: 0.007 s at 18 characters, 0.5 s at 24, doubling per character.
+
+    The budget is shortened here so the test costs a second, not a minute."""
+    rule = {
+        "id": "catastrophic", "kind": "keep_lines_matching", "pattern": "^(a+)+$",
+        "rationale": "deliberately catastrophic, for the test",
+        "negative_control": {"a": "aaa", "b": "aab", "why": "passes in microseconds on 3 chars"},
+    }
+    payload = "a" * 44 + "b"
+    crit = _criterion([_named("a", payload + "\n"), _named("b", payload + "\n")],
+                      normalisations=[rule])
+    saved = dg.NORMALISE_BUDGET_SECONDS
+    dg.NORMALISE_BUDGET_SECONDS = 2
+    try:
+        result = dg.evaluate(crit, _env())
+    finally:
+        dg.NORMALISE_BUDGET_SECONDS = saved
+    assert result["outcome"] == dg.NOT_MEASURED
+    assert "budget" in result["reason"]
+
+
+def test_the_measurement_survives_an_unwritable_report_path(tmp_path):
+    """A report we cannot write must not destroy the measurement. An unwritable path turned a
+    completed run into a traceback that lost the exit code."""
+    path = _write(tmp_path, [_criterion([_named("a", "aaa\n"), _named("b", "aaa\n")])])
+    code = dg.main(["--repo", REPO, "--criteria", path,
+                    "--report", os.path.join("\x00bad", "r.json")])
+    assert code == dg.EXIT_AGREE
+
+
+def test_a_failing_normalisation_worker_is_NOT_MEASURED_naming_the_failure():
+    """The conformance check for the decision site the guarded normaliser introduced.
+
+    `apply_rules_guarded` decides on the worker's EXIT STATUS. A non-zero exit must become a named
+    NOT-MEASURED, never a silent "the text came back unchanged" -- an unnoticed worker failure
+    would make every subsequent comparison a comparison of raw transcripts under a rule set that
+    never ran, which reads as a real measurement and is not one."""
+    bad = [{"id": "r", "kind": "no-such-kind"}]
+    with pytest.raises(dg.NormalisationTimeout) as exc:
+        dg.apply_rules_guarded(bad, "some text\n", budget=30)
+    assert "worker failed" in str(exc.value)
+
+
+def test_control_a_succeeding_normalisation_worker_returns_the_normalised_text():
+    """NEGATIVE CONTROL for the check above: a worker that succeeds must return the TRANSFORMED
+    text. Without this, a guarded normaliser that always raised would satisfy the check."""
+    good = [{"id": "r", "kind": "strip_line_prefix", "prefix": "GLP> "}]
+    assert dg.apply_rules_guarded(good, "GLP> Y = 1\nGLP> Y = 2\n", budget=30) == "Y = 1\nY = 2\n"

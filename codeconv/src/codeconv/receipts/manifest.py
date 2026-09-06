@@ -20,7 +20,7 @@ from . import paths, receipt as receipt_mod
 # <repo>/scripts/lib/adoption_gate.py so the stdlib-only evidence-signal audit applies the SAME
 # implementation rather than a second copy (feature 108 FR-006b/FR-014). Names, signatures and
 # semantics are unchanged and 078's existing tests are the regression proof of the move.
-# Do not re-implement here -- scripts/tests/test_adoption_gate_single_impl.py asserts these are
+# Do not re-implement here -- scripts/tests/test_evidence_signal_audit.py::test_fr013_the_adoption_and_override_rules_have_exactly_ONE_implementation asserts these are
 # the SAME objects, so a copy fails the suite rather than drifting silently.
 from ._shared import gate as _gate
 

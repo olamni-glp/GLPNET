@@ -79,6 +79,7 @@ import re
 import shutil
 import subprocess
 import sys
+import tempfile
 
 # ---------------------------------------------------------------------------
 # Outcomes and exit codes
@@ -94,9 +95,29 @@ EXIT_NOT_MEASURED = 3   # at least one criterion could not be measured; NEVER 0
 
 DEFAULT_TIMEOUT = 180
 
+# A participant's transcript is captured to a file with a hard byte cap. `capture_output=True`
+# buffers without limit, and a REPL that enters an output loop exhausts memory before the timeout
+# fires -- so the safety valve never runs. Truncation is REPORTED as NOT-MEASURED, never silently
+# compared, because a truncated transcript is a different observation from the one declared.
+MAX_TRANSCRIPT_BYTES = 8 * 1024 * 1024
+
+# Normalisation is regex work on participant-produced text, using patterns from the declaration.
+# A catastrophic pattern passes its own short control in microseconds and then runs for hours on a
+# real transcript, and Python cannot interrupt a regex in-process. So real-transcript normalisation
+# runs in a CHILD PROCESS that can actually be killed. Measured 2026-09-06 with `^(a+)+$`: 0.007 s
+# at 18 characters, 0.5 s at 24, doubling per character.
+NORMALISE_BUDGET_SECONDS = 30
+# A negative control is the author's own short string, normalised in-process. The cap is what makes
+# that safe: it bounds the blow-up of a catastrophic pattern to something that returns.
+MAX_CONTROL_CHARS = 4096
+
 
 class DeclarationError(Exception):
     """The declaration is refused. Raised at LOAD time, before anything is started."""
+
+
+class NormalisationTimeout(Exception):
+    """A declared normalisation exceeded its wall-clock budget on a real transcript."""
 
 
 # ---------------------------------------------------------------------------
@@ -190,6 +211,44 @@ def apply_rules(rules: list[dict], text: str) -> str:
     return text
 
 
+def apply_rules_guarded(rules: list[dict], text: str,
+                        budget: int = NORMALISE_BUDGET_SECONDS) -> str:
+    """`apply_rules` under a wall-clock budget that can ACTUALLY be enforced.
+
+    A thread cannot be used: CPython does not release the GIL inside `re`, so a catastrophic
+    pattern makes the interpreter unresponsive and a `concurrent.futures` timeout returns while the
+    thread keeps burning. A child process can be killed, so this re-invokes THIS FILE in a worker
+    mode and hands it the rules and the text on stdin.
+
+    An empty rule list skips the spawn -- there is nothing to run away with."""
+    if not rules:
+        return text
+    payload = json.dumps({"rules": rules, "text": text})
+    try:
+        proc = subprocess.run(
+            [sys.executable, os.path.realpath(__file__), "--normalise-worker"],
+            input=payload, capture_output=True, text=True, timeout=budget,
+            encoding="utf-8", errors="replace")
+    except subprocess.TimeoutExpired:
+        raise NormalisationTimeout(
+            f"normalisation exceeded its {budget}s budget on a real transcript -- a declared "
+            "pattern is catastrophic on this input. A rule that passes its own short control in "
+            "microseconds can still run for hours on a transcript.")
+    except OSError as exc:
+        raise NormalisationTimeout(f"could not run the normalisation worker: {exc}")
+    if proc.returncode != 0:
+        raise NormalisationTimeout(
+            f"the normalisation worker failed (exit {proc.returncode}): {proc.stderr.strip()}")
+    return json.loads(proc.stdout)["text"]
+
+
+def _normalise_worker() -> int:
+    """Worker mode. Reads {'rules', 'text'} on stdin, writes {'text'} on stdout."""
+    doc = json.loads(sys.stdin.read())
+    sys.stdout.write(json.dumps({"text": apply_rules(doc["rules"], doc["text"])}))
+    return 0
+
+
 def check_normalisation_controls(rules: list[dict]) -> list[dict]:
     """EXECUTE every normalisation's negative control (FR-006).
 
@@ -221,6 +280,39 @@ _REQUIRED_CRITERION = ("id", "title", "requirement", "participants", "script",
                        "normalisations", "negative_control")
 _RULE_KINDS = {"strip_line_prefix", "keep_lines_matching", "drop_lines_matching",
                "regex_sub", "strip_trailing_whitespace"}
+# The parameters `apply_rule` actually READS, per kind. Validating the kind and not its parameters
+# meant a rule with a missing `pattern` loaded fine and then died as a KeyError inside the run --
+# a traceback and no report, where the design says "refused at load, with a named reason".
+_RULE_REQUIRED = {
+    "strip_line_prefix": ("prefix",),
+    "keep_lines_matching": ("pattern",),
+    "drop_lines_matching": ("pattern",),
+    "regex_sub": ("pattern", "replacement"),
+    "strip_trailing_whitespace": (),
+}
+_REGEX_KEYED = ("keep_lines_matching", "drop_lines_matching", "regex_sub")
+
+
+def _validate_rule(rule: dict, where: str) -> None:
+    """Refuse a rule whose parameters are missing or whose pattern will not compile."""
+    if not isinstance(rule, dict):
+        raise DeclarationError(f"{where}: a normalisation rule must be an object, got "
+                               f"{type(rule).__name__}")
+    kind = rule.get("kind")
+    if kind not in _RULE_KINDS:
+        raise DeclarationError(
+            f"{where}: unknown normalisation kind {kind!r}; known kinds: "
+            f"{', '.join(sorted(_RULE_KINDS))}")
+    for key in _RULE_REQUIRED[kind]:
+        if key not in rule:
+            raise DeclarationError(f"{where}: a {kind!r} rule requires {key!r}")
+        if not isinstance(rule[key], str):
+            raise DeclarationError(f"{where}: {key!r} must be a string")
+    if kind in _REGEX_KEYED:
+        try:
+            re.compile(rule["pattern"])
+        except re.error as exc:
+            raise DeclarationError(f"{where}: pattern does not compile: {exc}")
 
 
 def load(path: str) -> list[dict]:
@@ -243,6 +335,13 @@ def load(path: str) -> list[dict]:
 
     seen: set[str] = set()
     for crit in criteria:
+        # `k not in crit` is a SUBSTRING test on a string and a TypeError on None, so a
+        # declaration holding `null` or `"x"` in its criteria list produced a traceback instead of
+        # a refusal. Type first, then keys.
+        if not isinstance(crit, dict):
+            raise DeclarationError(
+                f"{path}: every entry in 'criteria' must be an object, got "
+                f"{type(crit).__name__}")
         missing = [k for k in _REQUIRED_CRITERION if k not in crit]
         if missing:
             raise DeclarationError(
@@ -263,7 +362,11 @@ def load(path: str) -> list[dict]:
                 "criterion requires at least 2 -- a one-participant 'differential' is a category "
                 "error, not a degenerate case (FR-005).")
         pnames: set[str] = set()
+        pshapes: dict[tuple, str] = {}
         for p in parts:
+            if not isinstance(p, dict):
+                raise DeclarationError(
+                    f"{path}: criterion {cid!r} has a participant that is not an object")
             for key in ("name", "command", "cwd", "why"):
                 if key not in p:
                     raise DeclarationError(
@@ -274,18 +377,62 @@ def load(path: str) -> list[dict]:
                     f"{path}: criterion {cid!r} has two participants named {p['name']!r}")
             pnames.add(p["name"])
 
+            # DISTINCT NAMES ARE NOT DISTINCT PARTICIPANTS. Enforcing only the name let a lane
+            # declare the SAME runtime twice under two labels and reach MEASURED-AGREE with every
+            # control green -- satisfying a gate that exists precisely because "nothing in the
+            # suite had ever started a second runtime". Two participants that resolve to the same
+            # command in the same directory are one participant.
+            shape = (tuple(p["command"]), p["cwd"])
+            if shape in pshapes:
+                raise DeclarationError(
+                    f"{path}: criterion {cid!r} participants {pshapes[shape]!r} and "
+                    f"{p['name']!r} declare the SAME command in the SAME directory. Two labels "
+                    "on one runtime is not a differential -- it is the single-runtime discharge "
+                    "this feature exists to refuse (FR-005, in substance).")
+            pshapes[shape] = p["name"]
+
+            # FRESHNESS: ABSENCE IS NOT "FRESH". Omitting the block silently skipped the check
+            # entirely -- the absence-is-a-default shape FR-020 forbids one level up. A
+            # participant that genuinely needs no freshness check says so, and the report prints
+            # the reason.
+            fresh = p.get("freshness")
+            if fresh is None:
+                raise DeclarationError(
+                    f"{path}: criterion {cid!r} participant {p['name']!r} declares no "
+                    "'freshness'. Absence is not freshness. Declare one, or declare "
+                    '{"declared": "none", "why": "<why this participant cannot be stale>"}.')
+            if not isinstance(fresh, dict):
+                raise DeclarationError(
+                    f"{path}: criterion {cid!r} participant {p['name']!r} 'freshness' must be "
+                    "an object")
+            if fresh.get("declared") == "none":
+                if not str(fresh.get("why", "")).strip():
+                    raise DeclarationError(
+                        f"{path}: criterion {cid!r} participant {p['name']!r} declares no "
+                        "freshness check and gives no reason -- the reason is what makes it a "
+                        "declared gap rather than an oversight")
+            elif not fresh.get("newer_than"):
+                raise DeclarationError(
+                    f"{path}: criterion {cid!r} participant {p['name']!r} 'freshness' needs "
+                    "'newer_than' (the source roots), or "
+                    '{"declared": "none", "why": ...}')
+
         for rule in crit["normalisations"]:
+            if not isinstance(rule, dict):
+                raise DeclarationError(
+                    f"{path}: criterion {cid!r} has a normalisation that is not an object")
             for key in ("id", "kind", "rationale", "negative_control"):
                 if key not in rule:
                     raise DeclarationError(
                         f"{path}: criterion {cid!r} normalisation "
                         f"{rule.get('id', '<unnamed>')!r} is missing {key!r} -- FR-006 requires "
                         "every normalisation to be declared WITH a negative control")
-            if rule["kind"] not in _RULE_KINDS:
-                raise DeclarationError(
-                    f"{path}: criterion {cid!r} normalisation {rule['id']!r} has unknown kind "
-                    f"{rule['kind']!r}; known kinds: {', '.join(sorted(_RULE_KINDS))}")
+            _validate_rule(rule, f"{path}: criterion {cid!r} normalisation {rule['id']!r}")
             nc = rule["negative_control"]
+            if not isinstance(nc, dict):
+                raise DeclarationError(
+                    f"{path}: criterion {cid!r} normalisation {rule['id']!r} negative control "
+                    "must be an object")
             for key in ("a", "b", "why"):
                 if key not in nc:
                     raise DeclarationError(
@@ -296,8 +443,20 @@ def load(path: str) -> list[dict]:
                     f"{path}: criterion {cid!r} normalisation {rule['id']!r} negative control "
                     "has identical 'a' and 'b' -- a control whose inputs already agree cannot "
                     "demonstrate that the rule preserves a difference")
+            # The control is normalised IN-PROCESS, so a catastrophic pattern would hang here
+            # rather than in the guarded worker. The cap is what bounds that.
+            for key in ("a", "b"):
+                if len(str(nc[key])) > MAX_CONTROL_CHARS:
+                    raise DeclarationError(
+                        f"{path}: criterion {cid!r} normalisation {rule['id']!r} negative "
+                        f"control {key!r} exceeds {MAX_CONTROL_CHARS} characters; a control is a "
+                        "small discriminating pair, and the cap is what makes running it "
+                        "in-process safe")
 
         neg = crit["negative_control"]
+        if not isinstance(neg, dict):
+            raise DeclarationError(
+                f"{path}: criterion {cid!r} negative_control must be an object")
         for key in ("participant", "rule", "why"):
             if key not in neg:
                 raise DeclarationError(
@@ -307,10 +466,7 @@ def load(path: str) -> list[dict]:
             raise DeclarationError(
                 f"{path}: criterion {cid!r} negative_control perturbs participant "
                 f"{neg['participant']!r}, which is not one of {sorted(pnames)}")
-        if neg["rule"].get("kind") not in _RULE_KINDS:
-            raise DeclarationError(
-                f"{path}: criterion {cid!r} negative_control rule has unknown kind "
-                f"{neg['rule'].get('kind')!r}")
+        _validate_rule(neg["rule"], f"{path}: criterion {cid!r} negative_control rule")
 
     return criteria
 
@@ -354,12 +510,28 @@ def run_participant(part: dict, script: str, env: dict[str, str],
     if stale:
         return {"name": name, "started": False, "reason": stale}
 
+    # Capture to FILES with a byte cap rather than into memory. `capture_output=True` buffers
+    # without limit, so a REPL that enters an output loop exhausts memory before the timeout can
+    # fire -- the safety valve never runs. Truncation is reported, never silently compared: a
+    # truncated transcript is a different observation from the one declared.
     try:
-        proc = subprocess.run(command, cwd=cwd, input=script, capture_output=True,
-                              text=True, timeout=timeout, encoding="utf-8", errors="replace")
-    except subprocess.TimeoutExpired:
-        return {"name": name, "started": False,
-                "reason": f"timed out after {timeout}s"}
+        with tempfile.TemporaryDirectory(prefix="difgate-") as tmp:
+            out_path = os.path.join(tmp, "out")
+            err_path = os.path.join(tmp, "err")
+            with open(out_path, "wb") as out_fh, open(err_path, "wb") as err_fh:
+                try:
+                    proc = subprocess.run(command, cwd=cwd, input=script.encode("utf-8"),
+                                          stdout=out_fh, stderr=err_fh, timeout=timeout)
+                except subprocess.TimeoutExpired:
+                    return {"name": name, "started": False,
+                            "reason": f"timed out after {timeout}s"}
+            size = os.path.getsize(out_path) + os.path.getsize(err_path)
+            if size > MAX_TRANSCRIPT_BYTES:
+                return {"name": name, "started": False,
+                        "reason": f"produced {size} bytes, over the {MAX_TRANSCRIPT_BYTES}-byte "
+                                  "cap -- a truncated transcript is a different observation, so "
+                                  "it is not compared"}
+            raw = (_read_text(out_path) + _read_text(err_path))
     except OSError as exc:
         return {"name": name, "started": False, "reason": f"could not start: {exc}"}
 
@@ -367,16 +539,26 @@ def run_participant(part: dict, script: str, env: dict[str, str],
         "name": name,
         "started": True,
         "exit_status": proc.returncode,
-        "raw": (proc.stdout or "") + (proc.stderr or ""),
+        "raw": raw,
         "command": command,
     }
+
+
+def _read_text(path: str) -> str:
+    with open(path, "r", encoding="utf-8", errors="replace", newline=None) as fh:
+        return fh.read()
 
 
 def _staleness(part: dict, env: dict[str, str], exe: str) -> str | None:
     """Return a reason string if the participant's binary is not newer than its declared sources."""
     fresh = part.get("freshness")
+    # `load()` makes the block mandatory, so absence here means the caller built a participant in
+    # code rather than from a declaration; either way an UNDECLARED absence is not "fresh".
     if not fresh:
-        return None
+        return ("no 'freshness' declared for this participant -- absence is not freshness "
+                "(declare one, or declare {\"declared\": \"none\", \"why\": ...})")
+    if fresh.get("declared") == "none":
+        return None     # a DECLARED gap, carrying its reason, printed in the report
 
     # WHICH artefact's age counts. Measured 2026-09-06: `glp_repl.exe` is the .NET APPHOST STUB,
     # and an incremental build does NOT rewrite it when only a referenced library's method bodies
@@ -444,19 +626,50 @@ def _diff(a_name: str, a: str, b_name: str, b: str) -> str:
         a.split("\n"), b.split("\n"), fromfile=a_name, tofile=b_name, lineterm=""))
 
 
-def _compare(runs: list[dict], rules: list[dict]) -> tuple[str, str]:
-    """Compare normalised transcripts pairwise against the first participant.
+def _compare(runs: list[dict], rules: list[dict],
+             compare_exit_status: bool = True) -> tuple[str, str]:
+    """Compare the participants' NORMALISED transcripts, and their exit statuses.
 
-    Returns (outcome, detail). Assumes every run started and is non-empty -- the caller
-    establishes both BEFORE calling, because doing it after is how two empty transcripts become
-    an agreement."""
+    Returns (outcome, detail), or raises `_VacuousComparison` when normalisation emptied a
+    transcript.
+
+    Two things here were learned the hard way and are not incidental:
+
+    * **The non-emptiness guard has to be applied to the NORMALISED text, not only to the raw.**
+      The caller checks the raw transcripts first (FR-004), but a `keep_lines_matching` rule whose
+      pattern matches nothing reduces both sides to `""`, and `"" == ""` is agreement. The
+      criterion's own negative control does not necessarily catch it, because an ADDITIVE
+      perturbation injects a line that survives the filter and so diverges honestly while the real
+      comparison was over nothing. Reproduced by two independent reviewers, 2026-09-06.
+    * **Exit status is part of the observation.** The hand-written reference this generalises added
+      V-24/V-25 precisely because reading only filtered stdout could not tell "answered correctly"
+      from "answered correctly then died". Dropping it in the generalisation would have been a
+      regression against the thing being generalised."""
     base = runs[0]
-    base_norm = apply_rules(rules, base["raw"])
+    base_norm = apply_rules_guarded(rules, base["raw"])
+    if not base_norm.strip():
+        raise _VacuousComparison(base["name"])
     for other in runs[1:]:
-        other_norm = apply_rules(rules, other["raw"])
+        other_norm = apply_rules_guarded(rules, other["raw"])
+        if not other_norm.strip():
+            raise _VacuousComparison(other["name"])
         if base_norm != other_norm:
             return DIVERGE, _diff(base["name"], base_norm, other["name"], other_norm)
+        if compare_exit_status and other.get("exit_status") != base.get("exit_status"):
+            return DIVERGE, (
+                f"transcripts are identical but EXIT STATUS differs: "
+                f"{base['name']}={base.get('exit_status')} vs "
+                f"{other['name']}={other.get('exit_status')} -- one participant answered "
+                "correctly and then died")
     return AGREE, ""
+
+
+class _VacuousComparison(Exception):
+    """Normalisation emptied a transcript, so the comparison would be over nothing."""
+
+    def __init__(self, participant: str) -> None:
+        super().__init__(participant)
+        self.participant = participant
 
 
 def evaluate(crit: dict, env: dict[str, str], timeout: int = DEFAULT_TIMEOUT) -> dict:
@@ -521,8 +734,21 @@ def evaluate(crit: dict, env: dict[str, str], timeout: int = DEFAULT_TIMEOUT) ->
         result["not_measured_participant"] = empty[0]
         return result
 
-    # (4) Compare.
-    outcome, detail = _compare(runs, crit["normalisations"])
+    # (4) Compare. The comparison itself can establish that it was VACUOUS — normalisation may
+    # have emptied a transcript that was non-empty raw — and that is NOT-MEASURED, not agreement.
+    try:
+        outcome, detail = _compare(runs, crit["normalisations"])
+    except _VacuousComparison as vac:
+        result["reason"] = (
+            f"normalisation emptied {vac.participant!r}'s transcript: the raw output was "
+            "non-empty but every line was filtered away, so the comparison would have been over "
+            "nothing. A declared normalisation that removes everything is a claim that everything "
+            "is irrelevant.")
+        result["not_measured_participant"] = vac.participant
+        return result
+    except NormalisationTimeout as exc:
+        result["reason"] = f"normalisation could not complete: {exc}"
+        return result
 
     # (5) FR-007 / SC-002 -- the criterion's own negative control, EXECUTED, against the
     # transcripts captured on THIS run rather than against a fixture. Perturb one participant's
@@ -542,15 +768,30 @@ def evaluate(crit: dict, env: dict[str, str], timeout: int = DEFAULT_TIMEOUT) ->
             "detail": "the perturbation emptied a transcript, so the divergence it produced "
                       "would be the empty-transcript case, not a real one"}
     else:
-        neg_outcome, _ = _compare(perturbed, crit["normalisations"])
+        # The control compares TRANSCRIPTS only. Comparing exit status here would let a
+        # perturbation that touches no text still "diverge" on a status difference the real
+        # comparison already reported, so the control would pass without discriminating on the
+        # thing it perturbs.
+        try:
+            neg_outcome, _ = _compare(perturbed, crit["normalisations"],
+                                      compare_exit_status=False)
+            neg_detail = (f"perturbing {neg['participant']!r} produced {neg_outcome} as required"
+                          if neg_outcome == DIVERGE else
+                          f"perturbing {neg['participant']!r} produced {neg_outcome}: the "
+                          "comparator did NOT discriminate, so this run's comparison proves "
+                          "nothing")
+            neg_passed = neg_outcome == DIVERGE
+        except _VacuousComparison as vac:
+            neg_passed = False
+            neg_detail = (f"the perturbation left {vac.participant!r} empty after normalisation, "
+                          "so any divergence it produced would be the empty-transcript case")
+        except NormalisationTimeout as exc:
+            neg_passed = False
+            neg_detail = f"the control could not complete: {exc}"
         result["negative_control"] = {
             "executed": True,
-            "passed": neg_outcome == DIVERGE,
-            "detail": (f"perturbing {neg['participant']!r} produced {neg_outcome} as required"
-                       if neg_outcome == DIVERGE else
-                       f"perturbing {neg['participant']!r} produced {neg_outcome}: the "
-                       "comparator did NOT discriminate, so this run's comparison proves "
-                       "nothing"),
+            "passed": neg_passed,
+            "detail": neg_detail,
             "why": neg["why"],
         }
     if not result["negative_control"]["passed"]:
@@ -690,14 +931,30 @@ def main(argv: list[str] | None = None) -> int:
         print(f"differential-gate: REFUSED: {exc}", file=sys.stderr)
         return EXIT_USAGE
 
-    os.makedirs(os.path.dirname(report_path), exist_ok=True)
-    with open(report_path, "w", encoding="utf-8") as fh:
-        json.dump(report, fh, indent=2)
-        fh.write("\n")
+    # A report we cannot write must not destroy the measurement we just made. `dirname` is empty
+    # for a bare filename, which made `makedirs` raise; and an unwritable directory turned a
+    # completed run into a traceback that lost the exit code.
+    try:
+        parent = os.path.dirname(report_path)
+        if parent:
+            os.makedirs(parent, exist_ok=True)
+        with open(report_path, "w", encoding="utf-8") as fh:
+            json.dump(report, fh, indent=2)
+            fh.write("\n")
+    except (OSError, ValueError) as exc:
+        # ValueError as well as OSError: an embedded null or another malformed path raises
+        # ValueError from os.makedirs, and a malformed --report argument must not be able to
+        # discard a completed measurement.
+        print(f"differential-gate: could not write the report to {report_path!r}: {exc}",
+              file=sys.stderr)
 
     print(json.dumps(report, indent=2) if args.json else render(report))
     return code
 
 
 if __name__ == "__main__":
+    # The normalisation worker is an internal re-entry, not a user-facing subcommand: it exists so
+    # a catastrophic declared regex can be KILLED rather than merely timed out around.
+    if len(sys.argv) == 2 and sys.argv[1] == "--normalise-worker":
+        sys.exit(_normalise_worker())
     sys.exit(main())

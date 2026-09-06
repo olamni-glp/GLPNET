@@ -28,7 +28,13 @@
           "name": "dart",
           "why": "the reference implementation of the goal-term front end; every other runtime is a port of it",
           "command": ["${DART}", "run", "${DART_REPL}"],
-          "cwd": "${GLP_RUNTIME}"
+          "cwd": "${GLP_RUNTIME}",
+          "freshness": {
+            "newer_than": ["${GLP_RUNTIME}/lib", "${GLP_RUNTIME}/bin"],
+            "artefacts": ["${GLP_RUNTIME}/.dart_tool/repl.dill"],
+            "suffixes": [".dart"],
+            "why": "the runner prefers the compiled kernel snapshot .dart_tool/repl.dill whenever it exists, and a snapshot older than lib/ or bin/ answers for code that is no longer the code. Omitting this block meant no check ran at all: adversarial review 2026-09-06 measured that the gate would compare a freshly built C# against an arbitrarily stale Dart snapshot and call it AGREE."
+          }
         },
         {
           "name": "csharp",

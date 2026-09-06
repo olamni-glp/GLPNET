@@ -119,7 +119,11 @@ PATTERNS: tuple[tuple[str, str, str], ...] = (
     # (`echo "rc=$?"` reports and is deliberately NOT matched -- it neither captures nor decides).
     # Matching the capture rather than the branch also means the site is found once, at the point
     # the status becomes evidence, instead of once per branch that reads it.
-    ("exit-status", r"^\s*(?:local\s+|declare\s+)?[A-Za-z_]\w*=\$\?\s*(?:#.*)?$",
+    # A capture may follow another command on the SAME LINE (`x=$(cmd); RC=$?`), and the two
+    # instances this misses in this repo are test/run_all_tests.sh:2671-2672 -- the V-18..V-23
+    # capture sites feature 109's own criterion depends on. Measured by adversarial review
+    # 2026-09-06: 7 of the 9 `=$?` occurrences were found, and the 2 missed were those.
+    ("exit-status", r"(?:^|[;&|]\s*)(?:local\s+|declare\s+)?[A-Za-z_]\w*=\$\?\s*(?:#.*)?$",
      "capture of $? into a variable (two-step decision)"),
     ("exit-status", r"\bif\s*\[\s*\"?\$\{?[A-Za-z_]\w*(?:_(?:EXIT|RC|STATUS|CODE))\}?\"?\s*(?:-eq|-ne)",
      "branch on a captured status variable"),
@@ -232,6 +236,57 @@ def load_gate():
     sys.modules[_GATE_MODULE_NAME] = mod
     spec.loader.exec_module(mod)
     return mod
+
+
+def gate_module():
+    """The single adoption/override implementation (FR-013). Exposed so the driver can read the
+    override store path from the same module that defines the rules."""
+    return load_gate()
+
+
+def load_overrides(path: str) -> tuple[list, list[str]]:
+    """Read recorded overrides from disk, validating each through the ONE implementation.
+
+    This is the wiring that was missing. Every entry is passed through `gate.record()`, so an
+    override with no expiry -- or an unparseable or past one -- is rejected HERE, at the point the
+    audit reads it, exactly as it would be rejected at the point an engineer wrote it. An invalid
+    entry is an ERROR that the audit reports; it is never silently skipped, because a silently
+    skipped override is indistinguishable from an override that was never recorded.
+
+    A missing store is NOT an error: no overrides recorded is the normal, healthy state.
+    """
+    gate = load_gate()
+    if not os.path.isfile(path):
+        return [], []
+    try:
+        with open(path, "r", encoding="utf-8") as fh:
+            doc = json.load(fh)
+    except (OSError, json.JSONDecodeError) as exc:
+        return [], [f"override store {path}: unreadable: {exc}"]
+    entries = doc.get("overrides")
+    if not isinstance(entries, list):
+        return [], [f"override store {path}: 'overrides' must be a list"]
+
+    out, errors = [], []
+    for i, e in enumerate(entries):
+        where = f"override store {path} entry {i}"
+        if not isinstance(e, dict):
+            errors.append(f"{where}: must be an object")
+            continue
+        scope = e.get("scope")
+        if not isinstance(scope, dict):
+            errors.append(f"{where}: 'scope' must be an object with area, check and reason")
+            continue
+        try:
+            out.append(gate.record(
+                area=scope["area"], check=scope["check"], reason=scope["reason"],
+                briefing=e["briefing"], rationale=e["rationale"],
+                acknowledged=bool(e["acknowledged"]), expiry=e["expiry"]))
+        except KeyError as exc:
+            errors.append(f"{where}: missing field {exc.args[0]!r}")
+        except gate.OverrideInvalid as exc:
+            errors.append(f"{where}: {exc}")
+    return out, errors
 
 
 def resolve_refusals(manifest: dict, verdicts: list[dict], repo: str,
@@ -749,7 +804,9 @@ def cross_check(manifest: dict, hits: list[dict], repo: str) -> tuple[list[dict]
 # Receipt (FR-017) -- this audit is subject to the invariant it audits.
 # ---------------------------------------------------------------------------
 def write_receipt(path: str, repo_resolved: str, manifest_sha: str,
-                  examined: int, skipped: list[dict], outcome: str) -> str:
+                  examined: int, skipped: list[dict], outcome: str,
+                  refusals: list[dict] | None = None,
+                  overrides: list[dict] | None = None) -> str:
     receipt = {
         "check": "evidence-signal-audit",
         "feature": "108-evidence-signal-ordering",
@@ -759,6 +816,11 @@ def write_receipt(path: str, repo_resolved: str, manifest_sha: str,
         "items_skipped": len(skipped),
         "skipped_reasons": sorted({s["reason"].split(":")[0] for s in skipped}),
         "outcome": outcome,
+        # FR-009/FR-015. A refusal and the override that lifted it are part of the permanent
+        # record, not of the transient report: an override converts a refusal into a RECORDED,
+        # EXPIRING, SCOPED PROCEED, and "recorded" has to mean somewhere that survives the run.
+        "refusals": refusals or [],
+        "overrides": overrides or [],
         "ran_utc": _utcnow(),
     }
     os.makedirs(os.path.dirname(path), exist_ok=True)
@@ -803,9 +865,13 @@ def audit(repo: str, manifest_path: str, report_path: str) -> tuple[dict, int]:
     # FR-009: the gate. Resolved AFTER classification and BEFORE the exit-code decision, because
     # a refusal must outrank a mere finding -- an adopted area holding a non-conforming signal is
     # not "one more row in a list", it is the thing that stops the pipeline.
-    refusals, gate_errors = resolve_refusals(manifest, verdicts, repo)
+    overrides, override_errors = load_overrides(
+        os.path.join(repo, gate_module().OVERRIDES_REL))
+    refusals, gate_errors = resolve_refusals(manifest, verdicts, repo, overrides)
+    gate_errors = list(gate_errors) + override_errors
     totals["refusals"] = len(refusals)
     totals["errors"] += len(gate_errors)
+    honoured = [v for v in verdicts if v.get("override")]
 
     if totals["errors"]:
         code, outcome = EXIT_DISAGREEMENT, "FAIL"
@@ -821,8 +887,13 @@ def audit(repo: str, manifest_path: str, report_path: str) -> tuple[dict, int]:
     receipt_path = os.path.join(
         os.path.dirname(report_path),
         f"receipt-{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')}.json")
+    # FR-015: an override must remain PERMANENTLY visible, and the receipt is the permanent
+    # record -- report.json is a gitignored run artefact. Recording the refusal in the report and
+    # not in the receipt satisfied the sentence and not the requirement.
     write_receipt(receipt_path, os.path.realpath(repo), manifest["_sha256"],
-                  len(examined), unexamined, outcome)
+                  len(examined), unexamined, outcome,
+                  refusals=refusals,
+                  overrides=[{"surface": v["id"], "override": v["override"]} for v in honoured])
 
     report = {
         "generated_utc": _utcnow(),
@@ -834,6 +905,8 @@ def audit(repo: str, manifest_path: str, report_path: str) -> tuple[dict, int]:
         "regions_examined": examined,
         "regions_unexamined": unexamined,
         "unopened_by_suffix": unopened_by_suffix,
+        "unopened_by_suffix_per_region": _suffix_census_by_region(
+            unexamined, manifest.get("scoped_regions", [])),
         "suffix_declarations": [
             {"suffix": s, "scanned": scanned, "rationale": why}
             for s, scanned, why in SUFFIX_DECLARATIONS
@@ -890,6 +963,28 @@ def _suffix_census(unexamined: list[dict]) -> dict[str, int]:
         if r.startswith("unscannable-suffix:"):
             census[r.split(":", 1)[1]] = census.get(r.split(":", 1)[1], 0) + 1
     return dict(sorted(census.items(), key=lambda kv: -kv[1]))
+
+
+def _suffix_census_by_region(unexamined: list[dict], regions: list[dict]) -> dict[str, dict]:
+    """The SAME census, split by the scoped region the file sits in (FR-016, SC-005).
+
+    The global figure answers "how much did the scanner not open?". The requirement is per
+    region -- "a region MUST NOT be reported examined on the strength of a subset" -- and a
+    single total cannot tell a reader WHICH examined region carries which declared gap. The
+    longest matching region wins, so a nested region is attributed to itself rather than to its
+    parent."""
+    paths = sorted((r["path"] for r in regions), key=len, reverse=True)
+    out: dict[str, dict] = {p: {} for p in paths}
+    for u in unexamined:
+        reason = u["reason"]
+        if not reason.startswith("unscannable-suffix:"):
+            continue
+        suffix = reason.split(":", 1)[1]
+        for p in paths:
+            if u["path"] == p or u["path"].startswith(p.rstrip("/") + "/"):
+                out[p][suffix] = out[p].get(suffix, 0) + 1
+                break
+    return {p: dict(sorted(c.items(), key=lambda kv: -kv[1])) for p, c in out.items()}
 
 
 def render(report: dict) -> str:

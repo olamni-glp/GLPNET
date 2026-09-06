@@ -598,10 +598,24 @@ def test_fr011_a_valid_in_scope_override_converts_refusal_into_a_recorded_procee
 
 
 def test_fr012_an_EXPIRED_override_resumes_refusing(tmp_path):
+    """An override is RECORDED with a future expiry and then reaches its expiry while in force.
+
+    It cannot be built by recording a past date any more: 109's codexreview added the missing half
+    of "rejected at recording, not at reliance" -- an unparseable or already-past expiry is now
+    refused by `record()`, because an engineer being told an override was recorded and finding at
+    the next refusal that it never applied is validation at reliance wearing a different hat.
+    So the fixture ages the override the way real time does, by constructing the SAME dataclass
+    with a past expiry, which is the state the store holds after the clock passes it."""
     gate = esa.load_gate()
-    ov = gate.record(area="test-harness", check="evidence-signal-audit", reason="FR-016",
-                     briefing="b", rationale="r", acknowledged=True,
-                     expiry="2000-01-01T00:00:00+00:00")
+    # Recorded legitimately, in the future -- the act an engineer actually performs.
+    live = gate.record(area="test-harness", check="evidence-signal-audit", reason="FR-016",
+                       briefing="b", rationale="r", acknowledged=True,
+                       expiry="2999-01-01T00:00:00+00:00")
+    assert gate.applies(live, "test-harness", "evidence-signal-audit", "FR-016")
+    # ...and the same override once its expiry has passed.
+    ov = gate.Override(briefing=live.briefing, acknowledged=live.acknowledged,
+                       rationale=live.rationale, scope=live.scope,
+                       expiry="2000-01-01T00:00:00+00:00")
     verdicts = [{"id": "a-surface", "classification": "non-conforming", "failed_frs": ["FR-016"]}]
     _adoption(tmp_path, "adopted")
     m = {"scoped_regions": [{"path": "src", "area": "test-harness"}],
@@ -632,3 +646,142 @@ def test_fr011_an_override_recorded_for_a_DIFFERENT_reason_does_not_apply(tmp_pa
          "surfaces": [{"id": "a-surface", "path": "src/thing.py"}]}
     refusals, _errors = esa.resolve_refusals(m, verdicts, str(tmp_path), overrides=[ov])
     assert len(refusals) == 1
+
+
+# ===========================================================================
+# CODEXREVIEW REMEDIATION (2026-09-06) -- THE OVERRIDE PATH, END TO END
+#
+# Both adversarial reviewers, independently, found the same thing: `resolve_refusals` was called
+# with `overrides=None`, there was no on-disk store and no loader, so FR-011/FR-012/FR-015 and
+# SC-003 were exercised ONLY by tests that constructed an `Override` in-process and passed it in.
+# That is codexreview finding 8's own wording -- "simulators in the test harness, not enforcement
+# in the audit" -- reproduced by the user story written to close it.
+#
+# So these tests drive the override through `load_overrides`, the path the audit actually uses.
+# ===========================================================================
+def _write_overrides(tmp_path, entries):
+    d = tmp_path / ".specify" / "receipts"
+    d.mkdir(parents=True, exist_ok=True)
+    p = d / "overrides.json"
+    p.write_text(json.dumps({"overrides": entries}), encoding="utf-8")
+    return str(p)
+
+
+def _live_entry(**over):
+    e = {
+        "briefing": "the signal is non-conforming and the fix needs its own spec pass",
+        "acknowledged": True,
+        "rationale": "shipping the fix would change feature 019's promotion contract",
+        "expiry": "2999-01-01T00:00:00+00:00",
+        "scope": {"area": "test-harness", "check": "evidence-signal-audit", "reason": "FR-016"},
+    }
+    e.update(over)
+    return e
+
+
+def test_a_recorded_override_ON_DISK_converts_a_refusal_into_a_proceed(tmp_path):
+    """The path that did not exist. A refusal is cleared by an override the AUDIT read from the
+    store -- not by one a test handed it."""
+    path = _write_overrides(tmp_path, [_live_entry()])
+    overrides, errors = esa.load_overrides(path)
+    assert errors == [] and len(overrides) == 1
+
+    verdicts = [{"id": "a-surface", "classification": "non-conforming", "failed_frs": ["FR-016"]}]
+    _adoption(tmp_path, "adopted")
+    m = {"scoped_regions": [{"path": "src", "area": "test-harness"}],
+         "surfaces": [{"id": "a-surface", "path": "src/thing.py"}]}
+    refusals, errs = esa.resolve_refusals(m, verdicts, str(tmp_path), overrides)
+    assert refusals == [] and errs == []
+    # FR-015: a recorded, expiring, scoped PROCEED -- never a pass.
+    assert verdicts[0]["override"]["scope"]["reason"] == "FR-016"
+    assert verdicts[0]["classification"] == "non-conforming"
+
+
+def test_control_with_NO_override_on_disk_the_same_surface_REFUSES(tmp_path):
+    """POSITIVE CONTROL. Without it the test above is satisfied by a resolver that never refuses."""
+    verdicts = [{"id": "a-surface", "classification": "non-conforming", "failed_frs": ["FR-016"]}]
+    _adoption(tmp_path, "adopted")
+    m = {"scoped_regions": [{"path": "src", "area": "test-harness"}],
+         "surfaces": [{"id": "a-surface", "path": "src/thing.py"}]}
+    overrides, errors = esa.load_overrides(str(tmp_path / "nothing-here.json"))
+    assert (overrides, errors) == ([], []), "a missing store is the healthy state, not an error"
+    refusals, _ = esa.resolve_refusals(m, verdicts, str(tmp_path), overrides)
+    assert len(refusals) == 1
+
+
+def test_an_override_on_disk_with_NO_expiry_is_an_ERROR_at_read_time(tmp_path):
+    """Rejected where it is READ, with the reason named -- never silently skipped, because a
+    silently skipped override is indistinguishable from one that was never recorded."""
+    e = _live_entry()
+    del e["expiry"]
+    overrides, errors = esa.load_overrides(_write_overrides(tmp_path, [e]))
+    assert overrides == []
+    assert len(errors) == 1 and "expiry" in errors[0]
+
+
+def test_an_override_on_disk_with_an_UNPARSEABLE_expiry_is_an_ERROR(tmp_path):
+    overrides, errors = esa.load_overrides(_write_overrides(tmp_path, [_live_entry(expiry="soon")]))
+    assert overrides == []
+    assert len(errors) == 1 and "ISO-8601" in errors[0]
+
+
+def test_an_override_on_disk_that_has_already_EXPIRED_is_an_ERROR(tmp_path):
+    overrides, errors = esa.load_overrides(
+        _write_overrides(tmp_path, [_live_entry(expiry="2000-01-01T00:00:00+00:00")]))
+    assert overrides == []
+    assert len(errors) == 1 and "in the past" in errors[0]
+
+
+def test_an_override_on_disk_without_acknowledgement_is_an_ERROR(tmp_path):
+    overrides, errors = esa.load_overrides(
+        _write_overrides(tmp_path, [_live_entry(acknowledged=False)]))
+    assert overrides == [] and len(errors) == 1 and "acknowledgement" in errors[0]
+
+
+def test_an_override_out_of_SCOPE_does_not_clear_a_different_refusal(tmp_path):
+    """An override recorded for one reason must not authorise every other refusal the same check
+    can raise until its expiry."""
+    path = _write_overrides(tmp_path, [_live_entry(
+        scope={"area": "test-harness", "check": "evidence-signal-audit", "reason": "FR-004"})])
+    overrides, errors = esa.load_overrides(path)
+    assert errors == []
+    verdicts = [{"id": "a-surface", "classification": "non-conforming", "failed_frs": ["FR-016"]}]
+    _adoption(tmp_path, "adopted")
+    m = {"scoped_regions": [{"path": "src", "area": "test-harness"}],
+         "surfaces": [{"id": "a-surface", "path": "src/thing.py"}]}
+    refusals, _ = esa.resolve_refusals(m, verdicts, str(tmp_path), overrides)
+    assert len(refusals) == 1
+
+
+def test_the_receipt_records_the_refusal_and_the_override_permanently(tmp_path):
+    """FR-015 says an override stays PERMANENTLY visible in the receipt. It was written into
+    report.json -- a gitignored run artefact -- and the receipt said nothing."""
+    p = tmp_path / "receipt.json"
+    esa.write_receipt(str(p), str(tmp_path), "deadbeef", 3, [], "REFUSED",
+                      refusals=[{"id": "a-surface", "area": "test-harness"}],
+                      overrides=[{"surface": "b-surface", "override": {"expiry": "2999-01-01"}}])
+    doc = json.loads(p.read_text(encoding="utf-8"))
+    assert doc["refusals"][0]["id"] == "a-surface"
+    assert doc["overrides"][0]["surface"] == "b-surface"
+
+
+def test_the_report_states_unopened_counts_PER_REGION(tmp_path):
+    """FR-016/SC-005 require the count 'for every region reported as examined'. A single global
+    total cannot tell a reader WHICH examined region carries which declared gap."""
+    regions = [{"path": "alpha"}, {"path": "beta"}]
+    unexamined = [
+        {"path": "alpha/a.gleam", "reason": "unscannable-suffix:.gleam"},
+        {"path": "alpha/b.gleam", "reason": "unscannable-suffix:.gleam"},
+        {"path": "beta/c.glp", "reason": "unscannable-suffix:.glp"},
+        {"path": "gamma/d.glp", "reason": "out-of-declared-scope"},
+    ]
+    per = esa._suffix_census_by_region(unexamined, regions)
+    assert per["alpha"] == {".gleam": 2}
+    assert per["beta"] == {".glp": 1}
+
+
+def test_control_a_region_with_nothing_unopened_censuses_empty(tmp_path):
+    """POSITIVE CONTROL: the per-region census must be able to say zero, or a non-zero count
+    proves nothing."""
+    per = esa._suffix_census_by_region([], [{"path": "alpha"}])
+    assert per == {"alpha": {}}

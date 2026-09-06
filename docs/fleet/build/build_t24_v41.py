@@ -12,7 +12,7 @@ SRC = os.path.join(BASE, "FLEET-T24-ACTION-PLAN-SUPERSET-v4.0.md")
 DST = os.path.join(BASE, "FLEET-T24-ACTION-PLAN-SUPERSET-v4.1.md")
 
 v4 = open(SRC, encoding="utf-8").read()
-row13 = open(os.path.join(SCRATCH, "t24_row13.md"), encoding="utf-8").read().rstrip("\n")
+row13 = open(os.path.join(SCRATCH, "t24_v41_row13.md"), encoding="utf-8").read().rstrip("\n")
 
 out = v4
 before = len(v4)

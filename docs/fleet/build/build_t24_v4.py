@@ -12,8 +12,8 @@ SRC = os.path.join(BASE, "FLEET-T24-ACTION-PLAN-SUPERSET-v3.0.md")
 DST = os.path.join(BASE, "FLEET-T24-ACTION-PLAN-SUPERSET-v4.0.md")
 
 v3 = open(SRC, encoding="utf-8").read()
-rows = open(os.path.join(SCRATCH, "t24_rows.md"), encoding="utf-8").read().rstrip("\n")
-sections = open(os.path.join(SCRATCH, "t24_sections.md"), encoding="utf-8").read().rstrip("\n")
+rows = open(os.path.join(SCRATCH, "t24_v4_rows.md"), encoding="utf-8").read().rstrip("\n")
+sections = open(os.path.join(SCRATCH, "t24_v4_sections.md"), encoding="utf-8").read().rstrip("\n")
 
 # Split the two new sections file into its parts, keyed by heading.
 def part(text, start_head, end_head=None):

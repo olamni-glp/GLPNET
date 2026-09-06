@@ -182,6 +182,30 @@ check() {
     fi
 }
 
+# check_exact: the source must EQUAL the sentinel, not merely contain it.
+#
+# 109 codexreview finding (adversarial reviewer, 2026-09-06): three of the new Section Y checks
+# used a success sentinel that is a SUBSTRING OF THEIR OWN FAILURE STRING — `grep -q AGREE`
+# matches `DISAGREE`, `grep -q ACCOUNTED` matches `UNACCOUNTED`, `grep -q CONSISTENT` matches
+# `INCONSISTENT`. All three passed unconditionally, and they were exactly the three checks the
+# section header nominated as the ones that made it more than a re-run. X-4 (from 108) had the
+# same defect. A check that cannot fail is the defect these features exist to remove, committed
+# by the checks enforcing it.
+#
+# Renaming the sentinels would fix those five and leave the trap armed for the next status check
+# somebody writes. Equality removes the class. Use this for any check whose source is a STATUS
+# WORD; keep `check` for searching real output (a transcript, a compiler message).
+check_exact() {
+    local name="$1" expected="$2" source="$3"
+    if [ "$source" = "$expected" ]; then
+        echo "  PASS: $name"
+        PASS=$((PASS + 1))
+    else
+        echo "  FAIL: $name (expected exactly: $expected — got: $source)"
+        FAIL=$((FAIL + 1))
+    fi
+}
+
 check_not() {
     local name="$1" pattern="$2" source="$3"
     if echo "$source" | grep -q "$pattern"; then
@@ -2686,10 +2710,10 @@ HEREDOC
             # this criterion and the general harness must reach the SAME conclusion, so a drift
             # between the two is a suite failure rather than a silent divergence of method.
             V20_RESULT="AGREE"
-            check "V-20: FR-008/SC-003 Dart and C# transcripts are BYTE-IDENTICAL" "ok" "ok"
+            check_exact "V-20: FR-008/SC-003 Dart and C# transcripts are BYTE-IDENTICAL" "BYTE-IDENTICAL" "BYTE-IDENTICAL"
         else
             V20_RESULT="DIVERGE"
-            check "V-20: FR-008/SC-003 Dart and C# transcripts are BYTE-IDENTICAL" "ok" \
+            check_exact "V-20: FR-008/SC-003 Dart and C# transcripts are BYTE-IDENTICAL" "BYTE-IDENTICAL" \
                   "DIVERGED
 --- dart ---
 $v_dart
@@ -2711,11 +2735,31 @@ $v_cs"
         # directory is newer than the stub. Stated honestly: immediately after a CLEAN build the
         # two are equal and this check would pass either way, so it discriminates in the state
         # that matters and not in every state.
-        v26=$(awk -v basis="$GLPREPL_BASIS" -v stub="$GLPREPL_STUB_MTIME" \
-                  'BEGIN{ if (basis=="" || stub=="") print "UNKNOWN";
-                          else if (basis+0 >= stub+0) print "DIRECTORY-BASED";
-                          else print "STUB-BASED" }')
-        check "V-26: freshness is dated from the build OUTPUT, not the apphost stub" "DIRECTORY-BASED" "$v26"
+        # The basis must EQUAL an independently recomputed directory maximum. Comparing it
+        # against the stub's mtime (the first form of this check) was a tautology: the stub is a
+        # file inside the directory, so basis >= stub holds by construction and the check could
+        # not fail in ANY state, including under the exact reversion it claimed to catch. Found
+        # by adversarial review 2026-09-06 -- this feature's own regression control committing
+        # this feature's own defect.
+        #
+        # It is also honest about when it CANNOT discriminate: immediately after a CLEAN build the
+        # directory maximum and the stub's mtime are equal, and a stub-based gate is
+        # indistinguishable from a directory-based one. That state reports UNKNOWN and is counted
+        # as a not-run check, never as a pass.
+        _v26_dirmax=$(newest_mtime "$GLPREPL_OUTDIR") || _v26_dirmax=""
+        v26=$(awk -v basis="$GLPREPL_BASIS" -v dirmax="$_v26_dirmax" -v stub="$GLPREPL_STUB_MTIME" \
+                  'BEGIN{ if (basis=="" || dirmax=="" || stub=="") { print "UNKNOWN-UNREADABLE"; exit }
+                          if (basis+0 != dirmax+0) { print "STUB-BASED"; exit }
+                          if (dirmax+0 == stub+0)  { print "UNKNOWN-CLEAN-BUILD"; exit }
+                          print "DIRECTORY-BASED" }')
+        case "$v26" in
+            UNKNOWN-*)
+                unsearchable "V-26 (109 freshness basis)" \
+                    "cannot discriminate in this state ($v26): a stub-based and a directory-based gate agree here" ;;
+            *)
+                check_exact "V-26: freshness is dated from the build OUTPUT, not the apphost stub" \
+                            "DIRECTORY-BASED" "$v26" ;;
+        esac
     else
         skip "V-18..V-23 (101 cross-runtime Dart vs C# parity)" "C# REPL not built ($CSREPL_BIN) — build with: dotnet build out/csharp/glp_runtime_net.sln"
     fi
@@ -2929,14 +2973,19 @@ else
         FAIL=$((FAIL + 1))
     fi
     # X-4 is the one that matters: exit code and report content must agree.
+    # The success token must not be a SUBSTRING of the failure token: `grep -q AGREE` matched
+    # `DISAGREE`, so this check passed unconditionally from the day 108 shipped it. Disjoint
+    # tokens plus check_exact. `refusals` is included in `problem` because 109 added
+    # EXIT_REFUSED = 5 and this predicate had never been told about it -- an audit that REFUSED
+    # and exited 5 would have been read as agreeing while the check could not see the refusal.
     xagree=$(cd "$SCRIPT_DIR/.." && PYTHONUTF8=1 "$PY_BIN" -c "
 import json,sys
 t=json.load(open('.specify/evidence-signals/report.json'))['totals']
-problem = t['errors'] or t['non_conforming'] or t['unproven']
+problem = t['errors'] or t['non_conforming'] or t['unproven'] or t.get('refusals', 0)
 rc = int(sys.argv[1])
-print('AGREE' if (problem and rc != 0) or (not problem and rc == 0) else 'DISAGREE')
+print('CONSISTENT' if (problem and rc != 0) or (not problem and rc == 0) else 'MISMATCH rc=%d problem=%d' % (rc, bool(problem)))
 " "$xrc" 2>&1)
-    check "X-4: the audit never exits 0 while reporting a problem" "AGREE" "$xagree"
+    check_exact "X-4: the audit never exits 0 while reporting a problem" "CONSISTENT" "$xagree"
 fi
 
 echo ""
@@ -2973,8 +3022,14 @@ if [ -z "$PY_BIN" ]; then
 else
     yrep="$SCRIPT_DIR/../.specify/differential/report.json"
     rm -f "$yrep"
-    (cd "$SCRIPT_DIR/.." && DART="$DART" PYTHONUTF8=1 "$PY_BIN" scripts/differential_gate.py >/dev/null 2>&1)
+    ygate=$(cd "$SCRIPT_DIR/.." && DART="$DART" PYTHONUTF8=1 "$PY_BIN" scripts/differential_gate.py 2>&1)
     yrc=$?
+    # Print the gate's own report when it did not come back clean: on MEASURED-DIVERGE it carries
+    # the unified diff, which is the whole point of running it. Discarding it (the first form of
+    # this section) meant the operator saw six PASS lines and no divergence.
+    if [ $yrc -ne 0 ]; then
+        echo "$ygate" | sed 's/^/    | /'
+    fi
     if [ -f "$yrep" ]; then
         echo "  PASS: Y-1: the differential gate produced a report"
         PASS=$((PASS + 1))
@@ -2991,9 +3046,9 @@ r=json.load(open('.specify/differential/report.json'))
 t=r['totals']
 ok = t['declared']>0 and t['declared']==t['measured_agree']+t['measured_diverge']+t['not_measured']
 ok = ok and all(c['outcome'] in ('MEASURED-AGREE','MEASURED-DIVERGE','NOT-MEASURED') for c in r['criteria'])
-print('ACCOUNTED' if ok else 'UNACCOUNTED')
+print('ACCOUNTED' if ok else 'MISSING-OR-UNKNOWN-OUTCOME')
 " 2>&1)
-    check "Y-2: every declared criterion is reported with one of the three outcomes" "ACCOUNTED" "$y2"
+    check_exact "Y-2: every declared criterion is reported with one of the three outcomes" "ACCOUNTED" "$y2"
 
     # Y-3: the exit code and the report must agree. NOT-MEASURED must never be exit 0.
     y3=$(cd "$SCRIPT_DIR/.." && PYTHONUTF8=1 "$PY_BIN" -c "
@@ -3003,9 +3058,9 @@ rc=int(sys.argv[1])
 if t['measured_diverge']: want=1
 elif t['not_measured']:   want=3
 else:                     want=0
-print('AGREE' if rc==want else 'DISAGREE rc=%d want=%d' % (rc,want))
+print('RC-MATCH' if rc==want else 'RC-MISMATCH rc=%d want=%d' % (rc,want))
 " "$yrc" 2>&1)
-    check "Y-3: the gate never exits 0 while a criterion is NOT-MEASURED or DIVERGE" "AGREE" "$y3"
+    check_exact "Y-3: the gate never exits 0 while a criterion is NOT-MEASURED or DIVERGE" "RC-MATCH" "$y3"
 
     # Y-4 (T059): the general harness and the hand-written V-18..V-23 must agree.
     y4=$(cd "$SCRIPT_DIR/.." && PYTHONUTF8=1 "$PY_BIN" -c "
@@ -3021,11 +3076,11 @@ else:
         # V-18..V-23 could not run (no C# binary, or a stale one). The harness must then also
         # decline to measure — if it reported AGREE while the reference could not run at all,
         # the generalisation would be measuring something the original never claimed.
-        print('CONSISTENT' if got=='NOT-MEASURED' else 'INCONSISTENT ref=NOT-RUN harness=%s' % got)
+        print('NO-DRIFT' if got=='NOT-MEASURED' else 'DRIFT ref=NOT-RUN harness=%s' % got)
     else:
-        print('CONSISTENT' if got=='MEASURED-'+ref else 'INCONSISTENT ref=%s harness=%s' % (ref,got))
+        print('NO-DRIFT' if got=='MEASURED-'+ref else 'DRIFT ref=%s harness=%s' % (ref,got))
 " "$V20_RESULT" 2>&1)
-    check "Y-4: T059 the harness and V-18..V-23 agree on the shared criterion" "CONSISTENT" "$y4"
+    check_exact "Y-4: T059 the harness and V-18..V-23 agree on the shared criterion" "NO-DRIFT" "$y4"
 
     # Y-5 (SC-002): a criterion may not reach MEASURED-AGREE without an EXECUTED negative
     # control that actually diverged. This is the check that stops an unfalsifiable 100%.
@@ -3035,9 +3090,9 @@ r=json.load(open('.specify/differential/report.json'))
 bad=[c['id'] for c in r['criteria']
      if c['outcome']=='MEASURED-AGREE'
      and not (c['negative_control']['executed'] and c['negative_control']['passed'])]
-print('ALL-FALSIFIABLE' if not bad else 'UNFALSIFIABLE: '+','.join(bad))
+print('ALL-FALSIFIABLE' if not bad else 'HAS-UNPROVEN: '+','.join(bad))
 " 2>&1)
-    check "Y-5: SC-002 no MEASURED-AGREE without an executed, diverging negative control" "ALL-FALSIFIABLE" "$y5"
+    check_exact "Y-5: SC-002 no MEASURED-AGREE without an executed, diverging negative control" "ALL-FALSIFIABLE" "$y5"
 
     # Y-6: FR-008 stated in the artefact, not left to the reader. Agreement is agreement;
     # participants broken identically also agree, and the report says so.
@@ -3046,6 +3101,34 @@ import json
 print(json.load(open('.specify/differential/report.json'))['agreement_is_not_correctness'])
 " 2>&1)
     check "Y-6: FR-008 the report states that agreement is not correctness" "broken identically also agree" "$y6"
+
+    # Y-7/Y-8 close the two holes adversarial review reproduced: with the shipped declaration
+    # returning NOT-MEASURED (e.g. ${DART} unresolved on this host) every Y check above still
+    # passed and the summary carried NO trace that zero cross-runtime comparison happened; and
+    # nothing in the section failed on MEASURED-DIVERGE, so US1 acceptance scenario 2 ("the suite
+    # fails") was carried only by V-20's duplicate of the one shared criterion.
+    #
+    # A NOT-MEASURED criterion is reported as UNSEARCHABLE -- the same treatment Section V gives a
+    # runtime it could not start -- so it is enumerated in the not-run list and is never a pass.
+    ynm=$(cd "$SCRIPT_DIR/.." && PYTHONUTF8=1 "$PY_BIN" -c "
+import json
+r=json.load(open('.specify/differential/report.json'))
+print('; '.join('%s: %s' % (c['id'], c['reason']) for c in r['criteria'] if c['outcome']=='NOT-MEASURED'))
+" 2>&1)
+    if [ -n "$ynm" ]; then
+        unsearchable "Y-7 (109 declared criteria that were NOT MEASURED)" "$ynm"
+    else
+        echo "  PASS: Y-7: every declared criterion was actually measured"
+        PASS=$((PASS + 1))
+    fi
+
+    ydv=$(cd "$SCRIPT_DIR/.." && PYTHONUTF8=1 "$PY_BIN" -c "
+import json
+r=json.load(open('.specify/differential/report.json'))
+bad=[c['id'] for c in r['criteria'] if c['outcome']=='MEASURED-DIVERGE']
+print('NO-DIVERGENCE' if not bad else 'DIVERGED: '+','.join(bad))
+" 2>&1)
+    check_exact "Y-8: US1 scenario 2 — a declared criterion that DIVERGES fails the suite" "NO-DIVERGENCE" "$ydv"
 fi
 set -e
 
