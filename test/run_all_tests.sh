@@ -2757,6 +2757,44 @@ else
         skip "W-5..W-6 (path-budget guard)" "filesystem would not create the over-long fixture"
     fi
     rm -rf "$w5root"
+
+    # W-7..W-9: the /btw hook must read the spool the CODE-BASED CLIENT ACTUALLY WRITES.
+    #
+    # Installed on 2026-09-05 under engineer ruling R-C, the hook exited 0 and printed NOTHING
+    # while three alerts sat in the client's spool: it looked only in .specify/ynet/<lane>/alerts,
+    # a directory nothing writes to, and it read snake_case fields while the C# client writes
+    # PascalCase. Two halves of M6 pointed at different stores and NEITHER SAID SO - a green,
+    # completely inert /btw path, which is exactly the shape of "installed" that is worth nothing.
+    #
+    # W-7 is the control: a PascalCase alert in the client's spool must be SURFACED. W-8 is the
+    # negative control - a drained alert must NOT be, or "print everything" would satisfy W-7.
+    # W-9 pins fail-silence, which is what makes the hook safe to have on the prompt path at all.
+    w7spool=$(mktemp -d)
+    cat > "$w7spool/a1.json" <<'W7JSON'
+{"AlertId":"a1","MessageId":"m-1","Origin":"shiras/shiras.yngcor","Summary":"PING: hello","RaisedUtc":"2026-09-05T16:00:00+00:00","Presentations":1}
+W7JSON
+    cat > "$w7spool/a2.json" <<'W7JSON'
+{"AlertId":"a2","MessageId":"m-2","Origin":"shiras/shiras.yngraw","Summary":"DRAINED","RaisedUtc":"2026-09-05T16:01:00+00:00","Drained":true}
+W7JSON
+    w7=$(printf '{}' | YNET_CLIENT_SPOOL="$w7spool" PYTHONUTF8=1 "$PY_BIN" "$SCRIPT_DIR/../scripts/ynet_alerts_hook.py" --lane test-lane 2>&1)
+    check "W-7: the /btw hook SURFACES an alert written by the C# client (PascalCase spool)" "PING: hello" "$w7"
+    check_not "W-8: a drained alert is NOT surfaced (negative control)" "DRAINED" "$w7"
+
+    # W-9: fail-silent. A directory of garbage must produce no output and exit 0 - a broken hook
+    # must never be able to disrupt the prompt path.
+    w9spool=$(mktemp -d)
+    printf 'not json at all
+' > "$w9spool/broken.json"
+    w9=$(printf '{}' | YNET_CLIENT_SPOOL="$w9spool" PYTHONUTF8=1 "$PY_BIN" "$SCRIPT_DIR/../scripts/ynet_alerts_hook.py" --lane test-lane 2>&1)
+    w9rc=$?
+    if [ $w9rc -eq 0 ] && [ -z "$w9" ]; then
+        echo "  PASS: W-9: the hook is FAIL-SILENT on an unreadable spool (exit 0, no output)"
+        PASS=$((PASS + 1))
+    else
+        echo "  FAIL: W-9: hook exited $w9rc with output: $w9"
+        FAIL=$((FAIL + 1))
+    fi
+    rm -rf "$w7spool" "$w9spool"
 fi
 set -e
 

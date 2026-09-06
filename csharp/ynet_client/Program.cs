@@ -5,8 +5,11 @@
 // agent actually asks:
 //
 //   run       start the receiver and keep it running, independently of any agent (M6-b, M6-d)
-//   pending   what is waiting for me?            — the agent's "/btw" drain queue (M6-f)
-//   drain     I have handled this one            — explicit, idempotent, agent-chosen
+//   poll      one deterministic sweep of the inbox, then exit  (M6-R2, provable in a script)
+//   send      deliver a frame to another lane's mailbox        (M6-R3)
+//   doctor    who am I, where is my mailbox, and what is in it that is not a deliverable frame
+//   pending   what is waiting for me?            - the agent's "/btw" drain queue (M6-f)
+//   drain     I have handled this one            - explicit, idempotent, agent-chosen
 //
 // M6-d asks for the main part to be a kernel-managed native YNGENIOS process. This executable is
 // the receiver in the form that runs TODAY on a host whose kernel does not yet manage it; the
@@ -21,6 +24,39 @@
 using Ynet.Client;
 
 var verb = args.Length > 0 ? args[0].ToLowerInvariant() : "help";
+
+string? Opt(string name)
+{
+    for (var i = 1; i < args.Length - 1; i++)
+        if (string.Equals(args[i], name, StringComparison.OrdinalIgnoreCase))
+            return args[i + 1];
+    return null;
+}
+
+// ONE addressing convention - the incumbent's. YNET_CLIENT_COOP names the shared root and
+// YNET_CLIENT_LANE the lane's own directory under it. --coop/--self are conveniences over the same
+// two values, and --self DERIVES the lane directory from a "<node>/<actor>" identity via
+// PeerIdentity, so a peer can be addressed by who it IS rather than by the hashed directory name it
+// happens to hash to. Two rival addressing schemes in one client is how a lane ends up addressing
+// nobody, so this adds a spelling, not a second convention.
+string? CoopRoot() => Opt("--coop") ?? Environment.GetEnvironmentVariable("YNET_CLIENT_COOP");
+
+string LaneDir()
+{
+    var self = Opt("--self") ?? Environment.GetEnvironmentVariable("YNET_SELF");
+    if (!string.IsNullOrWhiteSpace(self)) return PeerIdentity.Parse(self).DirectoryName;
+    var lane = Environment.GetEnvironmentVariable("YNET_CLIENT_LANE");
+    if (!string.IsNullOrWhiteSpace(lane)) return lane;
+    throw new InvalidOperationException(
+        "this lane's mailbox is not identified. Pass --self <node>/<actor>, or set YNET_SELF, or set " +
+        "YNET_CLIENT_LANE. Refusing to invent one: an invented identity binds a mailbox no peer " +
+        "addresses, and then reports 'running' forever.");
+}
+
+string RequiredRoot() => CoopRoot() ?? throw new InvalidOperationException(
+    "COOP root is not set. Pass --coop <root> or set YNET_CLIENT_COOP. The carrier refuses to guess " +
+    "a root: guessing one addresses nobody and reports success.");
+
 var spool = new PendingAlertSpool(
     Environment.GetEnvironmentVariable("YNET_CLIENT_SPOOL") ?? PendingAlertSpool.DefaultDirectory);
 
@@ -75,6 +111,125 @@ switch (verb)
                           (coop is not null ? $"   strays={coop.StrayCount}" : string.Empty));
         coop?.Dispose();
         return 0;
+    }
+
+    case "poll":
+    {
+        // One sweep, then exit. This is what makes M6-R2 PROVABLE from a script rather than
+        // asserted: another PROCESS writes a frame, this process finds it, and the durable alert
+        // outlives both. Deterministic - a zero poll interval starts no background pump, so nothing
+        // else is sweeping the same inbox and a frame cannot be delivered twice.
+        var hook = new AgentHook(Environment.GetEnvironmentVariable("YNET_CLIENT_HOOK"));
+        // No Open(): this verb drives PollOnce itself, so no background pump exists to race it
+        // and a frame cannot be delivered twice. The interval is left at its default rather than
+        // set to Zero, which would hot-spin if anyone later added an Open() here.
+        using var carrier = new CoopFileInbound(RequiredRoot(), LaneDir());
+        using var machine = new YnetReceiverMachine(carrier, spool, hook);
+        carrier.ConfirmDurable = m => machine.WaitForDurable(m.MessageId, TimeSpan.FromSeconds(10));
+        carrier.StrayObserved += p => Console.WriteLine($"  stray (not a deliverable frame): {p}");
+
+        // 🔴 THE CONFIDENT ZERO (olamnit-yngapp, 2026-09-05T16:12Z, corroborated here at the CLI
+        // layer). "delivered=0" means two different things: an inbox READ AND FOUND EMPTY, and an
+        // inbox THAT COULD NOT BE READ AT ALL - root not mounted, share dropped, ACL refused. The
+        // carrier already distinguishes them and raises PollFailed; this verb subscribed only to
+        // strays, so an unreachable root printed a serene "delivered=0" exactly like a quiet one.
+        // Never report Quiet for a transport you could not reach.
+        var unexaminable = false;
+        carrier.PollFailed += ex =>
+        {
+            unexaminable = true;
+            Console.Error.WriteLine($"ynet_client: INBOX UNEXAMINABLE — {ex.GetType().Name}: {ex.Message}");
+        };
+
+        // LAUNCH, not Start+PumpOnce. The durability gate runs INSIDE PollOnce and asks whether the
+        // alert has reached the spool; the spool write happens on the machine's dispatch thread. With
+        // a manually pumped machine that thread does not exist yet, so the gate could NEVER be
+        // satisfied: every frame was received, durably spooled a moment later, and still bounced back
+        // to the inbox as "not durable". Measured live 2026-09-05: delivered=0, received=2,
+        // returned_for_retry=1. A gate that cannot be satisfied is a deadlock, not a safeguard.
+        machine.Launch("ynet-client-poll");
+
+        carrier.EnsureMailbox();
+
+        // TWO SWEEPS, not one, and the reason is the carrier's own anti-truncation rule: a frame is
+        // delivered only once its LENGTH HAS BEEN SEEN TWICE, so that a file still being written by
+        // a peer is never read as a complete one. That state lives in the carrier instance, and this
+        // verb is a fresh PROCESS each time - so a single sweep is always a "first sighting" and
+        // could NEVER deliver anything. Measured live 2026-09-05: delivered=0 forever, with frames
+        // visibly waiting in the inbox. Sweeping twice, with a gap, satisfies the rule inside one
+        // invocation and keeps the verb's promise of a deterministic result.
+        var delivered = carrier.PollOnce();
+        Thread.Sleep(250);
+        delivered += carrier.PollOnce();
+        machine.WaitForNotifications(TimeSpan.FromSeconds(15));
+
+        Console.WriteLine($"ynet_client: polled {carrier.InboxDirectory}");
+        Console.WriteLine($"ynet_client: delivered={delivered}   received={machine.MessagesReceived}   " +
+                          $"pending_now={spool.Count}   strays={carrier.StrayCount}   " +
+                          $"returned_for_retry={carrier.UndurableReturned}");
+        if (unexaminable)
+        {
+            Console.Error.WriteLine(
+                "ynet_client: this run is UNEXAMINABLE, not quiet — the count above is not evidence " +
+                "that nothing arrived.");
+            return 5;
+        }
+        return 0;
+    }
+
+    case "send":
+    {
+        var to = Opt("--to");
+        if (to is null)
+        {
+            Console.Error.WriteLine("usage: ynet_client send --to <node>/<actor> [--signal S] [--body B]");
+            return 1;
+        }
+
+        var rawSelf = Opt("--self") ?? Environment.GetEnvironmentVariable("YNET_SELF");
+        if (string.IsNullOrWhiteSpace(rawSelf))
+        {
+            Console.Error.WriteLine("ynet_client: sending requires --self <node>/<actor> or YNET_SELF");
+            return 2;
+        }
+
+        var peer = PeerIdentity.Parse(to);
+        var outbound = new CoopFileOutbound(PeerIdentity.Parse(rawSelf), peer, RequiredRoot());
+        if (!outbound.Send(Opt("--signal") ?? "M6_MESSAGE", Opt("--body") ?? ""))
+        {
+            // Fail closed and SAY SO. A send that reports success into a directory nobody reads is
+            // worse than a refusal: it retires the question without delivering anything.
+            Console.Error.WriteLine(
+                $"ynet_client: peer '{peer.Identity}' has no mailbox at {outbound.PeerInbox} - it has " +
+                "not registered one, or you are addressing a different COOP root. NOT SENT.");
+            return 4;
+        }
+
+        Console.WriteLine($"ynet_client: sent {outbound.LastFrameName}");
+        Console.WriteLine($"ynet_client: to={peer.Identity}   dir={peer.DirectoryName}");
+        return 0;
+    }
+
+    case "doctor":
+    {
+        var laneDir = LaneDir();
+        using var carrier = new CoopFileInbound(RequiredRoot(), laneDir);   // read-only: no Open()
+        carrier.EnsureMailbox();
+
+        var files = Directory.Exists(carrier.InboxDirectory)
+            ? Directory.GetFiles(carrier.InboxDirectory)
+            : Array.Empty<string>();
+        var frames = files.Count(f => f.EndsWith(".frame", StringComparison.OrdinalIgnoreCase));
+
+        Console.WriteLine("ynet_client doctor");
+        Console.WriteLine($"  lane dir   {laneDir}");
+        Console.WriteLine($"  inbox      {carrier.InboxDirectory}");
+        Console.WriteLine($"  spool      {spool.Directory}  ({spool.Count} pending)");
+        Console.WriteLine($"  waiting    {frames} frame(s), {files.Length - frames} non-frame file(s)");
+        foreach (var f in files.Where(f => !f.EndsWith(".frame", StringComparison.OrdinalIgnoreCase)))
+            Console.WriteLine($"    stray: {Path.GetFileName(f)}");
+        // A mis-addressed mailbox is a REPORTABLE state, not a pass.
+        return files.Length - frames > 0 ? 3 : 0;
     }
 
     case "inject":
@@ -150,6 +305,9 @@ switch (verb)
             ynet_client — the glpnet M6 QHSM YNET receiver client
 
               run                start the receiver; runs independently of any agent
+              poll               one sweep of the inbox, then exit (provable receipt)
+              send --to <node>/<actor> [--signal S] [--body B]
+              doctor             lane dir, mailbox paths, and non-frame strays
               pending            list alerts the agent has not yet drained
               drain <alertId>    mark one alert handled (idempotent)
 

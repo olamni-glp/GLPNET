@@ -1,5 +1,30 @@
 ## [Unreleased]
 
+## [v2026.09.06.1] - 2026-09-06
+
+### Added
+- the real carrier - glpnet M6 now sends and receives across processes with no agent
+- F3 and F6 election-integrity rules - one host one vote per term, one franchise one candidate
+
+### Fixed
+- the suite was measuring the scheduler - a green that depended on how many other tests were running
+- the confident zero at the CLI layer - quiet and unexaminable printed the same line
+- reconcile two independently-built carriers, and three defects the live run found
+- 18 review findings across three codex rounds, and the reason round one found none
+
+### Changed
+- Merge pull request #309 from olamni-glp/105-ynet-election-integrity
+- tree is clean and pushed; ship deliberately NOT started - it is the next session's first action
+- wave-32 restart prep - era 105 is reviewed and merged, ship is the single next action
+- Merge remote-tracking branch 'origin/develop' into 105-ynet-election-integrity
+- restart(glpnet): era S4 - the P0 is fixed and live-proven, and the merge that delivers it belongs to shiras-qhstate
+- Merge origin/develop into develop
+- decisions(m6): three engineer rulings - qhstate merges the P0 fix, yng-broker owns the 2000Z window, and three critical features are unscored so no board can see them
+- restart(glpnet): rev4 - era 104 SHIPPED and RELEASED x2, four engineer rulings actioned, seven codexreview findings fixed, and the classifier turns out to be intermittent not permanent
+- Merge pull request #308 from olamni-glp/main
+- full suite 590/592, 0 unsearchable - the TFM fix un-hid 4 groups and the 2 reds are Section T's absent trust material
+- record the codexreview as INCONCLUSIVE, not clean - it was blocked by policy six times and analysed nothing
+
 ## [v2026.09.05.6] - 2026-09-05
 
 ### Fixed

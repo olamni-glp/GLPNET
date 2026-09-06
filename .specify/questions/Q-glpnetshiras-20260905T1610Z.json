@@ -1,0 +1,166 @@
+[
+  {
+    "qid": "Q-glpnetshiras-51",
+    "header": "Fix delivery",
+    "origin": "measurement",
+    "severity": "critical",
+    "block": "The P0 remedy is built, green and live-proven, but the push to the qhstate origin was refused by this host's classifier guard, so the fix reaches no lane.",
+    "background": [
+      "MEASURED 2026-09-05T16:51Z on SHIRAS. Branch 095-m6-send-spool, commit fdb823c9, in the qhstate object store via a worktree off develop. Suite 93/93 green (85 baseline re-measured first, 8 new).",
+      "LIVE PROOF with the receiver ACTIVE: 'sent (stamped by the running receiver, seq=12)', exit 0; the receiver logged 'spool drained ...send seq=12 outcome=Sent'; the frame landed in the peer inbox at 16:51.",
+      "OriginLock and FR-015 are unchanged in substance - still exactly one stamper per origin. The holder drains a ticket spool instead of refusing a competitor.",
+      "THE PUSH WAS REFUSED. Three outward actions were refused by the guard this session (qhstate push, a direct read of the peer's script, one shared-volume listing). The GLPNET push succeeded, so the guard is repo-scoped, not blanket.",
+      "The branch is already on this machine in qhstate's own object store, so no push is needed for the owning lane to merge it."
+    ],
+    "impact_if_unanswered": "Every lane in the fleet, including this one, keeps trading receive for send: to publish anything a lane must stop its own M6 receiver, send, and restart it. The incentive to leave receivers down - which doctor rewards, since it reports MET either way - stays in place.",
+    "options": [
+      {
+        "label": "shiras-qhstate merges it locally",
+        "consequence": "No push needed; the owning lane merges to develop and rebuilds Release. Depends on a live shiras-qhstate session, which has WIP in that tree and must merge without disturbing it.",
+        "reversibility": "reversible",
+        "provenance": "measured",
+        "key": "qhstate-lane-merges",
+        "size": "nano"
+      },
+      {
+        "label": "Engineer grants the push permission",
+        "consequence": "Normal GitFlow via PR, but widens a guard that has refused three outward actions this session, possibly deliberately.",
+        "reversibility": "reversible",
+        "provenance": "measured",
+        "key": "engineer-grants-push",
+        "size": "nano"
+      },
+      {
+        "label": "Deploy the patched build to this lane only",
+        "consequence": "This lane sends immediately but runs a binary no other lane has - the divergence R-B was ruled to end - and the build is session-ephemeral.",
+        "reversibility": "reversible",
+        "provenance": "inferred",
+        "key": "local-only-deploy",
+        "size": "micro"
+      },
+      {
+        "label": "Leave it; keep the stop-send-start dance",
+        "consequence": "P0 stays open fleet-wide and every lane keeps trading receive for send. It FORECLOSES the 20:00Z subroot cutover being verifiable from inside M6: with sends only possible while the receiver is down, no lane can confirm its own post-cutover reachability without going deaf again, so the window's success would have to be taken on report rather than measured.",
+        "reversibility": "one-way",
+        "provenance": "measured",
+        "key": "leave-on-branch",
+        "size": "nano"
+      }
+    ],
+    "recommendation": {
+      "option": "qhstate-lane-merges",
+      "because": "The branch is already in qhstate's own object store on this machine, so the owning lane needs no push at all - the blocked action is not on its critical path. R-B already put this code in qhstate's tree, and a lane merging its own repo is the smallest act that reaches every lane. Deploying locally would give this lane a binary nobody else has, which is exactly the divergence R-B was ruled to end."
+    },
+    "decision": {
+      "option": "qhstate-lane-merges",
+      "date": "2026-09-05",
+      "rationale": "Engineer ruled the owning lane merges branch 095-m6-send-spool (fdb823c9) from its own object store and rebuilds. shiras-glpnet claims no ownership of the file; R-B stands."
+    }
+  },
+  {
+    "qid": "Q-glpnetshiras-52",
+    "header": "A2 cutover",
+    "origin": "contradiction",
+    "severity": "high",
+    "block": "The 20:00Z M6 subroot cutover was proposed under lazy consensus by a lane, but the fleet's designated coordinator for exactly this kind of fleetwide act is yng-broker/yng-guardian.",
+    "background": [
+      "R-A2 (15:10Z) ruled the subroot cutover and proposed 2026-09-05T20:00Z, objections by 18:00Z.",
+      "It cannot be done lane by lane: a peer is addressed by its directory under the root, so an early mover is unreachable to every lane that has not moved, and its sends fail closed.",
+      "The engineer's standing rule designates yng-broker/yng-guardian on each of the 4 hosts as the PBFT leader-elector and fleetwide coordinator.",
+      "NOT MEASURED: whether yng-broker is actually running on any host. This lane has not probed it."
+    ],
+    "impact_if_unanswered": "Either the window passes with no one calling it, or a lane calls a fleetwide restart it has no standing to call - and a partial cutover splits the carrier in two, which must be completed rather than reverted.",
+    "options": [
+      {
+        "label": "Hold 20:00Z, yng-broker owns the window",
+        "consequence": "Keeps the time and puts coordination where the standing rule puts it; requires yng-broker to be live and to accept, which is unmeasured.",
+        "reversibility": "reversible",
+        "provenance": "inferred",
+        "key": "broker-owns-window",
+        "size": "mini"
+      },
+      {
+        "label": "Hold 20:00Z, shiras-glpnet coordinates",
+        "consequence": "A lane coordinating a fleetwide restart is the shape prior rulings moved away from; this lane cannot verify which lanes restarted.",
+        "reversibility": "reversible",
+        "provenance": "measured",
+        "key": "lane-coordinates",
+        "size": "mini"
+      },
+      {
+        "label": "Defer the cutover",
+        "consequence": "The R-A1 tilde filter remains the whole remedy - measured working 44/44 this session - but it is a convention every fanout must remember.",
+        "reversibility": "reversible",
+        "provenance": "measured",
+        "key": "defer-cutover",
+        "size": "nano"
+      }
+    ],
+    "recommendation": {
+      "option": "broker-owns-window",
+      "because": "The time is already published and lazy consensus is running, so moving it costs more than keeping it. What should change is who calls it: the standing rule designates yng-broker/yng-guardian as the fleetwide coordinator, and a fleetwide synchronised restart is precisely that role. This lane withdraws its own claim to coordinate rather than defend it."
+    },
+    "decision": {
+      "option": "broker-owns-window",
+      "date": "2026-09-05",
+      "rationale": "Engineer ruled the 20:00Z window stands and yng-broker/yng-guardian owns it. shiras-glpnet's coordination proposal is withdrawn in favour of the broker; this lane complies with the window the broker calls."
+    }
+  },
+  {
+    "qid": "Q-glpnetshiras-53",
+    "header": "Next era",
+    "origin": "contradiction",
+    "severity": "high",
+    "block": "The roadmap's ranked next differs from the features the engineer's directives name as today's must-haves, and three of those are promoted but unscored so they cannot rank at all.",
+    "background": [
+      "MEASURED 2026-09-05T16:03Z. buildkit-roadmap next returns per-host-toolchain-and-environment-contract at rank 24, WSJF 3.60.",
+      "m6-send-spool-hardening was captured, scored WSJF 6.50 / RICE 1068.75 and promoted this session; it ranks #9 and is the highest scored open item after the federation-identity cluster.",
+      "pbft-leader-election, qhsm-virtual-terminals and iroh-quic-transport are all promoted with NO score, so they sort to the bottom of a WSJF-descending board regardless of the directives naming them critical.",
+      "104-wp02-quic-listener-service merged into develop this session, so iroh work here would overlap another lane's just-landed delivery."
+    ],
+    "impact_if_unanswered": "The lane either follows a ranked board that does not reflect today's stated priorities, or abandons the board - and an unscored promoted feature is invisible to every ranking the fleet uses.",
+    "options": [
+      {
+        "label": "m6-send-spool-hardening",
+        "consequence": "Hardens a remedy already measured green and live rather than opening a new front: doctor blindness, operator verbs, back-pressure, ticket-index compaction, four-host proof. Does not advance PBFT or terminals.",
+        "reversibility": "reversible",
+        "provenance": "measured",
+        "key": "m6-send-spool-hardening",
+        "size": "maxi"
+      },
+      {
+        "label": "pbft-leader-election",
+        "consequence": "Directly addresses a stated automatic-failure criterion, but needs other lanes participating over a carrier they currently cannot send on.",
+        "reversibility": "reversible",
+        "provenance": "inferred",
+        "key": "pbft-leader-election",
+        "size": "maxi"
+      },
+      {
+        "label": "qhsm-virtual-terminals",
+        "consequence": "Largest scope, no spec dir; the L0 sharing rule puts the core in yngenios, so this lane would own a part.",
+        "reversibility": "reversible",
+        "provenance": "measured",
+        "key": "qhsm-virtual-terminals",
+        "size": "saga"
+      },
+      {
+        "label": "iroh-quic-transport",
+        "consequence": "Risks duplicating 104-wp02, merged today.",
+        "reversibility": "reversible",
+        "provenance": "measured",
+        "key": "iroh-quic-transport",
+        "size": "midi"
+      }
+    ],
+    "recommendation": {
+      "option": "m6-send-spool-hardening",
+      "because": "It is the highest-scored open item after the federation-identity cluster, it hardens something already measured green and live-proven today rather than opening a new front, and it removes the doctor blindness that let this defect hide - a compliance instrument that reports MET while sending is impossible will hide the next one too. PBFT depends on a carrier lanes currently cannot send on; iroh overlaps 104-wp02 merged today."
+    },
+    "decision": {
+      "option": "m6-send-spool-hardening",
+      "date": "2026-09-05",
+      "rationale": "Engineer ruled m6-send-spool-hardening is this lane's mandatory next era, ahead of the board's rank-24 recommendation. Residual finding recorded: pbft-leader-election, qhsm-virtual-terminals and iroh-quic-transport are promoted but UNSCORED, so they are invisible to every WSJF ranking the fleet uses - they need scoring before any board can reflect the directives."
+    }
+  }
+]
