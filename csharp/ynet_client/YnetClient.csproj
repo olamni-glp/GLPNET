@@ -26,6 +26,13 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <!-- The adapter (Client/QuicCarrier.cs) is the QUIC realization of the receive/send seam: path
+         1, the YNET wire. This is the reference that makes the client depend on the transport, and
+         it is deliberate - the seam lives here, the QUIC stack lives there, and neither moves. -->
+    <ProjectReference Include="..\ynet_transport\YnetTransport.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
     <InternalsVisibleTo Include="ynet_client.tests" />
   </ItemGroup>
 

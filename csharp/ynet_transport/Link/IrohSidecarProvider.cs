@@ -81,8 +81,10 @@ public sealed class IrohSidecarProvider : IQuicProvider
         get
         {
             if (_explicitEndpoint is not null) return _explicitEndpoint;
+            // An UNSET env var is the normal case, not an edge one — parse only what exists, so the
+            // nullable contract is honoured rather than left to TryParse's undeclared tolerance.
             var raw = Environment.GetEnvironmentVariable(EndpointEnvVar);
-            return IPEndPoint.TryParse(raw, out var parsed) ? parsed : DefaultControlEndpoint;
+            return raw is not null && IPEndPoint.TryParse(raw, out var parsed) ? parsed : DefaultControlEndpoint;
         }
     }
 
