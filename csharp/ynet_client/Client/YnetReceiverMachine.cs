@@ -112,6 +112,26 @@ public sealed class YnetReceiverMachine : QActiveLite
     /// <summary>The agent reports it has handled an alert. Idempotent.</summary>
     public bool DrainAlert(string alertId) => _spool.Drain(alertId);
 
+    /// <summary>
+    /// True once an alert for <paramref name="messageId"/> exists in the durable spool.
+    ///
+    /// This is what a file carrier must wait for before it removes the frame from the inbox: until
+    /// the record exists, the frame is the ONLY copy. Note that the OVERFLOW path deliberately
+    /// records under "OVERFLOW-{id}" and therefore does NOT satisfy this - which is the point, an
+    /// overflowed message was not processed and its frame must stay put and be retried.
+    /// </summary>
+    public bool WaitForDurable(string messageId, TimeSpan timeout)
+    {
+        var deadline = DateTime.UtcNow + timeout;
+        while (true)
+        {
+            if (_spool.Undrained().Any(a => string.Equals(a.MessageId, messageId, StringComparison.Ordinal)))
+                return true;
+            if (DateTime.UtcNow >= deadline) return false;
+            Thread.Sleep(5);
+        }
+    }
+
     // ---- carrier callback -------------------------------------------------------------------
 
     private void OnCarrierMessage(YnetMessage m)

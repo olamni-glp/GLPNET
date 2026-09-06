@@ -1,0 +1,35 @@
+{
+  "$comment": [
+    "Project settings for glpnet. Checked in, so every session in this repo inherits them.",
+    "",
+    "THE /btw HOOK (M6-f). Engineer ruling R-C (2026-09-05) requires the engineer's explicit",
+    "consent before a lane installs this, and the harness refuses it otherwise. Consent was given",
+    "on 2026-09-05 for the PROJECT settings, not settings.local.json, so the fleet can verify from",
+    "the repo that this lane's M6 alert half is actually wired rather than taking a claim on trust.",
+    "",
+    "WHAT IT DOES. The code-based YNET client (csharp/ynet_client) receives with no agent attached",
+    "and records every alert durably. It cannot reach the agent's process at all - by construction",
+    "it holds no pid, no pipe and no handle (093 FR-008) - so something on the agent's own side has",
+    "to look. This UserPromptSubmit hook looks at a genuine turn boundary and prints what is",
+    "pending, which is the /btw semantic: the agent is OFFERED work and chooses interrupt-or-defer,",
+    "never interrupted mid-tool-call, and an absent or busy agent can neither block receipt nor",
+    "lose a message.",
+    "",
+    "WHY IT IS SAFE. The hook is fail-silent by design: any error at all exits 0 with no output,",
+    "and its output is capped so a flooded alert directory cannot flood the agent's context. A",
+    "broken hook must never be able to disrupt the prompt path - the hook is a convenience, the",
+    "prompt is the product. To remove it, delete the hooks block; nothing else depends on it."
+  ],
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python scripts/ynet_alerts_hook.py --lane gavriella-glpnet"
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -288,12 +288,102 @@ public sealed class CoopFileInbound : IYnetInbound, IDisposable
         }
 
         var name = Path.GetFileNameWithoutExtension(path);
-        Received?.Invoke(new YnetMessage(
+
+        // 🔴 ORIGIN COMES FROM THE FRAME BODY, NOT FROM THE FILE NAME. Measured 2026-09-05 against
+        // the live coop root: 173 of 173 real frames carry {"Origin":...} in a JSON body and
+        // ZERO use the "[origin]--[id].frame" naming this class previously parsed. Deriving the
+        // origin from the name therefore returned "unknown" for EVERY frame the fleet actually
+        // sends - including the ones this host's daemons consumed from a peer the same afternoon.
+        // THE PRECEDENCE, and why it is this and not a plain either/or:
+        //   1. a self-consistent JSON frame body wins - it is what 174 of 174 real frames carry;
+        //   2. otherwise, a name carrying the "[origin]--[id]" convention is honoured, so a lane
+        //      still using it keeps working rather than being cut off by a unilateral change;
+        //   3. otherwise it is a STRAY.
+        // Step 3 is the one that matters. A plain "body, else name" fallback would send `{}` - valid
+        // JSON, no identity - down to step 2, find no "--" in a real frame name, and deliver it as
+        // "unknown". That is how an empty file became a message, and it is a wrong answer rather
+        // than an error. Anything that cannot say who sent it is refused.
+        var frame = ParseFrame(body);
+        var nameOrigin = frame is null ? OriginFromFrameName(name) : null;
+        if (frame is null && nameOrigin == "unknown")
+        {
+            NoteStray(path);
+            return false;
+        }
+
+        var message = new YnetMessage(
             MessageId: name,
-            Origin: OriginFromFrameName(name),
-            Summary: name,
-            Body: body));
+            Origin: frame?.Origin ?? nameOrigin!,
+            Summary: frame is null ? name : $"{frame.Signal}: {frame.Body}",
+            Body: body);
+
+        Received?.Invoke(message);
+
+        // THE CLAIMED FILE IS THE ONLY COPY UNTIL THE ALERT IS DURABLE. Received only ENQUEUES onto
+        // the receiver machine; the spool write happens later on another thread. On the bounded
+        // mailbox's OVERFLOW path nothing is ever recorded under this message id, so without this
+        // gate the message was lost for certain, not racily. Returning it to the inbox lets the
+        // next sweep retry it. A carrier with no durability owner keeps the old behaviour, which is
+        // correct for a plane with no file to lose.
+        if (ConfirmDurable is not null && !ConfirmDurable(message))
+        {
+            try
+            {
+                File.Move(claimed, path);            // put it back for the next sweep
+                Interlocked.Increment(ref _undurable);
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                PollFailed?.Invoke(ex);              // it stays in .taken/; reported, never silent
+            }
+            return false;
+        }
+
         return true;
+    }
+
+    /// <summary>
+    /// Asked, after delivery, whether the message is now DURABLY recorded. Returning false RETURNS
+    /// THE FRAME TO THE INBOX to be retried. Null means "no durability owner".
+    /// </summary>
+    public Func<YnetMessage, bool>? ConfirmDurable { get; set; }
+
+    /// <summary>Frames delivered but not confirmed durable, and therefore returned for a retry.</summary>
+    public long UndurableReturned => Interlocked.Read(ref _undurable);
+
+    private long _undurable;
+
+    /// <summary>
+    /// Parse a frame body, or null when it is not a deliverable frame.
+    ///
+    /// 🔴 STILL UNAUTHENTICATED - see <see cref="OriginIsAuthenticated"/>. Any party that can write
+    /// into this inbox chooses the body as freely as it chose the name, so this is a WIRE-FORMAT
+    /// fix, not a trust fix. What it does buy: Origin must AGREE with SenderNode/SenderActor, so a
+    /// frame can no longer claim one identity in the field consumers display and another in the
+    /// fields a verifier would key on. Authenticating the sender needs a signed envelope, which
+    /// belongs to the canonical client.
+    /// </summary>
+    private static YnetFrame? ParseFrame(byte[] body)
+    {
+        YnetFrame? frame;
+        try
+        {
+            frame = System.Text.Json.JsonSerializer.Deserialize<YnetFrame>(body);
+        }
+        catch (System.Text.Json.JsonException)
+        {
+            return null;
+        }
+
+        if (frame is null
+            || string.IsNullOrWhiteSpace(frame.Origin)
+            || string.IsNullOrWhiteSpace(frame.SenderNode)
+            || string.IsNullOrWhiteSpace(frame.SenderActor))
+            return null;
+
+        return string.Equals(frame.Origin, $"{frame.SenderNode}/{frame.SenderActor}", StringComparison.Ordinal)
+            ? frame
+            : null;
     }
 
     /// <summary>
@@ -316,6 +406,14 @@ public sealed class CoopFileInbound : IYnetInbound, IDisposable
     /// limitation is pinned by a test that demonstrates the spoof rather than hiding it, and the
     /// gap is carried as a named requirement for the canonical envelope.
     /// </summary>
+    /// <remarks>
+    /// 🔴 DEMOTED 2026-09-05 to a FALLBACK. It is tried only when the body is not a self-consistent
+    /// frame, because a measurement says it can no longer be the primary rule: of 174 real frames on
+    /// the live coop root, 174 carry {"Origin":...} in the body and ZERO are named
+    /// "[origin]--[id].frame". As the primary rule this returned "unknown" for every frame the fleet
+    /// actually sends. It is kept, rather than deleted, so that a lane still using the naming
+    /// convention is not cut off by a unilateral change - see TryDeliver for the precedence.
+    /// </remarks>
     internal static string OriginFromFrameName(string frameName)
     {
         var sep = frameName.IndexOf("--", StringComparison.Ordinal);

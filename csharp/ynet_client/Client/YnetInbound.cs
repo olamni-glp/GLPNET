@@ -15,10 +15,14 @@ public sealed record YnetMessage(string MessageId, string Origin, string Summary
 /// the planes apart.
 ///
 /// This mirrors ITransportCarrier in YngeniOS.Mailbox.Unified, whose named realizations are the
-/// in-process loopback, TCP/TLS disterl and alt-carriers. Measured 2026-09-05: that block has NO
-/// QUIC realization, while glpnet's csharp/ynet_transport is a QUIC transport that builds and
-/// passes 121 tests. The adapter between them is claimed by this lane and is the next commitment
-/// after this client (broadcast 2026-09-05T10:50Z, section 3.3).
+/// in-process loopback, TCP/TLS disterl and alt-carriers. Measured 2026-09-05T15:58Z: that block
+/// has NO QUIC realization, while glpnet's csharp/ynet_transport is a QUIC transport that builds
+/// and passes 194 tests. The adapter between them is claimed by this lane and is the next
+/// commitment after this client (broadcast 2026-09-05T10:50Z, section 3.3).
+///
+/// The 194 was 121 when this comment was first written, and the number was never re-run until now.
+/// A count recorded once and left alone is a hypothesis, not a measurement - re-measure it before
+/// quoting it anywhere that matters.
 /// </summary>
 public interface IYnetInbound
 {
