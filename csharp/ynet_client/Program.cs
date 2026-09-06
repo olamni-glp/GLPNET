@@ -4,22 +4,37 @@
 // The M6 client's control surface. Three verbs, and each one answers a question an operator or an
 // agent actually asks:
 //
-//   run       start the receiver and keep it running, independently of any agent (M6-b, M6-d)
+//   run       start the receiver and keep it running, independently of any agent (M6-b)
+//   serve     `run` PLUS the liveness surfaces a supervisor interrogates            (M6-d)
 //   poll      one deterministic sweep of the inbox, then exit  (M6-R2, provable in a script)
 //   send      deliver a frame to another lane's mailbox        (M6-R3)
 //   doctor    who am I, where is my mailbox, and what is in it that is not a deliverable frame
 //   pending   what is waiting for me?            - the agent's "/btw" drain queue (M6-f)
 //   drain     I have handled this one            - explicit, idempotent, agent-chosen
 //
-// M6-d asks for the main part to be a kernel-managed native YNGENIOS process. This executable is
-// the receiver in the form that runs TODAY on a host whose kernel does not yet manage it; the
-// kernel-managed hosting is the next step and is stated as not-yet-done rather than implied.
+// 2026-09-06 (feature 107) — TWO defects of the SAME CLASS closed, both measured in this repo on
+// the same day: a capability built, tested and merged, with the consumer that would make it
+// load-bearing never written.
 //
-// 2026-09-05: "run" now binds a REAL cross-lane plane (CoopFileInbound) when YNET_CLIENT_COOP and
+//   1. QuicInbound/QuicOutbound — 400 LoC, 210 LoC of green tests, and this file contained ZERO
+//      references to them. The wire plane was unreachable from every verb. `--plane wire|both` now
+//      reaches it, through PlaneCatalog, which is the ONLY way a plane can be constructed — so
+//      registration implies reachability by construction, and ContractReachabilityTests fails if a
+//      realization is ever added without a path to it.
+//
+//   2. Kernel-managed hosting. The previous version of this comment said M6-d was "the next step",
+//      which was true but incomplete: csharp/glp_supervisor ALREADY did child hosting, round-trip
+//      liveness, zombie detection, backoff and restart — it hosted glp_engine_host and not this
+//      client. The capability was here all along. `serve` answers the split-protocol Ping/Ack that
+//      supervisor already sends, so it hosts this client with ZERO change to itself.
+//
+// 2026-09-05: "run" binds a REAL cross-lane plane (CoopFileInbound) when YNET_CLIENT_COOP and
 // YNET_CLIENT_LANE are set. Before this it bound LoopbackInbound unconditionally and could only
 // hear itself — a gap this lane disclosed in its own source rather than hid, and the carrier
-// adapter ruled to this lane by Q-glpnetshiras-50. With no coop root configured it still falls
-// back to loopback, and says so on stdout rather than looking reachable.
+// adapter ruled to this lane by Q-glpnetshiras-50. A wire request that cannot bind now degrades to
+// the file plane, says so ON the running line, and writes a fleet-visible degraded record
+// (engineer ruling Q-G34-02, 2026-09-06) — because four hosts each honestly reporting "wire
+// unavailable" look, from outside, exactly like four healthy hosts.
 
 using Ynet.Client;
 
@@ -134,7 +149,51 @@ switch (verb)
         Console.WriteLine($"ynet_client: hook={(hook.IsConfigured ? "configured" : "NOT configured (durable-only)")}");
         Console.WriteLine($"ynet_client: {spool.Count} alert(s) already pending from earlier runs");
 
-        // ---- M6-d: the liveness endpoint a supervisor interrogates ----
+        // ---- M6-d: the liveness surfaces a supervisor interrogates ----
+        //
+        // TWO of them, deliberately, and they are not redundant:
+        //
+        //   SupervisedLiveness — speaks the split-protocol Ping/Ack that csharp/glp_supervisor
+        //     ALREADY sends. This is what lets the EXISTING supervisor host this client with zero
+        //     change to itself (FR-029). Its answer is two-valued because that is the protocol the
+        //     supervisor has: Ack, or silence that its PingTimeout turns into a death verdict.
+        //
+        //   LivenessEndpoint — a three-valued answer (healthy / UNHEALTHY / gone) for watchers that
+        //     can use the distinction. A supervisor that can tell "sick" from "gone" can tell a
+        //     broken channel from a dead process (FR-027) and stop restarting a client that only
+        //     needed its channel re-opened.
+        //
+        // Both read health from the SAME source at the moment of asking, so they cannot disagree.
+        SupervisedLiveness? supervisedLiveness = null;
+        Func<bool> isHealthy = () => !machine.IsStopped && !machine.IsDegraded;
+
+        if (supervised)
+        {
+            var probeAddr = PlaneCatalog.ParseListen("ynet-probe", Opt("--probe") ?? "127.0.0.1:44311");
+            supervisedLiveness = new SupervisedLiveness(
+                probeAddr!.Value.BindAddress.ToString(), probeAddr.Value.Port, isHealthy);
+            supervisedLiveness.Start();
+
+            // Wait for a REAL bind before announcing readiness. A readiness token published on
+            // intent is how a supervisor starts pinging a port nothing is listening on and
+            // concludes its child is dead.
+            if (!supervisedLiveness.Bound.Wait(TimeSpan.FromSeconds(5)))
+            {
+                Console.Error.WriteLine(
+                    $"ynet_client: the supervisor probe could NOT bind {probeAddr.Value.BindAddress}:" +
+                    $"{probeAddr.Value.Port} — a supervisor would read this client as dead and restart " +
+                    "it forever. NOT STARTED under supervision.");
+                supervisedLiveness.Dispose();
+                machine.Post(new Ynet.Client.Machine.QEvt(YnetSignal.Stop));
+                (plane as IDisposable)?.Dispose();
+                return 9;
+            }
+
+            Console.WriteLine(
+                $"ynet_client: supervisor probe={probeAddr.Value.BindAddress}:{probeAddr.Value.Port}  " +
+                "(split-protocol Ping/Ack — csharp/glp_supervisor hosts this client UNMODIFIED)");
+        }
+
         LivenessEndpoint? liveness = null;
         if (supervised)
         {
@@ -149,7 +208,7 @@ switch (verb)
                 // A DEGRADED machine answers UNHEALTHY rather than falling silent, so a supervisor
                 // can tell "sick" from "gone" — which is also how it tells a broken channel from a
                 // dead process (FR-027).
-                isHealthy: () => !machine.IsStopped && !machine.IsDegraded);
+                isHealthy: isHealthy);
             liveness.Start();
             Console.WriteLine($"ynet_client: liveness={liveness.BoundEndPoint}   " +
                               "(a supervisor proves this client by ROUND-TRIP ANSWER, never by process existence)");
@@ -164,8 +223,12 @@ switch (verb)
         machine.Post(new Ynet.Client.Machine.QEvt(YnetSignal.Stop));
         Thread.Sleep(200);
         Console.WriteLine($"ynet_client: stopped   received={machine.MessagesReceived}   pending={spool.Count}" +
-                          (liveness is not null ? $"   liveness_answered={liveness.Answered}" : string.Empty));
+                          (liveness is not null ? $"   liveness_answered={liveness.Answered}" : string.Empty) +
+                          (supervisedLiveness is not null
+                              ? $"   probe_acked={supervisedLiveness.Acked}   probe_refused={supervisedLiveness.Refused}"
+                              : string.Empty));
         liveness?.Dispose();
+        supervisedLiveness?.Dispose();
         (plane as IDisposable)?.Dispose();
         return 0;
 

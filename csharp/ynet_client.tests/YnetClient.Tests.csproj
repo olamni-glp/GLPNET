@@ -21,6 +21,10 @@
 
   <ItemGroup>
     <ProjectReference Include="..\ynet_client\YnetClient.csproj" />
+    <!-- The M6-d tests drive the REAL client channel the REAL supervisor uses, not a hand-rolled
+         socket: a test that spoke a private protocol would prove the endpoint answers something and
+         prove nothing about whether the supervisor can host the client. -->
+    <ProjectReference Include="..\glp_repl_client\GlpReplClient.csproj" />
   </ItemGroup>
 
 </Project>
