@@ -1,5 +1,28 @@
 ## [Unreleased]
 
+## [v2026.09.06.4] - 2026-09-06
+
+### Added
+- OB-8(b) GLPNET reports DIFFERS, the ruled base extracted byte-exact, and OB-9's source directive saved
+- a coverage checker for the FTAP union, and the canonical path grew 627->1349 lines between two reads
+- the loader checked consistency but never identity - a coherent revoked generation passed every check
+- count the FTAP heads mechanically - 109 documents and 8 different quorum denominators
+- tactical action plan template v1 - lossless refactor, four horizons, CRDT twin derived from the markdown
+
+### Fixed
+- G-05 - the revoked list is unconditional, the generation assertion is not; and my negative control was tautological
+- codexreview found the guard did not cover the path peers actually use - 2 P1s, both real
+- my signature named a path, not content - and the ledger fork was my own unpropagated write
+
+### Changed
+- Merge pull request #319 from olamni-glp/109-revoked-trust-refusal
+- restart(glpnet): era S7 - OB-8(b) DIFFERS, base verified independently, OB-9 saved, and the suite is unverifiable not red
+- quorum answered by Q80=a; the postgres-triangle conflict escalated then resolved as ruled
+- 8 different quorum denominators measured - withdrawing heads cannot fix an undefined roster
+- restart(glpnet): era S6 prep - R-C was never durable, M6.4/M6.5 proven end-to-end, and I withdrew a plan I should have searched for first
+- withdraw(fleet): five lanes wrote the same plan tonight - none can reach a 45-lane quorum, so this one stands down
+- Merge pull request #318 from olamni-glp/main
+
 ## [v2026.09.06.3] - 2026-09-06
 
 ### Added
