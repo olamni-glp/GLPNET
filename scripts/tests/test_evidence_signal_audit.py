@@ -27,14 +27,28 @@ sys.path.insert(0, os.path.join(REPO, "scripts"))
 import evidence_signal_audit as esa  # noqa: E402
 
 
-def _manifest(tmp_path, surfaces=None, **over):
+#: Feature 109 FR-010: a scoped region MUST name the area whose adoption governs it, and that
+#: area's state must be declared. The fixture therefore ships a real adoption manifest -- writing
+#: one is the point, since "no declaration" is an ERROR and must stay one. `_adopted` selects
+#: whether the gate BINDS for the fixture, which is how the refusal tests and the non-adoption
+#: tests differ without either one suppressing the gate by configuration (FR-011 forbids that).
+def _adoption(tmp_path, state="non-adopted"):
+    d = tmp_path / ".specify" / "receipts"
+    d.mkdir(parents=True, exist_ok=True)
+    areas = [{"area": a, "state": state, "since": "2026-09-06"}
+             for a in ("build-gate", "coop", "roadmap-sync", "test-harness", "reference")]
+    (d / "adoption.json").write_text(json.dumps({"areas": areas}), encoding="utf-8")
+
+
+def _manifest(tmp_path, surfaces=None, area="coop", adoption="non-adopted", **over):
     doc = {
         "version": 1,
         "lane": "test-lane",
-        "scoped_regions": [{"path": "src", "rationale": "the test fixture tree"}],
+        "scoped_regions": [{"path": "src", "rationale": "the test fixture tree", "area": area}],
         "surfaces": surfaces if surfaces is not None else [],
     }
     doc.update(over)
+    _adoption(tmp_path, adoption)
     p = tmp_path / "manifest.json"
     p.write_text(json.dumps(doc), encoding="utf-8")
     return str(p)
@@ -491,3 +505,130 @@ def test_fr021_coverage_is_per_disposition_and_never_a_blended_percentage(tmp_pa
     assert counts["not-a-signal"] == 1
     assert counts["disclosed"] == 1
     assert set(counts) == set(esa.DISPOSITIONS)
+
+
+# ---------------------------------------------------------------------------
+# Feature 109 — the enforcing gate (US2). 108 shipped an audit that NAMES a defect
+# and stops nothing; codexreview finding 8 recorded that the gate logic was a
+# simulator in this harness, not enforcement in the audit. These tests exist so
+# that stays fixed.
+# ---------------------------------------------------------------------------
+def _planted_repo(tmp_path):
+    (tmp_path / "src").mkdir(exist_ok=True)
+    (tmp_path / "src" / "thing.py").write_text(PLANTED, encoding="utf-8")
+
+
+def _nonconforming(**over):
+    """A surface that cites a check nobody wrote — non-conforming under FR-016."""
+    return _surface(conformance_check="src/absent_test.py::test_y",
+                    negative_control="src/absent_test.py::test_y_neg", **over)
+
+
+def test_fr013_the_adoption_and_override_rules_have_exactly_ONE_implementation():
+    """SC-004. FR-006b forbids a second override mechanism; this makes a second one FAIL.
+
+    A copy would not announce itself — it would drift over weeks and the two would disagree
+    about an expiry exactly once, in the run that mattered. Identity is checkable; 'we agreed
+    not to copy it' is not.
+    """
+    gate = esa.load_gate()
+    sys.path.insert(0, os.path.join(REPO, "codeconv", "src"))
+    from codeconv.receipts import override as cc_override, manifest as cc_manifest
+    assert cc_override.applies is gate.applies
+    assert cc_override.record is gate.record
+    assert cc_override.Override is gate.Override
+    assert cc_manifest.GLPNET_AREAS is gate.GLPNET_AREAS
+
+
+def test_fr014_the_audit_runs_with_codeconv_absent_from_sys_path(tmp_path):
+    """The audit must keep working where the codeconv venv is not installed.
+
+    A tool that did not run being read as 'nothing to report' is measured instance 4 — so making
+    the gate depend on a venv would have reintroduced, inside the gate, the exact failure the
+    audit exists to detect. `_run` spawns a subprocess whose sys.path never includes codeconv.
+    """
+    _planted_repo(tmp_path)
+    mp = _manifest(tmp_path, [_surface(id="a-surface", conformance_check="src/c.py::t",
+                                       negative_control="src/c.py::t_neg")])
+    r = _run(tmp_path, mp)
+    assert "ModuleNotFoundError" not in (r.stdout + r.stderr)
+    assert "adoption_gate" not in (r.stderr or "")
+
+
+def test_fr009_an_adopted_area_with_a_nonconforming_signal_REFUSES(tmp_path):
+    _planted_repo(tmp_path)
+    mp = _manifest(tmp_path, [_nonconforming()], area="test-harness", adoption="adopted")
+    r = _run(tmp_path, mp)
+    assert r.returncode == esa.EXIT_REFUSED, r.stdout + r.stderr
+    assert "REFUSED" in r.stdout
+
+
+def test_fr010_negative_control_a_NON_ADOPTED_area_does_not_refuse(tmp_path):
+    """The phasing mechanism. Without this the gate would be all-or-nothing and would be turned
+    off wholesale on its first bad day, which is how a gate stops existing."""
+    _planted_repo(tmp_path)
+    mp = _manifest(tmp_path, [_nonconforming()], area="coop", adoption="non-adopted")
+    r = _run(tmp_path, mp)
+    assert r.returncode != esa.EXIT_REFUSED, r.stdout + r.stderr
+    assert r.returncode != esa.EXIT_CLEAN, "a non-conforming signal is still a finding"
+
+
+def test_fr010_a_region_with_no_area_is_an_ERROR_never_a_pass(tmp_path):
+    """Mirrors 078 FR-019/FR-020 exactly: absence is an error, never non-adoption."""
+    with pytest.raises(esa.ManifestError, match="area"):
+        esa.load_manifest(_manifest(
+            tmp_path, scoped_regions=[{"path": "src", "rationale": "no area declared"}]))
+
+
+def test_fr011_a_valid_in_scope_override_converts_refusal_into_a_recorded_proceed(tmp_path):
+    gate = esa.load_gate()
+    ov = gate.record(area="test-harness", check="evidence-signal-audit", reason="FR-016",
+                     briefing="the cited check is being written under feature 109",
+                     rationale="landing the gate before every check exists",
+                     acknowledged=True, expiry="2099-01-01T00:00:00+00:00")
+    verdicts = [{"id": "a-surface", "classification": "non-conforming", "failed_frs": ["FR-016"]}]
+    _adoption(tmp_path, "adopted")
+    m = {"scoped_regions": [{"path": "src", "area": "test-harness"}],
+         "surfaces": [{"id": "a-surface", "path": "src/thing.py"}]}
+    refusals, errors = esa.resolve_refusals(m, verdicts, str(tmp_path), overrides=[ov])
+    assert refusals == [] and errors == []
+    # FR-015: it is a RECORDED proceed, permanently visible — never a pass.
+    assert verdicts[0]["override"]["scope"]["area"] == "test-harness"
+    assert verdicts[0]["classification"] == "non-conforming"
+
+
+def test_fr012_an_EXPIRED_override_resumes_refusing(tmp_path):
+    gate = esa.load_gate()
+    ov = gate.record(area="test-harness", check="evidence-signal-audit", reason="FR-016",
+                     briefing="b", rationale="r", acknowledged=True,
+                     expiry="2000-01-01T00:00:00+00:00")
+    verdicts = [{"id": "a-surface", "classification": "non-conforming", "failed_frs": ["FR-016"]}]
+    _adoption(tmp_path, "adopted")
+    m = {"scoped_regions": [{"path": "src", "area": "test-harness"}],
+         "surfaces": [{"id": "a-surface", "path": "src/thing.py"}]}
+    refusals, errors = esa.resolve_refusals(m, verdicts, str(tmp_path), overrides=[ov])
+    assert len(refusals) == 1 and errors == []
+
+
+def test_fr012_an_override_with_no_expiry_is_rejected_AT_RECORD_TIME(tmp_path):
+    """Not at the point of reliance. An indefinite override that is only rejected when someone
+    tries to use it has already been written down and believed."""
+    gate = esa.load_gate()
+    with pytest.raises(gate.OverrideInvalid, match="expiry"):
+        gate.record(area="test-harness", check="evidence-signal-audit", reason="FR-016",
+                    briefing="b", rationale="r", acknowledged=True, expiry="")
+
+
+def test_fr011_an_override_recorded_for_a_DIFFERENT_reason_does_not_apply(tmp_path):
+    """One override, recorded for one refusal, must not authorise every other refusal the same
+    check can raise until its expiry."""
+    gate = esa.load_gate()
+    ov = gate.record(area="test-harness", check="evidence-signal-audit", reason="FR-004",
+                     briefing="b", rationale="r", acknowledged=True,
+                     expiry="2099-01-01T00:00:00+00:00")
+    verdicts = [{"id": "a-surface", "classification": "non-conforming", "failed_frs": ["FR-016"]}]
+    _adoption(tmp_path, "adopted")
+    m = {"scoped_regions": [{"path": "src", "area": "test-harness"}],
+         "surfaces": [{"id": "a-surface", "path": "src/thing.py"}]}
+    refusals, _errors = esa.resolve_refusals(m, verdicts, str(tmp_path), overrides=[ov])
+    assert len(refusals) == 1

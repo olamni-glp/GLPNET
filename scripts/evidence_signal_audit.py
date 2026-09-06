@@ -48,6 +48,7 @@ EXIT_FINDINGS = 1         # non-conforming or unproven surfaces present
 EXIT_USAGE = 2            # usage / manifest refusal
 EXIT_DISAGREEMENT = 3     # manifest and scan disagree (FR-014b)
 EXIT_UNEXAMINED = 4       # a region we were asked to examine could not be read (FR-020)
+EXIT_REFUSED = 5          # an ADOPTED area holds a non-conforming signal (109 FR-009)
 
 KINDS = ("wait", "idle-predicate", "liveness-flag", "exit-status", "emptiness")
 
@@ -194,6 +195,129 @@ def _utcnow() -> str:
 
 
 # ---------------------------------------------------------------------------
+# The enforcing gate (feature 109 US2, FR-009..FR-015)
+#
+# 108 shipped an audit that NAMES non-conforming signals and stops nothing. codexreview
+# finding 8 said so plainly: the classifier, the size detector and the override logic were
+# simulators in the test harness, not enforcement in the audit. A report that names a defect
+# and permits it has the same shape as the defects it names -- it answers "did we notice?"
+# while the reader hears "are we safe?".
+#
+# The rules come from ONE shared implementation (engineer ruling Q-olg17-02); this module never
+# re-implements them. Loading is by relative path with NO venv, because FR-014 requires the
+# audit to keep running where codeconv is absent.
+# ---------------------------------------------------------------------------
+_GATE_MODULE_NAME = "glpnet_adoption_gate"
+
+
+def load_gate():
+    """Import the shared adoption/override rules, stdlib only.
+
+    Registers in ``sys.modules`` BEFORE executing: the module defines dataclasses, and
+    ``@dataclass`` looks its own class's module up in ``sys.modules`` while decorating. Skipping
+    the registration raises a bare AttributeError from inside dataclasses -- measured while
+    writing this, and exactly the kind of failure that would read as "the gate is unavailable".
+    """
+    if _GATE_MODULE_NAME in sys.modules:
+        return sys.modules[_GATE_MODULE_NAME]
+    import importlib.util
+    path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "lib", "adoption_gate.py")
+    if not os.path.isfile(path):
+        raise RuntimeError(
+            f"the shared adoption/override rules are missing at {path}. This is NOT a reason to "
+            "fall back to a local copy -- a second override mechanism is what feature 108 FR-006b "
+            "forbids. Restore the file.")
+    spec = importlib.util.spec_from_file_location(_GATE_MODULE_NAME, path)
+    mod = importlib.util.module_from_spec(spec)
+    sys.modules[_GATE_MODULE_NAME] = mod
+    spec.loader.exec_module(mod)
+    return mod
+
+
+def resolve_refusals(manifest: dict, verdicts: list[dict], repo: str,
+                     overrides: list | None = None) -> tuple[list[dict], list[str]]:
+    """Decide which non-conforming surfaces REFUSE (FR-009/010/011/012).
+
+    Returns ``(refusals, errors)``.
+
+    Three states, and the third is the one that matters:
+      * area declared ``adopted``      -> a non-conforming signal REFUSES, unless a valid,
+                                          in-scope, unexpired override covers it;
+      * area declared ``non-adopted``  -> no refusal; the surface carries a visible marker;
+      * area NOT DECLARED AT ALL       -> an ERROR, never non-adoption, never a pass. This
+                                          mirrors 078 FR-019/FR-020 exactly, so one rule
+                                          governs both features (FR-010).
+    """
+    gate = load_gate()
+    errors: list[str] = []
+    refusals: list[dict] = []
+
+    region_area = {r["path"]: r.get("area") for r in manifest.get("scoped_regions", [])}
+    undeclared_regions = [p for p, a in region_area.items() if not a]
+    if undeclared_regions:
+        errors.append(
+            "scoped_regions without an 'area': %s -- an area with NO declaration is an error, "
+            "not non-adoption (FR-010, mirroring 078 FR-019/FR-020). Declare the region's area "
+            "and declare that area's adoption state in .specify/receipts/adoption.json."
+            % sorted(undeclared_regions))
+        return refusals, errors
+
+    try:
+        adoption = gate.load_adoption(os.path.join(repo, gate.ADOPTION_MANIFEST_REL))
+    except (gate.MissingDeclaration, gate.UndeclaredState) as exc:
+        errors.append(f"adoption manifest: {exc}")
+        return refusals, errors
+
+    # A verdict carries no path -- it is keyed by id -- so the surface's path comes from the
+    # manifest. Looking it up rather than trusting a field the verdict does not have is the
+    # difference between a gate and a KeyError at the moment it is first asked to refuse.
+    surface_path = {s["id"]: s["path"] for s in manifest.get("surfaces", [])}
+
+    for v in verdicts:
+        if v["classification"] != "non-conforming":
+            continue
+        spath = surface_path.get(v["id"])
+        if spath is None:
+            errors.append(f"surface {v['id']}: not present in the manifest")
+            continue
+        area = None
+        # Longest declared region wins, so a nested region overrides its parent rather than
+        # whichever happened to be declared first.
+        for path, a in sorted(region_area.items(), key=lambda kv: -len(kv[0])):
+            if spath == path or spath.startswith(path.rstrip("/") + "/"):
+                area = a
+                break
+        if area is None:
+            errors.append(f"surface {v['id']}: no scoped region covers {spath}")
+            continue
+        try:
+            state = gate.adoption_state(adoption, area)
+        except gate.MissingDeclaration as exc:
+            errors.append(f"surface {v['id']}: {exc}")
+            continue
+        if state != "adopted":
+            v["non_adoption_marker"] = (
+                f"area {area!r} is declared {state!r}: this signal is NOT gated, and that is a "
+                "declared decision, not a clean result")
+            continue
+
+        reason = ",".join(v["failed_frs"]) or "non-conforming"
+        covered = None
+        for ov in (overrides or []):
+            if gate.applies(ov, area, "evidence-signal-audit", reason):
+                covered = ov
+                break
+        if covered is not None:
+            # FR-015: an override converts a refusal into a RECORDED, EXPIRING, SCOPED proceed.
+            # It is never a pass, and it stays in the receipt permanently.
+            v["override"] = covered.to_json()
+            continue
+        refusals.append({"id": v["id"], "area": area, "path": spath,
+                         "failed_frs": v["failed_frs"]})
+    return refusals, errors
+
+
+# ---------------------------------------------------------------------------
 # Manifest
 # ---------------------------------------------------------------------------
 class ManifestError(Exception):
@@ -244,13 +368,17 @@ def validate_manifest(doc: object) -> None:
         where = f"manifest.scoped_regions[{i}]"
         if not isinstance(r, dict):
             raise ManifestError(f"{where}: must be an object")
-        for field in ("path", "rationale"):
+        for field in ("path", "rationale", "area"):
             if field not in r:
                 raise ManifestError(
-                    f"{where}.{field}: each region needs 'path' and 'rationale' -- an "
-                    "undocumented scope boundary is indistinguishable from an oversight.")
+                    f"{where}.{field}: each region needs 'path', 'rationale' and 'area' -- an "
+                    "undocumented scope boundary is indistinguishable from an oversight, and a "
+                    "region with no 'area' cannot be gated because nothing says whether its "
+                    "producing area has declared adoption (109 FR-010, mirroring 078 FR-020: "
+                    "no declaration is an ERROR, never non-adoption).")
         _req_str(r, "path", where)
         _req_str(r, "rationale", where)
+        _req_str(r, "area", where)
         if "\\" in r["path"]:
             raise ManifestError(f"{where}.path: use forward slashes, not backslashes")
     surfaces = doc.get("surfaces")
@@ -672,8 +800,17 @@ def audit(repo: str, manifest_path: str, report_path: str) -> tuple[dict, int]:
     unread = [u for u in unexamined
               if u["reason"] not in BOUNDARY and not _is_declared_gap(u["reason"])]
     unopened_by_suffix = _suffix_census(unexamined)
+    # FR-009: the gate. Resolved AFTER classification and BEFORE the exit-code decision, because
+    # a refusal must outrank a mere finding -- an adopted area holding a non-conforming signal is
+    # not "one more row in a list", it is the thing that stops the pipeline.
+    refusals, gate_errors = resolve_refusals(manifest, verdicts, repo)
+    totals["refusals"] = len(refusals)
+    totals["errors"] += len(gate_errors)
+
     if totals["errors"]:
         code, outcome = EXIT_DISAGREEMENT, "FAIL"
+    elif refusals:
+        code, outcome = EXIT_REFUSED, "REFUSED"
     elif unread:
         code, outcome = EXIT_UNEXAMINED, "UNREAD"
     elif totals["non_conforming"] or totals["unproven"]:
@@ -702,6 +839,8 @@ def audit(repo: str, manifest_path: str, report_path: str) -> tuple[dict, int]:
             for s, scanned, why in SUFFIX_DECLARATIONS
         ],
         "disposition_counts": _disposition_counts(manifest),
+        "refusals": refusals,
+        "gate_errors": gate_errors,
         "totals": totals,
         "receipt_path": os.path.relpath(receipt_path, repo).replace(os.sep, "/"),
     }
@@ -771,8 +910,14 @@ def render(report: dict) -> str:
         f"  non-conforming    {t['non_conforming']}",
         f"  unproven          {t['unproven']}",
         f"  errors            {t['errors']}",
+        f"  REFUSALS          {t.get('refusals', 0)}",
         f"  receipt           {report['receipt_path']}",
     ]
+    for r in report.get("refusals", []):
+        out.append(f"  [      REFUSED] {r['id']}  area={r['area']} (ADOPTED)  "
+                   f"fails={','.join(r['failed_frs'])}")
+    for e in report.get("gate_errors", []):
+        out.append(f"  GATE ERROR: {e}")
 
     # FR-021: per-disposition counts ARE the coverage statement. No blended percentage is
     # printed anywhere, deliberately -- see _disposition_counts.
