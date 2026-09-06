@@ -7,7 +7,7 @@ SPDX-License-Identifier: MIT
 # RESTART BRIEF — `olamnit.glpnet` · run `mrun-0ddcbbdab076` · **rev 5** · 2026-09-06
 
 **Resume with:** `resume marathon`
-**Host:** OLAMNIT · **Branch:** `108-evidence-signal-ordering` (PR **#313** open to `develop`)
+**Host:** OLAMNIT · **Branch:** `develop` · **SHIPPED and RELEASED as `v2026.09.06.2`**
 **Supersedes `RESTART-mrun-fb28dd92afe0-olamnit-glpnet-20260905-rev4.md`.**
 Trust `git log --oneline -1` over any hash written here.
 
@@ -88,19 +88,19 @@ as permanent.
 
 ## 4 · WHAT'S NEXT, IN ORDER
 
-1. **Merge PR #313** into `develop`, then `/bk-release`. The suite was green when the PR opened;
-   re-run it first (`bash test/run_all_tests.sh`) — expect **577/579** with 5 declared not-run
-   groups, four of which are the stale `glp_repl.exe` freshness gate, not failures.
-2. **`/bk-close` feature 108** — retrospective + action reconciliation.
-3. **`differential-cross-runtime-acceptance-gate`** — WSJF 19.50, now **#1 promoted** on the board
+1. ~~Merge PR #313, release, close~~ — **DONE.** PR #313 merged (`a5925508`), release PR #314 merged
+   to `main`, back-merge #315, tag **`v2026.09.06.2`**, roadmap `released`, `/bk-close`
+   retrospective written (6 findings, 0 actions to reconcile).
+   **Suite: 595/595 executed checks pass, 0 failures, 2 honestly-named not-run groups.**
+2. **`differential-cross-runtime-acceptance-gate`** — WSJF 19.50, now **#1 promoted** on the board
    (108 has moved to `implemented`). `Q-olg15-01` ordered it second, and it is now second no longer.
-4. **Wire the FR-006 adoption/override gate into the audit** — named as a follow-up, not ticked.
+3. **Wire the FR-006 adoption/override gate into the audit** — named as a follow-up, not ticked.
    codexreview finding 8: the classifier, size detector and override logic are simulators in the
    harness, **not** enforcement in the audit. Do not let the checklist imply otherwise.
-5. **Widen the audit scope** beyond the five declared regions. 1319 files are reported
+4. **Widen the audit scope** beyond the five declared regions. 1319 files are reported
    out-of-declared-scope on every run; `codeconv/` alone carries 387 decision sites. They are
    **unexamined, not clean**, and the report says so.
-6. **Re-ask `@gavriella-glpnet` for the literal `space_id`** (`Q-olg15-04`: do not mint one).
+5. **Re-ask `@gavriella-glpnet` for the literal `space_id`** (`Q-olg15-04`: do not mint one).
 
 ---
 
@@ -162,4 +162,21 @@ already counts. Rebooting OLAMNIT does not endanger the leader.
 3. `buildkit-marathon status --feature evidence-signals-not-observable-before-the-work-they-report`
 4. Read **§1** (the replay defect and its operational consequence) and **§3** (retry the classifier)
    before touching anything.
-5. Merge **PR #313**, release, close.
+5. Start `/bk-specify differential-cross-runtime-acceptance-gate` — it is now the top promoted
+   feature on the board.
+
+---
+
+## 8 · SUITE BASELINE FOR THE NEXT SESSION
+
+| | session start | session end |
+|---|---|---|
+| passed | 570 | **595** |
+| failed | **9** | **0** |
+| not-run | 5 | 2 |
+
+The two remaining not-run groups are **named missing prerequisites**, not failures:
+`ms_message` venv absent (Section S) and `glpquick-cert/glpquick.pfx` absent (Section T).
+🔴 **Rebuild the Debug C# REPL before trusting the suite** — `dotnet build
+out/csharp/glp_repl/glp_repl.csproj`. The freshness gate reads `bin/Debug/net11.0`, not Release,
+and a stale binary silently suppresses Sections I, T, U and V-18..23.
