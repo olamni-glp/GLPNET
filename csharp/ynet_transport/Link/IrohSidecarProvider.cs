@@ -129,12 +129,56 @@ public sealed class IrohSidecarProvider : IQuicProvider
         try
         {
             using var sock = new Socket(ep.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
-            if (!sock.ConnectAsync(ep).Wait(_probeTimeout))
+
+            // 🔴 The connect is a NON-BLOCKING connect plus Poll, NOT `ConnectAsync(ep).Wait(timeout)`.
+            //
+            // `.Wait()` is sync-over-async: it parks the CALLING thread — which, under any concurrent
+            // caller, is a thread-pool thread — while the continuation that would complete that same
+            // ConnectAsync ALSO needs a pool thread. Enough simultaneous probes and they starve each
+            // other, every one of them times out, and Probe() reports the sidecar unusable when it is
+            // answering perfectly well. That is a FALSE NEGATIVE in the method whose entire job is to
+            // say whether a provider can carry a link, and it gets worse exactly when the fleet is
+            // busiest — the moment a wrong answer costs the most.
+            //
+            // Measured 2026-09-06 on an IDLE machine: with xUnit collection parallelism ON the suite
+            // was 215-216 of 217 and WHICH probe tests failed varied run to run; with parallelism OFF
+            // it was 217 of 217. Every one of those failures was this starvation, not the stub, not
+            // the machine, and not the product's timeout being too tight.
+            //
+            // Poll blocks only the calling thread and needs no pool thread to make progress, so
+            // concurrent probes are independent. Probe() stays synchronous, so IQuicProvider is
+            // unchanged.
+            sock.Blocking = false;
+            try { sock.Connect(ep); }
+            catch (SocketException ex) when (ex.SocketErrorCode is SocketError.WouldBlock or SocketError.InProgress)
+            {
+                // Expected: a non-blocking connect reports "in progress" and completes via Poll.
+            }
+
+            // Poll takes MICROseconds. Clamp so a large timeout cannot overflow the int argument.
+            var micros = (int)Math.Clamp(_probeTimeout.TotalMilliseconds * 1000d, 1d, int.MaxValue);
+            var writable = sock.Poll(micros, SelectMode.SelectWrite);
+            var failed = sock.Poll(0, SelectMode.SelectError);
+
+            if (!writable && !failed)
             {
                 why = $"control port did not accept within {_probeTimeout.TotalMilliseconds:F0} ms";
                 return false;
             }
-            if (!sock.Connected) { why = "control port did not complete a connection"; return false; }
+
+            // A REFUSED connect also becomes "writable" on some stacks, so the socket-level error is
+            // what distinguishes connected from refused — `sock.Connected` is not trustworthy after a
+            // non-blocking connect and would let a refusal through as success.
+            var soError = (int)(sock.GetSocketOption(SocketOptionLevel.Socket, SocketOptionName.Error) ?? 0);
+            if (failed || soError != 0)
+            {
+                why = $"control port refused the connection ({(SocketError)soError})";
+                return false;
+            }
+
+            // Back to blocking so ReceiveTimeout/SendTimeout apply to the handshake below; those
+            // options are ignored on a non-blocking socket.
+            sock.Blocking = true;
 
             sock.ReceiveTimeout = (int)Math.Max(1, _probeTimeout.TotalMilliseconds);
             sock.SendTimeout = sock.ReceiveTimeout;
