@@ -35,8 +35,39 @@ public sealed class SharedCertMaterialGenerationTests
     [Fact]
     public void CurrentPin_IsAccepted()
     {
-        // Must not throw.
-        SharedCertMaterial.AssertPinIsTrusted(SharedCertMaterial.CurrentPin, FpPath);
+        // Independently specified, NOT SharedCertMaterial.CurrentPin. Passing the production
+        // constant into a function that compares against that same constant is tautological:
+        // codexreview 2026-09-07 [P2] found exactly that, and it was right — setting CurrentPin to
+        // an arbitrary wrong non-revoked value left all nine of these tests green. Sourcing the
+        // expected value independently is what makes this a control at all.
+        SharedCertMaterial.AssertPinIsTrusted(QuicRegistrationTests.ExpectedGen3Pin, FpPath);
+    }
+
+    /// <summary>
+    /// The production constant must equal the independently-specified expected pin. This is the
+    /// test that actually catches a wrong <c>CurrentPin</c>, and unlike the real-material test it
+    /// needs no provisioned certificate — so it fires on cert-less CI too, which is precisely the
+    /// hole codexreview named: an outage-producing typo that no test could see.
+    /// </summary>
+    [Fact]
+    public void CurrentPin_MatchesTheIndependentlySpecifiedGen3Pin()
+    {
+        Assert.Equal(QuicRegistrationTests.ExpectedGen3Pin, SharedCertMaterial.CurrentPin);
+    }
+
+    /// <summary>G-05: an operator-named directory keeps the revoked check and drops the generation one.</summary>
+    [Fact]
+    public void ExplicitDirectory_KeepsRevokedCheck_ButNotGenerationCheck()
+    {
+        const string freshlyGenerated = "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB=";
+
+        // A `glp-quick cert generate` pin is accepted when the directory was named explicitly...
+        SharedCertMaterial.AssertPinIsTrusted(freshlyGenerated, FpPath, requireCurrentGeneration: false);
+
+        // ...but the REVOKED list is unconditional, which is the property that closes the exposure.
+        var ex = Assert.Throws<InvalidOperationException>(
+            () => SharedCertMaterial.AssertPinIsTrusted(RevokedGen1, FpPath, requireCurrentGeneration: false));
+        Assert.Contains("REVOKED", ex.Message);
     }
 
     // ---- SC-003: the message must be actionable without reading the source --------------------

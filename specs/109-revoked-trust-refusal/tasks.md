@@ -46,11 +46,11 @@
       against the "guard's own constant is wrong" edge case.
 - [x] T020 Run the 064 service-box drills (`resume_drill.sh`, `history_drill.sh`) — they load real
       material through this path and are the true SC-002 negative control. Expect 7/7 and 4/4.
-- [ ] T021 Run the full repo suite `bash test/run_all_tests.sh` — expect 595/595, no new failures.
+- [x] T021 Run the full repo suite `bash test/run_all_tests.sh` — expect 595/595, no new failures.
 
 ## Phase 5 — Close out
 
-- [ ] T022 `/bk-codexreview` — adversarial review; fix findings.
+- [x] T022 `/bk-codexreview` — adversarial review; fix findings.
 - [ ] T023 `/bk-ship` — full GitFlow.
 - [ ] T024 `/bk-close` + marathon discharge + slot release + branch tidy.
 
@@ -62,3 +62,18 @@
   has watched fail is a guard nobody has tested.
 - T020 is the strongest check here and it is not self-written — it is an existing drill that
   exercises the real load path with real material.
+
+## Phase 6 — codexreview remediation (2 cycles, 6 findings, all real)
+
+- [x] T025 Cycle 1 [P1] glp_quick_host bypassed the guard entirely — guarded after the branch.
+- [x] T026 Cycle 1 [P1] my change broke QuicRegistrationTests; I compared failure COUNTS not SETS.
+- [x] T027 Cycle 2 [P1] gleam_quic/src/glpq_quic.erl is a THIRD seam — guarded, 3 controls green.
+- [x] T028 Cycle 2 [P1] FR-004 broke  + 6 test files → **engineer ruling G-05**:
+      revoked list unconditional on every path; current-generation assertion only on the walk-up
+      SHARED material. Load(dir) defaults revoked-only; LoadFromRepo() opts into both.
+- [x] T029 Cycle 2 [P2] CurrentPin_IsAccepted was TAUTOLOGICAL — passing the production constant into
+      a comparison against itself. Proven: an arbitrary wrong non-revoked constant left all 9 tests
+      GREEN. Fixed with an independently specified ExpectedGen3Pin; the same mutation now fails 2
+      tests, and on cert-less CI too.
+- [x] T030 Cycle 2 [P2] plan.md 'every consumer goes through Load' was FALSE — corrected in the plan
+      with all three seams enumerated.

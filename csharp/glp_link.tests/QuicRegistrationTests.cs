@@ -16,6 +16,16 @@ namespace GlpRuntime.Link.Tests;
 /// </summary>
 public class QuicRegistrationTests
 {
+    /// <summary>
+    /// The gen-3 SPKI pin, written down INDEPENDENTLY of <see cref="SharedCertMaterial.CurrentPin"/>
+    /// (feature 109; codexreview 2026-09-07 [P2]). Comparing the production constant against itself
+    /// is tautological — it was, and setting <c>CurrentPin</c> to an arbitrary wrong non-revoked
+    /// value left nine tests green. Measured on ARIELLAS 2026-09-06 from the gen-3 material dated
+    /// 2026-08-10 (feature 069's rotation). If a rotation changes the production constant, this must
+    /// be changed too, deliberately, in the same commit — that friction is the point.
+    /// </summary>
+    internal const string ExpectedGen3Pin = "jKMVqlvEL0evFBPw4TWIlEln3TBbXT1u1t072Zp1AlY=";
+
     /// <summary>An ephemeral shared self-signed cert + its SPKI pin (hermetic; no repo dependency).</summary>
     private static (X509Certificate2 cert, string pin) MakeCert()
     {
@@ -82,13 +92,9 @@ public class QuicRegistrationTests
     [Fact]
     public void Loader_ValidMaterial_LoadsCertAndMatchingPin()
     {
-        // Feature 109 changed what "valid" means. A freshly-generated cert is INTERNALLY consistent
-        // (private key present, fingerprint matches its own SPKI) but is NOT the current shared
-        // generation, so Load now refuses it — correctly: an unvetted generation is not one to
-        // establish links on. This test therefore asserts what it always really exercised — that
-        // every consistency check passes — by requiring the refusal to be the GENERATION one and
-        // not any of the earlier ones. Accepted-material coverage moved to the integration test
-        // below, which uses the repo's real current material rather than a synthetic pin.
+        // G-05: Load(dir) is the EXPLICIT-directory entry point and applies the revoked list
+        // only, so a freshly generated cert loads exactly as it always did. This test is restored
+        // to its original form; era 109 did not change what "valid explicit material" means.
         var (cert, pin) = MakeCert();
         var dir = FreshDir();
         try
@@ -96,14 +102,10 @@ public class QuicRegistrationTests
             File.WriteAllBytes(Path.Combine(dir, SharedCertMaterial.PfxFileName), cert.Export(X509ContentType.Pfx));
             File.WriteAllText(Path.Combine(dir, SharedCertMaterial.FingerprintFileName), pin + "\n");
 
-            var ex = Assert.Throws<InvalidOperationException>(() => SharedCertMaterial.Load(dir));
-
-            // It got all the way to the generation check — so pfx, pin file, private key and
-            // cert/pin consistency all passed. That is the original assertion, kept.
-            Assert.Contains("NOT THE CURRENT GENERATION", ex.Message);
-            Assert.Contains(pin, ex.Message);
-            Assert.DoesNotContain("inconsistent", ex.Message);
-            Assert.DoesNotContain("no private key", ex.Message);
+            var (loaded, loadedPin) = SharedCertMaterial.Load(dir);
+            Assert.True(loaded.HasPrivateKey);
+            Assert.Equal(pin, loadedPin);
+            Assert.Equal(pin, QuicTransport.SpkiPin(loaded));
         }
         finally { Directory.Delete(dir, true); }
     }
@@ -119,15 +121,18 @@ public class QuicRegistrationTests
     [Fact]
     public void Loader_RealCurrentMaterial_LoadsAndIsAccepted()
     {
-        string certDir;
-        try { certDir = SharedCertMaterial.ResolveCertDir(); }
+        try { SharedCertMaterial.ResolveCertDir(); }
         catch (Exception) { return; }   // material not provisioned on this host — see doc comment
 
-        var (loaded, loadedPin) = SharedCertMaterial.Load(certDir);
+        // LoadFromRepo() is the SHARED path, so this exercises the generation assertion for real
+        // (G-05). It is also the ONE non-tautological check on CurrentPin available here: the pin
+        // comes off disk, not from the constant, so a wrong constant fails this test.
+        var (loaded, loadedPin) = SharedCertMaterial.LoadFromRepo();
 
         Assert.True(loaded.HasPrivateKey);
         Assert.Equal(loadedPin, QuicTransport.SpkiPin(loaded));
         Assert.Equal(SharedCertMaterial.CurrentPin, loadedPin);
+        Assert.Equal(ExpectedGen3Pin, loadedPin);   // independently specified — see the constant
     }
 
     [Fact]

@@ -63,7 +63,7 @@ public static class SharedCertMaterial
     /// is a trust-config error — refused, not tolerated). Throws on any missing / unreadable /
     /// inconsistent material (fail-closed).
     /// </summary>
-    public static (X509Certificate2 cert, string pin) Load(string certDir)
+    public static (X509Certificate2 cert, string pin) Load(string certDir, bool requireCurrentGeneration = false)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(certDir);
         var pfxPath = Path.Combine(certDir, PfxFileName);
@@ -94,7 +94,9 @@ public static class SharedCertMaterial
                 + $"({pfxPath} vs {fpPath}) — fail-closed, refuse a mismatched cert/pin pair (FR-011).");
 
         // ---- feature 109: the loader validated CONSISTENCY above; now it validates IDENTITY. ----
-        AssertPinIsTrusted(pin, fpPath);
+        // Default is revoked-only (G-05): Load(dir) is the EXPLICIT-directory entry point.
+        // LoadFromRepo() is the shared/walk-up one and opts into the generation assertion.
+        AssertPinIsTrusted(pin, fpPath, requireCurrentGeneration);
 
         return (cert, pin);
     }
@@ -118,10 +120,26 @@ public static class SharedCertMaterial
     /// </summary>
     /// <param name="pin">The parsed SPKI pin (already trimmed by the caller — FR-008).</param>
     /// <param name="fpPath">Path quoted in the message so the operator knows which file to fix.</param>
-    public static void AssertPinIsTrusted(string pin, string fpPath)
+    /// <param name="requireCurrentGeneration">
+    /// <c>true</c> for the SHARED material resolved by walk-up (what peers actually pin) — both the
+    /// revoked list and the current-generation assertion apply. <c>false</c> for material the
+    /// operator named explicitly with <c>--cert &lt;dir&gt;</c> — only the revoked list applies.
+    /// <para>
+    /// Engineer ruling <b>G-05</b> (2026-09-07). Asserting the current generation everywhere broke
+    /// the documented <c>glp-quick cert generate --out &lt;dir&gt;</c> workflow and six integration
+    /// test files outright: a freshly-minted cert can never equal a compiled-in constant, so the
+    /// verb became unusable for its own documented purpose. The security property that matters — a
+    /// PUBLISHED key can never be used — is carried by the revoked list and is enforced on every
+    /// path without exception. The property that broke tooling — that exactly one generation may
+    /// ever exist — is relaxed only where the operator has explicitly named a directory. An
+    /// attacker who can choose your command line has already won.
+    /// </para>
+    /// </param>
+    public static void AssertPinIsTrusted(string pin, string fpPath, bool requireCurrentGeneration = true)
     {
         // Revoked is tested FIRST: "this key is public" is more urgent and more specific than
         // "this is not the current generation", and the operator must be shown the worse one.
+        // This branch is UNCONDITIONAL — it applies to explicitly-named material too.
         if (Array.Exists(RevokedPins, revoked => string.Equals(revoked, pin, StringComparison.Ordinal)))
             throw new InvalidOperationException(
                 $"shared QUIC trust material is REVOKED: SPKI pin '{pin}' ({fpPath}) is on the "
@@ -130,7 +148,7 @@ public static class SharedCertMaterial
                 + "REMEDY: obtain the current material from a peer host that already has it — do NOT "
                 + "restore it from git history, which is what put this key here.");
 
-        if (!string.Equals(CurrentPin, pin, StringComparison.Ordinal))
+        if (requireCurrentGeneration && !string.Equals(CurrentPin, pin, StringComparison.Ordinal))
             throw new InvalidOperationException(
                 $"shared QUIC trust material is NOT THE CURRENT GENERATION: SPKI pin '{pin}' "
                 + $"({fpPath}) != expected '{CurrentPin}' (feature 109, FR-004). The pin is not on "
@@ -162,5 +180,6 @@ public static class SharedCertMaterial
     }
 
     /// <summary>Resolve the repo <c>glpquick-cert/</c> then load — the composition-root call.</summary>
-    public static (X509Certificate2 cert, string pin) LoadFromRepo() => Load(ResolveCertDir());
+    // G-05: the walk-up SHARED material is what peers pin, so it carries BOTH checks.
+    public static (X509Certificate2 cert, string pin) LoadFromRepo() => Load(ResolveCertDir(), requireCurrentGeneration: true);
 }

@@ -15,6 +15,9 @@
 %% udp_blocked=5 quic_unsupported=6 cert_load/bind=7 (FR-019 — clear, never a silent hang).
 -module(glpq_quic).
 -export([client/1]).
+%% feature 109: exported so the revoked-pin rule is directly testable. Proving it through
+%% client/1 would need a live quicer NIF and a peer; the rule is pure, so it is proven pure.
+-export([assert_pin_not_revoked/2, revoked_pins/0]).
 -include_lib("public_key/include/public_key.hrl").
 
 -define(BOOTSTRAP_REQ, <<"GLPQUICK/1 CONNECT glp-link\r\n">>).
@@ -50,6 +53,38 @@ parse([], #{addr := _, port := _, cert := _} = M) -> M;
 parse([], _) ->
     throw({err, usage, "--addr, --port and --cert are required", 2}).
 
+%% ------------------------------------------------------- feature 109 / G-05
+%% SPKI pins that must NEVER be trusted again by any peer. Kept in step with
+%% SharedCertMaterial.RevokedPins (C#); glpq_quic:revoked_pins_test/0 in
+%% test/glpq_quic_pin_SUITE pins the value so the two cannot drift silently.
+%%
+%% This is the THIRD loading seam for this material. The C# host was guarded
+%% first, and codexreview then found that `glp-quick --stack gleam --profile c`
+%% spawns this module directly, so a Profile-C client restored to gen-1 could
+%% still connect to a gen-1 server. Guarding one seam guards one seam.
+%%
+%% `--cert` is always operator-named, so per G-05 only the REVOKED list applies
+%% here — the current-generation assertion would break `glp-quick cert generate`.
+revoked_pins() ->
+    [<<"0LOmLNM0HYv79Rkoasuu6L4MKGRyg7axgJufbZBcyTo=">>].
+
+assert_pin_not_revoked(Pin, PinFile) ->
+    PinBin = iolist_to_binary(Pin),
+    case lists:member(PinBin, revoked_pins()) of
+        false -> ok;
+        true ->
+            throw({err, cert_revoked,
+                   io_lib:format(
+                     "shared QUIC trust material is REVOKED: SPKI pin ~s (~s) is on the "
+                     "never-trust list - its private key is published in this repository's "
+                     "PUBLIC git history and anyone who has cloned the repo holds it "
+                     "(feature 109, FR-001/FR-003). REMEDY: obtain the current material from "
+                     "a peer host that already has it - do NOT restore it from git history, "
+                     "which is what put this key here.",
+                     [PinBin, PinFile]),
+                   9})
+    end.
+
 %% ------------------------------------------------------------------ main
 run(#{addr := Addr, port := Port, cert := CertDir} = Opts) ->
     Retry = maps:get(retry, Opts, false),
@@ -60,6 +95,7 @@ run(#{addr := Addr, port := Port, cert := CertDir} = Opts) ->
      || F <- [CertFile, KeyFile, PinFile]],
     {ok, PinRaw} = file:read_file(PinFile),
     Pin = string:trim(PinRaw),
+    ok = assert_pin_not_revoked(Pin, PinFile),
     case application:ensure_all_started(quicer) of
         {ok, _} -> ok;
         {error, Reason} ->

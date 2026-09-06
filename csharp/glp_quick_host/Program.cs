@@ -90,11 +90,15 @@ internal static class Program
             // material, so a device pinning a gen-1 trunk is pinning a published key. This is
             // distinct from the derived-credential revocation set (provision/revoked.jsonl), which
             // governs individual device credentials and is untouched here.
+            // G-05: --cert / --derived-dir are ALWAYS operator-named, so the current-generation
+            // assertion does not apply here — it would break `glp-quick cert generate`. The REVOKED
+            // list still applies unconditionally, which is the property that closes the exposure.
             SharedCertMaterial.AssertPinIsTrusted(
                 pin,
                 opts.DerivedDir is not null
                     ? Path.Combine(opts.DerivedDir, "trunk.pin")
-                    : Path.Combine(opts.CertDir!, SharedCertMaterial.FingerprintFileName));
+                    : Path.Combine(opts.CertDir!, SharedCertMaterial.FingerprintFileName),
+                requireCurrentGeneration: false);
         }
         catch (Exception ex) { Console.Error.WriteLine($"ERR cert_load {ex.Message}"); return ExitBindFailed; }
 
