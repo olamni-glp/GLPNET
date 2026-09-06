@@ -1,0 +1,42 @@
+{
+  "schema": "bk-std-2",
+  "lane": "olamnit.glpnet",
+  "host": "OLAMNIT",
+  "asked_at": "2026-09-06T20:00Z",
+  "transport": "AskUserQuestion (interactive, BK-STD-2 carve-out)",
+  "questions": [
+    {
+      "qid": "Q-olg17-01",
+      "subject": "era packaging of the four engineer-ruled workstreams",
+      "decision": "Two features: 109 = A(differential gate)+B(FR-006 wiring)+C(scope widening), 110 = D(YQuery/DuckLake [03])",
+      "rationale_recorded": "A/B/C share one invariant (measure, do not restate); D is a different subject with a different owner boundary and HIGH drift risk that must stay visible in its own risk section.",
+      "reversibility": "high",
+      "answered_on_recommendation": true
+    },
+    {
+      "qid": "Q-olg17-02",
+      "subject": "how the stdlib-only audit reuses 078's informed-consent override without a second mechanism",
+      "decision": "Extract a stdlib-only reader that BOTH codeconv.receipts and the audit consume",
+      "rationale_recorded": "One implementation of the adoption/override rules, no drift, audit keeps its stdlib-only property. Pure refactor of shipped 078 code, not a semantic re-open, so Q-olg15-09 is respected.",
+      "reversibility": "high",
+      "answered_on_recommendation": true
+    },
+    {
+      "qid": "Q-olg17-03",
+      "subject": "declaration burden for sites in newly-scoped audit regions",
+      "decision": "Tiered disposition. Every site declared; disposition in {owned, not-a-signal, disclosed}; only 'owned' carries conformance_check + negative_control.",
+      "rationale_recorded": "Nothing stays unexamined, burden is proportional to standing, and the per-disposition counts become the honest coverage statement instead of 387 placeholders.",
+      "reversibility": "high",
+      "answered_on_recommendation": true
+    },
+    {
+      "qid": "Q-olg17-04",
+      "subject": "what [03]'s conformance evidence is measured against, given no running PostgreSQL on OLAMNIT",
+      "decision": "Start the dormant Docker PG18 in D:\pgdata as ONE local node and measure the Postgres path against it",
+      "rationale_recorded": "A single local node is explicitly not [02]'s HOT-HOT-HOT triangle, so @ospark's boundary holds, while the Postgres half of the interface is measured rather than asserted -- which is the very defect workstream A exists to catch.",
+      "reversibility": "high",
+      "answered_on_recommendation": true,
+      "engineer_action_may_be_required": "docker daemon returned permission denied on npipe; Docker Desktop may need starting"
+    }
+  ]
+}
