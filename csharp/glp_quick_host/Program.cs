@@ -77,6 +77,28 @@ internal static class Program
                 validator = new DerivedCredentialValidator(
                     cert, Path.Combine(opts.CertDir!, "provision", "revoked.jsonl"));
             }
+
+            // Feature 109 (FR-001/FR-004), placed AFTER the branch so BOTH paths are covered by one
+            // call and a third branch cannot be added past it. This host loads pfx+fingerprint
+            // directly rather than through SharedCertMaterial.Load, so without this the documented
+            // `glp-quick --server/--client` path bypassed the generation guard entirely and two
+            // peers restored to gen-1 could still establish a link — the primary revoked-key
+            // scenario, still exploitable. Found by codexreview 2026-09-06 (P1); the plan had
+            // ASSERTED that every consumer went through Load and had not measured it.
+            //
+            // The derived branch is guarded too: `trunk.pin` is a pin of the SAME shared trunk
+            // material, so a device pinning a gen-1 trunk is pinning a published key. This is
+            // distinct from the derived-credential revocation set (provision/revoked.jsonl), which
+            // governs individual device credentials and is untouched here.
+            // G-05: --cert / --derived-dir are ALWAYS operator-named, so the current-generation
+            // assertion does not apply here — it would break `glp-quick cert generate`. The REVOKED
+            // list still applies unconditionally, which is the property that closes the exposure.
+            SharedCertMaterial.AssertPinIsTrusted(
+                pin,
+                opts.DerivedDir is not null
+                    ? Path.Combine(opts.DerivedDir, "trunk.pin")
+                    : Path.Combine(opts.CertDir!, SharedCertMaterial.FingerprintFileName),
+                requireCurrentGeneration: false);
         }
         catch (Exception ex) { Console.Error.WriteLine($"ERR cert_load {ex.Message}"); return ExitBindFailed; }
 
