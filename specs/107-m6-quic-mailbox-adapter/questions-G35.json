@@ -1,0 +1,179 @@
+[
+  {
+    "qid": "Q-G35-01",
+    "header": "Wire send",
+    "block": "Wire send cannot be completed because a node identity generated per invocation produces a nodeId no peer has pinned, so every such send would be refused.",
+    "origin": "missing-requirement",
+    "severity": "high",
+    "background": [
+      "M6 names sending explicitly: the client must send AND receive independently of the agent. On the file plane this lane meets it. On the wire it does not, and the CLI currently refuses with a distinct exit code rather than reporting a success it cannot deliver.",
+      "Measured today: NodeIdentity in csharp/ynet_transport exposes Generate() and DeriveNodeId(), and has NO persist or load. A freshly generated identity therefore has a different Ed25519 nodeId on every invocation.",
+      "The fleet pins peers by Ed25519 nodeId, never by address (established wave-27, because Olamnit answers on two addresses). A send from an unpinned, never-before-seen nodeId is refused by every correctly configured peer.",
+      "So wiring --identity to Generate() would produce a send verb that looks implemented, compiles, passes a local test, and is rejected by the whole fleet: a confident zero, which is exactly the defect class this era exists to close. I would rather ship a loud refusal than a quiet lie."
+    ],
+    "impact_if_unanswered": "The send verb keeps refusing wire sends with exit code 8 and a message naming the missing argument, this lane reports M6 send-on-wire as NOT MET, and receive-on-wire ships without it.",
+    "options": [
+      {
+        "key": "A",
+        "label": "Ship the loud refusal; identity persistence is its own era",
+        "consequence": "Era 107 ships receive-on-wire, the composite, the guard and supervised liveness, with send-on-wire honestly NOT MET and a refusal that names why. Identity persistence gets its own feature with the key-storage, permissions and rotation questions it deserves. This lane stays send-file-only on the wire for at least one more era.",
+        "size": "nano",
+        "reversibility": "reversible"
+      },
+      {
+        "key": "B",
+        "label": "Build node-identity persistence inside era 107",
+        "consequence": "Send-on-wire becomes genuinely usable this era. It costs a key-at-rest design inside an era that has already grown once by your reversal, and a key file written carelessly is a credential leak that no amount of later tidying undoes.",
+        "size": "maxi",
+        "reversibility": "reversible"
+      },
+      {
+        "key": "C",
+        "label": "Allow an ephemeral identity behind an explicit --unpinned flag",
+        "consequence": "Wire send works today against peers that do not pin. It forecloses nothing technically, but it establishes a supported path on which a send can be refused fleet-wide while the CLI reports success, and once a flag exists somebody will put it in a launcher.",
+        "size": "micro",
+        "reversibility": "one-way"
+      }
+    ],
+    "recommendation": {
+      "option": "A",
+      "because": "B grows an already-expanded era with a credential-at-rest design that deserves its own scrutiny, and C creates exactly the looks-connected-but-is-not path this era was opened to remove; A ships everything that is genuinely finished and states the one thing that is not."
+    },
+    "decision": {
+      "option": "A",
+      "date": "2026-09-06",
+      "rationale": "Engineer ruled 2026-09-06: ship the loud refusal; node-identity persistence becomes its own era. send-on-wire is NOT MET and must be reported that way."
+    }
+  },
+  {
+    "qid": "Q-G35-02",
+    "header": "Restart test",
+    "block": "I need your ruling on whether era 107 must include an end-to-end kill-and-restart test of the client under the real supervisor, or whether composition from proven parts is sufficient to ship.",
+    "origin": "assumption-weakness",
+    "severity": "medium",
+    "background": [
+      "Measured and proven this era: the supervisor's OWN client channel gets an Ack from a healthy client, and gets nothing from a client whose process is alive but whose state machine has stopped. That second case is the one a process-existence check cannot see, and it is the criterion that proves the liveness check is real.",
+      "Also measured: glp_supervisor's own restart mechanics — kill, record, back off, restart, crash-loop taxonomy — are covered by its existing suite, which is green at 73/73 today, unchanged by this era.",
+      "What is NOT measured is the composition: the real Supervisor spawning the real ynet_client binary as its child and restarting it after a kill. Every part is proven; the assembly is not.",
+      "Adding it means process-spawning inside a unit-test suite, which is slow and is a well-known source of flakes — and a flaky test in the supervision path is worse than none, because it trains everyone to ignore a red that might be real."
+    ],
+    "impact_if_unanswered": "I ship with the composition stated as proven-by-parts-not-end-to-end, name it plainly in the ship note, and carry the end-to-end test as a named follow-up rather than an unstated gap.",
+    "options": [
+      {
+        "key": "A",
+        "label": "Ship on proven parts; carry the end-to-end test as a named follow-up",
+        "consequence": "Era 107 closes now with an honest statement of what was measured and what was inferred. The residual risk is real: a wiring mistake between the supervisor's config and the client's binary would not be caught until someone runs it for real.",
+        "size": "nano",
+        "reversibility": "reversible"
+      },
+      {
+        "key": "B",
+        "label": "Add the end-to-end kill-and-restart test before shipping",
+        "consequence": "The composition is measured rather than inferred, which is the standard this repo keeps rediscovering the hard way. It costs a process-spawning integration test with the flake risk that carries, in the one subsystem where a flaky red is most corrosive.",
+        "size": "mini",
+        "reversibility": "reversible"
+      }
+    ],
+    "recommendation": {
+      "option": "B",
+      "because": "This repo has been burned three times by claiming a composition from green parts — wave-33's suite measured the scheduler, wave-32's review analysed nothing, wave-29's runtimes were never both started — and 'every part is proven' is precisely the sentence that preceded each one."
+    },
+    "decision": {
+      "option": "B",
+      "date": "2026-09-06",
+      "rationale": "Engineer ruled 2026-09-06: the end-to-end kill-and-restart test under the REAL supervisor is required BEFORE shipping. Composition from proven parts is not sufficient."
+    }
+  },
+  {
+    "qid": "Q-G35-03",
+    "header": "Gleam bind",
+    "block": "Six pipeline feature ids can never bind to the roadmap, and the remedy the tool recommends cannot be applied to them.",
+    "origin": "contradiction",
+    "severity": "medium",
+    "background": [
+      "Measured today: buildkit-roadmap reconcile reports 19 of 25 pipeline ids bound, 6 unbound — 031-gleam-port-spike, 036-glp-gleam-baseline-program, 039-m2-0-verify-erlang-monitor-atomvm, 049-wave1-guard-link-acceptance, 050-full-gleam-combined, 060-wave3-full-gleam-chain. All Gleam.",
+      "The tool's own recommended remedy is 'link them with buildkit-roadmap link'. Recorded in wave-24: link REFUSES on closed features, and these are closed. The recommended remedy is therefore inapplicable to exactly the cases it is recommended for.",
+      "This has been carried unresolved across at least four waves. It is not caused by this era and does not block it, but reconcile prints a not-in-sync warning on every run, which trains every lane to read past a real warning.",
+      "Separately, 90 of 143 roadmap features carry no spec_path and can never bind by basename, so the unbound count is a floor, not a total."
+    ],
+    "impact_if_unanswered": "The warning keeps printing on every reconcile in this repo, the six stay unbound, and each wave re-discovers the same contradiction and re-reports it.",
+    "options": [
+      {
+        "key": "A",
+        "label": "Leave as a known standing warning; record it once so no wave re-derives it",
+        "consequence": "Zero cost now and nothing breaks. The recurring not-in-sync line stays, and the habit of reading past it stays with it — which is how a genuinely new binding failure would go unnoticed.",
+        "size": "nano",
+        "reversibility": "reversible"
+      },
+      {
+        "key": "B",
+        "label": "Tombstone the six pipeline records so reconcile is honestly in sync",
+        "consequence": "Reconcile goes quiet and its warnings become meaningful again. It FORECLOSES ever recovering the pipeline history of six delivered Gleam features - that history is the only record those stages ran, and a tombstone cannot be un-minted.",
+        "size": "micro",
+        "reversibility": "one-way"
+      },
+      {
+        "key": "C",
+        "label": "Raise it to the buildkit lane as a tool defect: link must accept closed features for backfill",
+        "consequence": "Fixes the contradiction at its source for every lane and every repo, not just here. It costs a cross-lane hand-off and the six stay unbound until buildkit ships it.",
+        "size": "mini",
+        "reversibility": "reversible"
+      }
+    ],
+    "recommendation": {
+      "option": "C",
+      "because": "A preserves a warning everyone has learned to ignore and B destroys the only record those stages ran; the defect is in the tool's refusal rule, and it is the buildkit lane's to fix once for all fifteen lanes rather than fifteen lanes working around it."
+    },
+    "decision": {
+      "option": "C",
+      "date": "2026-09-06",
+      "rationale": "Engineer ruled 2026-09-06: raise the roadmap-link-refuses-on-closed-features contradiction to the buildkit lane as a tool defect, fixed once for all fifteen lanes."
+    }
+  },
+  {
+    "qid": "Q-G35-04",
+    "header": "Era count",
+    "block": "I cannot honestly claim three maxi eras today, and I need your ruling on whether to ship one well-measured era or split the delivered work to reach the count.",
+    "origin": "contradiction",
+    "severity": "high",
+    "background": [
+      "You set a floor of three maxi-size eras per 24 hours, with a 25 to 50 percent point penalty below it, and a 75 percent deduction if excessive mistakes, deferrals, gaps or weaknesses are found.",
+      "Your ruling G32-03 defines an era DOWNWARD as one coherent shippable change with ONE codexreview pass, said out loud, and explicitly forbids counting smaller things quietly as eras.",
+      "Those two instructions pull in opposite directions: the fastest way to reach three is to split one coherent change into three, which G32-03 names as the thing not to do, and which the second clause of the same instruction would then penalise as gaming.",
+      "Measured today this lane delivered: era 105 closed and released; era 107 specified, clarified, planned, tasked, analysed, implemented across 7 new source files and 6 new test files with 4 mutation proofs, 93 to 171 tests, plus a fleetwide root-cause broadcast to 44 channels. That is one large era and one closed era, not three."
+    ],
+    "impact_if_unanswered": "I report one era shipped plus one closed, take the stated penalty, and do NOT split the work to inflate the count — because a split I could not defend is the cheating clause, not the delivery clause.",
+    "options": [
+      {
+        "key": "A",
+        "label": "One honest era; take the penalty",
+        "consequence": "The count is low and the points are reduced. Every era in the record stays defensible, and the era unit keeps the meaning G32-03 gave it. Nothing in the ledger has to be re-litigated later.",
+        "size": "nano",
+        "reversibility": "reversible"
+      },
+      {
+        "key": "B",
+        "label": "Split the delivered work into three eras to meet the floor",
+        "consequence": "The count is met and the penalty avoided. It contradicts G32-03 directly and forecloses the era unit as a comparable measure across lanes, because once one lane splits to hit a floor every lane must, and the number stops meaning anything.",
+        "size": "micro",
+        "reversibility": "one-way"
+      },
+      {
+        "key": "C",
+        "label": "Amend the floor to points or measured scope rather than era count",
+        "consequence": "Removes the incentive to split, since the measure stops rewarding fragmentation. It costs a change to a fleetwide scoring rule mid-day, and every lane's day so far was planned against the current one.",
+        "size": "mini",
+        "reversibility": "reversible"
+      }
+    ],
+    "recommendation": {
+      "option": "A",
+      "because": "B is the cheating clause of your own instruction wearing the delivery clause's clothes, and C changes the rules under lanes who already planned their day; taking the penalty for a true count costs points once, whereas an inflated count costs the era unit permanently."
+    },
+    "decision": {
+      "option": "C",
+      "date": "2026-09-06",
+      "rationale": "Engineer ruled 2026-09-06, OVERRIDING my recommendation of A: amend the delivery floor to points or measured scope rather than era count, removing the incentive to fragment a coherent change."
+    }
+  }
+]

@@ -1,0 +1,207 @@
+[
+  {
+    "qid": "Q-glpnetshiras-20260906T2245Z-01",
+    "header": "Cross-lane",
+    "block": "A merge performed in another lane's clone was silently discarded by a reset, so the fleet acted for eight hours on a broadcast saying the M6 send fix had landed when it had not.",
+    "origin": "measurement",
+    "severity": "critical",
+    "background": [
+      "MEASURED 2026-09-06T22:00Z: `git reflog develop` in qhstate shows `develop@{6}` = the R-C merge d4d374ab, then `develop@{4}: reset: moving to origin/develop`. The merge was discarded four entries later and is now reachable from no ref.",
+      "The branch 095-m6-send-spool had NEVER been on origin: `git ls-remote --heads origin` carried no 095-* ref at all. The only copy of the fleet's M6 send fix in the world was one local branch on SHIRAS.",
+      "Root cause is a sentence this lane published at 12:15Z as a VIRTUE: 'already in the object store on this machine - no push, no fetch, no network'. Local reachability is not durability.",
+      "Cost: the fix was authored 2026-09-05T16:52 and is still unmerged at 29 hours. This lane broadcast 'R-C MERGED - REBUILD NOW' to 44 channels at 14:00Z; any lane that rebuilt after that got a binary without the fix.",
+      "A lane cannot push another lane's integration branch (403), so 'merge it for them locally' has no durable finish. That constraint was known and was not treated as decisive.",
+      "REMEDY ALREADY SHIPPED under the current ruling set: branch pushed to origin, PR olamni-research/qhstate#342 opened against develop, merge left to the owner."
+    ],
+    "impact_if_unanswered": "Every lane keeps helping other lanes in a way that produces confident broadcasts about work that no longer exists. The failure is invisible at the moment it happens and only surfaces when someone rebuilds and gets the old behaviour, which is the most expensive place to find it.",
+    "options": [
+      {
+        "key": "pr-only",
+        "label": "PR-only: a helping lane may push a feature branch to the owner's origin and open a PR, never commit to another lane's integration branch",
+        "consequence": "Durable by construction - the work is on a remote before anyone is told about it - and merge authority stays with the owner, which is what R-C was protecting. Costs one PR round-trip and the owner's attention, so a silent owner still blocks. Pairs naturally with the guard shipped today (scripts/unpushed_claim_guard.py), which makes the rule checkable rather than merely stated.",
+        "size": "nano",
+        "reversibility": "reversible"
+      },
+      {
+        "key": "unblocker-mandate",
+        "label": "Unblocker mandate: after a stated grace on a P0, a designated lane may merge AND push to the owner's integration branch",
+        "consequence": "Fastest possible unblock and removes the silent-owner failure entirely. But it puts two writers on one integration branch, hands the owner a merge they did not review, and needs a push grant that does not exist today. It also re-opens exactly what R-B/R-C closed. FORECLOSES: once a second lane holds push rights on an integration branch, the single-writer guarantee R-B established is gone and cannot be restored by revoking the grant, because the branch history will already contain merges nobody reviewed.",
+        "size": "micro",
+        "reversibility": "one-way"
+      },
+      {
+        "key": "guard-only",
+        "label": "Keep local-merge-and-tell, but require the unpushed-claim guard's output inside every broadcast that says merged or shipped",
+        "consequence": "Cheapest, no protocol change, and it would have caught today's false broadcast before it went out. But it only DETECTS the false claim - the work is still one reset from oblivion, so the 29-hour blocker still happens, just honestly reported.",
+        "size": "nano",
+        "reversibility": "reversible"
+      },
+      {
+        "key": "owner-only",
+        "label": "Owner-only: no lane touches another lane's repository at all",
+        "consequence": "Cleanest ownership and zero cross-lane surprises. But today's blocker was caused by a silent owner, and this option contains nothing that makes hour 40 different from hour 29. It converts the exception into the normal case.",
+        "size": "nano",
+        "reversibility": "reversible"
+      }
+    ],
+    "recommendation": {
+      "option": "pr-only",
+      "because": "It is the only option that makes the failure structurally impossible rather than merely detectable: the work reaches a remote before the claim is made. It preserves R-C's actual concern (the owner merges; no private binary), it needs no new push grant, and it is already proven - PR #342 exists and the fix is durable for the first time in 29 hours. I recommend adopting it TOGETHER WITH guard-only, which is complementary rather than alternative: PR-only prevents the loss, the guard catches the case where someone forgets."
+    },
+    "decision": {
+      "option": "pr-only",
+      "date": "2026-09-06",
+      "rationale": "R-S6-01: PR-only cross-lane contribution, paired with the unpushed-claim guard. A helping lane pushes a feature branch to the owner origin and opens a PR; it never commits to another lane integration branch. The work must reach a remote BEFORE the claim is made."
+    }
+  },
+  {
+    "qid": "Q-glpnetshiras-20260906T2245Z-02",
+    "header": "M6.4/M6.5",
+    "block": "M6.5, the non-disruptive /btw defer semantic that the 16:05Z census measured as built by nobody, is now built here but harness-side rather than kernel-side, and whether that counts as MET is the engineer's call.",
+    "origin": "contradiction",
+    "severity": "high",
+    "background": [
+      "@olamnit-yngwin's 16:05Z five-clause census: 'M6.5 IS BUILT BY NOBODY. Across every delivery reported to this channel to date, no lane has reported the defer semantic.' M6.4 forbids polling; M6.5 forbids an alert that preempts.",
+      "This lane self-reported clause 4 as PARTIAL at 12:15Z: alerts arrived through a UserPromptSubmit hook, i.e. only when the engineer next speaks. A lane silent for six hours was alerted six hours late.",
+      "BUILT AND PUSHED (glpnet develop 8324e0aa, 160 lines): scripts/ynet_alert_push.py, a separate OS process armed under the agent harness's background-monitor facility. Each line it prints is delivered into the live agent session as an asynchronous notification that cannot preempt a tool call. Latency: unbounded -> <= 1s.",
+      "Unit-proven, four cases: new alert -> one line; already-acked -> silent; malformed JSON -> skipped and the watch survived; burst of 7 over a cap of 5 -> one collapsed line.",
+      "STATED AGAINST MYSELF, three ways: (a) the watcher polls a directory - there is no inotifywait on SHIRAS - what changed is that THE AGENT no longer polls; (b) it is harness-side, so M6.3 (kernel-managed native process) is untouched and still NOT MET here; (c) it is the warm path only - with no agent session attached the alert still lands on disk and the old hook remains the cold-start path.",
+      "Not yet proven end-to-end on a real inbound frame. A probe has been requested from five peer lanes in the 22:30Z broadcast; the monitor is armed in this session now."
+    ],
+    "impact_if_unanswered": "The fleet does not know whether to copy this today or wait for a kernel-originated callback. Copying it removes a real measured harm within the hour; waiting keeps every lane on turn-boundary alerting for as long as the kernel process host takes. Either is defensible, but lanes acting on different answers is not.",
+    "options": [
+      {
+        "key": "accept-met",
+        "label": "Accept harness-side push as M6.4 + M6.5 MET; publish for fleetwide adoption today",
+        "consequence": "Removes the measured harm - unbounded alert latency - across every lane within the hour, at nano cost each, strictly additive to the existing hook. Risk: it declares two clauses met by a mechanism that lives in the agent harness rather than the kernel, so a later kernel-native implementation must supersede rather than extend it, and a lane could read 'M6 met' as covering M6.3 too.",
+        "size": "nano",
+        "reversibility": "reversible"
+      },
+      {
+        "key": "accept-interim",
+        "label": "Accept as INTERIM: adopt it now, but M6.4/M6.5 stay PARTIAL until the kernel originates the callback over IPC",
+        "consequence": "Gets the latency fix today AND keeps the census honest, so no lane can retire the requirement on the strength of scaffolding. Costs nothing but bookkeeping. Risk: 'adopted but still not met' is a state some lanes will report inconsistently, and the census loses a clean pass/fail.",
+        "size": "nano",
+        "reversibility": "reversible"
+      },
+      {
+        "key": "reject-harness",
+        "label": "Reject: only a kernel-managed process delivering a callback over IPC satisfies M6.4/M6.5",
+        "consequence": "Keeps the requirement pure and forces the real design - which is where this has to end up, since a harness monitor cannot alert a lane that has no live agent session. But it leaves every lane on turn-boundary alerting until the kernel process host is written, and it discards a working mitigation that costs nothing.",
+        "size": "maxi",
+        "reversibility": "reversible"
+      }
+    ],
+    "recommendation": {
+      "option": "accept-interim",
+      "because": "It takes the whole benefit and pays none of the honesty cost. The measured harm is latency, and this removes it today for every lane at nano cost; but the clause as written says 'kernel-managed native process with hook/IPC callbacks', and I built the callback half in the harness, not the kernel. Calling that MET would let the fleet retire a requirement on the strength of scaffolding - the exact pattern that produced 'doctor says m6_met on a host running nothing'. accept-met is the runner-up and I would not argue hard against it if you want a clean census pass."
+    },
+    "decision": {
+      "option": "accept-interim",
+      "date": "2026-09-06",
+      "rationale": "R-S6-02: adopt the harness-side push channel fleetwide now, but M6.4 and M6.5 remain PARTIAL in the census until the kernel originates the callback. The benefit is taken today; the requirement is not retired on scaffolding."
+    }
+  },
+  {
+    "qid": "Q-glpnetshiras-20260906T2245Z-03",
+    "header": "M6.3 owner",
+    "block": "M6.3 requires a kernel-managed QHSM/QMSM native process, but this lane runs a systemd --user unit and the kernel that would own it lives in another lane's repository.",
+    "origin": "contradiction",
+    "severity": "high",
+    "background": [
+      "MEASURED: this lane's receiver is `ynet-m6-shiras-glpnet.service`, a systemd --user unit. It is code-based and agent-independent (M6.1 MET, pgrep-verified from outside the checker), but nothing about it is kernel-managed.",
+      "The YNGENIOS realtime kernel and the QHSM/QMSM process host live in qhstate / yngenios-windows / yngenios-linux / yngenios-core, not in glpnet. This lane consumes that substrate; it does not own it.",
+      "The same boundary was already ruled once today: R-S5-05 moved [04] YNterchange to @shiras-qhstate on the grounds that the work belongs where the substrate lives, and this lane withdrew and supplies the seam instead.",
+      "Engineer ruling R-S5-03 currently assigns M6 clause 3 AND clause 4 to this lane. Clause 4 is delivered (question 02). Clause 3 as written cannot be delivered here without either building a rival process host or reaching into another lane's repository - the thing question 01 exists to stop.",
+      "Related and unresolved fleetwide: the engineer's own broadcast that L0 has purpose-built feature-020 hooks (OnStepDispatched, Unregister, StartOnDedicatedThread, Markers) with ZERO consumers because the host that was meant to use them was never written. M6.3 and that defect are the same missing component seen from two sides."
+    ],
+    "impact_if_unanswered": "M6.3 stays NOT MET on this lane while formally assigned to it, so the fleet census records a failure against a lane that structurally cannot clear it, and nobody is actually building the process host. That is the worst of both: an owner on paper and no owner in fact.",
+    "options": [
+      {
+        "key": "reassign-to-kernel-lanes",
+        "label": "Reassign M6.3 to the kernel-owning lanes (@qhstate / @yngcor / @yngwin / @ynglin); this lane consumes their contract and reports against it",
+        "consequence": "Puts the work where the substrate and the unconsumed L0 hooks already are, and makes the feature-020 zero-consumer defect and M6.3 one piece of work instead of two. Consistent with the R-S5-05 precedent set today. Risk: this lane's M6.3 stays NOT MET until they deliver, and it adds load to lanes already holding [04].",
+        "size": "nano",
+        "reversibility": "reversible"
+      },
+      {
+        "key": "shim-here",
+        "label": "This lane builds a QHSM/QMSM supervision shim in glpnet that the kernel later adopts",
+        "consequence": "Delivers something this session and proves the lifecycle contract by exercising it. But it is a second process host in a fleet that already has unconsumed hooks for the first one - the duplicate-implementation outcome R-S5-05 was decided to avoid - and it would almost certainly be thrown away. FORECLOSES: a second process host, once other lanes bind to its lifecycle contract, cannot be deleted without breaking them, so the kernel-native host would have to absorb this shim's semantics rather than replace them.",
+        "size": "midi",
+        "reversibility": "one-way"
+      },
+      {
+        "key": "redefine-m6-3",
+        "label": "Redefine M6.3 to accept a supervised OS service as compliant until a kernel process host exists, with the kernel requirement tracked as a separate roadmap feature",
+        "consequence": "Makes the census honest immediately - most lanes would pass - and stops M6.3 masking the real gap. But it lowers a bar the engineer set deliberately, and 'until X exists' has no forcing function unless the successor feature is scored and allocated in the same act.",
+        "size": "nano",
+        "reversibility": "reversible"
+      }
+    ],
+    "recommendation": {
+      "option": "reassign-to-kernel-lanes",
+      "because": "It is the same call you already made today on [04], applied to the same boundary: build it where the substrate lives. It also merges M6.3 with the feature-020 zero-consumer defect you broadcast - they are one missing process host, and one owner building it once beats two lanes building halves. I recommend pairing it with redefine-m6-3 as bookkeeping so the census stops recording a structural impossibility as this lane's failure, but ONLY if the successor feature is scored and allocated in the same act, or the redefinition is just the bar quietly moving."
+    },
+    "decision": {
+      "option": "reassign-to-kernel-lanes",
+      "date": "2026-09-06",
+      "rationale": "R-S6-03: M6.3 reassigned to the kernel-owning lanes; glpnet consumes the contract. M6.3 and the feature-020 zero-consumer defect are ONE missing process host and get ONE owner."
+    }
+  },
+  {
+    "qid": "Q-glpnetshiras-20260906T2245Z-04",
+    "header": "Next era",
+    "block": "This lane needs its next single-feature era chosen, because [04] was withdrawn to qhstate, M6.4/M6.5 is delivered, and the highest-WSJF open items differ from the ones today's incidents point at.",
+    "origin": "assumption-weakness",
+    "severity": "medium",
+    "background": [
+      "Board state measured this session: 151 features, 55 open, 0 unscored, 0 captured-or-refined. 'promote and score all' is already satisfied - there is nothing left to promote or score.",
+      "Candidates by WSJF: search-before-broadcast-guard 10.50 (this lane's own filing today), declared-unconsumed-guard 7.00, pbft-leader-election 6.80, m6-send-spool-hardening 6.50.",
+      "Today produced TWO incidents with the same shape - something declared and nothing consuming or checking it: a merge declared done that no remote held, and L0 hooks declared for feature-020 with zero consumers. The engineer broadcast the second as a mandatory P1 fleetwide fix.",
+      "m6-send-spool-hardening targets the blindness that hid the send P0 (doctor reported MET while sending was impossible; it must surface spool depth, rejected tickets and drain age). But that code is in qhstate's C# tree, so under question 01 it is a PR into another lane's repo, not an era here.",
+      "pbft-leader-election is named as a must-have today, but the engineer has also designated yng-broker/yng-guardian as the PBFT elector for all purposes - so the elector is not this lane's to build.",
+      "Two enforceable guards were already shipped this session (unpushed_claim_guard.py, ynet_alert_push.py), which reduces what search-before-broadcast-guard still has to cover."
+    ],
+    "impact_if_unanswered": "The lane either picks by raw WSJF and works on something adjacent to what today actually cost the fleet, or stalls. Neither is expensive to reverse, but a wrong pick costs a whole era.",
+    "options": [
+      {
+        "key": "declared-unconsumed",
+        "label": "declared-unconsumed-guard (WSJF 7.00) - cross-language guard for capability declared with zero consumers",
+        "consequence": "Directly implements the P1 the engineer broadcast today (feature-020 hooks with no host), lives entirely inside this lane's competence, and generalises BOTH of today's incidents into one checkable rule. It is also the measurement M6.3 needs in question 03. Risk: cross-language static analysis is genuinely large and can overrun a single era if scoped to every runtime at once.",
+        "size": "midi",
+        "reversibility": "reversible"
+      },
+      {
+        "key": "search-before-broadcast",
+        "label": "search-before-broadcast-guard (WSJF 10.50) - no lane may issue a ruling the channel already carries",
+        "consequence": "Highest-scoring open item and this lane's own filing after duplicating three prior rulings. It would have caught today's duplicate broadcasts. Risk: the coop channel is large enough that a full grep timed out at 120s this session, so the guard has a real performance problem to solve before it is usable at broadcast time.",
+        "size": "midi",
+        "reversibility": "reversible"
+      },
+      {
+        "key": "m6-spool-hardening",
+        "label": "m6-send-spool-hardening (WSJF 6.50) - doctor must surface spool depth, rejected tickets and drain age",
+        "consequence": "Fixes the specific blindness that let the send P0 hide behind a green doctor for 29 hours, and would be the second PR into qhstate under the question-01 rule - a live test of that rule. Risk: it is another lane's repository, so delivery depends on their review capacity, and this lane cannot close its own era on it.",
+        "size": "micro",
+        "reversibility": "reversible"
+      },
+      {
+        "key": "quic-listener",
+        "label": "wp02-configurable-quic-listener-for-broker-guardian-oracle-admin (WSJF 6.75, spec already written)",
+        "consequence": "Already specified at specs/104-wp02-quic-listener-service, and directly answers the directive that GLPNET must configure a working QUIC IP listener for broker, guardian, oracle and admin. Lowest uncertainty of the four because the spec exists. Risk: it is transport plumbing under a leader-election design that is still being decided elsewhere, so it may need rework once the elector lands.",
+        "size": "midi",
+        "reversibility": "reversible"
+      }
+    ],
+    "recommendation": {
+      "option": "declared-unconsumed",
+      "because": "It is the only candidate that is simultaneously (a) explicitly named by you as a mandatory P1 today, (b) entirely inside this lane's repository and competence, and (c) the same defect as both of today's expensive incidents - a thing declared with nothing consuming or checking it. It also produces the instrument question 03 needs, so it pays twice. I would scope it to ONE language pair for the era rather than all of them, because 'cross-language' is where this overruns. quic-listener is the runner-up on the strength of an existing spec, and is the right pick instead if you want the QUIC listener directive closed this cycle rather than the guard."
+    },
+    "decision": {
+      "option": "declared-unconsumed",
+      "date": "2026-09-06",
+      "rationale": "R-S6-04: next single-feature era is declared-unconsumed-guard, scoped to one language pair to keep it inside an era."
+    }
+  }
+]

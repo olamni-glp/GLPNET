@@ -26,6 +26,20 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <!-- The adapter (Client/QuicCarrier.cs) is the QUIC realization of the receive/send seam: path
+         1, the YNET wire. This is the reference that makes the client depend on the transport, and
+         it is deliberate - the seam lives here, the QUIC stack lives there, and neither moves. -->
+    <ProjectReference Include="..\ynet_transport\YnetTransport.csproj" />
+
+    <!-- M6-d: the client answers the liveness ping in the wire format csharp/glp_supervisor ALREADY
+         speaks, so that supervisor hosts this client with ZERO change to itself. Binding the
+         existing supervision capability rather than writing a second one is FR-029, and the count
+         of supervision implementations in this repo is unchanged by this feature (SC-012). -->
+    <ProjectReference Include="..\glp_link\GlpLink.csproj" />
+    <ProjectReference Include="..\glp_split_protocol\GlpSplitProtocol.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
     <InternalsVisibleTo Include="ynet_client.tests" />
   </ItemGroup>
 

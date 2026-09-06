@@ -1,0 +1,179 @@
+[
+  {
+    "qid": "Q-G34-01",
+    "header": "M6-d scope",
+    "block": "Era 107 cannot be declared M6-complete until you rule whether kernel-managed hosting is inside it or is a separate era.",
+    "origin": "contradiction",
+    "severity": "high",
+    "background": [
+      "Your M6 mandate says the main part MUST be a kernel-managed QHSM/QMSM-based native YNGENIOS process with callbacks into the agent. That is one clause of a mandate whose other clauses (code-based C# QHSM client, send AND receive without the agent, async alert with /btw semantics) this lane already satisfies on the file plane.",
+      "Measured today: csharp/ynet_client is a C# QHSM client (Qhsm/QActiveLite + YnetReceiverMachine) that receives, spools a durable alert, and notifies at a turn boundary via scripts/ynet_alerts_hook.py, with no agent required. Program.cs line 14-16 states in its own source that kernel-managed hosting is NOT done and calls it the next step rather than implying it exists.",
+      "No YNGENIOS kernel on this host currently manages arbitrary QHSM processes. Making it do so is a cross-repo change reaching into yngcor/yngwin, not a change inside glpnet.",
+      "Ruling G32-03 redefined the era unit DOWNWARD: one coherent shippable change with ONE codexreview pass, said out loud. Folding kernel hosting into era 107 contradicts that ruling; leaving it out leaves a named clause of your mandate unmet in this lane."
+    ],
+    "impact_if_unanswered": "I will ship era 107 with the wire plane reachable and kernel-managed hosting explicitly NOT MET and stated as such in the ship note, so the fleet reads an honest partial rather than a claimed complete.",
+    "options": [
+      {
+        "key": "A",
+        "label": "Era 107 = wire plane reachable; M6-d becomes its own scored era",
+        "consequence": "Era 107 ships the thing that is one edit from done and is measurable end-to-end today. M6-d is captured as a roadmap feature, scored, and cross-repo owners named. The M6 mandate stays partially met in this lane for at least one more era, and I say so in every status.",
+        "size": "midi",
+        "reversibility": "reversible"
+      },
+      {
+        "key": "B",
+        "label": "Era 107 must include kernel-managed hosting",
+        "consequence": "One era carries both a glpnet change and a cross-repo kernel change I do not own, so the era's completion depends on yngcor/yngwin delivering inside the same window. If they slip, era 107 does not ship at all and the already-working wire adapter ships nothing today.",
+        "size": "saga",
+        "reversibility": "reversible"
+      },
+      {
+        "key": "C",
+        "label": "Era 107 ships, and I additionally build a host-local supervisor as an interim",
+        "consequence": "The client gets restart-on-crash and start-on-boot from a host-local supervisor now, which is most of what kernel management buys operationally. It forecloses nothing, but it does add a second thing to review in one era and risks being the interim nobody later removes.",
+        "size": "maxi",
+        "reversibility": "reversible"
+      }
+    ],
+    "recommendation": {
+      "option": "A",
+      "because": "It is the only option that respects your own G32-03 era-unit ruling and still puts a measurable M6 improvement on the wire today; B makes today's deliverable hostage to a repo this lane does not own, and C quietly builds the interim that outlives the real thing."
+    },
+    "decision": {
+      "option": "B",
+      "date": "2026-09-06",
+      "rationale": "SUPERSEDES the earlier A ruling taken the same session. Engineer reversed it explicitly: kernel-managed hosting is NOT out of scope and must be fleetwide root-caused and remedied now. Era 107 therefore includes kernel-managed hosting of the M6 client. Root cause measured before acting: glpnet ALREADY has a working tested supervisor (csharp/glp_supervisor - child hosting, round-trip liveness ping, zombie detection, backoff, restart-with-restore, crash-loop taxonomy) which hosts glp_engine_host and does NOT host the M6 client. Same unconsumed-capability class as the QuicCarrier finding, now measured twice in one repo in one day."
+    }
+  },
+  {
+    "qid": "Q-G34-02",
+    "header": "Bind failure",
+    "block": "I cannot write FR-004 until you rule what the client does when the wire plane is requested and no QUIC listener can bind.",
+    "origin": "missing-requirement",
+    "severity": "high",
+    "background": [
+      "This is not hypothetical on this host. glpquick certificate material has been destroyed here four separate times, most recently confirmed in wave-30; a client asked for the wire on a host in that state cannot bind.",
+      "The existing client already has the opposite defect on record and fixed: before 2026-09-05 the run verb bound LoopbackInbound unconditionally and could only hear itself while reporting running. The lane disclosed that in its own source rather than hiding it.",
+      "Refusing hard means a host with damaged certificate material has NO receiving client at all, which is strictly worse than today, where it at least receives on the shared volume.",
+      "Falling back silently is the exact defect class this whole era exists to close: a thing that looks connected and is not."
+    ],
+    "impact_if_unanswered": "I will implement loud fallback (option B) because it is the only choice that neither strands a host nor reports a false connection, and I will flag the decision as mine rather than yours in the ship note.",
+    "options": [
+      {
+        "key": "A",
+        "label": "Refuse hard — no wire, no client",
+        "consequence": "The wire plane is never silently absent, and a broken host is loudly broken. It forecloses running any receiver on a host whose certificate material is damaged, so such a host drops out of YNET entirely until an operator fixes certificates.",
+        "size": "nano",
+        "reversibility": "one-way"
+      },
+      {
+        "key": "B",
+        "label": "Fall back to the file plane, and say so on the same line as 'running'",
+        "consequence": "The host keeps receiving on the volume and every status line states which plane is actually live and that the requested one failed and why. The risk is that a fleet-wide degradation to the file plane goes unnoticed because each host individually looks fine.",
+        "size": "micro",
+        "reversibility": "reversible"
+      },
+      {
+        "key": "C",
+        "label": "Fall back, and additionally emit a fleet-visible degraded notice",
+        "consequence": "Same as B plus a COOP broadcast or board record whenever a host degrades, so fleet-wide wire loss is visible as a count rather than as N individually-fine hosts. Costs a broadcast path in the client and risks broadcast noise if a host flaps.",
+        "size": "mini",
+        "reversibility": "reversible"
+      }
+    ],
+    "recommendation": {
+      "option": "C",
+      "because": "B alone reproduces at fleet scale the exact blindness the era is closing at host scale — every host honest, nobody counting — and the extra cost over B is one record write, which is small next to discovering later that the whole fleet has been on the file plane for a week."
+    },
+    "decision": {
+      "option": "C",
+      "date": "2026-09-06",
+      "rationale": "Engineer ruled 2026-09-06: on a failed wire bind, fall back to the file plane, say so on the same line as 'running', AND emit a fleet-visible degraded notice so fleet-wide wire loss is a count rather than N individually-fine hosts."
+    }
+  },
+  {
+    "qid": "Q-G34-03",
+    "header": "Both planes",
+    "block": "I need your ruling on whether era 107 binds both planes simultaneously or ships single-plane selection first.",
+    "origin": "assumption-weakness",
+    "severity": "medium",
+    "background": [
+      "The fleet is mid-migration: some peers deliver on the shared volume today and will deliver on the wire later. An exclusive plane choice makes that a flag-day; a composite makes it incremental.",
+      "A composite adds an obligation single-plane does not have: exactly one durable alert per message id even when the same message arrives on both planes. That is de-duplication across two carriers with different identity guarantees, and getting it wrong either drops messages or double-alerts.",
+      "The spec carries the composite as User Story 4 at P2, deliberately below the three P1 stories, precisely because it is the part that can be got subtly wrong.",
+      "Ruling G32-03 sized an era at one coherent shippable change with one codexreview pass."
+    ],
+    "impact_if_unanswered": "I will implement single-plane selection in era 107 and capture the composite as an explicit follow-on with its de-duplication obligation written down, rather than shipping a de-duplication I have not had time to mutation-prove.",
+    "options": [
+      {
+        "key": "A",
+        "label": "Single-plane selection now; composite is a follow-on era",
+        "consequence": "Era 107 stays one coherent change with one review. Operators must choose a plane per client instance, so a lane that needs both today must run two client processes, which means two mailboxes and an addressing question I would then have to answer badly.",
+        "size": "midi",
+        "reversibility": "reversible"
+      },
+      {
+        "key": "B",
+        "label": "Composite in era 107, de-duplication mutation-proven",
+        "consequence": "One client, both planes, one mailbox, incremental migration with no flag-day. The era grows by the de-duplication logic plus the mutation proofs that it actually de-duplicates, which is the part that cannot be rushed without recreating a silent-drop defect.",
+        "size": "maxi",
+        "reversibility": "reversible"
+      }
+    ],
+    "recommendation": {
+      "option": "B",
+      "because": "A leaves the operator with two processes and two mailboxes for one lane, which is a worse defect than the one being fixed, and the de-duplication is bounded work with a clear proof obligation rather than open-ended research."
+    },
+    "decision": {
+      "option": "B",
+      "date": "2026-09-06",
+      "rationale": "Engineer ruled 2026-09-06: the composite (both planes bound at once) is IN era 107, with de-duplication mutation-proven. One client, one mailbox, no flag-day migration."
+    }
+  },
+  {
+    "qid": "Q-G34-04",
+    "header": "Guard scope",
+    "block": "I need your ruling on whether the unreachable-realization check I build for SC-004 stays local to glpnet or is claimed as the fleet-wide declared-unconsumed guard.",
+    "origin": "measurement",
+    "severity": "medium",
+    "background": [
+      "Measured today in this repo: QuicCarrier.cs is 400 lines realizing both the inbound and outbound contracts, with 210 lines of passing tests, and Program.cs contains zero references to it. The wire plane was reviewed, tested and merged with no consumer, and nothing caught it.",
+      "The roadmap already carries declared-unconsumed-guard at WSJF 8.00 / RICE 18000, rank 2 of 49 open items, promoted and unclaimed. It is the fleet-scale version of exactly this check.",
+      "You separately ordered a fleetwide root-cause and durable fix for L0's feature-020 hooks with zero consumers. A peer (shiras-crucible, 2026-09-05T10:31Z) has already published a refutation of that specific L0 instance at source, so the class is contested in that instance but is now measured and uncontested in mine.",
+      "Claiming a rank-2 fleet feature from this lane risks the duplication defect that cost this repo a whole M6 carrier in wave-32, when two lanes built the same thing the same morning and one was withdrawn."
+    ],
+    "impact_if_unanswered": "I will build the check as a local test satisfying SC-004, publish the measured instance to the fleet as evidence the class is real in first-party code, and NOT claim the rank-2 feature without a claim-first broadcast.",
+    "options": [
+      {
+        "key": "A",
+        "label": "Local check now; publish the instance; do not claim the fleet feature",
+        "consequence": "SC-004 is satisfied inside era 107 and this defect cannot recur here. The fleet feature stays unclaimed and the same defect can keep occurring in the other fourteen lanes until someone claims it.",
+        "size": "mini",
+        "reversibility": "reversible"
+      },
+      {
+        "key": "B",
+        "label": "Claim declared-unconsumed-guard for this lane after a claim-first broadcast",
+        "consequence": "The rank-2 item gets an owner and a working exemplar rather than staying promoted-and-idle, and the guard generalises from a measured instance instead of a hypothesis. It costs a claim-first broadcast plus a stand-down window, and grows era 107 beyond one coherent change unless it is run as the next era.",
+        "size": "maxi",
+        "reversibility": "reversible"
+      },
+      {
+        "key": "C",
+        "label": "Publish the measured instance and ask the fleet who owns the guard",
+        "consequence": "The evidence reaches every lane and ownership is settled by whoever has standing rather than by whoever broadcast last. It forecloses this lane building the guard in the next era if another lane claims it first, which may be the correct outcome but is not this lane's to decide.",
+        "size": "micro",
+        "reversibility": "one-way"
+      }
+    ],
+    "recommendation": {
+      "option": "A",
+      "because": "It closes the measured defect inside this era with no duplication risk and still puts the evidence in front of the fleet; B is the right next era but not the right same era, and C hands ownership away before the exemplar exists to hand over."
+    },
+    "decision": {
+      "option": "A",
+      "date": "2026-09-06",
+      "rationale": "Engineer ruled 2026-09-06: build the unreachable-realization check locally to satisfy SC-004 and PUBLISH the measured instance as fleet evidence; do NOT claim the rank-2 declared-unconsumed-guard feature without a claim-first broadcast."
+    }
+  }
+]
