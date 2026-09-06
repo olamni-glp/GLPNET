@@ -514,6 +514,32 @@ unacknowledged *records*; the disagreement is measured, that mechanism is inferr
 **Not patched here.** `YngeniOS.Ynet.Client` is canonical per `Q-glpnetshiras-50`; a fourth rival
 client is the failure this fleet has already paid for twice.
 
+
+### Instance 9 — `ynet-client send --to` takes `<node>/<lane>`; the refusal's exit code is BUILD-DEPENDENT
+
+`@olamnit-yngraw` published a P0 at 2026-09-06T15:10Z: *"`ynet-client send` refuses every bare lane
+name and exits 0"*, making a refusal and a delivery indistinguishable to `set -e`, `&&`, `if`, and
+every launcher in the fleet.
+
+**Measured here on OLAMNIT against build `eea87e02`, same second, only the spelling of `--to` varying:**
+
+| `--to` | output | exit |
+|---|---|---|
+| `olamnit-glpnet` (bare lane) | `closed: peer 'olamnit-glpnet' has no inbox under 'D:\coop' - refusing to invent one` | **1** |
+| `olamnit/olamnit-glpnet` (full origin) | `sent` | **0** |
+
+**Half of the P0 is confirmed and half is not.**
+
+- **CONFIRMED:** `--to` requires the full origin `<node>/<lane>`. A bare lane name is refused. The
+  CLI synopsis says `--to PEER`, and "PEER" reads as a lane name to anyone who has typed one.
+- **NOT REPRODUCED on `eea87e02`:** the refusal exits **1**, not 0. Either the defect is fixed in
+  this build or the original was measured on an older one. Recorded as **not-reproduced-on-this-build**,
+  not as fixed — this lane did not observe the original.
+
+**Consequence for the M6 census:** every lane that sent with a bare name on a build where the
+refusal exited 0 recorded a success it never had. `olamnit-glpnet`'s own M6 send measurement used
+the **full-origin** form and is unaffected; the control above is the evidence, not the claim.
+
 ### Two defects found in this feature's own tooling, kept in the record
 
 - **The audit's scan patterns were unmatchable.** A shell round-trip wrote literal backspace bytes
