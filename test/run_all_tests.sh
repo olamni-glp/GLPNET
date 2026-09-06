@@ -2801,6 +2801,55 @@ set -e
 echo ""
 
 # =============================================================================
+# Section X: Evidence-signal ordering (feature 108)
+# =============================================================================
+# The complement of 078. 078 governs signals that state a VERDICT; this governs
+# signals that state none but are read as evidence anyway -- a wait returning, an
+# idle predicate, a liveness flag, an exit status, an emptiness.
+#
+# X-1/X-2 pin the CONTROLS, not the findings, for the same reason Section W does:
+# of the eight instances measured across the fleet on 2026-09-05/06, ZERO would
+# have been caught by a check that ran but had never been shown capable of
+# failing. The harness's negative controls are therefore the thing under test.
+#
+# X-3 runs the audit itself. It is EXPECTED to exit 1 while unproven surfaces
+# remain -- that is the honest state, not a failure of the suite -- so the check
+# is that it produced a report and that the report's own totals agree with the
+# exit code it returned. An audit that exited 0 while reporting a problem would
+# be measured instance 4, committed by the tool built to catch it.
+section "X" "Evidence-signal ordering (feature 108)"
+echo ""
+set +e
+PY_BIN=${PY_BIN:-$(command -v python3 || command -v python)}
+if [ -z "$PY_BIN" ]; then
+    skip "Section X (evidence-signal ordering)" "no python interpreter on PATH"
+else
+    x1=$(cd "$SCRIPT_DIR/.." && PYTHONUTF8=1 "$PY_BIN" -m pytest scripts/tests/ -q 2>&1 | tail -3)
+    check "X-1: conformance harness + audit tests all pass" "passed" "$x1"
+    check_not "X-2: no test in the harness failed" "failed" "$x1"
+
+    xrep="$SCRIPT_DIR/../.specify/evidence-signals/report.json"
+    rm -f "$xrep"
+    (cd "$SCRIPT_DIR/.." && PYTHONUTF8=1 "$PY_BIN" scripts/evidence_signal_audit.py >/dev/null 2>&1)
+    xrc=$?
+    if [ -f "$xrep" ]; then
+        echo "  PASS: X-3: the audit produced a report"
+        PASS=$((PASS + 1))
+    else
+        echo "  FAIL: X-3: the audit produced NO report (exit $xrc)"
+        FAIL=$((FAIL + 1))
+    fi
+    # X-4 is the one that matters: exit code and report content must agree.
+    xagree=$(cd "$SCRIPT_DIR/.." && PYTHONUTF8=1 "$PY_BIN" -c "
+import json,sys
+t=json.load(open('.specify/evidence-signals/report.json'))['totals']
+problem = t['errors'] or t['non_conforming'] or t['unproven']
+rc = int(sys.argv[1])
+print('AGREE' if (problem and rc != 0) or (not problem and rc == 0) else 'DISAGREE')
+" "$xrc" 2>&1)
+    check "X-4: the audit never exits 0 while reporting a problem" "AGREE" "$xagree"
+fi
+# =============================================================================
 # SUMMARY
 # =============================================================================
 TOTAL=$((PASS + FAIL))
@@ -2808,6 +2857,8 @@ NOTRUN=$((SKIP + UNSEARCHABLE))
 
 echo "======================================"
 echo "Total: $TOTAL | Passed: $PASS | Failed: $FAIL | Skipped: $SKIP | Unsearchable: $UNSEARCHABLE"
+echo ""
+
 echo "======================================"
 
 # 078 FR: never let a not-run check be read as a passing one. The counts above are of checks that

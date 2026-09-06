@@ -472,3 +472,57 @@ deliberate MVP boundary recorded here (Constitution VIII traceability):
   on a non-null one). This resolved research D-2 without any change inside 041's codec and without a JSON
   stopgap. Anyone reading the on-wire envelope must extract the capability from section `0x20`, not the
   header field.
+
+## Evidence-signal ordering — the eight measured instances (feature 108, 2026-09-06)
+
+Feature **108** governs signals a caller treats as evidence that state no verdict: waits, idle
+predicates, liveness flags, exit statuses, emptiness. It is the **complement** of feature 078
+(which governs verdict-bearing checks) and does not re-open it (`Q-olg15-09`).
+
+| # | signal | disposition | owner |
+|---|---|---|---|
+| 1 | `HookNotifier.WaitForIdle` observable idle between accept and commencement | **FIXED** 2026-09-05; synchronous contract test is the discriminating check; mechanism control in `scripts/tests/test_evidence_signal_conformance.py` | olamnit-glpnet |
+| 2 | `doctor` reporting `m6_met: true` on a host running nothing | **NOT REPRODUCED ON BUILD `eea87e02`** — measured here: `m6_met:false` + exit 1 with no receiver, `true` + exit 0 with one. Recorded as not-reproduced, **not** as fixed: this lane never observed the original and has no standing to close another lane's finding | shiras-glpnet |
+| 3 | `codex exec` positional prompt → exit 0, zero findings, no review run | **DISCLOSED**; content assertion is the remedy (FR-010) | olamnit-glpnet |
+| 4 | `buildkit-scheduler reject` exits 0 while REFUSING | **DISCLOSED** | buildkit |
+| 5 | election board green while the running process and its disk disagree | **DISCLOSED**, not reproducible from this lane | shiras-ynglin |
+| 6 | `codex exec` exits 0 with **116 KB** and zero review (read `AGENTS.md`, obeyed a STOP-AND-WAIT gate) | **DISCLOSED**; defeats the fleet's byte-count heuristic, which is why FR-010 forbids size as evidence | olamnit-glpnet |
+| 7 | a receiver restart resurrects already-acked alerts | **CORROBORATED** on a second host and a newer build — see instance 8 for the corrected mechanism | shiras-glpnet |
+| 8 | **the ack is durable; the STARTUP REPLAY clobbers it** | **DISCLOSED, ROOT-CAUSED, MEASURED** | ariellas-qhstate |
+
+### Instance 8 in full — measured on OLAMNIT, build `eea87e02`, 2026-09-06
+
+| state | `alerts --all` | `alerts` | `doctor.pending_alerts` | on-disk `acknowledged` |
+|---|---|---|---|---|
+| delivered | `false`, arrived `14:54:30` | 1 | 1 | `false` |
+| after `ack` (exit 0) | **`true`** | 0 | — | **`true`** |
+| receiver process dead | **`true`** | 0 | **1** ← disagrees | **`true`** |
+| after restart | **`false`**, arrived **`14:56:18`** | 1 | 1 | `false` |
+
+`frames_accepted` after the restart was **0** — no new frame arrived. `wal/unified-mailbox.wal`
+still held the delivered frame, `wal/dedup-seen.journal` correctly held the message, and
+`origin_high_water` read **0**. The startup replay re-raises the retained WAL entry
+unconditionally and overwrites the existing alert record.
+
+**Fix shape (for the owner):** replay must reconcile by `message_id` and merge, never overwrite;
+or `origin_high_water` must advance so replay knows the message was already delivered.
+**Second, separable defect:** with the receiver dead and the ack durably true, `doctor` reported
+`pending_alerts: 1` while `alerts` reported 0 — two observers of one state disagreeing (FR-013).
+`doctor` appears to count alert *files*, which are retained deliberately, rather than
+unacknowledged *records*; the disagreement is measured, that mechanism is inferred.
+
+**Not patched here.** `YngeniOS.Ynet.Client` is canonical per `Q-glpnetshiras-50`; a fourth rival
+client is the failure this fleet has already paid for twice.
+
+### Two defects found in this feature's own tooling, kept in the record
+
+- **The audit's scan patterns were unmatchable.** A shell round-trip wrote literal backspace bytes
+  (`0x08`) where word-boundary escapes were intended. The audit ran, wrote a report, emitted a
+  receipt and exited non-zero — and found **1** hit where ground truth had **~400**. Exit code and
+  report presence were both fine. Regression: `test_scan_finds_a_known_planted_decision_site` plus
+  its broken-pattern control.
+- **The audit reported `conforming` without checking the cited test existed.** A conformance claim
+  naming a test nobody wrote is a claim with no evidence. Regression:
+  `test_a_cited_check_that_does_not_exist_is_not_conforming`.
+
+See `docs/evidence-signal-invariant.md` and `specs/108-evidence-signal-ordering/`.
