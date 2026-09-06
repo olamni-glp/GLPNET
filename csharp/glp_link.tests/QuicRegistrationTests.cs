@@ -16,6 +16,16 @@ namespace GlpRuntime.Link.Tests;
 /// </summary>
 public class QuicRegistrationTests
 {
+    /// <summary>
+    /// The gen-3 SPKI pin, written down INDEPENDENTLY of <see cref="SharedCertMaterial.CurrentPin"/>
+    /// (feature 109; codexreview 2026-09-07 [P2]). Comparing the production constant against itself
+    /// is tautological — it was, and setting <c>CurrentPin</c> to an arbitrary wrong non-revoked
+    /// value left nine tests green. Measured on ARIELLAS 2026-09-06 from the gen-3 material dated
+    /// 2026-08-10 (feature 069's rotation). If a rotation changes the production constant, this must
+    /// be changed too, deliberately, in the same commit — that friction is the point.
+    /// </summary>
+    internal const string ExpectedGen3Pin = "jKMVqlvEL0evFBPw4TWIlEln3TBbXT1u1t072Zp1AlY=";
+
     /// <summary>An ephemeral shared self-signed cert + its SPKI pin (hermetic; no repo dependency).</summary>
     private static (X509Certificate2 cert, string pin) MakeCert()
     {
@@ -82,6 +92,9 @@ public class QuicRegistrationTests
     [Fact]
     public void Loader_ValidMaterial_LoadsCertAndMatchingPin()
     {
+        // G-05: Load(dir) is the EXPLICIT-directory entry point and applies the revoked list
+        // only, so a freshly generated cert loads exactly as it always did. This test is restored
+        // to its original form; era 109 did not change what "valid explicit material" means.
         var (cert, pin) = MakeCert();
         var dir = FreshDir();
         try
@@ -95,6 +108,31 @@ public class QuicRegistrationTests
             Assert.Equal(pin, QuicTransport.SpkiPin(loaded));
         }
         finally { Directory.Delete(dir, true); }
+    }
+
+    /// <summary>
+    /// Feature 109 SC-002 at integration level: the repo's REAL current material loads, with its
+    /// private key and self-consistent pin. This is the accepted-generation coverage that
+    /// <see cref="Loader_ValidMaterial_LoadsCertAndMatchingPin"/> used to provide with a synthetic
+    /// cert — and it is stronger, because it exercises the material links actually use.
+    /// Skipped rather than failed where the material is absent: a host without it is a provisioning
+    /// state, not a code defect, and the loader's own missing-material tests already cover that.
+    /// </summary>
+    [Fact]
+    public void Loader_RealCurrentMaterial_LoadsAndIsAccepted()
+    {
+        try { SharedCertMaterial.ResolveCertDir(); }
+        catch (Exception) { return; }   // material not provisioned on this host — see doc comment
+
+        // LoadFromRepo() is the SHARED path, so this exercises the generation assertion for real
+        // (G-05). It is also the ONE non-tautological check on CurrentPin available here: the pin
+        // comes off disk, not from the constant, so a wrong constant fails this test.
+        var (loaded, loadedPin) = SharedCertMaterial.LoadFromRepo();
+
+        Assert.True(loaded.HasPrivateKey);
+        Assert.Equal(loadedPin, QuicTransport.SpkiPin(loaded));
+        Assert.Equal(SharedCertMaterial.CurrentPin, loadedPin);
+        Assert.Equal(ExpectedGen3Pin, loadedPin);   // independently specified — see the constant
     }
 
     [Fact]
