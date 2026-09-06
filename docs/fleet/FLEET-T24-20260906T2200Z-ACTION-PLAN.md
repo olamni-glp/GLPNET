@@ -40,7 +40,7 @@ period, it is scheduled across three of them.
 |---|---|---|
 | 24 h | 2026-09-07T22:00Z | `[01]` `[02]` `[03]` + the whole standing register (template §4 rows 1–20) |
 | 48 h | 2026-09-08T22:00Z | `[04]` `[05]` `[06]` |
-| 72 h | 2026-09-09T22:00Z | `[07]` `[08]` `[09]` `[10]` `[11]` `[12]` |
+| 72 h | 2026-09-09T22:00Z | `[07]` `[08]` `[09]` `[10]` `[11]` `[12]` `[13]` |
 
 **Every item in §4 below additionally carries the common clauses C-1…C-5 of §4.4.**
 
@@ -74,6 +74,19 @@ mis-describes the defect twice. Template §11.2 requires you to execute the unre
 | 31 | `OBJ-YR-RECON` | **[10] YRecon `YR`** — autonomous data + intelligence pipelines. Harvest corpus-collection logic from **Lejepa** (not the LEJEPA work itself), **MSTACK**, **buildkit**, and above all the **deep Hatzinor collection/ingestion pipeline** — including **PDF-to-structured-text** (Hebrew and English especially, multi-language generally), **picture-dictionary ingestion**, and dictionary/grammar/content extraction. **Search all repos for NHS data**; onboard the **NHS online-source capture logic** and safely migrate the content. From **Crucible**, take the find/extract/harmonise ingestion logic and extend it into a unified pipeline with **data-quality assessment, deep provable provenance, and authenticity certificates**. Map every source to **well-known ontologies**; combine into **verified corpus-assured time series** and corpus-snippet collections; index in DB form **and** via **ERAG indices**. | 72 h | `{{OWNER}}` | yes | Provenance and authenticity certificate verifiable for a sampled artifact end-to-end. |
 | 32 | `OBJ-YA-ANALYZE` | **[11] YAnalyze `YA`** — collaborative digital twins, simulation and analytics: the **Crucible logic** as a hardened lossless superset with one command surface and `YE` UX. Must show model/engine/pipeline build and evolution down to the lowest step **and, more importantly, the progress and insight from the modelling runs** — data visualisation and analytics with drill-down, and **text and PDF artifacts for notes and papers** — plus takt/velocity as row 30. | 72 h | `crucible` | yes | A modelling run's insight surfaced with drill-down **and** exported as a PDF artifact. |
 | 33 | `OBJ-YH-HIVE` | **[12] YHive `YH`** — the consolidated data/knowledge/intelligence repository: **all corpus, corpus-fragment, dictionary and terminology** management, **time-series** management and **catalog** management, shared by `[08]`/`[09]` and **in particular serving `[10]` and `[11]`**. Must show corpus/dataset/terminology/time-series status with **semantic catalogs and provenance trails**, and offer **easy search, visualisation, exploration and cross-content queries**. | 72 h | `{{OWNER}}` | yes | A cross-content query spans at least two independently ingested corpora. |
+
+| 33a | `OBJ-YY-BEACON` | **[13] YYBeacon `YY` — Yachad Beacon: multi-channel broadcasting + community forum.** This is really **`/bk-beacon`**, but with an integrated **YEngage (`YE`) interactive tasktop UX**. Operationalised through `YW` [09] on the same terms as [10]–[12] — where `YW` cannot directly provide a service, `YW` is given an **API** that exposes what is needed. 🔴 **`YY` must be able to show the progress and status content from ANY of the other tools `[01]`–`[12]` — this is critical and imperative**, and it makes `YY` the fleet's single read surface over the whole programme. Carries the row-29 headless Claude-capable virtual terminal and its **QHSM/QMSM multi-session coordinator**, and the same YNGENIOS-for-Workstation connectivity as [07] (same-host / reachable-local / iroh hole-punch or VPN public URL, plus relay), and **Syncfusion's latest web surface**. | 72 h | `buildkit` (code stays in the `buildkit` repo) | yes | `YY` renders live progress and status drawn from **at least two other `[01]`–`[12]` surfaces**, not mocked. Retirement proof as row 28. **Repo rule as row 29** — code stays in `buildkit`; prepare the split; buildkit then retired. |
+
+> ⚠️ **`OBJ-YY-BEACON` has a dependency the directive does not state.** Row 33a requires `YY` to
+> show status from **all** of `[01]`–`[12]`, but those are rows 22–33 and most are unbuilt. `YY`
+> therefore cannot be *complete* before them; it can only be complete **against the surfaces that
+> exist at the time**. Read as "show whatever of `[01]`–`[12]` is live, and degrade visibly — never
+> silently — for the rest." **Flagged, not resolved** — see A-4.
+>
+> ⚠️ **It also collides with row 14 (`OBJ-BEACON`) in the standing register**, which already assigns
+> a **fully refactored C#/.NET 11+ `/bk-beacon` daemon** to `ynglin`/`yngwin`/`yngcor` under the
+> §4.1 three-feature split. Row 33a assigns `/bk-beacon` **plus a `YE` UX** to `buildkit`. **Two
+> owners, one component.** **Flagged, not resolved** — see A-5.
 
 ### 4.B — The leader and its planner
 
@@ -112,7 +125,9 @@ mis-describes the defect twice. Template §11.2 requires you to execute the unre
 |---|---|---|
 | A-1 | `[01]` row 22 | **Garage is AGPL-3.0**; RustFS and SeaweedFS are Apache-2.0. Vendoring an AGPL base into a distributed product is a **licence** decision, not an engineering one. Compare the live **QP/C GPL-3.0** finding already open in L0. **Blocks row 22's vendoring choice.** |
 | A-2 | `[05]` row 26 | `share.google/aimode/*` are **AI-mode result pages, not primary sources.** They can be the *lead list* for the verification obligation but can never themselves be the "genuinely original underlying sources" that obligation demands. |
-| A-3 | `[08]`–`[12]` rows 29–33 | Code "must remain in `buildkit`" while `buildkit` is simultaneously to be **split and then retired**. The **ordering** of split vs. retirement is unstated, and rows 29–33 cannot sequence without it. |
+| A-3 | `[08]`–`[13]` rows 29–33a | Code "must remain in `buildkit`" while `buildkit` is simultaneously to be **split and then retired**. The **ordering** of split vs. retirement is unstated, and rows 29–33a cannot sequence without it. |
+| A-4 | `[13]` row 33a | `YY` must show progress and status from **all** of `[01]`–`[12]`, but those are themselves unbuilt rows in this same plan. `YY` cannot be complete before its own inputs exist. Needs a ruling on what "complete" means for row 33a in this window — recommended reading: *show every live surface, degrade visibly for the rest.* |
+| A-5 | `[13]` row 33a **vs** standing row 14 | **Two owners, one component.** Standing row 14 (`OBJ-BEACON`) assigns a fully refactored C#/.NET 11+ `/bk-beacon` daemon to `ynglin`/`yngwin`/`yngcor` under the §4.1 three-feature split. Row 33a assigns `/bk-beacon` + `YE` UX to `buildkit`. Unless these are deliberately the *daemon* and the *product surface* over it, one of them is redundant work. |
 
 *Note: a fourth candidate ambiguity — "maxi-size era is undefined" — was withdrawn on inspection.
 It **is** defined, in template §10.*
