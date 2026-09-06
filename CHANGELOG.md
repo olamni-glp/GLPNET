@@ -1,5 +1,28 @@
 ## [Unreleased]
 
+## [v2026.09.06.2] - 2026-09-06
+
+### Added
+- evidence-signal audit, manifest and conformance harness with negative controls
+
+### Fixed
+- Section T reported a missing prerequisite as a FAIL
+- all 8 codexreview findings - the audit now EXECUTES its cited checks
+
+### Changed
+- Merge pull request #313 from olamni-glp/108-evidence-signal-ordering
+- instance 9 - ynet-send --to needs the full origin; the exit-0 half is NOT reproduced on eea87e02
+- M6 launcher, restart brief rev5, roadmap export, Section W honest not-run
+- restart(glpnet): amend era S5 prep for R-S5-05 - qhstate owns [04], this lane supplies the seam
+- decisions(glpnet): R-S5-05 - qhstate owns [04] YNterchange, this lane withdraws and supplies the seam, keeping R-S5-03
+- analyze(108): 1 CRITICAL + 6 findings, all remediated - the Constitution Check table tripped the machine gate it claimed to pass
+- tasks(108): 36 tasks across 7 phases, tests mandatory, US3 is disclosure not repair
+- plan(108): design, research (instance 8 root-caused), contracts and quickstart
+- spec(108): evidence-signal ordering - the complement of 078, seven measured instances, four engineer rulings encoded
+- restart(glpnet): era S5 - R-C discharged (qhstate develop d4d374ab, 93/93), board unblinded, and a P1 that a receiver restart resurrects acked alerts
+- era S5(glpnet): five unscored must-haves scored onto the board, R-C measured still-unmerged at 19h, and a self-correction for broadcasting without searching first
+- Merge pull request #311 from olamni-glp/main
+
 ## [v2026.09.06.1] - 2026-09-06
 
 ### Added
