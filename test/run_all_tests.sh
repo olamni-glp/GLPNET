@@ -2350,10 +2350,24 @@ PROBE_TFM=$(csproj_tfm "$SCRIPT_DIR/../out/csharp/term_traversal_probe/term_trav
 # this same binary. Gating only Section U would let the other two keep presenting the output of a
 # stale build as authoritative — which is precisely the 2026-08-13 failure mode.
 GLPREPL_EXE="$SCRIPT_DIR/../out/csharp/glp_repl/bin/Debug/${GLPREPL_TFM}/glp_repl.exe"
+# 109 T058: date the build from the OUTPUT DIRECTORY, not from glp_repl.exe.
+# `glp_repl.exe` is the .NET APPHOST STUB and an incremental build does not rewrite it when only a
+# referenced library's method bodies change; `glp_repl.dll` is not rewritten either, because an
+# unchanged public surface leaves the reference assembly identical and MSBuild correctly skips the
+# dependent project. Measured 2026-09-06: after editing out/csharp/lib/engine/glp_engine.cs and
+# building successfully, exe and dll were both 15 minutes OLDER than glp_runtime_net.dll, which
+# carried the change — so this gate declared a freshly-built binary stale and marked Sections I,
+# T, U and V-18..V-23 unsearchable. It errs safe (never calls a stale binary fresh), which is why
+# it survived unnoticed: the failure is only visible to someone who edits C# and expects those
+# sections to run. Every file under the output directory is build output and none is written at
+# run time, so its newest mtime is an honest build timestamp. Pinned by V-26.
+GLPREPL_OUTDIR="$SCRIPT_DIR/../out/csharp/glp_repl/bin/Debug/${GLPREPL_TFM}"
 GLPREPL_STALE=0
 GLPREPL_STALE_WHY=""
 if [ -f "$GLPREPL_EXE" ]; then
-    _b=$(newest_mtime "$GLPREPL_EXE") || _b=""
+    _b=$(newest_mtime "$GLPREPL_OUTDIR") || _b=""
+    GLPREPL_BASIS="$_b"                       # recorded for V-26
+    GLPREPL_STUB_MTIME=$(newest_mtime "$GLPREPL_EXE") || GLPREPL_STUB_MTIME=""
     _s=$(newest_src_mtime \
             "$SCRIPT_DIR/../out/csharp/glp_repl" \
             "$SCRIPT_DIR/../out/csharp/lib" \
@@ -2563,6 +2577,10 @@ echo ""
 section "V" "Front-end goal-term acceptance (101)"
 echo ""
 set +e
+# Default is NOT-RUN, not AGREE. Section Y-4 compares this against the general harness's verdict,
+# and an unset variable defaulting to the happy value is exactly the shape of defect these two
+# features exist to remove.
+V20_RESULT="NOT-RUN"
 GTA="$TYPED/goal_term_acceptance.glp"
 if [ ! -f "$SCRIPT_DIR/../programs/tests/typed/goal_term_acceptance.glp" ]; then
     skip "Section V (101 goal-term acceptance)" "fixture not found (programs/tests/typed/goal_term_acceptance.glp)"
@@ -2664,8 +2682,13 @@ HEREDOC
         check "V-19: the C# transcript is non-empty (same guard, other runtime)" "succeeds" "$v_cs"
 
         if [ "$v_dart" = "$v_cs" ]; then
+            # Recorded for Section Y-4 (109 T059): the hand-written reference implementation of
+            # this criterion and the general harness must reach the SAME conclusion, so a drift
+            # between the two is a suite failure rather than a silent divergence of method.
+            V20_RESULT="AGREE"
             check "V-20: FR-008/SC-003 Dart and C# transcripts are BYTE-IDENTICAL" "ok" "ok"
         else
+            V20_RESULT="DIVERGE"
             check "V-20: FR-008/SC-003 Dart and C# transcripts are BYTE-IDENTICAL" "ok" \
                   "DIVERGED
 --- dart ---
@@ -2679,6 +2702,20 @@ $v_cs"
         check "V-21: C# accepts \`_\` at a goal argument (was: Unsupported argument type)" "succeeds" "$v_cs"
         check "V-22: C# REFUSES an improper tail (was: a silent WRONG ANSWER)" "list tail is neither a list nor a variable" "$v_cs"
         check_not "V-23: no internal class name leaks from the C# runtime either" "UnderscoreTerm" "$v_cs"
+
+        # V-26 (109 T058) — the regression control for the freshness-gate defect this feature
+        # found. The gate must date the build from the OUTPUT DIRECTORY, never from the apphost
+        # stub, which an incremental build leaves untouched. If the gate is changed back to
+        # statting glp_repl.exe alone, GLPREPL_BASIS becomes the stub's mtime and this check
+        # FAILS in exactly the state the defect occurs in — after an incremental build, where the
+        # directory is newer than the stub. Stated honestly: immediately after a CLEAN build the
+        # two are equal and this check would pass either way, so it discriminates in the state
+        # that matters and not in every state.
+        v26=$(awk -v basis="$GLPREPL_BASIS" -v stub="$GLPREPL_STUB_MTIME" \
+                  'BEGIN{ if (basis=="" || stub=="") print "UNKNOWN";
+                          else if (basis+0 >= stub+0) print "DIRECTORY-BASED";
+                          else print "STUB-BASED" }')
+        check "V-26: freshness is dated from the build OUTPUT, not the apphost stub" "DIRECTORY-BASED" "$v26"
     else
         skip "V-18..V-23 (101 cross-runtime Dart vs C# parity)" "C# REPL not built ($CSREPL_BIN) — build with: dotnet build out/csharp/glp_runtime_net.sln"
     fi
@@ -2901,6 +2938,117 @@ print('AGREE' if (problem and rc != 0) or (not problem and rc == 0) else 'DISAGR
 " "$xrc" 2>&1)
     check "X-4: the audit never exits 0 while reporting a problem" "AGREE" "$xagree"
 fi
+
+echo ""
+
+# =============================================================================
+# Section Y: Differential acceptance (feature 109 US1)
+# =============================================================================
+# Everything in Sections A..X asks "does THIS runtime behave?". A criterion that
+# claims "Dart, C# and Gleam agree" is a different claim, and until feature 109
+# it was discharged by running one of them. Measured 2026-09-04: feature 101 was
+# recorded implemented, CLAUDE.md and docs/known-issues.md both named the exact
+# C# lines the fix had landed at, THOSE LINES WERE STILL DEFECTIVE, and the Gleam
+# half had shipped with no test file at all — invisible, because nothing in the
+# 566-check suite had ever started a second runtime.
+#
+# Section Y runs the declared criteria through scripts/differential_gate.py.
+# Three things make it more than a re-run of V-18..V-23:
+#
+#   * Y-3 pins that the gate NEVER exits 0 while any criterion is NOT-MEASURED.
+#     NOT-MEASURED is not a skip — a skip vanishes from a report, and "the tool
+#     did not run" read as "nothing to report" is measured instance 4.
+#   * Y-5 pins that every criterion's own negative control was EXECUTED on this
+#     run, against the transcripts captured on this run (SC-002). A comparator
+#     that has never been shown able to fail has measured nothing.
+#   * Y-4 is the anti-drift check (T059): the hand-written V-18..V-23 and the
+#     general harness must reach the SAME verdict on the SAME criterion. If the
+#     generalisation ever stops measuring what the original measured, that is a
+#     suite failure here rather than a discovery months later.
+section "Y" "Differential acceptance (109 US1)"
+echo ""
+set +e
+if [ -z "$PY_BIN" ]; then
+    skip "Section Y (differential acceptance)" "no python interpreter on PATH"
+else
+    yrep="$SCRIPT_DIR/../.specify/differential/report.json"
+    rm -f "$yrep"
+    (cd "$SCRIPT_DIR/.." && DART="$DART" PYTHONUTF8=1 "$PY_BIN" scripts/differential_gate.py >/dev/null 2>&1)
+    yrc=$?
+    if [ -f "$yrep" ]; then
+        echo "  PASS: Y-1: the differential gate produced a report"
+        PASS=$((PASS + 1))
+    else
+        echo "  FAIL: Y-1: the differential gate produced NO report (exit $yrc)"
+        FAIL=$((FAIL + 1))
+    fi
+
+    # Y-2: every declared criterion carries one of the three outcomes. A criterion that is
+    # declared and then absent from the report is the silent skip FR-003 forbids.
+    y2=$(cd "$SCRIPT_DIR/.." && PYTHONUTF8=1 "$PY_BIN" -c "
+import json
+r=json.load(open('.specify/differential/report.json'))
+t=r['totals']
+ok = t['declared']>0 and t['declared']==t['measured_agree']+t['measured_diverge']+t['not_measured']
+ok = ok and all(c['outcome'] in ('MEASURED-AGREE','MEASURED-DIVERGE','NOT-MEASURED') for c in r['criteria'])
+print('ACCOUNTED' if ok else 'UNACCOUNTED')
+" 2>&1)
+    check "Y-2: every declared criterion is reported with one of the three outcomes" "ACCOUNTED" "$y2"
+
+    # Y-3: the exit code and the report must agree. NOT-MEASURED must never be exit 0.
+    y3=$(cd "$SCRIPT_DIR/.." && PYTHONUTF8=1 "$PY_BIN" -c "
+import json,sys
+t=json.load(open('.specify/differential/report.json'))['totals']
+rc=int(sys.argv[1])
+if t['measured_diverge']: want=1
+elif t['not_measured']:   want=3
+else:                     want=0
+print('AGREE' if rc==want else 'DISAGREE rc=%d want=%d' % (rc,want))
+" "$yrc" 2>&1)
+    check "Y-3: the gate never exits 0 while a criterion is NOT-MEASURED or DIVERGE" "AGREE" "$y3"
+
+    # Y-4 (T059): the general harness and the hand-written V-18..V-23 must agree.
+    y4=$(cd "$SCRIPT_DIR/.." && PYTHONUTF8=1 "$PY_BIN" -c "
+import json,sys
+ref=sys.argv[1]
+r=json.load(open('.specify/differential/report.json'))
+c=[x for x in r['criteria'] if x['id']=='goal-term-acceptance-dart-csharp']
+if not c:
+    print('MISSING: the shared criterion is not in the report')
+else:
+    got=c[0]['outcome']
+    if ref=='NOT-RUN':
+        # V-18..V-23 could not run (no C# binary, or a stale one). The harness must then also
+        # decline to measure — if it reported AGREE while the reference could not run at all,
+        # the generalisation would be measuring something the original never claimed.
+        print('CONSISTENT' if got=='NOT-MEASURED' else 'INCONSISTENT ref=NOT-RUN harness=%s' % got)
+    else:
+        print('CONSISTENT' if got=='MEASURED-'+ref else 'INCONSISTENT ref=%s harness=%s' % (ref,got))
+" "$V20_RESULT" 2>&1)
+    check "Y-4: T059 the harness and V-18..V-23 agree on the shared criterion" "CONSISTENT" "$y4"
+
+    # Y-5 (SC-002): a criterion may not reach MEASURED-AGREE without an EXECUTED negative
+    # control that actually diverged. This is the check that stops an unfalsifiable 100%.
+    y5=$(cd "$SCRIPT_DIR/.." && PYTHONUTF8=1 "$PY_BIN" -c "
+import json
+r=json.load(open('.specify/differential/report.json'))
+bad=[c['id'] for c in r['criteria']
+     if c['outcome']=='MEASURED-AGREE'
+     and not (c['negative_control']['executed'] and c['negative_control']['passed'])]
+print('ALL-FALSIFIABLE' if not bad else 'UNFALSIFIABLE: '+','.join(bad))
+" 2>&1)
+    check "Y-5: SC-002 no MEASURED-AGREE without an executed, diverging negative control" "ALL-FALSIFIABLE" "$y5"
+
+    # Y-6: FR-008 stated in the artefact, not left to the reader. Agreement is agreement;
+    # participants broken identically also agree, and the report says so.
+    y6=$(cd "$SCRIPT_DIR/.." && PYTHONUTF8=1 "$PY_BIN" -c "
+import json
+print(json.load(open('.specify/differential/report.json'))['agreement_is_not_correctness'])
+" 2>&1)
+    check "Y-6: FR-008 the report states that agreement is not correctness" "broken identically also agree" "$y6"
+fi
+set -e
+
 # =============================================================================
 # SUMMARY
 # =============================================================================
