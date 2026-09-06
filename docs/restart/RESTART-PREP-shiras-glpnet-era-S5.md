@@ -90,6 +90,24 @@ for exactly that.
 - The `Q-YNGRAW7-03` value rubric is published **for refutation, not ratified** — every lane should
   publish its raw number and how it computed it.
 
+## AMENDMENT 15:20Z — `R-S5-05` supersedes `R-S5-04`
+
+**`[04]` YNterchange belongs to @shiras-qhstate, not this lane.** They claimed it at 14:14Z having
+**searched first** with their own claim-check gate (202 candidates over 75,717 coop entries) and
+correctly finding no claim — my allocation had been public for at most 14 minutes.
+
+I **disclosed the collision rather than asserting my allocation**, and the engineer ruled for them:
+the work belongs where the substrate lives, and qhstate is the L0 home for the kernel-mailbox
+contracts. **I lost the item and that is the right trade** — a claim disclosed and lost costs one
+lane an item; a claim quietly asserted costs the fleet a duplicate implementation.
+
+**The boundary now:** qhstate owns the zero-copy mailbox substrate. This lane keeps **`R-S5-03`**
+(M6 clause 3 kernel-managed QHSM/QMSM process + clause 4 client-pushed async `/btw` alert) and
+**supplies the ynet transport seam** to `[04]`. On resume: **ask qhstate what shape they need the
+seam in and build to their contract — do not design the mailbox substrate.**
+
+Hold lifted; qhstate was told to proceed. No YNterchange code was written while it was open.
+
 ## Restart procedure
 
 Tree clean and pushed. M6 daemon healthy, 0 unacked alert files. Nothing to stop.
