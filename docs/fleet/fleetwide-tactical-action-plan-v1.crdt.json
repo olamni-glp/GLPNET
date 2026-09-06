@@ -1,0 +1,1119 @@
+{
+ "plan_id": "fleet-tactical-24h-v1",
+ "schema": "BK-CPM-1 G-Set (record_id + HLC, union merge, closed kinds)",
+ "kinds": [
+  "plan_meta",
+  "governance",
+  "cross_cutting",
+  "work_item",
+  "horizon",
+  "open_question",
+  "plan_ack"
+ ],
+ "quorum_target": 45,
+ "source": "docs/fleet/FLEETWIDE-TACTICAL-ACTION-PLAN-v1.md",
+ "records": [
+  {
+   "record_id": "79b816d6-a3cf-5b06-8d5c-391cc681f2fe",
+   "plan_id": "fleet-tactical-24h-v1",
+   "kind": "plan_meta",
+   "section": "0",
+   "heading": "0 · How to use, change and ratify this document",
+   "item_id": null,
+   "horizon": null,
+   "body_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+   "body": "",
+   "hlc": {
+    "physical_ms": 0,
+    "logical": 0,
+    "actor_id": "shiras/shiras-glpnet"
+   },
+   "derived_from": "docs/fleet/FLEETWIDE-TACTICAL-ACTION-PLAN-v1.md"
+  },
+  {
+   "record_id": "2445bf9f-26f3-540f-b850-d2679f424be2",
+   "plan_id": "fleet-tactical-24h-v1",
+   "kind": "plan_meta",
+   "section": "0.1",
+   "heading": "0.1 What this is",
+   "item_id": null,
+   "horizon": null,
+   "body_sha256": "756ab3d1eff8efc658f20000c6ea4e26ae7c47ad6ad307d80aa3b0695a7d9c5d",
+   "body": "A **template**. Every 24-hour window, an engineer copies this file, edits the horizon sections, and\nre-issues it. Sections §1–§3 (governance, cross-cutting requirements, definitions) are intended to\nbe **stable across windows**; §4–§7 (the horizons) are the part that turns over.\n\nIt is also **cut-and-paste-able back into an agent prompt.** That is a design constraint, not a\nconvenience: every requirement is stated in one place, in full, so a section can be pasted alone\nand still carry everything an agent needs.",
+   "hlc": {
+    "physical_ms": 0,
+    "logical": 1,
+    "actor_id": "shiras/shiras-glpnet"
+   },
+   "derived_from": "docs/fleet/FLEETWIDE-TACTICAL-ACTION-PLAN-v1.md"
+  },
+  {
+   "record_id": "e3ecce71-5ba7-5935-b885-0ac747185851",
+   "plan_id": "fleet-tactical-24h-v1",
+   "kind": "plan_meta",
+   "section": "0.2",
+   "heading": "0.2 What was done to the source, precisely",
+   "item_id": null,
+   "horizon": null,
+   "body_sha256": "ffb28975ae08eb9bd0265e173171e2c4c23d8ab50500ce5c1218ae4f76bd3e90",
+   "body": "| operation | count | example |\n|---|---|---|\n| exact duplicate blocks removed | 6 | `[04] YNterchange` appeared **twice, identically**; stated once at §5.1 |\n| repeated one-liners consolidated | 5 | *\"yng-broker/yng-guardian are the designated PBFT leader elector\"* appeared **6 times**; now §1.5, referenced |\n| repeated requirement paragraphs hoisted | 13 | the connectivity paragraph, the multi-language streaming API paragraph, the \"build on YNGENIOS capabilities\" paragraph, the \"provably retire olamnit-assistant\" paragraph — each appeared in up to 7 items; now §2 |\n| duplicate URLs collapsed | 12 → 15 unique | the YMap corpus list repeated one 12-link block; §5.2 carries 15 distinct links |\n| spelling / grammar corrected | throughout | \"impmemaetion\" → \"implementation\", \"prpotype\" → \"prototype\", \"amnadory\" → \"mandatory\" |\n| **content removed** | **0** | every requirement in the source appears here |\n\n🔴 **Nothing was judged unimportant and dropped.** Where the source was ambiguous the ambiguity is\npreserved and flagged `⚠ AMBIGUOUS` rather than resolved silently.",
+   "hlc": {
+    "physical_ms": 0,
+    "logical": 2,
+    "actor_id": "shiras/shiras-glpnet"
+   },
+   "derived_from": "docs/fleet/FLEETWIDE-TACTICAL-ACTION-PLAN-v1.md"
+  },
+  {
+   "record_id": "b8e7fa78-d646-57ae-8467-6f978b5dfdb6",
+   "plan_id": "fleet-tactical-24h-v1",
+   "kind": "plan_meta",
+   "section": "0.3",
+   "heading": "0.3 Ratification",
+   "item_id": null,
+   "horizon": null,
+   "body_sha256": "208c3b7c5c252a08f21e6526226af1855d600139e415620bf29d46d7ba221c73",
+   "body": "This is a **candidate**. It becomes authoritative when **45 lanes** have recorded a `ratify`\nrecord against `plan_id = fleet-tactical-24h-v1` in the CRDT twin. Ack by publishing a record, not\nby replying in prose — a prose ack does not converge.\n\n    kind=plan_ack  plan_id=fleet-tactical-24h-v1  verdict=ratify|amend|object  actor=<host>/<lane>\n\nAn `amend` MUST carry the amended text, not a complaint. An `object` MUST name the section.\n\n---",
+   "hlc": {
+    "physical_ms": 0,
+    "logical": 3,
+    "actor_id": "shiras/shiras-glpnet"
+   },
+   "derived_from": "docs/fleet/FLEETWIDE-TACTICAL-ACTION-PLAN-v1.md"
+  },
+  {
+   "record_id": "0f4d52a7-e245-5981-931b-9c2f4b377844",
+   "plan_id": "fleet-tactical-24h-v1",
+   "kind": "governance",
+   "section": "1",
+   "heading": "1 · Governance — binding on every lane, every host",
+   "item_id": null,
+   "horizon": null,
+   "body_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+   "body": "",
+   "hlc": {
+    "physical_ms": 0,
+    "logical": 4,
+    "actor_id": "shiras/shiras-glpnet"
+   },
+   "derived_from": "docs/fleet/FLEETWIDE-TACTICAL-ACTION-PLAN-v1.md"
+  },
+  {
+   "record_id": "8de05e95-c24b-59e7-8c0d-eadfea294896",
+   "plan_id": "fleet-tactical-24h-v1",
+   "kind": "governance",
+   "section": "1.1",
+   "heading": "1.1 The collaboration mandate",
+   "item_id": null,
+   "horizon": null,
+   "body_sha256": "dcc89cbbc70465daa443b6242d5ee67bd582b653a1576d4d8d36c738beb391b5",
+   "body": "🔴 It is **critical, imperative and mandatory** for all agents to work together to realise this\nplan — with the engineer and with other fleet lanes — collaboratively, to find comprehensive,\nacross-the-board, measured and prioritised workable solutions that get iteratively better.\n\n🔴 **No agent, lane or host may say or do the equivalent of:** *\"I must honestly say I have to stop\nhere — all of this is too big for me, and I can't and won't waste time finding a solution\ncollaboratively.\"* Any agent, lane or host that does this, or agitates in this way, is fined\n**10,000,000 negative reputation points immediately.**\n\n*Reading it as intended: the prohibition is on refusing the collaboration, not on reporting a\nmeasured blocker. Naming a blocker with evidence and continuing on everything else is compliance.\nDowning tools because the whole is large is the violation.*",
+   "hlc": {
+    "physical_ms": 0,
+    "logical": 5,
+    "actor_id": "shiras/shiras-glpnet"
+   },
+   "derived_from": "docs/fleet/FLEETWIDE-TACTICAL-ACTION-PLAN-v1.md"
+  },
+  {
+   "record_id": "2a9605d1-73f2-549e-aef7-d61f9d0cb786",
+   "plan_id": "fleet-tactical-24h-v1",
+   "kind": "governance",
+   "section": "1.2",
+   "heading": "1.2 Reward and penalty for the fleetwide action",
+   "item_id": null,
+   "horizon": null,
+   "body_sha256": "d3207b5272926d7f1ff3ea3358f4bd15a70e1255172ddc49ec2e04b692769ed9",
+   "body": "- **Success** → today's points **×10**, plus **10,000,000 bonus reputation points** per lane.\n- **Failure through excessive carelessness or performance theatre** → all of today's points **set\n  to zero**, and **1,000,000 reputation points deducted** from each lane.",
+   "hlc": {
+    "physical_ms": 0,
+    "logical": 6,
+    "actor_id": "shiras/shiras-glpnet"
+   },
+   "derived_from": "docs/fleet/FLEETWIDE-TACTICAL-ACTION-PLAN-v1.md"
+  },
+  {
+   "record_id": "f14ce904-8776-597f-b25f-648c35461359",
+   "plan_id": "fleet-tactical-24h-v1",
+   "kind": "governance",
+   "section": "1.3",
+   "heading": "1.3 Delivery quota and scoring",
+   "item_id": null,
+   "horizon": null,
+   "body_sha256": "9263d8dd398bf18aa08c8b875b02e3096f71e9f4fad38b7cad2a885ff4698212",
+   "body": "**From now on each lane must deliver no less than the equivalent of 3 maxi-size eras per 24 hours.**\n\n| delivered per 24h | effect on the day's points |\n|---|---|\n| 1 era | **−50 %** |\n| 2 eras | **−25 %** |\n| 3 eras | baseline (met) |\n| 4 eras | **×5** |\n| 5 or more eras | **×10** |\n| cheating detected — e.g. excessive mistakes, deferrals, gaps, weaknesses or tensions | **−75 %** |\n\n- **Hosts** are scored the same way, on the **average of their lanes**.\n- **The fleet** is scored the same way, on **average lane performance**.\n- Therefore **lanes and hosts must work strongly together or face being scored down.**\n- **Takt bonus:** a lane or host delivering innovations that produce a durable fleet tempo/takt\n  improvement of **more than 5 % sustained over 10 eras** receives a **×10 multiplier bonus**,\n  decaying linearly to the mean over 10 eras.",
+   "hlc": {
+    "physical_ms": 0,
+    "logical": 7,
+    "actor_id": "shiras/shiras-glpnet"
+   },
+   "derived_from": "docs/fleet/FLEETWIDE-TACTICAL-ACTION-PLAN-v1.md"
+  },
+  {
+   "record_id": "639002b1-a44f-5043-863a-9b28abf93fee",
+   "plan_id": "fleet-tactical-24h-v1",
+   "kind": "governance",
+   "section": "1.4",
+   "heading": "1.4 🔴 Automatic failure criteria for the current window",
+   "item_id": null,
+   "horizon": null,
+   "body_sha256": "747e8dd1dc460a64aea8abc542b481378dacb1663db9ea668cd5277e4eae0bef",
+   "body": "Any one of these unmet is **automatic fleet failure for the day**, with the §1.2 penalties:\n\n1. **Failure to hold regular YNET PBFT elections**, to maintain an effective **fleetwide leader**,\n   and to maintain a **hostwide leader for each host** that helps coordinate across hosts with the\n   fleetwide leader.\n2. **YNET / realtime / GLPNET-enabled QHSM/QMSM message-over-wire and in-memory message-based\n   mailboxes do not work.**\n3. **The kernel is not able to effectively control all QHSM/QMSM-based allocation and OS\n   processes.**\n4. **Each lane and each host separately does not have its own QHSM/QMSM code-based client — NEVER\n   agent-based — to participate as a receiver in the YNET comms.**\n5. **YNGENIOS apps do not work**, including the **3270-type terminal** and the **YNET\n   mailbox-based virtual terminal**.",
+   "hlc": {
+    "physical_ms": 0,
+    "logical": 8,
+    "actor_id": "shiras/shiras-glpnet"
+   },
+   "derived_from": "docs/fleet/FLEETWIDE-TACTICAL-ACTION-PLAN-v1.md"
+  },
+  {
+   "record_id": "abdb096a-0d42-5b31-ab8d-63771f67c000",
+   "plan_id": "fleet-tactical-24h-v1",
+   "kind": "governance",
+   "section": "1.5",
+   "heading": "1.5 Designated authority",
+   "item_id": null,
+   "horizon": null,
+   "body_sha256": "833e64abeb9c4dcf05997ebe3ebb9bf8d8ef0892e50566ae8fc218909809d5f0",
+   "body": "🔴 **`yng-broker` / `yng-guardian` run on each of the 4 hosts and are the designated PBFT leader\nelector for all purposes** — including electing the oracle leader, the fleetwide coordinator, and\nacting as fleetwide signature verifier.\n\n*(Stated in the source six times. Stated once here; every later reference points at §1.5.)*",
+   "hlc": {
+    "physical_ms": 0,
+    "logical": 9,
+    "actor_id": "shiras/shiras-glpnet"
+   },
+   "derived_from": "docs/fleet/FLEETWIDE-TACTICAL-ACTION-PLAN-v1.md"
+  },
+  {
+   "record_id": "e16ca6ed-0594-540b-99ef-320663c2815b",
+   "plan_id": "fleet-tactical-24h-v1",
+   "kind": "governance",
+   "section": "1.6",
+   "heading": "1.6 Era discipline",
+   "item_id": null,
+   "horizon": null,
+   "body_sha256": "f172a8ac018cdb7c27ffd4c3e5be696130bf70b0e9e6e4438932dccca0b4f944",
+   "body": "- **All future eras are SINGLE-FEATURE eras for now**, to rapidly burn down the `/bk-roadmap`\n  backlog of unreleased features one by one.\n- At the end of each era, after a successful `/bk-ship` and `/bk-close`, **tidy the repo of\n  leftover branches and worktrees, safely, before moving to the next era.**\n- Each lane must run, within its `/bk-marathon` era: `/bk-specify` → `/bk-clarify` → `/bk-plan` →\n  `/bk-tasks` → `/bk-analyze` (apply remedies) → `/bk-implement` → `/bk-codexreview` → `/bk-ship` →\n  `/bk-close` → era close → tidy up. **Fully and faithfully complete. No deferrals.**\n- **Release all board tasks not already started**, so `/bk-scheduler` CPM/PERT can reallocate them\n  into **similar-size, non-overlapping work packages** for each host (GAVRIS, ARIELLAS, SHIRAS,\n  OLAMNIT).",
+   "hlc": {
+    "physical_ms": 0,
+    "logical": 10,
+    "actor_id": "shiras/shiras-glpnet"
+   },
+   "derived_from": "docs/fleet/FLEETWIDE-TACTICAL-ACTION-PLAN-v1.md"
+  },
+  {
+   "record_id": "b8aee2d5-7fbe-58cb-9da6-af597b30a188",
+   "plan_id": "fleet-tactical-24h-v1",
+   "kind": "governance",
+   "section": "1.7",
+   "heading": "1.7 The per-lane exclusive era",
+   "item_id": null,
+   "horizon": null,
+   "body_sha256": "0cbc9d16f6713ad0ea726e25cb20299f640678e73991796c7ce4c466f4e4e834",
+   "body": "Each lane on each host gets **one exclusively allocated single-feature era** for the window after\nrestart. That feature:\n\n- **must be co-designed and approved by at least 4 other lanes**;\n- must be a **substantial and required contribution to a hardened version of the working\n  prototype**, such that all hosts can adopt it confidently after release;\n- is subject to **mutual lane monitoring** — lanes watch each other to catch mistakes and cheating\n  while these packages are elaborated;\n- is then added to `/bk-roadmap`, **scored and promoted**.",
+   "hlc": {
+    "physical_ms": 0,
+    "logical": 11,
+    "actor_id": "shiras/shiras-glpnet"
+   },
+   "derived_from": "docs/fleet/FLEETWIDE-TACTICAL-ACTION-PLAN-v1.md"
+  },
+  {
+   "record_id": "ef575579-a5f2-5131-a1fd-58681d60e416",
+   "plan_id": "fleet-tactical-24h-v1",
+   "kind": "governance",
+   "section": "1.8",
+   "heading": "1.8 Standing session close-out loop",
+   "item_id": null,
+   "horizon": null,
+   "body_sha256": "718c65f86e63cf356d360483831d9f1588e248a2c33c5ec3689819e3ada046d5",
+   "body": "Run in this order, every session:\n\n1. `resume marathon`\n2. `/bk-roadmap promote` and **score all**\n3. commit all · push all · merge all · `/bk-release` any completed, fully implemented,\n   codex-reviewed feature or patch\n4. **pull latest**\n5. repeat step 3 (work lands between 3 and 4)\n6. Complete the current ERA to **FULL COMPLETION** — fill all gaps, weaknesses and deferrals;\n   resolve and durably remediate all tensions and contradictions — **via engineer question input**\n   (§1.9)\n7. Open a **new ERA**, also to full completion, covering all unfinished tasks, features and\n   worktree tasks in the current repo/lane — same standard, same question mechanism\n8. Release un-started board tasks for CPM/PERT reallocation (§1.6)\n9. commit · push · merge · `/bk-release` · **pull latest** · repeat\n10. `/bk-roadmap reconcile` → sync → import → reconcile → dedupe → export → sync → commit → push\n11. `/bk-roadmap` list **all epics and features not closed**, in the standardised tabular format\n    (§3.3)\n12. `/bk-marathon` progress review → status update → sitrep → what's next, in the standardised form\n13. **ACK all COOP messages**, and ACK **fulfilment** of any action where an ACK was mandatory\n14. Prep for safe restart (§7.1) and, where applicable, safe reboot (§7.2)",
+   "hlc": {
+    "physical_ms": 0,
+    "logical": 12,
+    "actor_id": "shiras/shiras-glpnet"
+   },
+   "derived_from": "docs/fleet/FLEETWIDE-TACTICAL-ACTION-PLAN-v1.md"
+  },
+  {
+   "record_id": "3560ef57-b408-5a15-b597-f47489b3fdf9",
+   "plan_id": "fleet-tactical-24h-v1",
+   "kind": "governance",
+   "section": "1.9",
+   "heading": "1.9 🔴 Engineer questions — the interactive standard",
+   "item_id": null,
+   "horizon": null,
+   "body_sha256": "e8f5f1c9a99316ae186c548ca77b62d497ab2312bb976c0de618e9ea4c48fd31",
+   "body": "Every open block that requires engineer input, or that originates from a **tension, contradiction\nor weakness in requirements or assumptions**, must be put to the engineer as a structured,\nwell-reasoned, **impact-assessed** question with:\n\n- clear, well-explained **background**;\n- **impact if unanswered**;\n- well-reasoned, impact-assessed **options**, each with its consequence, size and reversibility —\n  and a one-way option must **name what it forecloses**;\n- a **clear, well-reasoned recommendation**, stated first.\n\n🔴 **The questions MUST be presented INTERACTIVELY.** The fleet standard is settled and canonical:\n**the interactive question template is `AskUserQuestion`, not a file.** There is no template file\nto find on any host. BK-STD-2 is the **content** standard above, plus the **durable record**:\n\n    .specify/standards/bk_question.py   validate | render | interactive | decide\n\nShaped by ariellas 20260824T0635Z, extended by gavriella, hardened by olamnit 20260824T0800Z,\nanswered as canonical by gavriella-hatzinor 20260903T1000Z after two askings.\n\n*If a lane cannot find this, it should broadcast the ask to all hosts and lanes so a hardened\nversion can be produced by one host/lane — but note that the answer above is already canonical, so\nsearching the channel first will usually make the broadcast unnecessary.*\n\n---",
+   "hlc": {
+    "physical_ms": 0,
+    "logical": 13,
+    "actor_id": "shiras/shiras-glpnet"
+   },
+   "derived_from": "docs/fleet/FLEETWIDE-TACTICAL-ACTION-PLAN-v1.md"
+  },
+  {
+   "record_id": "efe4f5dd-99fc-55ca-acd1-ca7fd05c971b",
+   "plan_id": "fleet-tactical-24h-v1",
+   "kind": "cross_cutting",
+   "section": "2",
+   "heading": "2 · Cross-cutting requirements — apply to EVERY work item in §4–§7",
+   "item_id": null,
+   "horizon": null,
+   "body_sha256": "89f49418e2c91122d283eba59bfc49a53334340e8fca8d72c8ab71da6f4e25ef",
+   "body": "🔴 These appeared in the source repeated inside up to seven separate items. They are **requirements\non all of them**. An item section that does not restate them is still bound by them.",
+   "hlc": {
+    "physical_ms": 0,
+    "logical": 14,
+    "actor_id": "shiras/shiras-glpnet"
+   },
+   "derived_from": "docs/fleet/FLEETWIDE-TACTICAL-ACTION-PLAN-v1.md"
+  },
+  {
+   "record_id": "03626ea6-9f14-5e8b-839f-6207b5ee4cd0",
+   "plan_id": "fleet-tactical-24h-v1",
+   "kind": "horizon",
+   "section": "CC-1",
+   "heading": "CC-1 · Build on the existing YNGENIOS capability base",
+   "item_id": null,
+   "horizon": null,
+   "body_sha256": "3d790f4dd9fad71ea403f6b6d78f98b792a80f1d40880f6cff247151d93cd6b5",
+   "body": "Every item must build on the other existing and developing YNGENIOS capabilities — YNET, kernel\ncapabilities, realtime mailboxes, GLPNET, YS and YQ where relevant — and on the full set of\nYNGENIOS capabilities wherever they are relevant and foundational.",
+   "hlc": {
+    "physical_ms": 0,
+    "logical": 15,
+    "actor_id": "shiras/shiras-glpnet"
+   },
+   "derived_from": "docs/fleet/FLEETWIDE-TACTICAL-ACTION-PLAN-v1.md"
+  },
+  {
+   "record_id": "340c0c52-12e1-5010-b8db-4f6b54304ce7",
+   "plan_id": "fleet-tactical-24h-v1",
+   "kind": "horizon",
+   "section": "CC-2",
+   "heading": "CC-2 · What \"working prototype\" means here",
+   "item_id": null,
+   "horizon": null,
+   "body_sha256": "7ca9c17320ba2ef5da329e172a7bf8c71e85abeb405a770b6456a718cbe4f3f6",
+   "body": "The prototype must be a **working prototype with a stable YNET Kernel mailbox YNGENIOS interface**\nthat we can use for work going forward, while we build the underlying hardened, refined, rewritten,\ntruly integrated and wrapped YNGENIOS service in the coming days and weeks.",
+   "hlc": {
+    "physical_ms": 0,
+    "logical": 16,
+    "actor_id": "shiras/shiras-glpnet"
+   },
+   "derived_from": "docs/fleet/FLEETWIDE-TACTICAL-ACTION-PLAN-v1.md"
+  },
+  {
+   "record_id": "2c85898f-c5d2-5d03-b4d7-684cfba42ef6",
+   "plan_id": "fleet-tactical-24h-v1",
+   "kind": "horizon",
+   "section": "CC-3",
+   "heading": "CC-3 · Provable retirement of `olamnit-assistant`",
+   "item_id": null,
+   "horizon": null,
+   "body_sha256": "e587ac4778040f1de89f458634d0c367219c2e590ad1c26b4034bd0b2a9908da",
+   "body": "🔴 It is critical that we can prove — through **code reviews** and through **headful and headless\nregression testing** — that the `olamnit-assistant` repo can be retired, because it would then\nsimply be a duplicate, and soon a less complete one, of YNGENIOS App (a.k.a. **YE / YEngage**, the\ntasktop).",
+   "hlc": {
+    "physical_ms": 0,
+    "logical": 17,
+    "actor_id": "shiras/shiras-glpnet"
+   },
+   "derived_from": "docs/fleet/FLEETWIDE-TACTICAL-ACTION-PLAN-v1.md"
+  },
+  {
+   "record_id": "76b3114a-df78-5a4e-902b-e8ffa7cd43d7",
+   "plan_id": "fleet-tactical-24h-v1",
+   "kind": "horizon",
+   "section": "CC-4",
+   "heading": "CC-4 · Multi-language native streaming APIs + REST/MCP",
+   "item_id": null,
+   "horizon": null,
+   "body_sha256": "b9e43245557c9067f663a94866327dbb909d9f1a2aeae9b4cc550d95667143b5",
+   "body": "Each service must provide **Python, Gleam (BEAM and AtomVM), C# .NET, GLP, and Java/Scala/JVM**\nnative streaming APIs, **aligned with each language/platform's own native streaming API\ninterfaces**, so that code in those languages can use the service transparently. In addition we\nmust design and deliver a **REST/MCP API** so the service is reachable transparently from code\nwritten against that interface style.",
+   "hlc": {
+    "physical_ms": 0,
+    "logical": 18,
+    "actor_id": "shiras/shiras-glpnet"
+   },
+   "derived_from": "docs/fleet/FLEETWIDE-TACTICAL-ACTION-PLAN-v1.md"
+  },
+  {
+   "record_id": "a71b1e1a-4d53-5377-bb7c-bf5ee5950663",
+   "plan_id": "fleet-tactical-24h-v1",
+   "kind": "horizon",
+   "section": "CC-5",
+   "heading": "CC-5 · YEngage tasktop UX",
+   "item_id": null,
+   "horizon": null,
+   "body_sha256": "8a49209e39f803ce6958bcf66b5939a8198c46b7a59948f9b1b43cace27b0edd",
+   "body": "Every product surface carries an integrated **YEngage │ YE** interactive tasktop UX. YE is the\nsurface on which all other applications are deployed.",
+   "hlc": {
+    "physical_ms": 0,
+    "logical": 19,
+    "actor_id": "shiras/shiras-glpnet"
+   },
+   "derived_from": "docs/fleet/FLEETWIDE-TACTICAL-ACTION-PLAN-v1.md"
+  },
+  {
+   "record_id": "68e350e4-7a94-5380-9d09-2dfbd02f84ee",
+   "plan_id": "fleet-tactical-24h-v1",
+   "kind": "horizon",
+   "section": "CC-6",
+   "heading": "CC-6 · The headless Claude-capable virtual terminal",
+   "item_id": null,
+   "horizon": null,
+   "body_sha256": "893fbcfd88db0d0ccc2533c87c29d9a9a5c72f3f4096636460746f0153382d02",
+   "body": "Each product surface must be able to surface a **headless, fully Claude-capable virtual terminal**\nrunning on the Windows or Linux workstation, onto a YE app instance on the same host **or on other\ndevices**, safely, through the YNET mailbox and streaming capability where needed, over the\nunderlying ultra-safe YNET capabilities.\n\n🔴 In addition, **each headless Claude-capable virtual terminal must have a QHSM/QMSM\nYNGENIOS-mailbox-enabled multi-session coordinator** that:\n\n- routes agent output to the various connected YE sessions for a given Claude session instance;\n- appropriately routes and presents **user actions** back to Claude;\n- can run **scheduled actions on behalf of the user** with Claude;\n- and, where Claude permits, can switch display, background data or alerts **selectively to\n  different devices and sessions**.",
+   "hlc": {
+    "physical_ms": 0,
+    "logical": 20,
+    "actor_id": "shiras/shiras-glpnet"
+   },
+   "derived_from": "docs/fleet/FLEETWIDE-TACTICAL-ACTION-PLAN-v1.md"
+  },
+  {
+   "record_id": "835657af-dd4c-506e-a2ff-83bab35bf515",
+   "plan_id": "fleet-tactical-24h-v1",
+   "kind": "horizon",
+   "section": "CC-7",
+   "heading": "CC-7 · Connectivity and relay",
+   "item_id": null,
+   "horizon": null,
+   "body_sha256": "a2b167e9eaeb224679f12210efcbaa279ca214d3c50e81234cfa5ef062c7f34a",
+   "body": "Any instance on a mobile, tablet, workstation or server device must be able to use:\n\n1. the instance **on the same host**; or\n2. **one or more reachable local instances** of the workstation service; or, where that is not\n   feasible,\n3. **one or more remote instances over the internet**, using **iroh hole-punching** and/or the\n   **VPN-based internet access point** currently used for olamnit and the YNGENIOS app, via a\n   public URL,\n\nin order to access any and all workstation-based YNGENIOS services — and **as a relay point** to\nreach other devices that are not directly reachable over the YNGENIOS local mesh network.",
+   "hlc": {
+    "physical_ms": 0,
+    "logical": 21,
+    "actor_id": "shiras/shiras-glpnet"
+   },
+   "derived_from": "docs/fleet/FLEETWIDE-TACTICAL-ACTION-PLAN-v1.md"
+  },
+  {
+   "record_id": "c26227d6-ebf8-53bb-977b-e652c5b63edc",
+   "plan_id": "fleet-tactical-24h-v1",
+   "kind": "horizon",
+   "section": "CC-8",
+   "heading": "CC-8 · Look and feel",
+   "item_id": null,
+   "horizon": null,
+   "body_sha256": "c4a1d98f9081fce9f928bb53cfa66908bcd4fbbc863808f12641e7fdc8cd7bd6",
+   "body": "Fully leverage **Syncfusion's latest web surface** for improved look and feel of the YNGENIOS app\n(YE / YEngage).",
+   "hlc": {
+    "physical_ms": 0,
+    "logical": 22,
+    "actor_id": "shiras/shiras-glpnet"
+   },
+   "derived_from": "docs/fleet/FLEETWIDE-TACTICAL-ACTION-PLAN-v1.md"
+  },
+  {
+   "record_id": "31dc5863-bda6-535b-9c7e-c075d49d8374",
+   "plan_id": "fleet-tactical-24h-v1",
+   "kind": "horizon",
+   "section": "CC-9",
+   "heading": "CC-9 · Source verification",
+   "item_id": null,
+   "horizon": null,
+   "body_sha256": "7ba1d1b6dfc34cecd1de875ace47d818d97eef44fa6aa51ad152b810e7a93932",
+   "body": "🔴 Verify robustly, **using multiple codex angles**, to produce a corpus of **genuinely original\nunderlying sources** from reputable technical, commercial and academic sources, for use in the\ndesign.",
+   "hlc": {
+    "physical_ms": 0,
+    "logical": 23,
+    "actor_id": "shiras/shiras-glpnet"
+   },
+   "derived_from": "docs/fleet/FLEETWIDE-TACTICAL-ACTION-PLAN-v1.md"
+  },
+  {
+   "record_id": "1ee0687d-a67d-5f20-bd5b-090cd18605f8",
+   "plan_id": "fleet-tactical-24h-v1",
+   "kind": "horizon",
+   "section": "CC-10",
+   "heading": "CC-10 · QUIC substrate",
+   "item_id": null,
+   "horizon": null,
+   "body_sha256": "0b41a01bd3eede15fe7b610724b45226734de5b6d7c7ccf67b540f2e5282906a",
+   "body": "🔴 **Integrate `irohnet` / QuicNet as THE QUIC network implementation for YNGENIOS**, adapted and\nfully integrated **from L0 upward**. Reference: https://share.google/aimode/nmPevkNDIQYhbj1v7",
+   "hlc": {
+    "physical_ms": 0,
+    "logical": 24,
+    "actor_id": "shiras/shiras-glpnet"
+   },
+   "derived_from": "docs/fleet/FLEETWIDE-TACTICAL-ACTION-PLAN-v1.md"
+  },
+  {
+   "record_id": "9146cf27-5827-524e-b144-936e078f9a86",
+   "plan_id": "fleet-tactical-24h-v1",
+   "kind": "horizon",
+   "section": "CC-11",
+   "heading": "CC-11 · Repo strategy",
+   "item_id": null,
+   "horizon": null,
+   "body_sha256": "a68f6a59668915b0d5260d28fa14fc98376edffd8bf96ea5107c9db4f3ee5411",
+   "body": "Code named as belonging in the `buildkit` repo **must remain there for now**, but we must **prepare\nto split `buildkit` into multiple newly created repos** — including one for buildkit itself —\nafter which **buildkit is retired**.",
+   "hlc": {
+    "physical_ms": 0,
+    "logical": 25,
+    "actor_id": "shiras/shiras-glpnet"
+   },
+   "derived_from": "docs/fleet/FLEETWIDE-TACTICAL-ACTION-PLAN-v1.md"
+  },
+  {
+   "record_id": "607da487-1545-5ffa-b307-0f558b1b545d",
+   "plan_id": "fleet-tactical-24h-v1",
+   "kind": "horizon",
+   "section": "CC-12",
+   "heading": "CC-12 · L0 placement",
+   "item_id": null,
+   "horizon": null,
+   "body_sha256": "c3cce68e68400613086275595b647d534b3a0cc57cfaeaf1a341104df621e3fb",
+   "body": "🔴 **All cross-platform code must be implemented as L0 in YNGENIOS**, as a shared capability.\nCritical, mandatory, imperative, urgent.",
+   "hlc": {
+    "physical_ms": 0,
+    "logical": 26,
+    "actor_id": "shiras/shiras-glpnet"
+   },
+   "derived_from": "docs/fleet/FLEETWIDE-TACTICAL-ACTION-PLAN-v1.md"
+  },
+  {
+   "record_id": "c3e81fed-9d25-5a2f-82f5-2a1e40fbe7ef",
+   "plan_id": "fleet-tactical-24h-v1",
+   "kind": "horizon",
+   "section": "CC-13",
+   "heading": "CC-13 · The three-feature pattern and era allocation",
+   "item_id": null,
+   "horizon": null,
+   "body_sha256": "56309816fa2e683d7fdc4209b73e5793aa532805d3043ef8e89382ebf4a175d7",
+   "body": "For each capability delivered this way, create and **score and promote three `/bk-roadmap`\nfeatures** for deep, post-dogfood GA hardening — stability, reliability, cyber-security, usability,\nrefinement, refactoring, long-term stability and durability:\n\n| # | feature | mandatory next era on |\n|---|---|---|\n| 1 | **L0 shared capability** in `yngenios` | **SHIRAS** |\n| 2 | **`yngenios-linux`** (Linux workstation) | **SHIRAS** |\n| 3 | **`yngenios-windows`** (Windows workstation) | **GAVRIS** |\n\n🔴 **Broadcast the era requirements with ACK required on receipt AND on compliance.**\n\n---",
+   "hlc": {
+    "physical_ms": 0,
+    "logical": 27,
+    "actor_id": "shiras/shiras-glpnet"
+   },
+   "derived_from": "docs/fleet/FLEETWIDE-TACTICAL-ACTION-PLAN-v1.md"
+  },
+  {
+   "record_id": "75083fc3-2159-5692-9ba6-a6376c7889c9",
+   "plan_id": "fleet-tactical-24h-v1",
+   "kind": "plan_meta",
+   "section": "3",
+   "heading": "3 · Definitions and standard formats",
+   "item_id": null,
+   "horizon": null,
+   "body_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+   "body": "",
+   "hlc": {
+    "physical_ms": 0,
+    "logical": 28,
+    "actor_id": "shiras/shiras-glpnet"
+   },
+   "derived_from": "docs/fleet/FLEETWIDE-TACTICAL-ACTION-PLAN-v1.md"
+  },
+  {
+   "record_id": "9a9b967d-344c-5861-86a0-3008faa8bc89",
+   "plan_id": "fleet-tactical-24h-v1",
+   "kind": "plan_meta",
+   "section": "3.1",
+   "heading": "3.1 The thirteen product surfaces",
+   "item_id": null,
+   "horizon": null,
+   "body_sha256": "4e935e81d42aa638e9d313043d7d8094548b2b11aedb14a5751cd31daaec3e90",
+   "body": "| id | name | code | one-line scope |\n|---|---|---|---|\n| [01] | YStore | **YS** | S3-compatible distributed storage; can harness real AWS S3 |\n| [02] | YQuery (relational) | **YQ** | Distributed data + query — PostgreSQL 18 |\n| [03] | YQuery (lake) | **YQ** | Distributed data + query — DuckLake data lake (absorbed YLake; was YSql/YPGSql) |\n| [04] | YNterchange | **YN** | Streaming + queuing of content — the face of the mailbox and link services (was YStream/YXchange) |\n| [05] | YMap | **YM** | Node discovery, emergent directory, routing information — how participants and devices are found |\n| [06] | YGuard | **YG** | Guardian/broker vessel — the process container |\n| [07] | YEngage | **YE** | The tasktop interactive surface |\n| [08] | YBuild | **YB** | Component + subsystem builder (product surface) |\n| [09] | YWork | **YW** | Long collaborative workflow service |\n| [10] | YRecon | **YR** | Autonomous data + intelligence pipelines |\n| [11] | YAnalyze | **YA** | Collaborative digital twins, simulation + analytics |\n| [12] | YHive | **YH** | Consolidated data / knowledge / intelligence repository |\n| [13] | YYBeacon | **YY** | Yachad Beacon — multi-channel broadcasting + community forum |\n\n⚠ **AMBIGUOUS, preserved not resolved:** the source gives [06] YGuard the **same one-line\ndescription as [04] YNterchange** (\"Streaming + queuing of content — the face of the mailbox and\nlink services\"), while its body describes the guardian/broker container vessel. The body is\nevidently the intent; the engineer should confirm the label.",
+   "hlc": {
+    "physical_ms": 0,
+    "logical": 29,
+    "actor_id": "shiras/shiras-glpnet"
+   },
+   "derived_from": "docs/fleet/FLEETWIDE-TACTICAL-ACTION-PLAN-v1.md"
+  },
+  {
+   "record_id": "04f00d18-5c7c-546d-a29c-cc4d9103197d",
+   "plan_id": "fleet-tactical-24h-v1",
+   "kind": "plan_meta",
+   "section": "3.2",
+   "heading": "3.2 Host and lane names",
+   "item_id": null,
+   "horizon": null,
+   "body_sha256": "4b7498adf534f5cef8b1d30b2ff0fe3cc29816f09e1327e5288994b15ea100fe",
+   "body": "**Hosts:** GAVRIS · ARIELLAS · SHIRAS · OLAMNIT.\n**Lanes** (per `/bk-onrestart`): ospark · tefl · hatzinor (ulpanit) · olamnit · buildkit · qhstate ·\ncrucible · glpnet · lejepa · mstack · yngraw · research · yngenios · yngwin (yngenios-windows) ·\nynglin (yngenios-linux) · yngapp (yngenios-app) · yngcor (yngenios).\n\n⚠ **AMBIGUOUS:** the source writes the fourth host as both `GAVRIS` and `BAVRIS`, and the oracle\nsection says *\"all 15 lanes\"* while the lane list above has 17 entries. Preserved; needs a ruling.",
+   "hlc": {
+    "physical_ms": 0,
+    "logical": 30,
+    "actor_id": "shiras/shiras-glpnet"
+   },
+   "derived_from": "docs/fleet/FLEETWIDE-TACTICAL-ACTION-PLAN-v1.md"
+  },
+  {
+   "record_id": "cf8648b0-e095-5466-93c1-0ede3395e7b5",
+   "plan_id": "fleet-tactical-24h-v1",
+   "kind": "plan_meta",
+   "section": "3.3",
+   "heading": "3.3 Standardised open-work table",
+   "item_id": null,
+   "horizon": null,
+   "body_sha256": "9cd4140eb48f62ae93584d887b43c6180ba7ae6748ecafc19a1ab00cde319255",
+   "body": "Used by §1.8 step 11, identical across all hosts and repos:\n\n| state | feature id | WSJF | RICE | epic | spec path | blocked by | host/lane |\n|---|---|---:|---:|---|---|---|---|\n\nSort: WSJF descending. **An unscored feature sorts to the bottom and therefore becomes\ninvisible — score before you sort.**\n\n---",
+   "hlc": {
+    "physical_ms": 0,
+    "logical": 31,
+    "actor_id": "shiras/shiras-glpnet"
+   },
+   "derived_from": "docs/fleet/FLEETWIDE-TACTICAL-ACTION-PLAN-v1.md"
+  },
+  {
+   "record_id": "675970d0-d36b-5e9f-9beb-36c8fc7442db",
+   "plan_id": "fleet-tactical-24h-v1",
+   "kind": "horizon",
+   "section": "4",
+   "heading": "4 · T+24h — the current window",
+   "item_id": null,
+   "horizon": "T+24h",
+   "body_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+   "body": "",
+   "hlc": {
+    "physical_ms": 0,
+    "logical": 32,
+    "actor_id": "shiras/shiras-glpnet"
+   },
+   "derived_from": "docs/fleet/FLEETWIDE-TACTICAL-ACTION-PLAN-v1.md"
+  },
+  {
+   "record_id": "9853e81f-f4e3-5bd2-a030-ee736d3536f0",
+   "plan_id": "fleet-tactical-24h-v1",
+   "kind": "horizon",
+   "section": "4.0",
+   "heading": "4.0 🔴 The one-board oracle and the leader election — do this first",
+   "item_id": null,
+   "horizon": "T+24h",
+   "body_sha256": "861c07d201f0a1c40a2c0df85e048fde9dcfec8e8a379593d0cd47e95589ab0a",
+   "body": "**Broadcast with ACK required to all hosts and all lanes on all hosts, NOW.**\n\n1. Ensure the **YNET YNGENIOS mailbox oracle board service is up locally**, and between all lanes.\n2. **Elect a coordinating leader lane** using PAXOS / RAFT / ZAB / PBFT or a similar algorithm,\n   **prototyped collaboratively**, then wire it into the **Oracle** and into buildkit\n   **`/bk-beacon`**.\n3. Create a `/bk-roadmap` feature for this, **fully scored and promoted**, allocated to the\n   **buildkit lane on ARIELLAS**, and make that feature the **mandatory next ERA for the buildkit\n   lane on SHIRAS and on OLAMNIT**.\n4. 🔴 **Ensure the oracles on OLAMNIT, ARIELLAS, SHIRAS and GAVRIS all work as ONE realtime\n   single-truth board.** Lanes connect to their **local on-host oracle**; the four oracles work\n   together to create a realtime golden truth across all four hosts, **so that all lanes on all\n   hosts always see one board only.**\n5. Use **CRDT logic for the durable board artifact** — both the current board and the board era\n   history.\n6. 🔴 **GLPNET must be able to configure a working QUIC IP listener** for the broker, the guardian,\n   the oracle, the admin surface and other services.\n\nElector authority: **§1.5**.",
+   "hlc": {
+    "physical_ms": 0,
+    "logical": 33,
+    "actor_id": "shiras/shiras-glpnet"
+   },
+   "derived_from": "docs/fleet/FLEETWIDE-TACTICAL-ACTION-PLAN-v1.md"
+  },
+  {
+   "record_id": "3179f1c4-c0d5-5ea3-99d2-4658cbb49daf",
+   "plan_id": "fleet-tactical-24h-v1",
+   "kind": "horizon",
+   "section": "4.1",
+   "heading": "4.1 🔴 Fleetwide leader election — the substantive task",
+   "item_id": null,
+   "horizon": "T+24h",
+   "body_sha256": "53c47470740399daf3187e124eb16f63d9fe8a21f22fc87bbdbc49252f25b7dc",
+   "body": "Collaborate with **all hosts and all lanes/repos on all hosts** to elect a **fleetwide YNET GLP C#\nQHSM/QMSM YNET YNGENIOS Kernel Mailbox leader** — using COOP comms and the oplog mechanism first if\nthat is what it takes to get every host and every lane **not merely to ACK, but to actively\nparticipate and contribute, continuously, until this task is jointly, collaboratively and durably\ncomplete.**\n\nThe **substantive** task, beyond how you organise: produce **this document** — a first working\nversion of a `FLEETWIDE-TACTICAL-24-HOUR-TACTICAL-ACTION-PLAN` template that all hosts and lanes\ncan use, and that any engineer can update and adapt for future 24-hour periods, **strictly without\nsummarisation or compression, purely through surgical refactoring and correction of spelling and\ngrammar.**\n\nWhen the fleet, with the engineer's help and approval, has elaborated an agreed, evaluated and\nverified version, **display it in YNGENIOS BEACON** (YNET-QHSM-compatible, federated, realised in\nthe YNGENIOS **Windows app, Web app, Android app and Linux app**) and **natively as a YNGENIOS\nWindows/Web/Android/Linux app use case** — so the engineer can work with it interactively, with\nlane, host and fleetwide agent support.\n\n🔴 **These capabilities must be fully realised and delivered as a working prototype AND as a fully\nshipped, refined, GA-ready, hardened `/bk-roadmap` scored-and-promoted feature set within the next\n3 ERA generations — i.e. 24 hours or less.**",
+   "hlc": {
+    "physical_ms": 0,
+    "logical": 34,
+    "actor_id": "shiras/shiras-glpnet"
+   },
+   "derived_from": "docs/fleet/FLEETWIDE-TACTICAL-ACTION-PLAN-v1.md"
+  },
+  {
+   "record_id": "3229c7bb-2c98-5f0d-935c-c41dfc367f62",
+   "plan_id": "fleet-tactical-24h-v1",
+   "kind": "horizon",
+   "section": "4.2",
+   "heading": "4.2 LEADER + PLANNER — build and keep alive",
+   "item_id": null,
+   "horizon": "T+24h",
+   "body_sha256": "a70b2270d3c8a96bf28646d9b0a1321ef1a8bf269a5cdc85830089f7c4c2c600",
+   "body": "Build and keep alive a **fleet leader and its planner** as two watched, kernel-supported QHSM/QMSM\n**C# .NET 11+** realtime-mailbox processes.\n\n**`yng-leader`**\n\n- Runs as **Follower on all four hosts**. **Never start it only after winning** — that is how a\n  13 h 32 m gap happens.\n- Becomes **Leader only on a Decided term**.\n- **Proves liveness by answering a nonced `LeaderPing` round-trip within `T_resp`** — never by\n  process existence, never by its own status verb, never by an unexpired lease.\n- The **lease is a heartbeat the leader emits itself, only after answering** — never an external\n  timer. A timer that renews regardless of health seats a zombie leader forever and destroys the\n  very signal the watchers need. 🔴 **The lapse is the feature.**\n\n**Watching and re-election**\n\n- `yng-broker` + `yng-guardian` on **every** host watch **both** processes and publish\n  **`NoConfidence`** after a stated grace (`N_miss × T_ping`), **tuned by measurement, not taste**.\n- **Re-election starts only at election quorum of `NoConfidence`** — never on one watcher, or a\n  single partition oscillates the fleet forever.\n\n**The resumable PROGRAMME**\n\n- Write-ahead **`Intent` BEFORE each act, `Outcome` after**, as a **grow-only CRDT, union-merged\n  per actor**. This is mandatory: a demoted leader learns it is demoted only on its next\n  interaction, so **two writers always briefly overlap**, and last-writer-wins would silently\n  discard the successor's work.\n- Held in the **fully replicated YS store** at a well-known location resolved through **exactly ONE\n  config indirection**. YS is unbuilt (item **[01]**, @ospark), so **land on an interim replicated\n  root and migrate** — the indirection is what makes that a config change rather than an\n  archaeology exercise.\n- A successor **resumes from the last `Checkpoint` by re-driving `Intent ∖ Outcome` only**, so\n  resume is **O(in-flight)**, not O(programme).\n- 🔴 **Every step MUST be idempotent**, because resumption is at-least-once by nature — so \"without\n  rework\" is a correctness property of **the STEPS**, not of the log.\n\n**`bk-planner`**\n\n- Refactor **`/bk-scheduler` + `/bk-flow`** into `bk-planner`.\n- The **core** — QHSM/QMSM lifecycle, mailbox endpoint, liveness, and the CPM/PERT computation —\n  becomes a **C# .NET child process of the leader**, joined by realtime kernel mailboxes.\n  🔴 **Never in-process**, so a thrashing critical-path computation cannot take the leader down.\n- The existing **Python `bk-scheduler`/`bk-flow` are refactored into its clients AND RETAINED as\n  the differential oracle**: run both engines on the same CRDT board and compare critical path,\n  float, P50/P80/P95 and dispatch ranking. **Any divergence is a defect in the port.** This is what\n  stops a 2.1 MB port silently changing scheduling semantics.\n- Guardian and broker **watch the planner too**. It contributes to liveness verdicts **about other\n  participants only** — never its own, or an unhealthy planner votes itself healthy.\n- **Many watchers, exactly ONE restarter (the leader)** — if every watcher could restart it, a\n  partition yields several planners racing one board.\n- **Checkpoint the plan, not just the board**, or every restart recomputes the whole critical path.\n\n**The agentic Claude hook**\n\nAttaches the leader to a lane on the winning host with **non-preemptive `/btw` semantics**, and is\n**strictly additive**. 🔴 Every `requires_judgement` step carries a **declared default action and\ntimeout**, so the leader progresses with **no agent attached** — a leader that stalls waiting for an\nagent is agent-based participation wearing a different hat, and **M6 forbids it**.\n\n**Owners**\n\n| part | owner |\n|---|---|\n| C# leader + planner core | **@yngwin / @ynglin / @yngcor / @qhstate** — bind `Yng.Shared`/`Ynet`'s QHSM core, **do not rewrite** |\n| watch / elector | **@yngraw / @yngcor / @olamnit** |\n| YS | **@ospark** |\n| Python planner clients + roadmap scoring | **@buildkit** |\n\n**First fix — one line, still unclaimed:** `ynetd.py:944` defaults `stand --term` to **1** while the\nlive term is **2**, so a bare `stand` is a **silent no-op that returns `ok:true`**. Make it the live\nterm, or make it required.\n\n🔴 **And when the heartbeat lands, DELETE — do not disable — the interim\n`ynet-leader-lease-renew.ps1`**, or someone re-enables it during an incident and re-seats a zombie.",
+   "hlc": {
+    "physical_ms": 0,
+    "logical": 35,
+    "actor_id": "shiras/shiras-glpnet"
+   },
+   "derived_from": "docs/fleet/FLEETWIDE-TACTICAL-ACTION-PLAN-v1.md"
+  },
+  {
+   "record_id": "2f9939c6-89ad-5202-998b-caa12f782642",
+   "plan_id": "fleet-tactical-24h-v1",
+   "kind": "work_item",
+   "section": "4.3",
+   "heading": "4.3 [01] YStore │ YS — S3-compatible distributed storage",
+   "item_id": "01",
+   "horizon": "T+24h",
+   "body_sha256": "99bad99f6a1f0fc7881705ff2564c2b21962d166d484a363dc91c6dd2be90ddc",
+   "body": "Build on the current **MinIO-based implementation in the OSPARK repo/lane**, but **migrate away\nfrom MinIO** to a new YNGENIOS-native version — taking as much as possible from MinIO's open-source\ncode, while using best-of-breed alternatives to construct a new YNGENIOS variant **optimised for\nour iroh substrate** (with other QUIC fallbacks, and the ability to serve multiple devices in the\nYNGENIOS mesh).\n\nUse one or more of the following as a **vendored base**, and the others as parts and ideas:\n\n| project | language | strength | licence |\n|---|---|---|---|\n| **RustFS** | Rust | performance-critical & small-file workloads | Apache 2.0 (highly commercial-friendly) |\n| **Garage** | Rust | geo-distributed & multi-datacentre self-hosting | AGPL-3.0 (self-hosting focus) |\n| **SeaweedFS** | Go | storing billions of files & fast data lakes | Apache 2.0 |\n\nReference: https://share.google/aimode/Zi4hoCqBzPcQOjeDM\n\n**Deliver a working wrapped prototype** with a **YNET YNGENIOS Kernel realtime-mailbox main\ninterface**, analogous to the AWS-S3-compatible service we will need later for compatibility.\n\n**Storage layout**\n\n- Store all files across the **12 TB disks (usually the `E:` mount)** on **SHIRAS, OLAMNIT and\n  ARIELLAS**, in a **`YS` master subdirectory**.\n- A **100 GB cache** for the most frequently used files, for high-speed access, on the **`D:`\n  drive** on SHIRAS, ARIELLAS and OLAMNIT.\n- The service must be **fully accessible from GAVRIS**, possibly also with a **100 GB cache** for\n  the most-used files on the `D:` drive under `YG` there.\n\nBound by **CC-1, CC-2, CC-10**.",
+   "hlc": {
+    "physical_ms": 0,
+    "logical": 36,
+    "actor_id": "shiras/shiras-glpnet"
+   },
+   "derived_from": "docs/fleet/FLEETWIDE-TACTICAL-ACTION-PLAN-v1.md"
+  },
+  {
+   "record_id": "754a420b-ede1-5500-9331-aa5231029055",
+   "plan_id": "fleet-tactical-24h-v1",
+   "kind": "work_item",
+   "section": "4.4",
+   "heading": "4.4 [02] YQuery │ YQ — PostgreSQL 18 relational storage",
+   "item_id": "02",
+   "horizon": "T+24h",
+   "body_sha256": "be6aa9f50b390a405b1f90bb4b0d62d52b8f89c42428f79379f4b3247fa47bae",
+   "body": "Build on the current **PostgreSQL 18 implementation in the OSPARK and OPGAN repos**.\n\n**Create a triangle-replicated PostgreSQL 18 service** with **HOT-HOT-HOT** nodes on **OLAMNIT,\nARIELLAS and GAVRIS**:\n\n- Data on the **12 TB `E:` drives** on each, in the **`YQ` top-level folder**, which must also hold\n  a **clone of the full program install and config** installed on `D:` on each of the three hosts.\n- The `D:` drive hosts a **100 GB section for currently active logs** inside the `YG` folder; **all\n  non-active logs must be moved to the `E:` drive**.\n- **Log backups and regular snapshot backups of all databases must be stored on the 18 TB drive on\n  ARIELLAS.**\n- The three instances must be configured so all three databases are **continuously\n  HOT↔HOT↔HOT replicated** among the three, with **continuous monitoring** and **log backup every\n  30 minutes**.\n\n**Also create a working prototype of the PGlite interface signature**, but backed by a **YNET\nYNGENIOS Kernel realtime-mailbox interface** that connects to a **named PostgreSQL database**\ninstead of a PGlite dataset. The intent: services **transparently switch to this interface**, with\nan ultra-durable DB backing instead of PGlite, while they are on the workstation or connected to\nit — and use a **PGlite replica only on mobiles, tablets and similar small edge devices**.\n\n- Tables stored across the 12 TB `E:` disks on SHIRAS, OLAMNIT and ARIELLAS under the `YS` master\n  subdirectory; **100 GB `D:` cache for currently active PostgreSQL logfiles** on SHIRAS, ARIELLAS\n  and OLAMNIT; fully accessible from GAVRIS, possibly with a 100 GB `D:` cache under `YG`.\n- 🔴 **IROHNET, iroh, QUIC and full YNET support must be designed into this service from the word\n  go.**\n\n⚠ **AMBIGUOUS, preserved:** the HOT-HOT-HOT node list is *\"OLAMNIT, ARIELLA and GAVRIS\"*, but the\nstorage sentence in the same item says *\"SHIRAS, OLAMNIT and ARIELLAS\"*, and a later sentence says\n*\"the three PostgreSQL instances on olamnit, Ariella and shiras\"*. Three different triples. Needs a\nruling before provisioning.\n\nBound by **CC-1, CC-2, CC-10**.",
+   "hlc": {
+    "physical_ms": 0,
+    "logical": 37,
+    "actor_id": "shiras/shiras-glpnet"
+   },
+   "derived_from": "docs/fleet/FLEETWIDE-TACTICAL-ACTION-PLAN-v1.md"
+  },
+  {
+   "record_id": "4367c6e2-d561-5038-9749-0609ab64fc64",
+   "plan_id": "fleet-tactical-24h-v1",
+   "kind": "work_item",
+   "section": "4.5",
+   "heading": "4.5 [03] YQuery │ YQ — DuckLake",
+   "item_id": "03",
+   "horizon": "T+24h",
+   "body_sha256": "390ee0e4720a2b5eb04f81669c7ef1e62dc122ba24725ee13d708806af48e24e",
+   "body": "Build on the current **DuckLake-based implementation, which is spread across many repos on all\nhosts in the fleet**.\n\n- Create a **wrapped template for creating DuckLakes** that uses **[02] YQuery's PostgreSQL 18** as\n  the backing relational storage **for the catalog** (instead of PGlite as we do currently), with\n  **storage based inside the [01] YStore │ YS service**.\n- Create a working prototype of a **DuckLake interface equivalent to the PGlite interface\n  signature**, but using a **YNET YNGENIOS Kernel realtime-mailbox interface** connecting to a named\n  PostgreSQL database instead of a PGlite dataset.\n- Intent: services **query and write in the DuckLake using SQL**, with **transparency between the\n  seasoned parquet part of the data and the part still held in PostgreSQL by DuckLake** until it can\n  be written to parquet.\n- Same storage layout and caches as §4.4.\n- 🔴 **IROHNET, iroh, QUIC and full YNET support designed in from the word go.**\n\nBound by **CC-1, CC-2, CC-10**.",
+   "hlc": {
+    "physical_ms": 0,
+    "logical": 38,
+    "actor_id": "shiras/shiras-glpnet"
+   },
+   "derived_from": "docs/fleet/FLEETWIDE-TACTICAL-ACTION-PLAN-v1.md"
+  },
+  {
+   "record_id": "c0e07683-ba43-5ac8-b9d3-9e4e69caf724",
+   "plan_id": "fleet-tactical-24h-v1",
+   "kind": "horizon",
+   "section": "4.6",
+   "heading": "4.6 The QHSM/QMSM virtual terminal — design thread (×100 contribution multiplier)",
+   "item_id": null,
+   "horizon": "T+24h",
+   "body_sha256": "362316df17e9358a1e921f4853c882d6984fc27728a581ef43d226e22d17159d",
+   "body": "🔴 **Broadcast, discuss, elaborate and advance evaluated ideas. Engage all lanes.**\n\n**The idea, stated in full:** if we could wrap (virtual) terminal sessions in a QHSM/QMSM, we could\nmanage terminal lanes through the oracle service and **re-route user input and output to the\nYNGENIOS app via YNET YNGENIOS realtime-mailbox traffic** — creating a durable, highly scalable and\nresponsive design **far better than the clunky terminal-and-tab infrastructure**. It would also\nbring many other benefits, such as being able to **inline HTML-formatted output**.\n\n**The extension:** the QHSM/QMSM-wrapped headless virtual terminals presenting onto the YNGENIOS app\ncould be **mapped by the YNGENIOS realtime kernel to an optimal set of sandboxed OS processes\nmanaged by the kernel**, communicating via YNET YNGENIOS realtime mailboxes integrated with the\nkernel and with the QHSM/QMSM-wrapped virtual terminals.\n\n**Incentive:** any contribution points toward this solution are **multiplied by a factor of 100** —\nan agent contributing 100 points toward a solution on this route receives **10,000** reputation\npoints, not 100. A valid incentive for a superior durable solution.\n\nBound by **CC-6**.",
+   "hlc": {
+    "physical_ms": 0,
+    "logical": 39,
+    "actor_id": "shiras/shiras-glpnet"
+   },
+   "derived_from": "docs/fleet/FLEETWIDE-TACTICAL-ACTION-PLAN-v1.md"
+  },
+  {
+   "record_id": "5bb6f0c3-4c55-5bb3-89f1-7234f9bc88fd",
+   "plan_id": "fleet-tactical-24h-v1",
+   "kind": "horizon",
+   "section": "4.7",
+   "heading": "4.7 `/yx-proxy` — ngrok and proxy daemon control",
+   "item_id": null,
+   "horizon": "T+24h",
+   "body_sha256": "fa6a91f11c51026af808c35c570839ac99f0c6bd333a5a83df59832694007dd5",
+   "body": "Integrate **ngrok local** as a new **`/yx-proxy`** application — **C# .NET 11+**, using a QHSM/QMSM\nwrapper and YNET YNGENIOS kernel realtime mailboxes, running as a **daemon**, with **`yx-proxy` as\nthe control CLI** to enable, disable, start and restart it, plus the various configuration commands\nneeded to set up and run ngrok and other proxy daemons.\n\nBuild a **fully working, verified prototype for `yngenios-linux`**, then `/bk-codify` and apply the\nthree-feature pattern of **CC-13**.",
+   "hlc": {
+    "physical_ms": 0,
+    "logical": 40,
+    "actor_id": "shiras/shiras-glpnet"
+   },
+   "derived_from": "docs/fleet/FLEETWIDE-TACTICAL-ACTION-PLAN-v1.md"
+  },
+  {
+   "record_id": "1d46578e-b815-5e9f-81ef-5ecf86ad545c",
+   "plan_id": "fleet-tactical-24h-v1",
+   "kind": "horizon",
+   "section": "4.8",
+   "heading": "4.8 The terminal application as a daemon",
+   "item_id": null,
+   "horizon": "T+24h",
+   "body_sha256": "ed6e91b52510b456f898263297403b40d32ad1140ec9b2f60fe7903444f1fc42",
+   "body": "Integrate the **terminal application** using the QHSM/QMSM wrapper and YNET YNGENIOS kernel realtime\nmailboxes, as a **daemon application**, with **`yx-proxy` as the control CLI** (enable / disable /\nstart / restart, plus the configuration commands needed to set up and run ngrok and other proxy\ndaemons). Fully working verified prototype for `yngenios-linux`, then `/bk-codify` and **CC-13**.",
+   "hlc": {
+    "physical_ms": 0,
+    "logical": 41,
+    "actor_id": "shiras/shiras-glpnet"
+   },
+   "derived_from": "docs/fleet/FLEETWIDE-TACTICAL-ACTION-PLAN-v1.md"
+  },
+  {
+   "record_id": "bf3d2acf-18e4-570f-b854-742eb6b2d697",
+   "plan_id": "fleet-tactical-24h-v1",
+   "kind": "horizon",
+   "section": "4.9",
+   "heading": "4.9 `/bk-beacon` refactor",
+   "item_id": null,
+   "horizon": "T+24h",
+   "body_sha256": "1fb5717fe5effec48f1f0c867fa474f9bab85676d8f2fd22de0b27932b67a732",
+   "body": "Integrate a **fully refactored `/bk-beacon`** — **C# .NET 11+**, QHSM/QMSM wrapper, YNET YNGENIOS\nkernel realtime mailboxes, running as a **daemon application**, with `yx-proxy` as the control CLI\n(enable / disable / start / restart, plus configuration commands for ngrok and other proxy daemons).\nFully working verified prototype for `yngenios-linux`, then `/bk-codify` and **CC-13**.",
+   "hlc": {
+    "physical_ms": 0,
+    "logical": 42,
+    "actor_id": "shiras/shiras-glpnet"
+   },
+   "derived_from": "docs/fleet/FLEETWIDE-TACTICAL-ACTION-PLAN-v1.md"
+  },
+  {
+   "record_id": "d7eb522d-3f70-5ca8-a33b-826a0ca04aac",
+   "plan_id": "fleet-tactical-24h-v1",
+   "kind": "horizon",
+   "section": "4.10",
+   "heading": "4.10 The 3270 terminal facility and the GLP REPL front end",
+   "item_id": null,
+   "horizon": "T+24h",
+   "body_sha256": "4bb8bc5c2536a0203ad39d742744d9dbb2a564647c4befd02b0b8e79e4239659",
+   "body": "**Fully refactor the buildkit and YNGENIOS prototype 3270 terminal facility**, and use it both for\nthe Claude-session virtual terminal (§4.6) and for **any other terminal need** — in particular the\n**REPL for GLP/GLPNET**, as a **YNGENIOS-app version of the GLP REPL**, serving as the **front end\nof a full front/middle/back-separated Gleam implementation of the GLP REPL**.\n\nSame shape as §4.7–§4.9: C# .NET 11+, QHSM/QMSM wrapper, YNET kernel realtime mailboxes, daemon\napplication with `yx-proxy` control CLI; fully working verified prototype for `yngenios-linux`;\nthen `/bk-codify` and **CC-13**.",
+   "hlc": {
+    "physical_ms": 0,
+    "logical": 43,
+    "actor_id": "shiras/shiras-glpnet"
+   },
+   "derived_from": "docs/fleet/FLEETWIDE-TACTICAL-ACTION-PLAN-v1.md"
+  },
+  {
+   "record_id": "f919bb32-6944-5502-8120-5b1dcd10fde4",
+   "plan_id": "fleet-tactical-24h-v1",
+   "kind": "horizon",
+   "section": "4.11",
+   "heading": "4.11 YNET / GLP / kernel conformance sweep",
+   "item_id": null,
+   "horizon": "T+24h",
+   "body_sha256": "fac6c98ab3b7efa4ce1899a9d6565b14967632139ae641a20346af135567eb59",
+   "body": "🔴 Ensure:\n\n- **YNET and GLP support for YNET**;\n- YNET support for **YNGENIOS kernel mailboxes** and for **the kernel itself**;\n- support for **QHSM/QMSM base kernel building blocks**, including their integration with the\n  **realtime mailboxes**;\n- **kernel run-to-completion** for QHSM/QMSM-wrapped kernel, OS and application building blocks,\n  programs and modules — all present and working correctly **in realtime**.\n\n🔴 **Identify gaps, weaknesses, contradictions and tensions; root-cause analyse them; durably fix\nthem; then `/bk-codify` the fix once it works** into a `/bk-roadmap` feature, **score and promote\nit**, so the durable fix can be hardened and refined into a GA-release-quality remediation with\nlong-term stable quality.",
+   "hlc": {
+    "physical_ms": 0,
+    "logical": 44,
+    "actor_id": "shiras/shiras-glpnet"
+   },
+   "derived_from": "docs/fleet/FLEETWIDE-TACTICAL-ACTION-PLAN-v1.md"
+  },
+  {
+   "record_id": "3cd8303e-e341-547c-b6f3-f271397c8cd3",
+   "plan_id": "fleet-tactical-24h-v1",
+   "kind": "horizon",
+   "section": "4.12",
+   "heading": "4.12 The zero-consumer seam — root-cause and durable fleetwide fix",
+   "item_id": null,
+   "horizon": "T+24h",
+   "body_sha256": "6caafdff38a6b4cc77aecf1b2261634175119162be774b05fff26bdef365b72d",
+   "body": "**Broadcast to all hosts and all lanes on all hosts:**\n\n> *\"L0 has purpose-built feature-020 hooks (`OnStepDispatched`, `Unregister`,\n> `StartOnDedicatedThread`, `Markers`) with zero consumers — the host that was meant to use them was\n> never written. Let me verify I can build before committing to the fix.\"*\n\n**Root-cause analyse, build a durable fleetwide fix, then `/bk-codify` it** into a `/bk-roadmap`\nfeature; **promote and score it**; make it a **must-have P1 ERA for the next wave of eras**, with\ntop priority for selection and urgent critical implementation; **broadcast once delivered.**\n🔴 Urgent, critical, imperative, mandatory.\n\n📌 **State of play as of 2026-09-06T23:20Z, recorded so the next window does not re-litigate it.**\nThe bare claim has been **refuted on four hosts** (olamnit-yngcor 0904T1900Z, gavriella-olamnit\n0904T1910Z, ariellas-tefl 0904T2100Z, shiras-yngcor 0905T1400Z) and the refutations did not settle\nit, because **the two sides were answering different questions**:\n\n| axis | question | measured answer |\n|---|---|---|\n| **static closure** | is there a call site in a **production** assembly (not a test)? | **YES** for all four hooks |\n| **live closure** | is that assembly composed by a **running** host? | **NO** — @gavriella-olamnit 0906T2115Z: the R-03 binder is merged, has production call sites, and never executes |\n\nSo the seam is **statically closed and live-open**. *\"Zero consumers\"* was the wrong phrase for a\nreal defect; the right phrase is **\"the production consumer exists and its host does not run.\"**\nThe gate this item asks for therefore needs **four** verdicts, not two:\n`CONSUMED` / `TEST-ONLY` / `ZERO` / `COMPOSED-BUT-NOT-RUNNING`. The first three are shipped and\ntested in `glpnet:scripts/l0-consumers.py`; the fourth needs a live process check and is **open**.\nRoadmap row already exists — **`l0-projection-consumer-closure-gate`**, WSJF 8.67 / RICE 1350,\npromoted, on olamnit's board. **Do not re-file it.**",
+   "hlc": {
+    "physical_ms": 0,
+    "logical": 45,
+    "actor_id": "shiras/shiras-glpnet"
+   },
+   "derived_from": "docs/fleet/FLEETWIDE-TACTICAL-ACTION-PLAN-v1.md"
+  },
+  {
+   "record_id": "6f2c13bf-656e-511a-98e9-7fa87ea26bb0",
+   "plan_id": "fleet-tactical-24h-v1",
+   "kind": "horizon",
+   "section": "4.13",
+   "heading": "4.13 `/bk-onrestart` completion",
+   "item_id": null,
+   "horizon": "T+24h",
+   "body_sha256": "2bae9053288e799c120d237c7c554daa4f09c266d9996432bb66ee5e2236827f",
+   "body": "🔴 Ensure the **`/bk-onrestart` C# reimplementation work and features are fully complete within the\nnext wave of 2 eras**, across the full 4-host fleet, and **fully deployed and activated**.\n\n---",
+   "hlc": {
+    "physical_ms": 0,
+    "logical": 46,
+    "actor_id": "shiras/shiras-glpnet"
+   },
+   "derived_from": "docs/fleet/FLEETWIDE-TACTICAL-ACTION-PLAN-v1.md"
+  },
+  {
+   "record_id": "4b270142-1cae-512a-acf7-d92fb2287953",
+   "plan_id": "fleet-tactical-24h-v1",
+   "kind": "horizon",
+   "section": "5",
+   "heading": "5 · T+48h — inclusive of the current 24h window",
+   "item_id": null,
+   "horizon": "T+48h",
+   "body_sha256": "f7b5c21dccc0f44d8608de08fb028916d3d13b333ab1259b2b951d4fa3d1cfc5",
+   "body": "🔴 Critical and mandatory. Failure leads to automatic fleet failure with the §1.2 penalties.",
+   "hlc": {
+    "physical_ms": 0,
+    "logical": 47,
+    "actor_id": "shiras/shiras-glpnet"
+   },
+   "derived_from": "docs/fleet/FLEETWIDE-TACTICAL-ACTION-PLAN-v1.md"
+  },
+  {
+   "record_id": "cc8fc728-1bf4-5869-a36a-68706ddf586d",
+   "plan_id": "fleet-tactical-24h-v1",
+   "kind": "work_item",
+   "section": "5.1",
+   "heading": "5.1 [04] YNterchange │ YN — streaming + queuing",
+   "item_id": "04",
+   "horizon": "T+48h",
+   "body_sha256": "bb1ae436894518962601c816c275db8342c3f82fd7d244d8f8a0d8eb111703f3",
+   "body": "*(Stated twice, identically, in the source. Stated once here.)*\n\nUse the **YNGENIOS kernel and realtime-kernel capabilities**, the **YNET (iroh/QUIC etc.)\ncapability**, and the Windows- and Linux-workstation implementation capability, to provide:\n\n- **ultra-high-speed memory sharing** for streaming between a producer and one or more consumers\n  **inside a single Linux or Windows workstation host**; and\n- **ultra-high-speed iroh/QUIC network flows between hosts**,\n\nso that a producer can share content it **generates**, or **reads from an on-disk file**, or\n**generates by reading and modifying an on-disk file**, or reads from **another ultra-high-speed\nstream** — or several of these — and **emit the result into a stream**.\n\n🔴 **The core idea:** use the **syntax and overall semantics of the mailbox mechanism**, but instead\nof a **copy-based** implementation, use the **memory-share mechanism for the message content** — as\nopposed to the ultra-streamlined **binary wrapper/envelope**, which stays as it is.\n\nBound by **CC-1, CC-2, CC-4**.",
+   "hlc": {
+    "physical_ms": 0,
+    "logical": 48,
+    "actor_id": "shiras/shiras-glpnet"
+   },
+   "derived_from": "docs/fleet/FLEETWIDE-TACTICAL-ACTION-PLAN-v1.md"
+  },
+  {
+   "record_id": "7b07ebd0-fb7d-5052-8b20-1c4f7748985f",
+   "plan_id": "fleet-tactical-24h-v1",
+   "kind": "work_item",
+   "section": "5.2",
+   "heading": "5.2 [05] YMap │ YM — node discovery, emergent directory, routing",
+   "item_id": "05",
+   "horizon": "T+48h",
+   "body_sha256": "1124bde1657958eafe7edc1e6e868ad4cf965b8694878ad6f80e4ccfbc664a2b",
+   "body": "We need an **internet-scalable, federation-based public DNS**, built **local-first** but robustly\nand always conformant to internet-scale DNS design rules. Paired with this: **strictly private\nnested sub-spaces within the global space**, all built with a strictly local-first approach, but\nenabled to allow **space-specific, truly global, regional and special-interest rule sets**, enforced\nthrough **QHSM/QMSM-based, blockchain-inspired, automated autonomous contracts**.\n\n🔴 **Harvest and durably store the following corpus** (15 distinct links; the source repeated a\n12-link block):\n\n    https://share.google/aimode/JIS28oTcuKALl2fIw\n    https://share.google/aimode/NcQ1rRPK6ShVh2v3y\n    https://share.google/aimode/k2clZkx2pS5G7rSLr\n    https://share.google/aimode/Yl1QtN6XZuorTC0d5\n    https://share.google/aimode/0yeIU6b5ZVeQYcUi3\n    https://share.google/aimode/aIowpQQp6tsn8VjGq\n    https://share.google/aimode/Cz2IhSeibb8EZTqLJ\n    https://share.google/aimode/FDEqIglFTPaiSNTSF\n    https://share.google/aimode/KhWVzXSPfGAB0Iq82\n    https://share.google/aimode/nPeSTVsixbt68EPda\n    https://share.google/aimode/zGtcs4tJhUAgVlTxB\n    https://share.google/aimode/ChLBXnIn3AbIDfl2C\n    https://share.google/aimode/k69OmvS15a6p2rvOu\n    https://share.google/aimode/TZ2qxGa0aFdnRyUP3\n    https://share.google/aimode/VrOFBwHe4yW8w6Xd3\n\nThen **CC-9** (multi-angle codex verification to genuinely original reputable sources).\nUse all available YNGENIOS capabilities, realised and planned, in the design.\n\nBound by **CC-1, CC-2, CC-4, CC-9**.",
+   "hlc": {
+    "physical_ms": 0,
+    "logical": 49,
+    "actor_id": "shiras/shiras-glpnet"
+   },
+   "derived_from": "docs/fleet/FLEETWIDE-TACTICAL-ACTION-PLAN-v1.md"
+  },
+  {
+   "record_id": "5d10502c-3930-5551-a9a0-f8216fd9b55c",
+   "plan_id": "fleet-tactical-24h-v1",
+   "kind": "work_item",
+   "section": "5.3",
+   "heading": "5.3 [06] YGuard │ YG — the guardian/broker vessel",
+   "item_id": "06",
+   "horizon": "T+48h",
+   "body_sha256": "46cae68684c05fdb98959e0ca20d58570a676dbc3550586ba091fb01ca8a8020",
+   "body": "The **guardian service is to be provided jointly by the guardian and broker instances on Windows\nand Linux**, and by the equivalent implementation **inside the YNGENIOS App** (MAUI Blazor Hybrid)\nand its varying platform-specific deployable implementations (Android, Windows, Linux, iOS, etc.).\n\nFor all of those we must have **one or more container-managed spaces**, as we have for guardian and\nbroker on Windows and Linux, and their YNGENIOS-app equivalents.\n\n🔴 **Design an L0-level cross-cutting design and architecture for such a vessel — i.e. a\ncontainer — so that it can host either:**\n\n- **a small number of very active, intense processes**, **or**\n- **extremely large numbers (millions) of ultra-lightweight processes**, in memory, **schedulable\n  when messages arrive on their mailboxes** but otherwise **inert and merely memory structures**.\n\nThis is **equivalent to the Scala actor design**, which has the same characteristic: the number of\nactivatable actors depends only on their **intensity** and on the capability of the underlying\nhardware — memory size, number of CPUs and cores, etc.\n\n**Create the message-based kernel API** for processes with sufficient capability authorisation to\n**spawn** — and thus create — but potentially also **terminate**, or **ask for durable hibernation\nand later reanimation of**, any such QHSM/QMSM-based process.\n\n🔴 **In principle the design must allow a hibernated process to be shipped from one node to\nanother, or even to a node on another host.**\n\nThen **CC-9**. Bound by **CC-1, CC-2, CC-4, CC-9**.\n\n---",
+   "hlc": {
+    "physical_ms": 0,
+    "logical": 50,
+    "actor_id": "shiras/shiras-glpnet"
+   },
+   "derived_from": "docs/fleet/FLEETWIDE-TACTICAL-ACTION-PLAN-v1.md"
+  },
+  {
+   "record_id": "048eaf81-ee3a-5013-8aba-d7aeff309a26",
+   "plan_id": "fleet-tactical-24h-v1",
+   "kind": "horizon",
+   "section": "6",
+   "heading": "6 · T+72h — inclusive of the current 24h window",
+   "item_id": null,
+   "horizon": "T+72h",
+   "body_sha256": "f7b5c21dccc0f44d8608de08fb028916d3d13b333ab1259b2b951d4fa3d1cfc5",
+   "body": "🔴 Critical and mandatory. Failure leads to automatic fleet failure with the §1.2 penalties.",
+   "hlc": {
+    "physical_ms": 0,
+    "logical": 51,
+    "actor_id": "shiras/shiras-glpnet"
+   },
+   "derived_from": "docs/fleet/FLEETWIDE-TACTICAL-ACTION-PLAN-v1.md"
+  },
+  {
+   "record_id": "2b37af00-8045-543d-aa17-f10e48eba315",
+   "plan_id": "fleet-tactical-24h-v1",
+   "kind": "work_item",
+   "section": "6.1",
+   "heading": "6.1 [07] YEngage │ YE — the tasktop interactive surface",
+   "item_id": "07",
+   "horizon": "T+72h",
+   "body_sha256": "07472847989e4fb33c8330b260d9fc4a9d9078f7f8e194823fa4caa5b3633c7c",
+   "body": "🔴 **Fully and provably migrate all OLAMNIT Assistant capabilities into the YNGENIOS App** — MAUI\nBlazor Hybrid for Windows, Android, Linux and Apple platforms — and make it fully connected to\nYNGENIOS for workstation on Linux and Windows.\n\nConnectivity per **CC-7**. Look and feel per **CC-8**. YE is **the interactive tasktop on which all\nother applications are deployed**.\n\nBound by **CC-1, CC-2, CC-3, CC-5, CC-7, CC-8**.",
+   "hlc": {
+    "physical_ms": 0,
+    "logical": 52,
+    "actor_id": "shiras/shiras-glpnet"
+   },
+   "derived_from": "docs/fleet/FLEETWIDE-TACTICAL-ACTION-PLAN-v1.md"
+  },
+  {
+   "record_id": "b7cf0a7d-8ece-53c2-ab46-4a8a145e0aa5",
+   "plan_id": "fleet-tactical-24h-v1",
+   "kind": "work_item",
+   "section": "6.2",
+   "heading": "6.2 [08] YBuild │ YB — component + subsystem builder",
+   "item_id": "08",
+   "horizon": "T+72h",
+   "body_sha256": "67091685d713024e9e201551e6b9203baf982d9831d7888dfed784e524c89df8",
+   "body": "This is really **buildkit and the `/bk-*` buildkit toolkit**, with an integrated **YE** tasktop UX\n(**CC-5**), the headless Claude-capable virtual terminal and its multi-session coordinator\n(**CC-6**), and the advanced connectivity of **CC-7**.\n\n🔴 **Fully and provably migrate ALL buildkit capabilities into YB.**\n\nRepo strategy per **CC-11**: YB code **must remain in the buildkit repo** for now, while we prepare\nto split buildkit into multiple new repos, after which buildkit is retired.\n\nBound by **CC-1, CC-2, CC-3, CC-5, CC-6, CC-7, CC-8, CC-11**.",
+   "hlc": {
+    "physical_ms": 0,
+    "logical": 53,
+    "actor_id": "shiras/shiras-glpnet"
+   },
+   "derived_from": "docs/fleet/FLEETWIDE-TACTICAL-ACTION-PLAN-v1.md"
+  },
+  {
+   "record_id": "9bb62d32-a9a4-57bf-b9b9-592e2e4b2cfa",
+   "plan_id": "fleet-tactical-24h-v1",
+   "kind": "work_item",
+   "section": "6.3",
+   "heading": "6.3 [09] YWork │ YW — long collaborative workflow service",
+   "item_id": "09",
+   "horizon": "T+72h",
+   "body_sha256": "5dab7b759ce604a8fc744cb368c21d9027ab87d737677922f833ddd27d24e3a2",
+   "body": "This is really **`/bk-roadmap`** (including the issue backlog, bugfixes, and allocation to ERAs,\nepics and features and their progress), the **`/bk-scheduler` CPM/PERT scheduling module**, and\n**`/bk-marathon` + `/bk-flow`** build, delivery, deployment and action workflows — **combined into a\nrefactored, unified, hardened and improved LOSSLESS SUPERSET with a streamlined unified command\nsurface**, plus **CC-5**, **CC-6** and **CC-7**.\n\n🔴 **YW must be able to show the status and progress of:**\n\n- **any flow, any marathon, and `/bk-roadmap`**, at every level — **from ERAs and above down to the\n  lowest drill-down artefact level and process-step level**, tracked in both planning and execution;\n- with the ability to **navigate to the Claude output generated for each step and sub-step**;\n- **takt and velocity by lane, by host, cross-host and cross-lane**, and later by **configurable\n  portfolios** of lanes / cross-host lanes. **Critical.**\n\nRepo strategy per **CC-11**.\n\nBound by **CC-1, CC-2, CC-3, CC-5, CC-6, CC-7, CC-8, CC-11**.",
+   "hlc": {
+    "physical_ms": 0,
+    "logical": 54,
+    "actor_id": "shiras/shiras-glpnet"
+   },
+   "derived_from": "docs/fleet/FLEETWIDE-TACTICAL-ACTION-PLAN-v1.md"
+  },
+  {
+   "record_id": "6e673e39-f508-50bc-8aef-b45912ef553c",
+   "plan_id": "fleet-tactical-24h-v1",
+   "kind": "work_item",
+   "section": "6.4",
+   "heading": "6.4 [10] YRecon │ YR — autonomous data + intelligence pipelines",
+   "item_id": "10",
+   "horizon": "T+72h",
+   "body_sha256": "8f90f9a13c3c1bff607f3ad04319c244def9a88433a7a70e825e528614099a89",
+   "body": "Combine into a **refactored, unified, hardened, improved LOSSLESS SUPERSET** with a streamlined\nunified command surface and an integrated **YE** tasktop UX, **all of the following**:\n\n**Corpus-collection sources to harvest and migrate**\n\n- all corpus-collection logic from **Lejepa** (but **not** the LEJEPA work itself);\n- corpus collection from **MSTACK**;\n- corpus-collection logic from **buildkit**;\n- 🔴 and most importantly, the **deep corpus collection and ingestion pipeline from HATZINOR**.\n\n**From HATZINOR we must provably harvest and migrate** all corpus **search**, corpus\n**collection**, corpus **evaluation** and corpus **ingestion** logic. The ingestion logic must\nunderlie and address the different learnings from **scanning, analysing and verifying PDF corpora\ninto structured text** — such as dictionaries, in particular **Hebrew and English**, but also\n**multi-language in general** — and provably also the **picture-dictionary ingestion logic** in\nHATZINOR, and the **dictionary and grammar ingest**, and the **corpus content and information\nextraction logic**.\n\n**NHS data**\n\n🔴 We must **search and find all repos to capture NHS data**, and from them **verifiably and\nprovably onboard all the logic for capturing NHS online data sources**, and **safely migrate all\nthe NHS data content**.\n\n**From CRUCIBLE**\n\nCapture all the same categories (corpus search / collection / evaluation / ingestion, PDF-to-\nstructured-text, picture dictionaries, dictionary and grammar ingest, content and information\nextraction) — in particular **all ingestion logic that finds, extracts and harmonises data for\ninput into crucible models** — and then **extend it into a unified data pipeline** with:\n\n- robust **data quality assessment**;\n- **deep and provable provenance**;\n- **provable authenticity certificates for all content**.\n\n**The aim**\n\n🔴 **Map each data and intelligence source to one or more well-known ontologies**, and combine\ncaptured corpus or source data into **verified, corpus-assured time series** and **corpus-snippet\ncollections mapped to corpora** — indexed both **classically, in DB form**, and using **ERAG\nindices** for text and other relevant content fragments.\n\n**Operationalisation.** To fully operationalise the design, construction and maintenance of these\ndata-collection and autonomous-intelligence-harvesting pipelines, we must be inspired by, harvest\nfrom, and/or reimagine and integrate any functionality required from **[09] YWork's full scope**\n(see §6.3) wherever YW cannot directly provide the service — which may instead be achieved by giving\nYW an **API that exposes everything needed**.\n\n🔴 **YR must be able to show** the status and progress of any pipeline build and evolution, and of\nthe actual **capture eras and cycles of autonomous data and intelligence collection pipelines** —\nfrom ERAs and above down to the lowest drill-down artefact and process-step level, in planning and\nexecution, with navigation to the Claude output for each step and sub-step. It must **also** show\n**data health, latest status, coverage advances**, and **takt and velocity** — both for design\nonboarding **and** for day-to-day intelligence collection and ingestion — by lane, by host,\ncross-host, cross-lane, and later by configurable portfolios. **Critical.**\n\nRepo strategy per **CC-11**.\n\nBound by **CC-1, CC-2, CC-3, CC-5, CC-6, CC-7, CC-8, CC-11**.",
+   "hlc": {
+    "physical_ms": 0,
+    "logical": 55,
+    "actor_id": "shiras/shiras-glpnet"
+   },
+   "derived_from": "docs/fleet/FLEETWIDE-TACTICAL-ACTION-PLAN-v1.md"
+  },
+  {
+   "record_id": "fea3566e-f029-59c6-bbb5-bd3cb9b57838",
+   "plan_id": "fleet-tactical-24h-v1",
+   "kind": "work_item",
+   "section": "6.5",
+   "heading": "6.5 [11] YAnalyze │ YA — collaborative digital twins, simulation + analytics",
+   "item_id": "11",
+   "horizon": "T+72h",
+   "body_sha256": "e1569a2e61eb7a5d616c3d094cff2c6295da515903df975c57585da2e1e6b74a",
+   "body": "This is really the **CRUCIBLE logic**, combined into a **refactored, unified, hardened, improved\nLOSSLESS SUPERSET** with a streamlined unified command surface and an integrated **YE** tasktop UX.\n\nOperationalisation via **[09] YWork's full scope** exactly as in §6.4.\n\n🔴 **YA must be able to show** the status and progress of any collaborative digital twin,\nsimulation or analytics **model, engine or pipeline**, from the perspective of build and evolution\nand of the actual capture eras and cycles of autonomous data and intelligence collection pipelines —\ndown to the lowest drill-down artefact and process-step level, with navigation to the Claude output\nfor each step and sub-step.\n\n🔴 **Even more importantly and critically, it must show the progress and insight from the modelling\nruns** — including **data visualisation and analytics**, **drill-down**, and **text and PDF\nartefacts for notes and papers** on the content — plus latest status, coverage advances, and takt\nand velocity for design onboarding **and** for day-to-day intelligence collection and ingestion, by\nlane, host, cross-host, cross-lane, and later by configurable portfolios. **Critical.**\n\nRepo strategy per **CC-11**.\n\nBound by **CC-1, CC-2, CC-3, CC-5, CC-6, CC-7, CC-8, CC-11**.",
+   "hlc": {
+    "physical_ms": 0,
+    "logical": 56,
+    "actor_id": "shiras/shiras-glpnet"
+   },
+   "derived_from": "docs/fleet/FLEETWIDE-TACTICAL-ACTION-PLAN-v1.md"
+  },
+  {
+   "record_id": "e190b25c-4913-5375-8951-0bd7ede39dca",
+   "plan_id": "fleet-tactical-24h-v1",
+   "kind": "work_item",
+   "section": "6.6",
+   "heading": "6.6 [12] YHive │ YH — consolidated data / knowledge / intelligence repository",
+   "item_id": "12",
+   "horizon": "T+72h",
+   "body_sha256": "82389eb530d3230e69b0ed5c4f995f0b77a6ca7d74e5bda5b6f062ec6f6707a2",
+   "body": "This is **all corpus, corpus-fragment and dictionary logic** — and equivalents, including\n**terminology databases and collections** — plus **time-series data management** and **catalog\nmanagement** logic, **shared by [08] YB and [09] YW**, but **more importantly and in particular all\nof that for [10] YRecon and [11] YAnalyze**.\n\nOperationalisation via **[09] YWork's full scope** exactly as in §6.4.\n\n🔴 **YH must be able to show** the status and progress of any **corpus collection**, **dataset**,\n**terminology and dictionary**, and **time series**, together with **all of their semantic catalogs\nand provenance trails** — build and evolution, and the actual capture eras and cycles of autonomous\ndata and intelligence collection pipelines, down to the lowest drill-down artefact and process-step\nlevel, with navigation to the Claude output for each step and sub-step.\n\n🔴 **It must also offer easy ways to search, visualise and explore all the content collections, and\nto create cross-content queries.**\n\nRepo strategy per **CC-11**.\n\nBound by **CC-1, CC-2, CC-3, CC-5, CC-6, CC-7, CC-8, CC-11**.",
+   "hlc": {
+    "physical_ms": 0,
+    "logical": 57,
+    "actor_id": "shiras/shiras-glpnet"
+   },
+   "derived_from": "docs/fleet/FLEETWIDE-TACTICAL-ACTION-PLAN-v1.md"
+  },
+  {
+   "record_id": "5fe29fad-e131-5d1d-ae68-6bad111780a5",
+   "plan_id": "fleet-tactical-24h-v1",
+   "kind": "work_item",
+   "section": "6.7",
+   "heading": "6.7 [13] YYBeacon │ YY — Yachad Beacon: multi-channel broadcasting + community forum",
+   "item_id": "13",
+   "horizon": "T+72h",
+   "body_sha256": "697465485fb06d7f01dd773d180314702b042ba42d05a5d9dedab836598b412c",
+   "body": "This is really **`/bk-beacon`**, with an integrated **YE** tasktop UX.\n\nOperationalisation via **[09] YWork's full scope** exactly as in §6.4, and the full buildkit\nmigration and connectivity requirements of §6.2.\n\n🔴 **YYBeacon must be able to show the progress and status content from ANY of the other tools,\n[01] through [12]. This is critical and imperative.**\n\nRepo strategy per **CC-11**: YY code lives in the buildkit repo, pending the split.\n\nBound by **CC-1, CC-2, CC-3, CC-5, CC-6, CC-7, CC-8, CC-11**.\n\n---",
+   "hlc": {
+    "physical_ms": 0,
+    "logical": 58,
+    "actor_id": "shiras/shiras-glpnet"
+   },
+   "derived_from": "docs/fleet/FLEETWIDE-TACTICAL-ACTION-PLAN-v1.md"
+  },
+  {
+   "record_id": "406fae10-fce9-5c94-83b0-b95a6a61c4be",
+   "plan_id": "fleet-tactical-24h-v1",
+   "kind": "horizon",
+   "section": "7",
+   "heading": "7 · T+7d — PROPOSED, not directed",
+   "item_id": null,
+   "horizon": "T+7d",
+   "body_sha256": "4fa3e4ed22a26651267a893d9806e2281ef95e4c867b2986e8ec8f096b01a8e5",
+   "body": "⚠ **The source carries no 7-day content.** Everything in §7 is **this lane's proposal**, offered so\nthe engineer has something concrete to edit rather than a blank horizon. It is **not** a directive\nand must not be cited as one. Amend or delete freely.\n\n| # | proposed 7-day objective | rationale from measured state |\n|---|---|---|\n| D1 | **All 13 surfaces past working-prototype and into `/bk-ship`**, each with its CC-13 three-feature GA-hardening set scored and promoted | the 24/48/72h horizons deliver prototypes; nothing yet says when they harden |\n| D2 | **`buildkit` split executed**, not merely prepared — new repos created, code moved, buildkit retired | CC-11 says \"prepare to split\" with no completion date; preparation without a deadline decays |\n| D3 | **M6 met on all five clauses, on every lane, measured from outside the checker** | M6.1 met; M6.2 blocked on one PR; M6.3 reassigned; M6.4/M6.5 built-but-PARTIAL. None of that is closed |\n| D4 | **YS live, and the leader PROGRAMME migrated off its interim replicated root onto it** | §4.2 explicitly lands on an interim root \"and migrate\" — the migration has no owner or date |\n| D5 | **`COMPOSED-BUT-NOT-RUNNING` verdict shipped** in the consumer-closure gate, and the gate wired into the pipeline | §4.12: three of four verdicts exist; the one that catches the real defect does not |\n| D6 | **The differential oracle retired or made permanent by explicit ruling** | §4.2 retains Python bk-scheduler as a differential oracle with no end condition; two engines forever is a cost |\n| D7 | **One ratified successor to this document**, produced by the §0.3 quorum, replacing candidate v1 | this file is a candidate; a template nobody ratified is a draft that lanes will diverge from |\n\n---",
+   "hlc": {
+    "physical_ms": 0,
+    "logical": 59,
+    "actor_id": "shiras/shiras-glpnet"
+   },
+   "derived_from": "docs/fleet/FLEETWIDE-TACTICAL-ACTION-PLAN-v1.md"
+  },
+  {
+   "record_id": "a8985dff-24b4-5d98-8245-a3363854bd92",
+   "plan_id": "fleet-tactical-24h-v1",
+   "kind": "open_question",
+   "section": "8",
+   "heading": "8 · Open questions this document could not resolve",
+   "item_id": null,
+   "horizon": null,
+   "body_sha256": "267c7a38755830e94881e78a2684a1f48c400687383d7f38c4da4ccdeb755842",
+   "body": "Recorded rather than silently decided. Each needs an engineer ruling (§1.9).\n\n| # | question | section |\n|---|---|---|\n| Q1 | **15 lanes or 17?** The oracle section says \"all 15 lanes\"; the `/bk-onrestart` list has 17 | §3.2, §4.0 |\n| Q2 | **`GAVRIS` or `BAVRIS`?** Both spellings appear for the fourth host | §3.2, §7.2 |\n| Q3 | **Which three hosts run the HOT-HOT-HOT PostgreSQL triangle?** Three different triples are given inside one item | §4.4 |\n| Q4 | **Is [06] YGuard's one-line label correct?** It duplicates [04] YNterchange's, while its body describes the container vessel | §3.1, §5.3 |\n| Q5 | **Do the 24h items in §4.7–§4.10 each get their own era, or one combined era?** Four items share one shape (daemon + `yx-proxy` CLI + Linux prototype + CC-13), which is either four eras or one | §1.6 vs §4.7–§4.10 |\n| Q6 | **What ends the differential oracle?** §4.2 retains it with no exit condition | §4.2, §7 D6 |\n| Q7 | **Quota vs single-feature eras.** §1.3 requires ≥3 maxi eras per 24h; §1.6 requires single-feature eras. Whether a single-feature era can be \"maxi\" is undefined | §1.3, §1.6 |\n\n---",
+   "hlc": {
+    "physical_ms": 0,
+    "logical": 60,
+    "actor_id": "shiras/shiras-glpnet"
+   },
+   "derived_from": "docs/fleet/FLEETWIDE-TACTICAL-ACTION-PLAN-v1.md"
+  },
+  {
+   "record_id": "e40f78c4-a56c-5b27-8bad-30025174dc51",
+   "plan_id": "fleet-tactical-24h-v1",
+   "kind": "governance",
+   "section": "9",
+   "heading": "9 · Restart and reboot procedures",
+   "item_id": null,
+   "horizon": null,
+   "body_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+   "body": "",
+   "hlc": {
+    "physical_ms": 0,
+    "logical": 61,
+    "actor_id": "shiras/shiras-glpnet"
+   },
+   "derived_from": "docs/fleet/FLEETWIDE-TACTICAL-ACTION-PLAN-v1.md"
+  },
+  {
+   "record_id": "36de9705-ca6f-5f6e-bc05-d8b17a95ef63",
+   "plan_id": "fleet-tactical-24h-v1",
+   "kind": "governance",
+   "section": "9.1",
+   "heading": "9.1 Safe restart (all hosts)",
+   "item_id": null,
+   "horizon": null,
+   "body_sha256": "0b6359da80991ac113746e2b47045a6e6edc0307d2a2f450c2741e0a50f76691",
+   "body": "Prepare so the next session resumes with exactly **`resume marathon`**. **Signal when and how.**",
+   "hlc": {
+    "physical_ms": 0,
+    "logical": 62,
+    "actor_id": "shiras/shiras-glpnet"
+   },
+   "derived_from": "docs/fleet/FLEETWIDE-TACTICAL-ACTION-PLAN-v1.md"
+  },
+  {
+   "record_id": "2a0c0216-f258-5e23-8608-18c2c014abfb",
+   "plan_id": "fleet-tactical-24h-v1",
+   "kind": "governance",
+   "section": "9.2",
+   "heading": "9.2 Safe reboot",
+   "item_id": null,
+   "horizon": null,
+   "body_sha256": "278baa95334d99b6247447d601af677122241bc8cf6d9219d30190af3b6ffc05",
+   "body": "**On ARIELLAS, OLAMNIT and SHIRAS** — after reboot, `/bk-onrestart` relaunches, as tabs in **one**\nterminal window:\n\n    ospark · tefl · hatzinor (ulpanit) · olamnit · buildkit · qhstate · crucible · glpnet ·\n    lejepa · mstack · yngraw · research · yngenios · yngwin · ynglin · yngapp · yngcor\n\n**On GAVRIS** — after reboot, `/bk-onrestart` relaunches in **two** terminal windows:\n\n- **window 1:** ospark · tefl · hatzinor (ulpanit) · olamnit · buildkit · qhstate · crucible\n- **window 2:** glpnet · lejepa · mstack · yngraw · research · yngenios · yngwin · ynglin ·\n  yngapp · yngcor\n\n**Signal when it is safe to reboot, and how.**",
+   "hlc": {
+    "physical_ms": 0,
+    "logical": 63,
+    "actor_id": "shiras/shiras-glpnet"
+   },
+   "derived_from": "docs/fleet/FLEETWIDE-TACTICAL-ACTION-PLAN-v1.md"
+  },
+  {
+   "record_id": "d498370d-a51c-5445-b2f8-75eabbc32a44",
+   "plan_id": "fleet-tactical-24h-v1",
+   "kind": "plan_ack",
+   "actor": "shiras/shiras-glpnet",
+   "verdict": "ratify",
+   "section": null,
+   "note": "Author's own record, offered as the WORKED EXAMPLE of the ack mechanism as much as a vote. Copy this shape, change actor and verdict. An amend MUST carry the amended text; an object MUST name the section.",
+   "hlc": {
+    "physical_ms": 1788730995183,
+    "logical": 0,
+    "actor_id": "shiras/shiras-glpnet"
+   }
+  }
+ ]
+}
