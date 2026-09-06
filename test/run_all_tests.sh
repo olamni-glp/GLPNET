@@ -2723,15 +2723,34 @@ PY_BIN=${PY_BIN:-$(resolve_python)}
 if [ -z "$PY_BIN" ]; then
     skip "Section W (fleet-tooling positive controls)" "no python interpreter on PATH"
 else
-    w1=$(PYTHONUTF8=1 "$PY_BIN" "$SCRIPT_DIR/../scripts/ynet_vote_audit.py" --self-test 2>&1)
-    w1rc=$?
-    check "W-1: ynet_vote_audit self-test — every conformance check can FIRE" "self-test: PASS" "$w1"
-    if [ $w1rc -eq 0 ]; then
-        echo "  PASS: W-2: ynet_vote_audit self-test exits 0 when its own controls hold"
-        PASS=$((PASS + 1))
+    # The vote audit REQUIRES `cryptography` and refuses (exit 2) rather than reporting an
+    # unverified tally. That refusal is correct behaviour, and recording it as a FAIL is its own
+    # falsehood: it makes a red mean "the controls did not fire" when the truth is "the check
+    # could not run". So pick an interpreter that HAS the dependency, and when none does, record
+    # a loud NOT-RUN with the reason -- which is what this suite's UNSEARCHABLE class is for.
+    VOTE_PY="$PY_BIN"
+    if ! PYTHONUTF8=1 "$VOTE_PY" -c 'import cryptography' >/dev/null 2>&1; then
+        for cand in "/d/bstdev/research/buildkit/.venv313/Scripts/python.exe" \
+                    "$(command -v python 2>/dev/null)"; do
+            [ -n "$cand" ] && [ -x "$cand" ] || continue
+            if PYTHONUTF8=1 "$cand" -c 'import cryptography' >/dev/null 2>&1; then
+                VOTE_PY="$cand"; break
+            fi
+        done
+    fi
+    if ! PYTHONUTF8=1 "$VOTE_PY" -c 'import cryptography' >/dev/null 2>&1; then
+        skip "W-1/W-2 (ynet_vote_audit self-test)" "no interpreter on this host has the 'cryptography' package the audit REQUIRES; the tool refuses rather than reporting an unverified tally, and an honest refusal is a NOT-RUN, never a FAIL"
     else
-        echo "  FAIL: W-2: ynet_vote_audit self-test exited $w1rc"
-        FAIL=$((FAIL + 1))
+        w1=$(PYTHONUTF8=1 "$VOTE_PY" "$SCRIPT_DIR/../scripts/ynet_vote_audit.py" --self-test 2>&1)
+        w1rc=$?
+        check "W-1: ynet_vote_audit self-test — every conformance check can FIRE" "self-test: PASS" "$w1"
+        if [ $w1rc -eq 0 ]; then
+            echo "  PASS: W-2: ynet_vote_audit self-test exits 0 when its own controls hold"
+            PASS=$((PASS + 1))
+        else
+            echo "  FAIL: W-2: ynet_vote_audit self-test exited $w1rc"
+            FAIL=$((FAIL + 1))
+        fi
     fi
 
     # W-3: the fan-out must REFUSE a destination that already exists. Proven by
