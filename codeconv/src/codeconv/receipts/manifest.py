@@ -16,91 +16,32 @@ from pathlib import Path
 
 from . import paths, receipt as receipt_mod
 
-# The FR-017 areas in glpnet's scope (the buildkit-side 3rtask/codexreview live in
-# buildkit's own manifest — research D3). ``reference`` is the MVP proof target.
-GLPNET_AREAS = ("build-gate", "coop", "roadmap-sync", "test-harness", "reference")
+# FEATURE 109 (2026-09-06), engineer ruling Q-olg17-02: the adoption RULES moved to
+# <repo>/scripts/lib/adoption_gate.py so the stdlib-only evidence-signal audit applies the SAME
+# implementation rather than a second copy (feature 108 FR-006b/FR-014). Names, signatures and
+# semantics are unchanged and 078's existing tests are the regression proof of the move.
+# Do not re-implement here -- scripts/tests/test_evidence_signal_audit.py::test_fr013_the_adoption_and_override_rules_have_exactly_ONE_implementation asserts these are
+# the SAME objects, so a copy fails the suite rather than drifting silently.
+from ._shared import gate as _gate
 
-#: The ONLY legal adoption states. An unrecognised value is not a third state to
-#: be interpreted — it is a broken declaration (see ``UndeclaredState``).
-ADOPTION_STATES = ("adopted", "non-adopted")
-
-
-class MissingDeclaration(Exception):
-    """An area is absent from the adoption manifest — an error, never a pass (FR-020)."""
+GLPNET_AREAS = _gate.GLPNET_AREAS
+ADOPTION_STATES = _gate.ADOPTION_STATES
+MissingDeclaration = _gate.MissingDeclaration
+UndeclaredState = _gate.UndeclaredState
 
 
 class UndeclaredRun(Exception):
-    """A run declared no expected-check set — an unverifiable run refuses (FR-023)."""
+    """A run declared no expected-check set - an unverifiable run refuses (FR-023)."""
 
-
-class UndeclaredState(Exception):
-    """An area declared a state that is not one of ``ADOPTION_STATES``.
-
-    WHY THIS IS ITS OWN ERROR AND NOT A TOLERATED VALUE. The consumer's gate is
-    ``if state == "non-adopted"`` — a single equality against ONE of the two
-    states. Every other string therefore falls through to *adopted* semantics,
-    so a typo (``"non-adopred"``, ``"nonadopted"``, ``"pending"``) does not
-    disable the gate loudly, it turns a receipt GREEN. That is the exact
-    unearned pass FR-008 exists to refuse, arriving through the manifest that is
-    supposed to authorise the refusal. Absence is already an error (FR-020); a
-    *malformed* declaration must be an error for the same reason, or the
-    enumeration requirement can be satisfied by nonsense.
-    """
-
-
-# ---- adoption manifest (FR-019/020/021) -----------------------------------
 
 def load_adoption(path: str | Path = paths.ADOPTION_MANIFEST) -> dict[str, str]:
-    """Load the per-repo adoption manifest as ``{area: state}``.
-
-    Enforces FR-019's enumeration requirement: every GLPNET area MUST appear.
-    A missing manifest, or a manifest omitting any area, raises — absence is an
-    error (FR-020), and SC-002's denominator is the full enumeration (FR-021).
-    """
-    p = Path(path)
-    if not p.exists():
-        raise MissingDeclaration(f"adoption manifest not found at {p} — FR-019 requires it checked in")
-    data = json.loads(p.read_text(encoding="utf-8"))
-    raw = data.get("areas", [])
-
-    # A dict comprehension over ``raw`` would let a repeated area silently win by
-    # being last — two contradictory declarations, one of which is invisible.
-    entries: dict[str, str] = {}
-    duplicates: list[str] = []
-    for e in raw:
-        area = e["area"]
-        if area in entries:
-            duplicates.append(area)
-        entries[area] = e["state"]
-    if duplicates:
-        raise UndeclaredState(
-            f"adoption manifest at {p} declares area(s) {sorted(set(duplicates))} more than once — "
-            f"a repeated area means two states are declared and only one is read (FR-019); "
-            f"declare each area exactly once"
-        )
-
-    illegal = {a: s for a, s in entries.items() if s not in ADOPTION_STATES}
-    if illegal:
-        raise UndeclaredState(
-            f"adoption manifest at {p} declares state(s) {illegal} that are not one of "
-            f"{list(ADOPTION_STATES)} — the consumer gates on equality with 'non-adopted', so any "
-            f"other value silently takes ADOPTED semantics and turns a receipt green (FR-019/020)"
-        )
-
-    missing = [a for a in GLPNET_AREAS if a not in entries]
-    if missing:
-        raise MissingDeclaration(
-            f"adoption manifest at {p} omits area(s) {missing} — every FR-017 area MUST be "
-            f"enumerated (FR-019/020); an unlisted area is an error, not non-adoption"
-        )
-    return entries
+    """Load the per-repo adoption manifest as ``{area: state}`` (FR-019/020/021)."""
+    return _gate.load_adoption(str(path))
 
 
 def adoption_state(manifest: dict[str, str], area: str) -> str:
     """The declared state of ``area``; raise if unlisted (FR-020)."""
-    if area not in manifest:
-        raise MissingDeclaration(f"area {area!r} is not declared — absence is an error (FR-020)")
-    return manifest[area]
+    return _gate.adoption_state(manifest, area)
 
 
 # ---- per-run expected-check set (FR-023) ----------------------------------

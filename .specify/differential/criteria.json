@@ -1,0 +1,106 @@
+{
+  "schema": "glpnet/differential-criteria/1",
+  "note": [
+    "Declared cross-runtime / cross-host acceptance criteria (feature 109 US1, FR-001).",
+    "A criterion listed here is one whose CLAIM spans more than one runtime, host or",
+    "implementation. Feature 109 exists because such criteria were previously discharged by",
+    "running ONE participant: on 2026-09-04 feature 101 was recorded implemented with the exact",
+    "C# lines named in CLAUDE.md and docs/known-issues.md, those lines were still defective, and",
+    "the Gleam half had shipped with no test file at all -- invisible, because nothing in the",
+    "566-check suite had ever started a second runtime.",
+    "SC-001 baseline, recorded 2026-09-06: the count of declared multi-participant criteria was 0."
+  ],
+  "criteria": [
+    {
+      "id": "goal-term-acceptance-dart-csharp",
+      "title": "Dart and C# accept and refuse the same goal terms, byte for byte",
+      "requirement": "feature 101 FR-008 / SC-003 -- the same goal text must be accepted or refused IDENTICALLY across runtimes",
+      "why_differential": [
+        "A per-runtime pattern assertion passes while the two runtimes disagree about WHICH",
+        "variable bound or WHAT the refusal said. Only a transcript comparison can fail on that.",
+        "Gleam is a declared non-participant HERE and is pinned in-language instead, at",
+        "glp_gleam/test/glp/engine/goal_boot_101_test.gleam (20 checks incl. negative controls),",
+        "because the Gleam REPL does not offer this script's `load` surface. That is a declared,",
+        "tested division of the obligation -- not a silent gap."
+      ],
+      "participants": [
+        {
+          "name": "dart",
+          "why": "the reference implementation of the goal-term front end; every other runtime is a port of it",
+          "command": ["${DART}", "run", "${DART_REPL}"],
+          "cwd": "${GLP_RUNTIME}",
+          "freshness": {
+            "newer_than": ["${GLP_RUNTIME}/lib", "${GLP_RUNTIME}/bin"],
+            "artefacts": ["${GLP_RUNTIME}/.dart_tool/repl.dill"],
+            "suffixes": [".dart"],
+            "why": "the runner prefers the compiled kernel snapshot .dart_tool/repl.dill whenever it exists, and a snapshot older than lib/ or bin/ answers for code that is no longer the code. Omitting this block meant no check ran at all: adversarial review 2026-09-06 measured that the gate would compare a freshly built C# against an arbitrarily stale Dart snapshot and call it AGREE."
+          }
+        },
+        {
+          "name": "csharp",
+          "why": "the port that was recorded fixed on 2026-09-04 while still returning a silent wrong answer -- the participant this criterion exists to keep honest",
+          "command": ["${CSREPL}"],
+          "cwd": "${REPO}",
+          "freshness": {
+            "newer_than": [
+              "${REPO}/out/csharp/glp_repl",
+              "${REPO}/out/csharp/lib",
+              "${REPO}/csharp/glp_link",
+              "${REPO}/csharp/glp_crdtmsg"
+            ],
+            "artefacts": ["${REPO}/out/csharp/glp_repl/bin/Debug/${CSREPL_TFM}"],
+            "suffixes": [".cs", ".csproj", ".props", ".targets", ".sln"],
+            "why": "a stale binary answers happily, and its answer is about code that is no longer the code -- the 2026-08-13 failure mode",
+            "why_artefacts_not_the_exe": "glp_repl.exe is the .NET apphost stub and an incremental build does NOT rewrite it when only a referenced library's method bodies change. Measured 2026-09-06: after editing out/csharp/lib/engine/glp_engine.cs and rebuilding successfully, the exe was 15 minutes older than the assembly carrying the change. The output DIRECTORY's newest file dates the build; the stub dates the launcher."
+          }
+        }
+      ],
+      "script": "${TYPED}/goal_term_acceptance.glp\nfirst_item([send(1,a)], _).\nfirst_item([send(1,_)], Y).\nfirst_item([_], Y).\nfirst_item([send(1,a)], _), first_item([send(2,b)], Z).\nfirst_item([send(1,a)|foo], Y).\nfirst_item([_?], Y).\nfirst_item([send(1,a)], Y).\n",
+      "normalisations": [
+        {
+          "id": "strip-prompt",
+          "kind": "strip_line_prefix",
+          "prefix": "GLP> ",
+          "rationale": "Both REPLs echo a fixed prompt at the head of a result line. The prompt is line discipline, not a result; it is identical in both and its presence would not distinguish the runtimes anyway. Stripping it keeps the comparison about answers.",
+          "negative_control": {
+            "a": "GLP> Y = some(send(1, a))",
+            "b": "GLP> Y = some(send(2, b))",
+            "why": "the divergence that matters sits AFTER the prompt. If stripping a fixed prefix could erase a differing binding, every AGREE this rule contributed to would be worthless."
+          }
+        },
+        {
+          "id": "keep-result-lines",
+          "kind": "keep_lines_matching",
+          "pattern": "^(\u2192|Error:|[A-Za-z_][A-Za-z0-9_]* = )",
+          "rationale": "The banner carries the build commit, the compile date and the WORKING DIRECTORY -- and the two participants deliberately run from different working directories (glp_runtime vs the repo root), so the banner differs by construction and would report a permanent false divergence. The retained shapes are exactly the three a goal can answer with: a status line, a binding, or a refusal.",
+          "declared_limitation": "A refusal that did NOT begin with `Error:` would be dropped by this rule and would not be compared. That is a real limitation of the retained set, stated here rather than discovered later; the negative control below pins the three shapes that ARE retained.",
+          "negative_control": {
+            "a": "GLP REPL banner\nWorking directory: D:\\one\n\u2192 succeeds\nY = some(send(1, a))\nError: list tail is neither a list nor a variable: foo",
+            "b": "GLP REPL banner\nWorking directory: D:\\two\n\u2192 failed\nY = some(send(2, b))\nError: list tail is neither a list nor a variable: bar",
+            "why": "all three result shapes this criterion can diverge on -- a status, a binding and a refusal -- must survive the filter, and the banner difference the rule exists to remove must not be the only thing left."
+          }
+        }
+      ],
+      "negative_control": {
+        "participant": "csharp",
+        "rule": {
+          "kind": "drop_lines_matching",
+          "pattern": "^Error: list tail is neither a list nor a variable"
+        },
+        "why": [
+          "This reproduces the SHAPE of the defect actually measured on 2026-09-04: C# did not",
+          "refuse an improper list tail, it silently coerced it to nil and returned the same",
+          "answer as the proper-tailed goal. Deleting the refusal line from the C# transcript is",
+          "that defect expressed at transcript level. If the comparator cannot see this, it could",
+          "not have seen the real one, and this run's MEASURED-AGREE would prove nothing.",
+          "Executed on EVERY run against the transcripts captured on that run (FR-007, SC-002)."
+        ]
+      },
+      "executed_reversion": {
+        "recorded_in": ".specify/differential/reversion-20260906.md",
+        "what": "out/csharp/lib/engine/glp_engine.cs -- the FR-005 improper-tail refusal replaced by the original `tailTerm = new RtConstTerm(null)` coercion, rebuilt, gate run, reverted, rebuilt, gate run again",
+        "why": "the in-band negative control above proves the COMPARATOR discriminates. Only reverting the real fix in the real source and rebuilding proves the harness end to end -- runtime, capture, normalisation and comparison -- is a real detector (FR-007, T058). Executed, not asserted."
+      }
+    }
+  ]
+}

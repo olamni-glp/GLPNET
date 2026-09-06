@@ -48,8 +48,25 @@ EXIT_FINDINGS = 1         # non-conforming or unproven surfaces present
 EXIT_USAGE = 2            # usage / manifest refusal
 EXIT_DISAGREEMENT = 3     # manifest and scan disagree (FR-014b)
 EXIT_UNEXAMINED = 4       # a region we were asked to examine could not be read (FR-020)
+EXIT_REFUSED = 5          # an ADOPTED area holds a non-conforming signal (109 FR-009)
 
 KINDS = ("wait", "idle-predicate", "liveness-flag", "exit-status", "emptiness")
+
+# FR-019 (feature 109), engineer ruling Q-olg17-03: the tiered disposition. Every declared site
+# carries exactly one, and the required fields differ per tier -- see validate_manifest. Widening
+# the audit to a region this lane does not own is only honest if "I looked and it is not a signal"
+# and "it is a signal and someone else owns it" are both sayable, and both reviewable.
+#
+# `declared-unproven` was added when the per-tier rule was first ENFORCED and immediately found
+# that 25 of the 29 existing surfaces claimed `owned` while carrying NO conformance_check and NO
+# negative_control. `owned` had become the default value rather than a claim. The two ways out
+# were to fabricate 25 checks -- which is the placeholder coverage engineer ruling Q-olg17-03
+# exists to prevent -- or to give the honest state a name. This is the name: "this IS a signal,
+# this lane DOES own it, and it is NOT yet proven". It is an extension of Q-olg17-03's three
+# tiers, made under that ruling's stated principle that the burden is proportional to standing,
+# and it is recorded as an extension rather than presented as part of the ruling.
+DISPOSITIONS = ("owned", "declared-unproven", "not-a-signal", "disclosed",
+                "not-reproduced-on-this-build")
 
 # A nested invocation must not execute cited checks: this audit's own tests spawn it as a
 # subprocess, and executing checks from inside one of those would re-enter pytest unbounded.
@@ -89,12 +106,84 @@ PATTERNS: tuple[tuple[str, str, str], ...] = (
     ("exit-status", r"\b(?:check_call|check_output)\s*\(", "check_call (raises on non-zero)"),
     ("exit-status", r"\$\?\s*(?:-eq|-ne|==|!=)", "decision on $?"),
     ("exit-status", r"\bif\s*\[\s*\$\?", "branch on $?"),
+    # FR-017 (feature 109). The two patterns above matched ZERO of the six-plus real decision
+    # sites in test/run_all_tests.sh, which is the repo's largest exit-status consumer -- a
+    # ~2900-line suite whose entire job is deciding on exit statuses. It does not write
+    # `if [ $? -eq 0 ]`. It writes the TWO-STEP form:
+    #
+    #     MAD_EXIT=$?                    <- capture
+    #     if [ $MAD_EXIT -eq 0 ]; then   <- decide
+    #
+    # The capture is the scope-defining event: FR-002 says a signal is in scope when a consumer
+    # DECIDES on it, and a capture into a named variable exists in order to be decided on later
+    # (`echo "rc=$?"` reports and is deliberately NOT matched -- it neither captures nor decides).
+    # Matching the capture rather than the branch also means the site is found once, at the point
+    # the status becomes evidence, instead of once per branch that reads it.
+    # A capture may follow another command on the SAME LINE (`x=$(cmd); RC=$?`), and the two
+    # instances this misses in this repo are test/run_all_tests.sh:2671-2672 -- the V-18..V-23
+    # capture sites feature 109's own criterion depends on. Measured by adversarial review
+    # 2026-09-06: 7 of the 9 `=$?` occurrences were found, and the 2 missed were those.
+    ("exit-status", r"(?:^|[;&|]\s*)(?:local\s+|declare\s+)?[A-Za-z_]\w*=\$\?\s*(?:#.*)?$",
+     "capture of $? into a variable (two-step decision)"),
+    ("exit-status", r"\bif\s*\[\s*\"?\$\{?[A-Za-z_]\w*(?:_(?:EXIT|RC|STATUS|CODE))\}?\"?\s*(?:-eq|-ne)",
+     "branch on a captured status variable"),
+    ("exit-status", r"\$LASTEXITCODE\s*(?:-eq|-ne|==|!=)", "decision on $LASTEXITCODE"),
     ("emptiness", r"\blen\([^)]*\)\s*==\s*0\b", "len(...) == 0 as a verdict"),
     ("emptiness", r"\bCount\s*==\s*0\b", "Count == 0 as a verdict"),
 )
-COMPILED = tuple((kind, re.compile(rx), name) for kind, rx, name in PATTERNS)
+# re.MULTILINE, and it is load-bearing rather than cosmetic. The FR-017 capture pattern is
+# line-anchored (`^VAR=$?$`) so that it matches a whole-line capture and not a `$?` buried in a
+# larger expression. Without MULTILINE, `^` and `$` match only at the start and end of the WHOLE
+# FILE, so that pattern silently matched nothing -- a dead regex that reports a clean scan, which
+# is the same class of defect as feature 108's own unmatchable patterns (1 hit against ~400 real
+# ones, with the exit code and the report both looking fine). Pinned by a negative-control test.
+COMPILED = tuple((kind, re.compile(rx, re.MULTILINE), name) for kind, rx, name in PATTERNS)
 
-SCAN_SUFFIXES = (".py", ".cs", ".dart", ".sh", ".ps1")
+# ---------------------------------------------------------------------------
+# Declared suffix set (FR-018, feature 109).
+#
+# This used to be a bare 5-tuple, and that was a measured defect, not a style problem.
+# `scan()` dropped a file whose suffix was absent BEFORE testing whether it was in scope, so an
+# unscannable file never reached `unexamined` and never appeared in the report. The audit
+# therefore printed `regions UNREAD 0` while never opening 1651 files INSIDE the regions it
+# called examined: 223 `.gleam`, 1416 `.glp` and 12 `.mjs`, measured 2026-09-06. `glp_gleam/src`
+# scanned to `examined=0, sites=0`, which reads as CLEAN and means NEVER LOOKED AT.
+#
+# That is this feature's own thesis turned on itself: an unexamined surface counts against the
+# total. The set is now DECLARED -- every suffix present in a scoped region is listed with a
+# rationale, and the unscanned ones are PRINTED on every run, so the gap is visible rather than
+# structural and silent.
+SUFFIX_DECLARATIONS: tuple[tuple[str, bool, str], ...] = (
+    (".py",    True,  "Python: the audit, the harness and codeconv. Patterns cover returncode, "
+                      "check_call and len()==0 decision sites."),
+    (".cs",    True,  "C#: the YNET client and transport this lane owns. Patterns cover ExitCode, "
+                      "WaitFor*, IsIdle, IsHealthy and Count==0."),
+    (".dart",  True,  "Dart: the GLP runtime and REPL."),
+    (".sh",    True,  "Bash: the REPL suite, which is the repo's largest exit-status consumer."),
+    (".ps1",   True,  "PowerShell: launchers and host probes."),
+    (".gleam", False, "NOT SCANNED -- 223 files. Gleam's idioms (Result/Option, `case`) share no "
+                      "token with the five kinds, so the current patterns would find nothing and "
+                      "report a confident zero. Closing this needs Gleam-specific patterns and is "
+                      "a declared follow-up, NOT a claim of cleanliness."),
+    (".glp",   False, "NOT SCANNED -- 1416 files. GLP has no exit status and no process; its "
+                      "evidence signals are suspension and guard outcomes, a different kind set "
+                      "that this feature does not define. Declared gap, not an omission."),
+    (".mjs",   False, "NOT SCANNED -- 12 files, and this is the one that matters most: "
+                      "prereq-patterns/pglite/pglite_bridge.mjs is the repo's most load-bearing "
+                      "readiness/liveness surface and is invisible to this audit. Highest-priority "
+                      "follow-up of the three."),
+)
+SCAN_SUFFIXES = tuple(s for s, scanned, _ in SUFFIX_DECLARATIONS if scanned)
+UNSCANNED_SUFFIXES = tuple(s for s, scanned, _ in SUFFIX_DECLARATIONS if not scanned)
+
+# Suffixes that carry executable logic and could therefore hold an evidence signal. A file whose
+# suffix is here but which is NOT in SCAN_SUFFIXES is a real, countable gap. Anything else in a
+# scoped region (documents, archives, binaries, build leftovers) is recorded but never censused
+# by suffix -- see the note at its use site.
+SOURCE_SUFFIXES = frozenset(SCAN_SUFFIXES) | frozenset(UNSCANNED_SUFFIXES) | frozenset({
+    ".erl", ".ex", ".exs", ".js", ".ts", ".mts", ".cjs", ".go", ".rs", ".java", ".scala",
+    ".kt", ".rb", ".pl", ".psm1", ".bash", ".zsh", ".fs", ".fsx", ".c", ".h", ".cc", ".cpp",
+})
 
 # Regions never scanned. Each exclusion is a deliberate, stated decision, and every excluded
 # region is REPORTED as unexamined rather than dropped (FR-020).
@@ -107,6 +196,180 @@ EXCLUDE_GLOBS = ("*/archive/*", "*/wt-archive/*")
 
 def _utcnow() -> str:
     return datetime.now(timezone.utc).isoformat()
+
+
+# ---------------------------------------------------------------------------
+# The enforcing gate (feature 109 US2, FR-009..FR-015)
+#
+# 108 shipped an audit that NAMES non-conforming signals and stops nothing. codexreview
+# finding 8 said so plainly: the classifier, the size detector and the override logic were
+# simulators in the test harness, not enforcement in the audit. A report that names a defect
+# and permits it has the same shape as the defects it names -- it answers "did we notice?"
+# while the reader hears "are we safe?".
+#
+# The rules come from ONE shared implementation (engineer ruling Q-olg17-02); this module never
+# re-implements them. Loading is by relative path with NO venv, because FR-014 requires the
+# audit to keep running where codeconv is absent.
+# ---------------------------------------------------------------------------
+_GATE_MODULE_NAME = "glpnet_adoption_gate"
+
+
+def load_gate():
+    """Import the shared adoption/override rules, stdlib only.
+
+    Registers in ``sys.modules`` BEFORE executing: the module defines dataclasses, and
+    ``@dataclass`` looks its own class's module up in ``sys.modules`` while decorating. Skipping
+    the registration raises a bare AttributeError from inside dataclasses -- measured while
+    writing this, and exactly the kind of failure that would read as "the gate is unavailable".
+    """
+    if _GATE_MODULE_NAME in sys.modules:
+        return sys.modules[_GATE_MODULE_NAME]
+    import importlib.util
+    path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "lib", "adoption_gate.py")
+    if not os.path.isfile(path):
+        raise RuntimeError(
+            f"the shared adoption/override rules are missing at {path}. This is NOT a reason to "
+            "fall back to a local copy -- a second override mechanism is what feature 108 FR-006b "
+            "forbids. Restore the file.")
+    spec = importlib.util.spec_from_file_location(_GATE_MODULE_NAME, path)
+    mod = importlib.util.module_from_spec(spec)
+    sys.modules[_GATE_MODULE_NAME] = mod
+    spec.loader.exec_module(mod)
+    return mod
+
+
+def gate_module():
+    """The single adoption/override implementation (FR-013). Exposed so the driver can read the
+    override store path from the same module that defines the rules."""
+    return load_gate()
+
+
+def load_overrides(path: str) -> tuple[list, list[str]]:
+    """Read recorded overrides from disk, validating each through the ONE implementation.
+
+    This is the wiring that was missing. Every entry is passed through `gate.record()`, so an
+    override with no expiry -- or an unparseable or past one -- is rejected HERE, at the point the
+    audit reads it, exactly as it would be rejected at the point an engineer wrote it. An invalid
+    entry is an ERROR that the audit reports; it is never silently skipped, because a silently
+    skipped override is indistinguishable from an override that was never recorded.
+
+    A missing store is NOT an error: no overrides recorded is the normal, healthy state.
+    """
+    gate = load_gate()
+    if not os.path.isfile(path):
+        return [], []
+    try:
+        with open(path, "r", encoding="utf-8") as fh:
+            doc = json.load(fh)
+    except (OSError, json.JSONDecodeError) as exc:
+        return [], [f"override store {path}: unreadable: {exc}"]
+    entries = doc.get("overrides")
+    if not isinstance(entries, list):
+        return [], [f"override store {path}: 'overrides' must be a list"]
+
+    out, errors = [], []
+    for i, e in enumerate(entries):
+        where = f"override store {path} entry {i}"
+        if not isinstance(e, dict):
+            errors.append(f"{where}: must be an object")
+            continue
+        scope = e.get("scope")
+        if not isinstance(scope, dict):
+            errors.append(f"{where}: 'scope' must be an object with area, check and reason")
+            continue
+        try:
+            out.append(gate.record(
+                area=scope["area"], check=scope["check"], reason=scope["reason"],
+                briefing=e["briefing"], rationale=e["rationale"],
+                acknowledged=bool(e["acknowledged"]), expiry=e["expiry"]))
+        except KeyError as exc:
+            errors.append(f"{where}: missing field {exc.args[0]!r}")
+        except gate.OverrideInvalid as exc:
+            errors.append(f"{where}: {exc}")
+    return out, errors
+
+
+def resolve_refusals(manifest: dict, verdicts: list[dict], repo: str,
+                     overrides: list | None = None) -> tuple[list[dict], list[str]]:
+    """Decide which non-conforming surfaces REFUSE (FR-009/010/011/012).
+
+    Returns ``(refusals, errors)``.
+
+    Three states, and the third is the one that matters:
+      * area declared ``adopted``      -> a non-conforming signal REFUSES, unless a valid,
+                                          in-scope, unexpired override covers it;
+      * area declared ``non-adopted``  -> no refusal; the surface carries a visible marker;
+      * area NOT DECLARED AT ALL       -> an ERROR, never non-adoption, never a pass. This
+                                          mirrors 078 FR-019/FR-020 exactly, so one rule
+                                          governs both features (FR-010).
+    """
+    gate = load_gate()
+    errors: list[str] = []
+    refusals: list[dict] = []
+
+    region_area = {r["path"]: r.get("area") for r in manifest.get("scoped_regions", [])}
+    undeclared_regions = [p for p, a in region_area.items() if not a]
+    if undeclared_regions:
+        errors.append(
+            "scoped_regions without an 'area': %s -- an area with NO declaration is an error, "
+            "not non-adoption (FR-010, mirroring 078 FR-019/FR-020). Declare the region's area "
+            "and declare that area's adoption state in .specify/receipts/adoption.json."
+            % sorted(undeclared_regions))
+        return refusals, errors
+
+    try:
+        adoption = gate.load_adoption(os.path.join(repo, gate.ADOPTION_MANIFEST_REL))
+    except (gate.MissingDeclaration, gate.UndeclaredState) as exc:
+        errors.append(f"adoption manifest: {exc}")
+        return refusals, errors
+
+    # A verdict carries no path -- it is keyed by id -- so the surface's path comes from the
+    # manifest. Looking it up rather than trusting a field the verdict does not have is the
+    # difference between a gate and a KeyError at the moment it is first asked to refuse.
+    surface_path = {s["id"]: s["path"] for s in manifest.get("surfaces", [])}
+
+    for v in verdicts:
+        if v["classification"] != "non-conforming":
+            continue
+        spath = surface_path.get(v["id"])
+        if spath is None:
+            errors.append(f"surface {v['id']}: not present in the manifest")
+            continue
+        area = None
+        # Longest declared region wins, so a nested region overrides its parent rather than
+        # whichever happened to be declared first.
+        for path, a in sorted(region_area.items(), key=lambda kv: -len(kv[0])):
+            if spath == path or spath.startswith(path.rstrip("/") + "/"):
+                area = a
+                break
+        if area is None:
+            errors.append(f"surface {v['id']}: no scoped region covers {spath}")
+            continue
+        try:
+            state = gate.adoption_state(adoption, area)
+        except gate.MissingDeclaration as exc:
+            errors.append(f"surface {v['id']}: {exc}")
+            continue
+        if state != "adopted":
+            v["non_adoption_marker"] = (
+                f"area {area!r} is declared {state!r}: this signal is NOT gated, and that is a "
+                "declared decision, not a clean result")
+            continue
+
+        reason = ",".join(v["failed_frs"]) or "non-conforming"
+        covered = None
+        for ov in (overrides or []):
+            if gate.applies(ov, area, "evidence-signal-audit", reason):
+                covered = ov
+                break
+        if covered is not None:
+            # FR-015: an override converts a refusal into a RECORDED, EXPIRING, SCOPED proceed.
+            # It is never a pass, and it stays in the receipt permanently.
+            v["override"] = covered.to_json()
+            continue
+        refusals.append({"id": v["id"], "area": area, "path": spath,
+                         "failed_frs": v["failed_frs"]})
+    return refusals, errors
 
 
 # ---------------------------------------------------------------------------
@@ -160,13 +423,17 @@ def validate_manifest(doc: object) -> None:
         where = f"manifest.scoped_regions[{i}]"
         if not isinstance(r, dict):
             raise ManifestError(f"{where}: must be an object")
-        for field in ("path", "rationale"):
+        for field in ("path", "rationale", "area"):
             if field not in r:
                 raise ManifestError(
-                    f"{where}.{field}: each region needs 'path' and 'rationale' -- an "
-                    "undocumented scope boundary is indistinguishable from an oversight.")
+                    f"{where}.{field}: each region needs 'path', 'rationale' and 'area' -- an "
+                    "undocumented scope boundary is indistinguishable from an oversight, and a "
+                    "region with no 'area' cannot be gated because nothing says whether its "
+                    "producing area has declared adoption (109 FR-010, mirroring 078 FR-020: "
+                    "no declaration is an ERROR, never non-adoption).")
         _req_str(r, "path", where)
         _req_str(r, "rationale", where)
+        _req_str(r, "area", where)
         if "\\" in r["path"]:
             raise ManifestError(f"{where}.path: use forward slashes, not backslashes")
     surfaces = doc.get("surfaces")
@@ -187,7 +454,8 @@ def validate_manifest(doc: object) -> None:
 
         for field in ("id", "path", "symbol", "kind", "owner", "disposition"):
             _req_str(s, field, where)
-        for field in ("conformance_check", "negative_control", "contention", "notes"):
+        for field in ("conformance_check", "negative_control", "contention", "notes",
+                      "rationale", "disclosed_to"):
             _req_str(s, field, where, allow_none=True)
         if s.get("iterations") is not None and not isinstance(s["iterations"], int):
             raise ManifestError(f"{where}.iterations: must be an integer or null")
@@ -219,8 +487,35 @@ def validate_manifest(doc: object) -> None:
         gov = s["governed_by"]
         if not isinstance(gov, list) or not gov or any(g not in GOVERNED for g in gov):
             raise ManifestError(f"{where}.governed_by: non-empty subset of {GOVERNED}")
-        if s["disposition"] not in ("owned", "disclosed", "not-reproduced-on-this-build"):
-            raise ManifestError(f"{where}.disposition: unrecognised {s['disposition']!r}")
+        if s["disposition"] not in DISPOSITIONS:
+            raise ManifestError(f"{where}.disposition: unrecognised {s['disposition']!r}; "
+                                f"must be one of {DISPOSITIONS}")
+
+        # FR-019 (feature 109), engineer ruling Q-olg17-03. The declaration burden is
+        # PROPORTIONAL TO STANDING, and each disposition is refused unless it carries the field
+        # that makes it honest. Without this, `not-a-signal` is a free pass: a lane could dispose
+        # of its way to a clean report one word at a time. With it, every disposition has to say
+        # something a reviewer can disagree with.
+        if s["disposition"] == "owned":
+            if not s.get("conformance_check"):
+                raise ManifestError(
+                    f"{where}: disposition 'owned' requires a conformance_check. Owning a signal "
+                    "and not checking it is the claim this feature exists to refuse.")
+            if not s.get("negative_control"):
+                raise ManifestError(
+                    f"{where}: disposition 'owned' requires a negative_control. A check that "
+                    "cannot fail has measured nothing, whatever it printed.")
+        elif s["disposition"] == "not-a-signal":
+            if not s.get("rationale"):
+                raise ManifestError(
+                    f"{where}: disposition 'not-a-signal' requires a 'rationale' saying why this "
+                    "site is not read as evidence. An unexplained dismissal is indistinguishable "
+                    "from an oversight, and is the cheapest way to fake coverage.")
+        elif s["disposition"] == "disclosed":
+            if not s.get("disclosed_to"):
+                raise ManifestError(
+                    f"{where}: disposition 'disclosed' requires 'disclosed_to' naming the owning "
+                    "lane. A defect disclosed to nobody is a defect kept.")
 
         # FR-018a. A contention claim with no way to be wrong is worse than an absent entry,
         # so this is a REFUSAL, not an 'unproven' classification.
@@ -289,9 +584,24 @@ def scan(repo: str, scoped: list[dict]) -> tuple[list[dict], list[str], list[dic
                 unexamined.append({"path": rel_d + "/", "reason": "excluded-directory"})
 
         for fn in filenames:
-            if not fn.endswith(SCAN_SUFFIXES):
-                continue
             rel = f"{rel_dir}/{fn}" if rel_dir else fn
+            if not fn.endswith(SCAN_SUFFIXES):
+                # FR-016 (feature 109). This `continue` used to sit BEFORE the in-scope test, so
+                # an unscannable file inside a declared region vanished from the report entirely
+                # and the region was still called examined. A file we cannot open inside a region
+                # we claim to have examined is UNEXAMINED, and it is now recorded as such, named
+                # by suffix, so the census can be reported per region.
+                if _in_scope(rel, scoped) and not _excluded(rel):
+                    ext = os.path.splitext(fn)[1].lower()
+                    # Only SOURCE files are censused by suffix. A `.pdf`, `.zip` or `.md` inside a
+                    # scoped region is not an unaudited evidence signal, and counting it as one
+                    # would inflate the gap number into something nobody can act on -- the mirror
+                    # image of the confident zero, and just as useless. Non-source files are still
+                    # recorded, but aggregated under one reason so they cannot pad the census.
+                    reason = (f"unscannable-suffix:{ext}" if ext in SOURCE_SUFFIXES
+                              else "non-source-file")
+                    unexamined.append({"path": rel, "reason": reason})
+                continue
             in_scope = _in_scope(rel, scoped)
             if _excluded(rel):
                 if in_scope:
@@ -494,7 +804,9 @@ def cross_check(manifest: dict, hits: list[dict], repo: str) -> tuple[list[dict]
 # Receipt (FR-017) -- this audit is subject to the invariant it audits.
 # ---------------------------------------------------------------------------
 def write_receipt(path: str, repo_resolved: str, manifest_sha: str,
-                  examined: int, skipped: list[dict], outcome: str) -> str:
+                  examined: int, skipped: list[dict], outcome: str,
+                  refusals: list[dict] | None = None,
+                  overrides: list[dict] | None = None) -> str:
     receipt = {
         "check": "evidence-signal-audit",
         "feature": "108-evidence-signal-ordering",
@@ -504,6 +816,11 @@ def write_receipt(path: str, repo_resolved: str, manifest_sha: str,
         "items_skipped": len(skipped),
         "skipped_reasons": sorted({s["reason"].split(":")[0] for s in skipped}),
         "outcome": outcome,
+        # FR-009/FR-015. A refusal and the override that lifted it are part of the permanent
+        # record, not of the transient report: an override converts a refusal into a RECORDED,
+        # EXPIRING, SCOPED PROCEED, and "recorded" has to mean somewhere that survives the run.
+        "refusals": refusals or [],
+        "overrides": overrides or [],
         "ran_utc": _utcnow(),
     }
     os.makedirs(os.path.dirname(path), exist_ok=True)
@@ -532,10 +849,34 @@ def audit(repo: str, manifest_path: str, report_path: str) -> tuple[dict, int]:
 
     # A stated scope boundary is not a read failure. A region we FAILED to read is a different
     # thing and still trips EXIT_UNEXAMINED. Both stay in the report either way.
+    #
+    # FR-016/FR-018 (feature 109) add a THIRD category, and keeping it distinct is the whole
+    # point. A file inside a scoped region whose suffix this audit does not scan is:
+    #   - NOT a scope boundary  -- it is inside the declared scope;
+    #   - NOT a read failure    -- we can read it, we have declared that we do not scan it.
+    # It is a DECLARED GAP. Folding it into `unread` would make every run exit UNEXAMINED and the
+    # signal would be turned off within a day; folding it into BOUNDARY would hide it, which is
+    # the confident zero this feature exists to remove. So it is counted, named by suffix, and
+    # printed on every run -- visible without being fatal.
     BOUNDARY = ("out-of-declared-scope", "excluded-directory", "excluded-glob")
-    unread = [u for u in unexamined if u["reason"] not in BOUNDARY]
+    unread = [u for u in unexamined
+              if u["reason"] not in BOUNDARY and not _is_declared_gap(u["reason"])]
+    unopened_by_suffix = _suffix_census(unexamined)
+    # FR-009: the gate. Resolved AFTER classification and BEFORE the exit-code decision, because
+    # a refusal must outrank a mere finding -- an adopted area holding a non-conforming signal is
+    # not "one more row in a list", it is the thing that stops the pipeline.
+    overrides, override_errors = load_overrides(
+        os.path.join(repo, gate_module().OVERRIDES_REL))
+    refusals, gate_errors = resolve_refusals(manifest, verdicts, repo, overrides)
+    gate_errors = list(gate_errors) + override_errors
+    totals["refusals"] = len(refusals)
+    totals["errors"] += len(gate_errors)
+    honoured = [v for v in verdicts if v.get("override")]
+
     if totals["errors"]:
         code, outcome = EXIT_DISAGREEMENT, "FAIL"
+    elif refusals:
+        code, outcome = EXIT_REFUSED, "REFUSED"
     elif unread:
         code, outcome = EXIT_UNEXAMINED, "UNREAD"
     elif totals["non_conforming"] or totals["unproven"]:
@@ -546,8 +887,13 @@ def audit(repo: str, manifest_path: str, report_path: str) -> tuple[dict, int]:
     receipt_path = os.path.join(
         os.path.dirname(report_path),
         f"receipt-{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')}.json")
+    # FR-015: an override must remain PERMANENTLY visible, and the receipt is the permanent
+    # record -- report.json is a gitignored run artefact. Recording the refusal in the report and
+    # not in the receipt satisfied the sentence and not the requirement.
     write_receipt(receipt_path, os.path.realpath(repo), manifest["_sha256"],
-                  len(examined), unexamined, outcome)
+                  len(examined), unexamined, outcome,
+                  refusals=refusals,
+                  overrides=[{"surface": v["id"], "override": v["override"]} for v in honoured])
 
     report = {
         "generated_utc": _utcnow(),
@@ -558,6 +904,16 @@ def audit(repo: str, manifest_path: str, report_path: str) -> tuple[dict, int]:
         "manifest_only": manifest_only,
         "regions_examined": examined,
         "regions_unexamined": unexamined,
+        "unopened_by_suffix": unopened_by_suffix,
+        "unopened_by_suffix_per_region": _suffix_census_by_region(
+            unexamined, manifest.get("scoped_regions", [])),
+        "suffix_declarations": [
+            {"suffix": s, "scanned": scanned, "rationale": why}
+            for s, scanned, why in SUFFIX_DECLARATIONS
+        ],
+        "disposition_counts": _disposition_counts(manifest),
+        "refusals": refusals,
+        "gate_errors": gate_errors,
         "totals": totals,
         "receipt_path": os.path.relpath(receipt_path, repo).replace(os.sep, "/"),
     }
@@ -571,6 +927,66 @@ def audit(repo: str, manifest_path: str, report_path: str) -> tuple[dict, int]:
 BOUNDARY = ("out-of-declared-scope", "excluded-directory", "excluded-glob")
 
 
+def _disposition_counts(manifest: dict) -> dict[str, int]:
+    """Per-disposition counts — the coverage statement (FR-021).
+
+    Deliberately NOT collapsed into one percentage. A blended figure makes `owned` (checked, with
+    a negative control) indistinguishable from `not-a-signal` (dismissed with a sentence), so a
+    lane could raise its coverage number by dismissing things. Four numbers cannot be gamed that
+    way without the gaming being visible in which number grew.
+    """
+    counts = {d: 0 for d in DISPOSITIONS}
+    for s in manifest.get("surfaces", []):
+        d = s.get("disposition")
+        if d in counts:
+            counts[d] += 1
+    return counts
+
+
+def _is_declared_gap(reason: str) -> bool:
+    """A file inside scope that this audit has declared it does not scan (FR-018)."""
+    return reason.startswith("unscannable-suffix:") or reason == "non-source-file"
+
+
+def _suffix_census(unexamined: list[dict]) -> dict[str, int]:
+    """Count in-scope source files left unopened, by suffix (FR-016).
+
+    This is the number that did not exist before feature 109. The audit reported
+    `regions UNREAD 0` while never opening 1651 source files inside regions it called examined,
+    because an unscannable file was dropped before the in-scope test and so never entered the
+    report at all. A region is no longer callable 'examined' on the strength of the subset the
+    scanner happens to read.
+    """
+    census: dict[str, int] = {}
+    for u in unexamined:
+        r = u["reason"]
+        if r.startswith("unscannable-suffix:"):
+            census[r.split(":", 1)[1]] = census.get(r.split(":", 1)[1], 0) + 1
+    return dict(sorted(census.items(), key=lambda kv: -kv[1]))
+
+
+def _suffix_census_by_region(unexamined: list[dict], regions: list[dict]) -> dict[str, dict]:
+    """The SAME census, split by the scoped region the file sits in (FR-016, SC-005).
+
+    The global figure answers "how much did the scanner not open?". The requirement is per
+    region -- "a region MUST NOT be reported examined on the strength of a subset" -- and a
+    single total cannot tell a reader WHICH examined region carries which declared gap. The
+    longest matching region wins, so a nested region is attributed to itself rather than to its
+    parent."""
+    paths = sorted((r["path"] for r in regions), key=len, reverse=True)
+    out: dict[str, dict] = {p: {} for p in paths}
+    for u in unexamined:
+        reason = u["reason"]
+        if not reason.startswith("unscannable-suffix:"):
+            continue
+        suffix = reason.split(":", 1)[1]
+        for p in paths:
+            if u["path"] == p or u["path"].startswith(p.rstrip("/") + "/"):
+                out[p][suffix] = out[p].get(suffix, 0) + 1
+                break
+    return {p: dict(sorted(c.items(), key=lambda kv: -kv[1])) for p, c in out.items()}
+
+
 def render(report: dict) -> str:
     t = report["totals"]
     ux = report["regions_unexamined"]
@@ -580,7 +996,8 @@ def render(report: dict) -> str:
         f"  manifest sha256   {report['manifest_sha256'][:16]}...",
         f"  regions examined  {len(report['regions_examined'])}",
         f"  scope boundary    {sum(1 for u in ux if u['reason'] in BOUNDARY)}",
-        f"  regions UNREAD    {sum(1 for u in ux if u['reason'] not in BOUNDARY)}",
+        f"  regions UNREAD    "
+        f"{sum(1 for u in ux if u['reason'] not in BOUNDARY and not _is_declared_gap(u['reason']))}",
         f"  checks executed   {sum(1 for v in cr.values() if v == 'pass')} pass"
         f" / {sum(1 for v in cr.values() if v == 'fail')} fail"
         f" / {sum(1 for v in cr.values() if v == 'not-executable')} not-executable",
@@ -588,8 +1005,31 @@ def render(report: dict) -> str:
         f"  non-conforming    {t['non_conforming']}",
         f"  unproven          {t['unproven']}",
         f"  errors            {t['errors']}",
+        f"  REFUSALS          {t.get('refusals', 0)}",
         f"  receipt           {report['receipt_path']}",
     ]
+    for r in report.get("refusals", []):
+        out.append(f"  [      REFUSED] {r['id']}  area={r['area']} (ADOPTED)  "
+                   f"fails={','.join(r['failed_frs'])}")
+    for e in report.get("gate_errors", []):
+        out.append(f"  GATE ERROR: {e}")
+
+    # FR-021: per-disposition counts ARE the coverage statement. No blended percentage is
+    # printed anywhere, deliberately -- see _disposition_counts.
+    dc = report.get("disposition_counts") or {}
+    if dc:
+        out.append("  disposition       "
+                   + "  ".join(f"{k}={v}" for k, v in dc.items() if v or k == "owned"))
+
+    # FR-016: in-scope source files this audit did NOT open, by suffix. Before feature 109 this
+    # number did not exist and the same run printed `regions UNREAD 0`.
+    census = report.get("unopened_by_suffix") or {}
+    if census:
+        total = sum(census.values())
+        out.append(f"  UNOPENED in scope {total} source file(s) -- "
+                   + ", ".join(f"{k} x{v}" for k, v in census.items()))
+        out.append("                    (declared gaps, not clean: see suffix_declarations "
+                   "in the report for the rationale on each)")
     for v in report["surfaces"]:
         if v["classification"] != "conforming":
             frs = ",".join(v["failed_frs"]) or "-"
