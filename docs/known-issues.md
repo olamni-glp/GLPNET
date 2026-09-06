@@ -552,3 +552,88 @@ the **full-origin** form and is unaffected; the control above is the evidence, n
   `test_a_cited_check_that_does_not_exist_is_not_conforming`.
 
 See `docs/evidence-signal-invariant.md` and `specs/108-evidence-signal-ordering/`.
+
+---
+
+## Differential acceptance — a criterion discharged from one runtime (feature 109, 2026-09-06)
+
+**Status**: Mechanism landed (feature 109 US1). One criterion declared; the rest of the fleet's
+multi-participant criteria are **not yet declared** and are named below rather than implied.
+
+### The class
+
+A criterion whose CLAIM spans runtimes or hosts — *"Dart, C# and Gleam agree on goal-term
+acceptance"*, *"all four hosts count the same tally"* — was discharged by running **one**
+participant and reporting green. Measured 2026-09-04 in feature 101: the feature was recorded
+implemented, `CLAUDE.md` and this file both named the exact C# lines the fix had landed at, **those
+lines were still defective**, C# still returned a silent wrong answer for an improper list tail,
+and the Gleam half had shipped **with no test file at all**. None of it was visible, because
+nothing in the 566-check suite had ever started a second runtime.
+
+### The mechanism
+
+`scripts/differential_gate.py` + `.specify/differential/criteria.json`, run by suite **Section Y**.
+Each declared criterion reports exactly one of `MEASURED-AGREE`, `MEASURED-DIVERGE`,
+`NOT-MEASURED`, and only the first may be treated as discharged. NOT-MEASURED is **reported and
+counted**, never skipped, and never exit 0 — a skip disappears, and "the tool did not run" read as
+"nothing to report" is measured instance 4.
+
+Four properties are enforced rather than advised:
+
+| property | why it is not advice |
+|---|---|
+| the non-emptiness guard runs **before** the comparison | two empty transcripts compare equal, so a runtime that starts, exits 0 and prints nothing agrees with any other one that did the same |
+| every normalisation carries an **executed** negative control | a normaliser is a claim about what is irrelevant; an over-broad one silently converts every divergence into agreement |
+| every criterion carries an **executed** negative control, on the transcripts captured on that run | a comparator never shown able to fail has measured nothing; an unfalsifiable 100% scores zero |
+| fewer than two participants is refused **at load** | a one-participant "differential" is a category error, not a degenerate case |
+
+`MEASURED-AGREE` is a statement about **agreement, not correctness** — participants broken
+identically also agree — and the report says so in the artefact rather than leaving the reader to
+supply it.
+
+### Proven a real detector by an EXECUTED reversion
+
+The shipped C# improper-tail refusal was reverted **in the real source** to the 2026-09-04 defect,
+rebuilt, and measured: `MEASURED-DIVERGE`, exit 1, with the divergence showing C# *answering*
+`Y = some(send(1, a))` where Dart refuses. Restored and rebuilt: `MEASURED-AGREE`, exit 0. Full
+transcripts: `.specify/differential/reversion-20260906.md`.
+
+### A defect this found in the suite's own freshness gate
+
+`test/run_all_tests.sh` dated the C# build from `glp_repl.exe`. That file is the .NET **apphost
+stub**, and an incremental build does **not** rewrite it when only a referenced library's method
+bodies change; `glp_repl.dll` is not rewritten either, because an unchanged public surface leaves
+the reference assembly identical and MSBuild correctly skips the dependent project. Measured:
+
+```
+1788728564  out/csharp/glp_repl/bin/Debug/net11.0/glp_repl.exe          <- the PREVIOUS build
+1788728564  out/csharp/glp_repl/bin/Debug/net11.0/glp_repl.dll          <- also not rewritten
+1788729435  out/csharp/glp_repl/bin/Debug/net11.0/glp_runtime_net.dll   <- THIS build
+1788729415  out/csharp/lib/engine/glp_engine.cs                         <- the edit
+```
+
+So after **any** C# source edit and rebuild, the gate declared the binary stale and marked Sections
+I, T, U and V-18..V-23 `unsearchable` — the four sections the restart brief warns are silently
+suppressed by staleness were suppressed by the *check for* staleness instead. It errs safe (it
+never calls a stale binary fresh), which is why it survived unnoticed: the failure is invisible
+unless someone edits C# and expects those sections to run.
+
+Fixed by dating the build from the **newest file in the output directory** — every file there is
+build output, none is written at run time. Pinned by **V-26**.
+
+### What is NOT yet declared, named rather than implied
+
+`.specify/differential/criteria.json` declares **one** criterion. The following are known
+multi-participant claims still carried without a declaration, and each is therefore still
+discharged the old way:
+
+- **Gleam** in the goal-term criterion. Pinned in-language at
+  `glp_gleam/test/glp/engine/goal_boot_101_test.gleam` (20 checks) because the Gleam REPL does not
+  offer this script's `load` surface. Declared as a division of the obligation, not closed.
+- **The four-host election tally.** Every host folds the same records with its own engine build;
+  agreement between hosts is asserted in broadcasts, not measured by a gate.
+- **The three-runtime corpus parity** (feature 050 M1). Measured once at 206/206; not re-measured
+  by a declared criterion.
+
+See `.specify/differential/`, `specs/109-differential-acceptance-gate/` and
+`docs/evidence-signal-invariant.md`.

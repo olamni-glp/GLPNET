@@ -115,3 +115,120 @@ Practical steps, in order:
 Exit codes are distinct per failure class — `0` clean, `1` findings, `2` usage, `3` manifest/scan
 disagreement, `4` unreadable region — and the tool **never exits 0 while reporting a problem**. An
 audit for that class committing that class would be worthless.
+
+---
+
+# The invariant one level up: a CRITERION discharged by an instrument that could not fail
+
+Feature 078 governs a **check** ("prove it ran"). Feature 108 governs a **signal** ("do not report
+completion before the work completes"). Feature 109 applies the same idea to the **criterion**:
+
+> A criterion is discharged only by an instrument that **could have failed**. A check that cannot
+> distinguish the passing case from the failing case has measured nothing, whatever it printed.
+
+## Three ways a criterion answers a question nobody asked
+
+| the question asked | the question actually answered, before 109 |
+|---|---|
+| "do all N runtimes agree?" | "does runtime 1 pass?" |
+| "does the consumer refuse a non-conforming signal?" | "does the harness *simulate* a consumer that would?" |
+| "is this surface clean?" | "is this surface one of the 29 we chose to look at?" |
+
+## The differential harness (US1)
+
+`scripts/differential_gate.py`, declared in `.specify/differential/criteria.json`, run by suite
+**Section Y**. A criterion whose claim spans runtimes or hosts must be **declared with its
+participant set**, and reports exactly one of:
+
+- **`MEASURED-AGREE`** — every participant ran, produced non-empty output, and the normalised
+  transcripts are byte-identical. Only this may be treated as discharged.
+- **`MEASURED-DIVERGE`** — every participant ran and they differ; the divergence is printed.
+- **`NOT-MEASURED`** — something prevented the measurement, and the **participant and the reason
+  are named**.
+
+`NOT-MEASURED` is not a skip. A skip vanishes from a report; a NOT-MEASURED criterion is reported,
+counted, and makes the gate exit non-zero.
+
+**`MEASURED-AGREE` is agreement, not correctness.** Participants broken identically also agree.
+The harness cannot detect that, does not claim to, and prints the disclaimer in the report rather
+than leaving the reader to supply it.
+
+### What a normalisation is, and what it costs
+
+Chrome must be stripped before two transcripts can be compared — banners carry build commits,
+compile dates and working directories. But **a normaliser is a claim about what is irrelevant**, and
+an over-broad one converts every divergence into agreement without saying a word. So each
+normalisation is declared with a rationale **and its own negative control**: a pair of inputs that
+differ in a way that matters. The harness **executes** it and requires the pair to still differ. A
+rule that erases its own control makes the criterion `NOT-MEASURED`.
+
+### The criterion's own negative control
+
+Every criterion declares a perturbation of one participant's transcript that **must** make the
+comparison diverge, executed on **every run against the transcripts captured on that run** — not
+against a fixture. A criterion whose control did not run, or ran and did not diverge, is
+`NOT-MEASURED`, exactly as a missing participant is. This is what stops an unfalsifiable 100%.
+
+For the shipped Dart-vs-C# criterion the perturbation deletes the improper-tail refusal line from
+the C# transcript, which is the 2026-09-04 defect expressed at transcript level: if the comparator
+cannot see that, it could not have seen the real one.
+
+### And once, for real: the executed reversion
+
+The in-band control proves the **comparator** discriminates. It does not prove the chain —
+runtime, capture, normalisation, comparison. So the shipped C# refusal was reverted in the **real
+source**, rebuilt, and measured: `MEASURED-DIVERGE`, exit 1. Restored, rebuilt: `MEASURED-AGREE`,
+exit 0. Transcripts in `.specify/differential/reversion-20260906.md`. Executed, not asserted.
+
+## The enforcing gate (US2)
+
+108 shipped an audit that **names** non-conforming signals and stops nothing; `/bk-codexreview`
+finding 8 recorded that the gate logic was a simulator in the test harness rather than enforcement
+in the audit. It now refuses — `EXIT_REFUSED` (5) — bound by **declared adoption**: an adopted area
+refuses, a non-adopted area keeps working behind a **visible marker**, and an area with **no
+declaration is an ERROR**, never a pass.
+
+The adoption and override rules have exactly **one** implementation, `scripts/lib/adoption_gate.py`
+(stdlib-only), which `codeconv.receipts.{override,manifest}` delegate to with unchanged signatures.
+A test asserts the two call paths reach the **same function objects**, so a second implementation
+fails the suite rather than drifting silently. There is deliberately no second override mechanism.
+
+## The denominator (US3)
+
+`regions UNREAD 0` was true and did not mean what a reader took it to mean: the scanner skipped a
+file **before** testing scope, so 1651 files (223 `.gleam`, 1416 `.glp`, 12 `.mjs`) were never
+opened inside regions the report called *examined*, and `glp_gleam/src` read `examined=0, sites=0`
+— which reads as clean and means never looked at.
+
+Three rules now:
+
+1. **Unopened files are censused by suffix, per region.** A region is never reported examined on
+   the strength of the subset the scanner happens to read.
+2. **The scanned-suffix set is declared with a rationale per suffix, included and excluded.** A
+   language present in the repository and absent from the set is a *visible* gap.
+3. **Every surface carries a `disposition`** — `owned` / `not-a-signal` / `disclosed` — with
+   per-disposition required fields, and **absence is refused at load**. Coverage is published as
+   per-disposition counts; a single blended percentage is never published, because it makes
+   `not-a-signal` and `owned` indistinguishable to a reader.
+
+Enforcing the per-disposition rules revealed that **25 of 29 surfaces claimed `owned` while
+carrying no check and no negative control** — `owned` had become a default rather than a claim.
+Fixed by naming the honest state (`declared-unproven`), **not** by fabricating 25 checks.
+
+## Exit codes
+
+`0` clean · `1` findings · `2` usage/manifest refusal · `3` manifest/scan disagreement · `4`
+unreadable region · `5` **refused** (an adopted area holds a non-conforming signal). The audit
+**never exits 0 while reporting a problem**.
+
+The differential gate's are separate and equally distinct: `0` all AGREE · `1` at least one
+DIVERGE · `2` the declaration was refused at load · `3` at least one NOT-MEASURED.
+
+## Reference implementation
+
+- Differential harness: `scripts/differential_gate.py`
+- Declaration: `.specify/differential/criteria.json`
+- Executed reversion: `.specify/differential/reversion-20260906.md`
+- Tests with controls: `scripts/tests/test_differential_gate.py`
+- Suite: `test/run_all_tests.sh` Sections **X** (108) and **Y** (109)
+- Spec: `specs/109-differential-acceptance-gate/`

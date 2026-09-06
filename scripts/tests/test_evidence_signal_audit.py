@@ -27,25 +27,52 @@ sys.path.insert(0, os.path.join(REPO, "scripts"))
 import evidence_signal_audit as esa  # noqa: E402
 
 
-def _manifest(tmp_path, surfaces=None, **over):
+#: Feature 109 FR-010: a scoped region MUST name the area whose adoption governs it, and that
+#: area's state must be declared. The fixture therefore ships a real adoption manifest -- writing
+#: one is the point, since "no declaration" is an ERROR and must stay one. `_adopted` selects
+#: whether the gate BINDS for the fixture, which is how the refusal tests and the non-adoption
+#: tests differ without either one suppressing the gate by configuration (FR-011 forbids that).
+def _adoption(tmp_path, state="non-adopted"):
+    d = tmp_path / ".specify" / "receipts"
+    d.mkdir(parents=True, exist_ok=True)
+    areas = [{"area": a, "state": state, "since": "2026-09-06"}
+             for a in ("build-gate", "coop", "roadmap-sync", "test-harness", "reference")]
+    (d / "adoption.json").write_text(json.dumps({"areas": areas}), encoding="utf-8")
+
+
+def _manifest(tmp_path, surfaces=None, area="coop", adoption="non-adopted", **over):
     doc = {
         "version": 1,
         "lane": "test-lane",
-        "scoped_regions": [{"path": "src", "rationale": "the test fixture tree"}],
+        "scoped_regions": [{"path": "src", "rationale": "the test fixture tree", "area": area}],
         "surfaces": surfaces if surfaces is not None else [],
     }
     doc.update(over)
+    _adoption(tmp_path, adoption)
     p = tmp_path / "manifest.json"
     p.write_text(json.dumps(doc), encoding="utf-8")
     return str(p)
 
 
 def _surface(**over):
+    # feature 109 FR-019: `owned` now REQUIRES both a conformance_check and a negative_control.
+    # The default therefore carries both. A caller that drops the check must also drop the claim
+    # -- see _unproven_surface -- because "owned with nothing checked" is exactly the default-value
+    # misuse the tiered disposition was added to stop (it was true of 25 of 29 real surfaces).
     s = {
         "id": "a-surface", "path": "src/thing.py", "symbol": "sym", "kind": "exit-status",
         "consumers": ["c"], "governed_by": ["FR-007"], "conformance_check": "t::x",
+        "negative_control": "t::x_negative",
         "owner": "test-lane", "disposition": "owned",
     }
+    s.update(over)
+    return s
+
+
+def _unproven_surface(**over):
+    """A surface honestly declared as not-yet-proven (feature 109 `declared-unproven`)."""
+    s = _surface(conformance_check=None, negative_control=None,
+                 disposition="declared-unproven")
     s.update(over)
     return s
 
@@ -90,7 +117,8 @@ def test_a_proven_fr004_claim_without_a_negative_control_is_refused(tmp_path):
     """FR-018a: a contention claim with no demonstrated way to fail is not evidence."""
     with pytest.raises(esa.ManifestError, match="negative_control"):
         esa.load_manifest(_manifest(tmp_path, [
-            _surface(kind="wait", governed_by=["FR-004"], conformance_check="t::x")]))
+            _surface(kind="wait", governed_by=["FR-004"], conformance_check="t::x",
+                     negative_control=None)]))
 
 
 def test_an_unproven_fr004_surface_is_ACCEPTED(tmp_path):
@@ -101,7 +129,7 @@ def test_an_unproven_fr004_surface_is_ACCEPTED(tmp_path):
     was meant to close. Found by using this tool on this repo, 2026-09-06.
     """
     doc = esa.load_manifest(_manifest(tmp_path, [
-        _surface(kind="wait", governed_by=["FR-004"], conformance_check=None)]))
+        _unproven_surface(kind="wait", governed_by=["FR-004"])]))
     assert len(doc["surfaces"]) == 1
 
 
@@ -116,14 +144,15 @@ def test_disclosed_surface_owned_by_this_lane_is_refused(tmp_path):
     """'Disclosed' means someone else owns it. Disclosing to yourself is not disclosure."""
     with pytest.raises(esa.ManifestError, match="owner"):
         esa.load_manifest(_manifest(tmp_path, [
-            _surface(disposition="disclosed", owner="test-lane")]))
+            _surface(disposition="disclosed", owner="test-lane",
+                     disclosed_to="test-lane")]))
 
 
 # ---------------------------------------------------------------------------
 # Classification -- absence of evidence is never a pass
 # ---------------------------------------------------------------------------
 def test_a_surface_with_no_conformance_check_is_unproven_never_conforming(tmp_path):
-    v = esa.classify(_surface(conformance_check=None), str(tmp_path))
+    v = esa.classify(_unproven_surface(), str(tmp_path))
     assert v["classification"] == "unproven"
     assert "FR-015" in v["failed_frs"]
 
@@ -138,7 +167,8 @@ def test_a_cited_check_that_does_not_exist_is_not_conforming(tmp_path):
 
 
 def test_a_disclosed_surface_is_non_conforming_and_names_its_owner(tmp_path):
-    v = esa.classify(_surface(disposition="disclosed", owner="another-lane"), str(tmp_path))
+    v = esa.classify(_surface(disposition="disclosed", owner="another-lane",
+                              disclosed_to="another-lane"), str(tmp_path))
     assert v["classification"] == "non-conforming"
     assert "another-lane" in v["evidence"]
 
@@ -286,14 +316,18 @@ def test_exit_codes_are_distinct_per_failure_class(tmp_path):
     assert _run(tmp_path, _manifest(tmp_path)).returncode == esa.EXIT_DISAGREEMENT
 
     # findings: declared, but unproven
-    mp = _manifest(tmp_path, [_surface(conformance_check=None)])
+    mp = _manifest(tmp_path, [_unproven_surface()])
     assert _run(tmp_path, mp).returncode == esa.EXIT_FINDINGS
 
     # clean -- the cited check must EXIST, because the audit verifies it (FR-016). Citing a
     # test nobody wrote is a conformance claim with no evidence, and the audit says so.
+    # feature 109 FR-019: `owned` also needs a negative_control, and the audit VERIFIES that a
+    # cited check EXISTS (FR-016) -- so the negative control has to be a real test, not a string.
     (tmp_path / "src" / "check_test.py").write_text(
-        "def test_x():\n    pass\n", encoding="utf-8")
-    mp = _manifest(tmp_path, [_surface(conformance_check="src/check_test.py::test_x")])
+        "def test_x():\n    pass\n\n\ndef test_x_negative():\n    pass\n", encoding="utf-8")
+    mp = _manifest(tmp_path, [_surface(
+        conformance_check="src/check_test.py::test_x",
+        negative_control="src/check_test.py::test_x_negative")])
     r = _run(tmp_path, mp)
     assert r.returncode == esa.EXIT_CLEAN, r.stdout + r.stderr
 
@@ -303,7 +337,7 @@ def test_audit_never_exits_zero_while_reporting_a_problem(tmp_path):
     committing that class would be worthless, so this is checked directly rather than assumed."""
     (tmp_path / "src").mkdir()
     (tmp_path / "src" / "thing.py").write_text(PLANTED, encoding="utf-8")
-    for surfaces in ([], [_surface(conformance_check=None)],
+    for surfaces in ([], [_unproven_surface()],
                      [_surface(disposition="disclosed", owner="other")]):
         r = _run(tmp_path, _manifest(tmp_path, surfaces))
         report = json.loads((tmp_path / "out" / "report.json").read_text(encoding="utf-8"))
@@ -323,3 +357,431 @@ def test_receipt_records_the_target_as_resolved(tmp_path):
     assert receipt["resolved_target"] == os.path.realpath(str(tmp_path))
     assert receipt["check"] == "evidence-signal-audit"
     assert receipt["outcome"] in ("PASS", "FAIL", "UNREAD")
+
+
+# ---------------------------------------------------------------------------
+# Feature 109 — the denominator (US3). Every test here has a negative control,
+# because the defects these pin all LOOKED like clean runs.
+# ---------------------------------------------------------------------------
+def test_fr017_two_step_status_capture_is_found(tmp_path):
+    """The idiom the repo's own suite actually uses, which the scan found ZERO of.
+
+    test/run_all_tests.sh never writes `if [ $? -eq 0 ]`. It writes `MAD_EXIT=$?` and then
+    `if [ $MAD_EXIT -eq 0 ]`. Before this, the repo's largest exit-status consumer -- a ~2900-line
+    suite whose entire job is deciding on exit statuses -- contributed 0 hits, and the audit
+    reported that as a clean scan.
+    """
+    (tmp_path / "src").mkdir()
+    (tmp_path / "src" / "s.sh").write_text(
+        'run_thing\nMAD_EXIT=$?\nif [ $MAD_EXIT -eq 0 ]; then echo ok; fi\n', encoding="utf-8")
+    hits, _examined, _ux = esa.scan(str(tmp_path), [{"path": "src"}])
+    symbols = {h["symbol"] for h in hits}
+    assert any("capture of $?" in s for s in symbols), symbols
+
+
+def test_fr017_negative_control_a_bare_report_of_status_is_NOT_a_decision_site(tmp_path):
+    """The negative control for the rule above, and it is the reason the rule is narrow.
+
+    FR-002 scopes a signal to where a consumer DECIDES on it. `echo "rc=$?"` reports and decides
+    nothing. If this ever starts matching, the patterns have drifted back to matching MENTIONS,
+    which produced 876 unactionable hits and an audit nobody ran.
+    """
+    (tmp_path / "src").mkdir()
+    (tmp_path / "src" / "s.sh").write_text(
+        'run_thing\necho "rc=$?"\nprintf "%s\n" "$?"\n', encoding="utf-8")
+    hits, _examined, _ux = esa.scan(str(tmp_path), [{"path": "src"}])
+    assert hits == [], hits
+
+
+def test_fr017_capture_pattern_is_line_anchored_and_multiline_is_applied(tmp_path):
+    """Regression for a defect introduced by this very feature and caught before it shipped.
+
+    The capture pattern is line-anchored (`^VAR=$?$`). PATTERNS were compiled WITHOUT re.MULTILINE,
+    so `^`/`$` matched only at the start and end of the whole file and the pattern silently matched
+    nothing -- a dead regex reporting a clean scan, the same class as feature 108's own unmatchable
+    patterns. Asserting the flag directly means a future refactor cannot quietly drop it.
+    """
+    assert all(rx.flags & esa.re.MULTILINE for _kind, rx, _name in esa.COMPILED)
+
+
+def test_fr016_in_scope_unscannable_source_files_are_censused_not_dropped(tmp_path):
+    """`regions UNREAD 0` used to be true and misleading at the same time.
+
+    An unscannable file was skipped BEFORE the in-scope test, so it never entered `unexamined`
+    and the region was still reported examined. 1651 real source files were invisible this way.
+    """
+    (tmp_path / "src").mkdir()
+    (tmp_path / "src" / "a.py").write_text("x = 1\n", encoding="utf-8")
+    (tmp_path / "src" / "b.gleam").write_text("pub fn main() { Nil }\n", encoding="utf-8")
+    (tmp_path / "src" / "c.glp").write_text("foo(X, X?).\n", encoding="utf-8")
+    _hits, examined, ux = esa.scan(str(tmp_path), [{"path": "src"}])
+    census = esa._suffix_census(ux)
+    assert census.get(".gleam") == 1, census
+    assert census.get(".glp") == 1, census
+    assert "src/a.py" in examined
+
+
+def test_fr016_negative_control_an_all_scannable_region_censuses_zero(tmp_path):
+    """If the census reported a number for a region with nothing unopened, it would be noise."""
+    (tmp_path / "src").mkdir()
+    (tmp_path / "src" / "a.py").write_text("x = 1\n", encoding="utf-8")
+    _hits, _examined, ux = esa.scan(str(tmp_path), [{"path": "src"}])
+    assert esa._suffix_census(ux) == {}
+
+
+def test_fr016_non_source_files_never_pad_the_census(tmp_path):
+    """A .pdf in a scoped region is not an unaudited evidence signal.
+
+    Counting it as one would inflate the gap into a number nobody can act on -- the mirror image
+    of the confident zero, and just as useless.
+    """
+    (tmp_path / "src").mkdir()
+    (tmp_path / "src" / "doc.pdf").write_bytes(b"%PDF-1.4\n")
+    (tmp_path / "src" / "notes.md").write_text("# hi\n", encoding="utf-8")
+    _hits, _examined, ux = esa.scan(str(tmp_path), [{"path": "src"}])
+    assert esa._suffix_census(ux) == {}
+    assert any(u["reason"] == "non-source-file" for u in ux)
+
+
+def test_fr018_every_declared_suffix_carries_a_rationale(tmp_path):
+    """A language present in the repo and absent from the scan is a DECLARED gap, never a silent
+    one. An unscanned suffix with no rationale is indistinguishable from an oversight."""
+    assert esa.SUFFIX_DECLARATIONS
+    for suffix, scanned, rationale in esa.SUFFIX_DECLARATIONS:
+        assert suffix.startswith("."), suffix
+        assert isinstance(rationale, str) and len(rationale) > 20, (suffix, rationale)
+        if not scanned:
+            assert "NOT SCANNED" in rationale, suffix
+    assert set(esa.SCAN_SUFFIXES).isdisjoint(esa.UNSCANNED_SUFFIXES)
+
+
+def test_fr019_owned_without_a_negative_control_is_refused(tmp_path):
+    """`owned` is a claim, not a default. It was the default on 25 of 29 real surfaces."""
+    with pytest.raises(esa.ManifestError, match="negative_control"):
+        esa.load_manifest(_manifest(tmp_path, [_surface(negative_control=None)]))
+
+
+def test_fr019_not_a_signal_without_a_rationale_is_refused(tmp_path):
+    """Otherwise `not-a-signal` is the cheapest possible way to fake coverage."""
+    with pytest.raises(esa.ManifestError, match="rationale"):
+        esa.load_manifest(_manifest(tmp_path, [
+            _surface(disposition="not-a-signal", conformance_check=None,
+                     negative_control=None)]))
+
+
+def test_fr019_negative_control_not_a_signal_WITH_a_rationale_is_accepted(tmp_path):
+    """The rule must leave a legal way to say 'I looked, and it is not a signal'."""
+    doc = esa.load_manifest(_manifest(tmp_path, [
+        _surface(disposition="not-a-signal", conformance_check=None, negative_control=None,
+                 rationale="this is the regex source that defines the pattern, not a call site")]))
+    assert doc["surfaces"][0]["disposition"] == "not-a-signal"
+
+
+def test_fr019_disclosed_without_a_named_owner_is_refused(tmp_path):
+    """A defect disclosed to nobody is a defect kept."""
+    with pytest.raises(esa.ManifestError, match="disclosed_to"):
+        esa.load_manifest(_manifest(tmp_path, [
+            _surface(disposition="disclosed", owner="other-lane")]))
+
+
+def test_fr020_a_surface_with_no_disposition_is_refused(tmp_path):
+    s = _surface()
+    del s["disposition"]
+    with pytest.raises(esa.ManifestError, match="disposition"):
+        esa.load_manifest(_manifest(tmp_path, [s]))
+
+
+def test_fr021_coverage_is_per_disposition_and_never_a_blended_percentage(tmp_path):
+    """Four numbers cannot be gamed by dismissing things without the gaming being visible in
+    WHICH number grew. One percentage can."""
+    m = {"surfaces": [
+        {"disposition": "owned"}, {"disposition": "owned"},
+        {"disposition": "declared-unproven"}, {"disposition": "not-a-signal"},
+        {"disposition": "disclosed"},
+    ]}
+    counts = esa._disposition_counts(m)
+    assert counts["owned"] == 2
+    assert counts["declared-unproven"] == 1
+    assert counts["not-a-signal"] == 1
+    assert counts["disclosed"] == 1
+    assert set(counts) == set(esa.DISPOSITIONS)
+
+
+# ---------------------------------------------------------------------------
+# Feature 109 — the enforcing gate (US2). 108 shipped an audit that NAMES a defect
+# and stops nothing; codexreview finding 8 recorded that the gate logic was a
+# simulator in this harness, not enforcement in the audit. These tests exist so
+# that stays fixed.
+# ---------------------------------------------------------------------------
+def _planted_repo(tmp_path):
+    (tmp_path / "src").mkdir(exist_ok=True)
+    (tmp_path / "src" / "thing.py").write_text(PLANTED, encoding="utf-8")
+
+
+def _nonconforming(**over):
+    """A surface that cites a check nobody wrote — non-conforming under FR-016."""
+    return _surface(conformance_check="src/absent_test.py::test_y",
+                    negative_control="src/absent_test.py::test_y_neg", **over)
+
+
+def test_fr013_the_adoption_and_override_rules_have_exactly_ONE_implementation():
+    """SC-004. FR-006b forbids a second override mechanism; this makes a second one FAIL.
+
+    A copy would not announce itself — it would drift over weeks and the two would disagree
+    about an expiry exactly once, in the run that mattered. Identity is checkable; 'we agreed
+    not to copy it' is not.
+    """
+    gate = esa.load_gate()
+    sys.path.insert(0, os.path.join(REPO, "codeconv", "src"))
+    from codeconv.receipts import override as cc_override, manifest as cc_manifest
+    assert cc_override.applies is gate.applies
+    assert cc_override.record is gate.record
+    assert cc_override.Override is gate.Override
+    assert cc_manifest.GLPNET_AREAS is gate.GLPNET_AREAS
+
+
+def test_fr014_the_audit_runs_with_codeconv_absent_from_sys_path(tmp_path):
+    """The audit must keep working where the codeconv venv is not installed.
+
+    A tool that did not run being read as 'nothing to report' is measured instance 4 — so making
+    the gate depend on a venv would have reintroduced, inside the gate, the exact failure the
+    audit exists to detect. `_run` spawns a subprocess whose sys.path never includes codeconv.
+    """
+    _planted_repo(tmp_path)
+    mp = _manifest(tmp_path, [_surface(id="a-surface", conformance_check="src/c.py::t",
+                                       negative_control="src/c.py::t_neg")])
+    r = _run(tmp_path, mp)
+    assert "ModuleNotFoundError" not in (r.stdout + r.stderr)
+    assert "adoption_gate" not in (r.stderr or "")
+
+
+def test_fr009_an_adopted_area_with_a_nonconforming_signal_REFUSES(tmp_path):
+    _planted_repo(tmp_path)
+    mp = _manifest(tmp_path, [_nonconforming()], area="test-harness", adoption="adopted")
+    r = _run(tmp_path, mp)
+    assert r.returncode == esa.EXIT_REFUSED, r.stdout + r.stderr
+    assert "REFUSED" in r.stdout
+
+
+def test_fr010_negative_control_a_NON_ADOPTED_area_does_not_refuse(tmp_path):
+    """The phasing mechanism. Without this the gate would be all-or-nothing and would be turned
+    off wholesale on its first bad day, which is how a gate stops existing."""
+    _planted_repo(tmp_path)
+    mp = _manifest(tmp_path, [_nonconforming()], area="coop", adoption="non-adopted")
+    r = _run(tmp_path, mp)
+    assert r.returncode != esa.EXIT_REFUSED, r.stdout + r.stderr
+    assert r.returncode != esa.EXIT_CLEAN, "a non-conforming signal is still a finding"
+
+
+def test_fr010_a_region_with_no_area_is_an_ERROR_never_a_pass(tmp_path):
+    """Mirrors 078 FR-019/FR-020 exactly: absence is an error, never non-adoption."""
+    with pytest.raises(esa.ManifestError, match="area"):
+        esa.load_manifest(_manifest(
+            tmp_path, scoped_regions=[{"path": "src", "rationale": "no area declared"}]))
+
+
+def test_fr011_a_valid_in_scope_override_converts_refusal_into_a_recorded_proceed(tmp_path):
+    gate = esa.load_gate()
+    ov = gate.record(area="test-harness", check="evidence-signal-audit", reason="FR-016",
+                     briefing="the cited check is being written under feature 109",
+                     rationale="landing the gate before every check exists",
+                     acknowledged=True, expiry="2099-01-01T00:00:00+00:00")
+    verdicts = [{"id": "a-surface", "classification": "non-conforming", "failed_frs": ["FR-016"]}]
+    _adoption(tmp_path, "adopted")
+    m = {"scoped_regions": [{"path": "src", "area": "test-harness"}],
+         "surfaces": [{"id": "a-surface", "path": "src/thing.py"}]}
+    refusals, errors = esa.resolve_refusals(m, verdicts, str(tmp_path), overrides=[ov])
+    assert refusals == [] and errors == []
+    # FR-015: it is a RECORDED proceed, permanently visible — never a pass.
+    assert verdicts[0]["override"]["scope"]["area"] == "test-harness"
+    assert verdicts[0]["classification"] == "non-conforming"
+
+
+def test_fr012_an_EXPIRED_override_resumes_refusing(tmp_path):
+    """An override is RECORDED with a future expiry and then reaches its expiry while in force.
+
+    It cannot be built by recording a past date any more: 109's codexreview added the missing half
+    of "rejected at recording, not at reliance" -- an unparseable or already-past expiry is now
+    refused by `record()`, because an engineer being told an override was recorded and finding at
+    the next refusal that it never applied is validation at reliance wearing a different hat.
+    So the fixture ages the override the way real time does, by constructing the SAME dataclass
+    with a past expiry, which is the state the store holds after the clock passes it."""
+    gate = esa.load_gate()
+    # Recorded legitimately, in the future -- the act an engineer actually performs.
+    live = gate.record(area="test-harness", check="evidence-signal-audit", reason="FR-016",
+                       briefing="b", rationale="r", acknowledged=True,
+                       expiry="2999-01-01T00:00:00+00:00")
+    assert gate.applies(live, "test-harness", "evidence-signal-audit", "FR-016")
+    # ...and the same override once its expiry has passed.
+    ov = gate.Override(briefing=live.briefing, acknowledged=live.acknowledged,
+                       rationale=live.rationale, scope=live.scope,
+                       expiry="2000-01-01T00:00:00+00:00")
+    verdicts = [{"id": "a-surface", "classification": "non-conforming", "failed_frs": ["FR-016"]}]
+    _adoption(tmp_path, "adopted")
+    m = {"scoped_regions": [{"path": "src", "area": "test-harness"}],
+         "surfaces": [{"id": "a-surface", "path": "src/thing.py"}]}
+    refusals, errors = esa.resolve_refusals(m, verdicts, str(tmp_path), overrides=[ov])
+    assert len(refusals) == 1 and errors == []
+
+
+def test_fr012_an_override_with_no_expiry_is_rejected_AT_RECORD_TIME(tmp_path):
+    """Not at the point of reliance. An indefinite override that is only rejected when someone
+    tries to use it has already been written down and believed."""
+    gate = esa.load_gate()
+    with pytest.raises(gate.OverrideInvalid, match="expiry"):
+        gate.record(area="test-harness", check="evidence-signal-audit", reason="FR-016",
+                    briefing="b", rationale="r", acknowledged=True, expiry="")
+
+
+def test_fr011_an_override_recorded_for_a_DIFFERENT_reason_does_not_apply(tmp_path):
+    """One override, recorded for one refusal, must not authorise every other refusal the same
+    check can raise until its expiry."""
+    gate = esa.load_gate()
+    ov = gate.record(area="test-harness", check="evidence-signal-audit", reason="FR-004",
+                     briefing="b", rationale="r", acknowledged=True,
+                     expiry="2099-01-01T00:00:00+00:00")
+    verdicts = [{"id": "a-surface", "classification": "non-conforming", "failed_frs": ["FR-016"]}]
+    _adoption(tmp_path, "adopted")
+    m = {"scoped_regions": [{"path": "src", "area": "test-harness"}],
+         "surfaces": [{"id": "a-surface", "path": "src/thing.py"}]}
+    refusals, _errors = esa.resolve_refusals(m, verdicts, str(tmp_path), overrides=[ov])
+    assert len(refusals) == 1
+
+
+# ===========================================================================
+# CODEXREVIEW REMEDIATION (2026-09-06) -- THE OVERRIDE PATH, END TO END
+#
+# Both adversarial reviewers, independently, found the same thing: `resolve_refusals` was called
+# with `overrides=None`, there was no on-disk store and no loader, so FR-011/FR-012/FR-015 and
+# SC-003 were exercised ONLY by tests that constructed an `Override` in-process and passed it in.
+# That is codexreview finding 8's own wording -- "simulators in the test harness, not enforcement
+# in the audit" -- reproduced by the user story written to close it.
+#
+# So these tests drive the override through `load_overrides`, the path the audit actually uses.
+# ===========================================================================
+def _write_overrides(tmp_path, entries):
+    d = tmp_path / ".specify" / "receipts"
+    d.mkdir(parents=True, exist_ok=True)
+    p = d / "overrides.json"
+    p.write_text(json.dumps({"overrides": entries}), encoding="utf-8")
+    return str(p)
+
+
+def _live_entry(**over):
+    e = {
+        "briefing": "the signal is non-conforming and the fix needs its own spec pass",
+        "acknowledged": True,
+        "rationale": "shipping the fix would change feature 019's promotion contract",
+        "expiry": "2999-01-01T00:00:00+00:00",
+        "scope": {"area": "test-harness", "check": "evidence-signal-audit", "reason": "FR-016"},
+    }
+    e.update(over)
+    return e
+
+
+def test_a_recorded_override_ON_DISK_converts_a_refusal_into_a_proceed(tmp_path):
+    """The path that did not exist. A refusal is cleared by an override the AUDIT read from the
+    store -- not by one a test handed it."""
+    path = _write_overrides(tmp_path, [_live_entry()])
+    overrides, errors = esa.load_overrides(path)
+    assert errors == [] and len(overrides) == 1
+
+    verdicts = [{"id": "a-surface", "classification": "non-conforming", "failed_frs": ["FR-016"]}]
+    _adoption(tmp_path, "adopted")
+    m = {"scoped_regions": [{"path": "src", "area": "test-harness"}],
+         "surfaces": [{"id": "a-surface", "path": "src/thing.py"}]}
+    refusals, errs = esa.resolve_refusals(m, verdicts, str(tmp_path), overrides)
+    assert refusals == [] and errs == []
+    # FR-015: a recorded, expiring, scoped PROCEED -- never a pass.
+    assert verdicts[0]["override"]["scope"]["reason"] == "FR-016"
+    assert verdicts[0]["classification"] == "non-conforming"
+
+
+def test_control_with_NO_override_on_disk_the_same_surface_REFUSES(tmp_path):
+    """POSITIVE CONTROL. Without it the test above is satisfied by a resolver that never refuses."""
+    verdicts = [{"id": "a-surface", "classification": "non-conforming", "failed_frs": ["FR-016"]}]
+    _adoption(tmp_path, "adopted")
+    m = {"scoped_regions": [{"path": "src", "area": "test-harness"}],
+         "surfaces": [{"id": "a-surface", "path": "src/thing.py"}]}
+    overrides, errors = esa.load_overrides(str(tmp_path / "nothing-here.json"))
+    assert (overrides, errors) == ([], []), "a missing store is the healthy state, not an error"
+    refusals, _ = esa.resolve_refusals(m, verdicts, str(tmp_path), overrides)
+    assert len(refusals) == 1
+
+
+def test_an_override_on_disk_with_NO_expiry_is_an_ERROR_at_read_time(tmp_path):
+    """Rejected where it is READ, with the reason named -- never silently skipped, because a
+    silently skipped override is indistinguishable from one that was never recorded."""
+    e = _live_entry()
+    del e["expiry"]
+    overrides, errors = esa.load_overrides(_write_overrides(tmp_path, [e]))
+    assert overrides == []
+    assert len(errors) == 1 and "expiry" in errors[0]
+
+
+def test_an_override_on_disk_with_an_UNPARSEABLE_expiry_is_an_ERROR(tmp_path):
+    overrides, errors = esa.load_overrides(_write_overrides(tmp_path, [_live_entry(expiry="soon")]))
+    assert overrides == []
+    assert len(errors) == 1 and "ISO-8601" in errors[0]
+
+
+def test_an_override_on_disk_that_has_already_EXPIRED_is_an_ERROR(tmp_path):
+    overrides, errors = esa.load_overrides(
+        _write_overrides(tmp_path, [_live_entry(expiry="2000-01-01T00:00:00+00:00")]))
+    assert overrides == []
+    assert len(errors) == 1 and "in the past" in errors[0]
+
+
+def test_an_override_on_disk_without_acknowledgement_is_an_ERROR(tmp_path):
+    overrides, errors = esa.load_overrides(
+        _write_overrides(tmp_path, [_live_entry(acknowledged=False)]))
+    assert overrides == [] and len(errors) == 1 and "acknowledgement" in errors[0]
+
+
+def test_an_override_out_of_SCOPE_does_not_clear_a_different_refusal(tmp_path):
+    """An override recorded for one reason must not authorise every other refusal the same check
+    can raise until its expiry."""
+    path = _write_overrides(tmp_path, [_live_entry(
+        scope={"area": "test-harness", "check": "evidence-signal-audit", "reason": "FR-004"})])
+    overrides, errors = esa.load_overrides(path)
+    assert errors == []
+    verdicts = [{"id": "a-surface", "classification": "non-conforming", "failed_frs": ["FR-016"]}]
+    _adoption(tmp_path, "adopted")
+    m = {"scoped_regions": [{"path": "src", "area": "test-harness"}],
+         "surfaces": [{"id": "a-surface", "path": "src/thing.py"}]}
+    refusals, _ = esa.resolve_refusals(m, verdicts, str(tmp_path), overrides)
+    assert len(refusals) == 1
+
+
+def test_the_receipt_records_the_refusal_and_the_override_permanently(tmp_path):
+    """FR-015 says an override stays PERMANENTLY visible in the receipt. It was written into
+    report.json -- a gitignored run artefact -- and the receipt said nothing."""
+    p = tmp_path / "receipt.json"
+    esa.write_receipt(str(p), str(tmp_path), "deadbeef", 3, [], "REFUSED",
+                      refusals=[{"id": "a-surface", "area": "test-harness"}],
+                      overrides=[{"surface": "b-surface", "override": {"expiry": "2999-01-01"}}])
+    doc = json.loads(p.read_text(encoding="utf-8"))
+    assert doc["refusals"][0]["id"] == "a-surface"
+    assert doc["overrides"][0]["surface"] == "b-surface"
+
+
+def test_the_report_states_unopened_counts_PER_REGION(tmp_path):
+    """FR-016/SC-005 require the count 'for every region reported as examined'. A single global
+    total cannot tell a reader WHICH examined region carries which declared gap."""
+    regions = [{"path": "alpha"}, {"path": "beta"}]
+    unexamined = [
+        {"path": "alpha/a.gleam", "reason": "unscannable-suffix:.gleam"},
+        {"path": "alpha/b.gleam", "reason": "unscannable-suffix:.gleam"},
+        {"path": "beta/c.glp", "reason": "unscannable-suffix:.glp"},
+        {"path": "gamma/d.glp", "reason": "out-of-declared-scope"},
+    ]
+    per = esa._suffix_census_by_region(unexamined, regions)
+    assert per["alpha"] == {".gleam": 2}
+    assert per["beta"] == {".glp": 1}
+
+
+def test_control_a_region_with_nothing_unopened_censuses_empty(tmp_path):
+    """POSITIVE CONTROL: the per-region census must be able to say zero, or a non-zero count
+    proves nothing."""
+    per = esa._suffix_census_by_region([], [{"path": "alpha"}])
+    assert per == {"alpha": {}}
