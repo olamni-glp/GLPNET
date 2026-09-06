@@ -223,9 +223,27 @@ the fix and confirm both are missed. The negative control is the test.
 - **FR-018**: The scanned-suffix set MUST be **declared** with a rationale per included and per excluded
   suffix. A language present in the repository and absent from the set is a declared, visible gap — never
   an implicit one.
-- **FR-019**: Every manifest surface MUST carry a `disposition` of exactly one of `owned`,
+- **FR-019** *(amended 2026-09-06 by engineer ruling; see the amendment note below)*: Every
+  manifest surface MUST carry a `disposition` of exactly one of `owned`, **`declared-unproven`**,
   `not-a-signal`, `disclosed`. `owned` MUST carry a `conformance_check` and a `negative_control`;
-  `not-a-signal` MUST carry a rationale; `disclosed` MUST carry a named owner.
+  `declared-unproven` MUST carry neither and is the honest name for *"this IS a signal, this lane
+  DOES own it, and it is NOT yet proven"*; `not-a-signal` MUST carry a rationale; `disclosed` MUST
+  carry a named owner.
+
+  🔴 **WHY A FOURTH TIER, AND WHAT IT COSTS.** When the three-tier rule was first ENFORCED it found
+  **25 of 29 surfaces claiming `owned` while carrying no conformance check and no negative
+  control** — `owned` had silently become the default value rather than a claim. There were exactly
+  two ways out: fabricate 25 conformance checks, which is the placeholder coverage ruling
+  `Q-olg17-03` exists to prevent; or give the honest state a name. The engineer ruled the second.
+
+  The tier is **not free and must never read as one**: it waives the evidence requirement, so it is
+  published in the per-disposition counts (FR-021) where a growing count is visible in the number,
+  and it is the tier a reviewer should challenge first. A surface may be promoted from
+  `declared-unproven` to `owned` only by adding a check **and** its negative control together.
+
+  A fifth value, `not-reproduced-on-this-build`, is also accepted and is narrower still: it records
+  a peer's defect report that this host could not reproduce on its own build. It is **not** a claim
+  that the defect is absent, and it must never be read as one.
 - **FR-020**: A surface with no `disposition` MUST be refused at manifest load.
 - **FR-021**: Coverage MUST be reported as per-disposition counts. A single blended percentage MUST NOT
   be published, because it makes `not-a-signal` and `owned` indistinguishable to a reader.
@@ -309,3 +327,34 @@ the fix and confirm both are missed. The negative control is the test.
 - Feature **101** (goal-term acceptance) — supplies the proven differential method and its reference
   implementation.
 - The Debug C# REPL build — an environment precondition, checked at run time.
+
+---
+
+## Disclosed at ship (engineer ruling, 2026-09-06): TWO commitments NOT delivered
+
+Feature 109 ships with all three user stories implemented, all 21 `/bk-codexreview` findings fixed,
+and the suite at 604/604 executed with 0 failures. **Two commitments in this document are
+measurably NOT delivered, and are disclosed here rather than being quietly satisfied:**
+
+1. **SC-003 is not met by the shipped configuration.** SC-003 asks that the audit refuse *"at least
+   one real, currently-present non-conforming signal in an adopted area"*. On a healthy run the
+   refusal count is **0**: the only always-non-conforming surface (`ynet-client-alert-acknowledged`,
+   owned by `@ariellas-qhstate`) sits in area `coop`, which the adoption manifest declares
+   **non-adopted** because the glpnet COOP surface emits no receipt yet. The refusal MECHANISM is
+   implemented and proven — FR-009/FR-010 are enforced with subprocess-level tests and a
+   non-adopted negative control, and the override path is now wired end to end through
+   `.specify/receipts/overrides.json`. What is absent is a currently-present refusal, and
+   manufacturing one by flipping an area to `adopted` would be asserting an adoption this lane has
+   not performed — the exact defect shape this feature exists to remove.
+
+2. **The audit widening did not happen.** This document's Assumptions name the targets —
+   `codeconv/tests` (387 sites), `codeconv/src` (11), and `csharp` beyond the two already-scoped
+   projects (79). `scoped_regions` is still byte-identical to `develop`: **five regions, unchanged.**
+   FR-016..FR-021's mechanism landed and is tested; the denominator did not move. Adding ~477 sites
+   in one pass would require ~477 dispositions authored at once, and the fast way to author 477
+   dispositions is to default them — which is precisely how 25 surfaces came to claim `owned`
+   falsely in the first place.
+
+**Both are carried forward as their own roadmap features rather than as notes.** The standing peer
+ruling (`shiras-tefl`, 2026-09-04T23:55Z) is that a disclosed gap is not cheating and concealment
+is; this section is that disclosure, in the spec rather than only in a broadcast.

@@ -93,8 +93,8 @@ Legend — `[ ]` open · `[x]` done · `[!]` blocked, with the blocker named.
 - [x] **T070** Rebuild the Debug C# REPL (`dotnet build out/csharp/glp_repl/glp_repl.csproj`) — the
       freshness gate reads Debug, and a stale binary silently suppresses Sections I, T, U and V-18..23.
 - [x] **T071** Full suite run; compare to the 595/595 baseline; the 2 named not-run groups stay named.
-- [ ] **T072** `/bk-codexreview`; fix every finding; **no deferrals**.
-- [ ] **T073** Update `docs/evidence-signal-invariant.md` and `docs/known-issues.md` with the measured
+- [x] **T072** `/bk-codexreview`; fix every finding; **no deferrals**.
+- [x] **T073** Update `docs/evidence-signal-invariant.md` and `docs/known-issues.md` with the measured
       blind-spot findings.
 - [ ] **T074** `/bk-ship`, `/bk-close`, marathon discharge.
 
