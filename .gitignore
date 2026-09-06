@@ -217,3 +217,7 @@ test/ring/reports/
 
 # M6 YNET receiver client runtime state (WAL, dedup journal, /btw alert drops) - never committed.
 .specify/ynet/
+
+# feature 108 run artefacts - the manifest is the checked-in truth, the report is a run output
+.specify/evidence-signals/report.json
+.specify/evidence-signals/receipt-*.json

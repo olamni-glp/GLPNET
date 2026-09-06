@@ -168,6 +168,17 @@ Six ambiguities were found by reading the spec against its own invariant and wer
 
 - **FR-001**: No check may report success, clean, or zero-findings without emitting proof it executed against its intended target.
 
+> **Sibling feature cross-reference (documentation only — NO requirement of 078 changes).**
+> FR-001 governs signals whose declared job is to state a **verdict**. Signals that state no
+> verdict but that callers nonetheless read as evidence — a wait returning, an idle predicate, a
+> liveness flag, a process exit status, an emptiness — are governed by **feature 108**
+> (`specs/108-evidence-signal-ordering/`), whose invariant is *"a signal a caller treats as
+> evidence must not be observable before the work it reports, and must survive the next restart."*
+> The two partition the space and neither widens into the other; where a signal both states a
+> verdict and is observable early, both bind and neither is weakened. Engineer ruling
+> `Q-olg15-09` (2026-09-05) directed one sibling feature and explicitly did **not** re-open 078.
+> 108 reuses 078's adoption manifest and informed-consent override rather than defining its own.
+
 **Receipts**
 
 - **FR-002**: Every check MUST emit a receipt with its verdict, recording at minimum: the resolved target identity, the count of items examined, the count skipped with reasons, the outcome classification, and when it ran.

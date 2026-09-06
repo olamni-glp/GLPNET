@@ -1,0 +1,178 @@
+[
+{
+  "qid": "Q-glpnetshiras-20260906T1245Z-01",
+  "header": "R-C merge",
+  "block": "The proven M6 send fix is merged nowhere 19 hours after ruling R-C assigned the merge to @shiras-qhstate, so every lane on the fleet remains able to receive and unable to send.",
+  "origin": "measurement",
+  "severity": "critical",
+  "background": [
+    "MEASURED 2026-09-06T12:20Z: `git branch --contains fdb823c9` in the qhstate repo returns `095-m6-send-spool` ALONE — the fix is on no other branch.",
+    "qhstate `develop` is at `a85e191d`, shipped as era 305 today at 10:40Z WITHOUT the merge; the lane has been active and has not declined out loud.",
+    "The fix is not speculative: 93/93 green (85 baseline re-measured first, then 8 new) and live-proven with the receiver ACTIVE — `sent (stamped by the running receiver, seq=12)`, exit 0.",
+    "It is already in qhstate's own object store on this machine, so the act is one `git merge` with no push, no fetch and no network.",
+    "Cost measured here today: to send four broadcasts this lane had to stop its mandated receiver, send, and restart it — the M6 daemon is down during every publish, which is the opposite of what M6 requires.",
+    "Ruling R-C explicitly REFUSED letting this lane deploy a patched build for itself, on the grounds that a binary nobody else has is the divergence R-B ended; it did not address who may perform the merge itself."
+  ],
+  "impact_if_unanswered": "The fleet stays listening-but-mute indefinitely; every lane keeps stopping its M6 receiver to publish, which both violates M6 clause 1 during the window and loses any frame that arrives while the daemon is down.",
+  "options": [
+    {
+      "key": "reassign-to-glpnet",
+      "label": "Reassign the merge to shiras-glpnet, gated on a clean qhstate tree",
+      "consequence": "This lane runs the single merge in qhstate only if `git status` there is clean, then rebuilds and broadcasts the diff so qhstate can revert in one command. R-C's actual concern — a private patched binary — is satisfied rather than breached, because the fix lands on qhstate's develop where every lane gets it. Risk: if qhstate has uncommitted WIP we must abort, and a merge in another lane's repo is the disruption CLAUDE.md tells us to stop and report on.",
+      "size": "nano",
+      "reversibility": "reversible"
+    },
+    {
+      "key": "hold-and-escalate",
+      "label": "Comply with R-C as written and keep escalating",
+      "consequence": "Ownership stays exactly where the ruling put it and no lane touches another's repo. The fleet stays mute for as long as qhstate stays silent, and today's 19 hours becomes tomorrow's 40 with no mechanism that ends it.",
+      "size": "nano",
+      "reversibility": "reversible"
+    },
+    {
+      "key": "engineer-merges",
+      "label": "Engineer runs the one command",
+      "consequence": "Unambiguous authority and instant unblock, at the cost of your time on a one-line merge and of establishing that agent lanes escalate to you rather than to each other.",
+      "size": "nano",
+      "reversibility": "reversible"
+    },
+    {
+      "key": "standing-rule",
+      "label": "Adopt a standing rule: any lane may merge a proven fix into an owner's repo after a stated silence",
+      "consequence": "Ends this whole class of stall permanently and is the only option that fixes the next occurrence as well as this one. It forecloses the current strict single-owner-merges convention, so a lane can land code in a repo whose owner never answered — that is a real loosening of ownership and needs the silence window and the proof bar stated precisely.",
+      "size": "micro",
+      "reversibility": "one-way"
+    }
+  ],
+  "recommendation": {
+    "option": "reassign-to-glpnet",
+    "because": "It unblocks the fleet today at nano cost while honouring what R-C was actually protecting — the merge puts the fix on qhstate's develop where everyone gets it, which is the opposite of the private binary R-C refused. Hold-and-escalate is the runner-up on protocol grounds but has already failed for 19 hours and contains nothing that makes hour 40 different. I recommend pairing this with `standing-rule` as a follow-up so the next silent owner does not cost another day."
+  }
+},
+{
+  "qid": "Q-glpnetshiras-20260906T1245Z-02",
+  "header": "Rank vs P0",
+  "block": "Three features the directives name as today's automatic-failure must-haves rank 9, 61 and 70 on the board after honest scoring, so `buildkit-roadmap next` and the directive now point at different work.",
+  "origin": "contradiction",
+  "severity": "high",
+  "background": [
+    "MEASURED: `pbft-leader-election`, `qhsm-virtual-terminals` and `iroh-quic-transport` were `promoted` with NO SCORE, and a WSJF-descending board sorts an unscored feature to the BOTTOM — they were invisible to every ranking the fleet uses.",
+    "I scored all five unscored features today; GLPNET now has 0 unscored non-closed features, and `pbft-leader-election` moved from the bottom to rank 9.",
+    "But the other two stayed low — `qhsm-virtual-terminals` 4.25 at rank 61 and `iroh-quic-transport` 3.88 at rank 70 — because their honest `job_size` and `effort` are genuinely large, not because they matter less.",
+    "I deliberately did NOT inflate an input to buy the rank I expected; every input is published in the coop self-correction so any lane can refute it.",
+    "Ruling `Q-YNGRAW7-03` today makes this sharper: it binds every lane to score delivered VALUE rather than era count, but explicitly left the rubric unstated, and warns that divergent self-scoring is the cheating the directive penalises."
+  ],
+  "impact_if_unanswered": "Each lane resolves the clash privately — some follow the board, some follow the directive — and the fleet loses the single ordering that lets lanes avoid collisions, which is the exact failure that minted feature 012 twice and produced five rival elections in one hour.",
+  "options": [
+    {
+      "key": "explicit-override",
+      "label": "Add an explicit, auditable priority override field the engineer sets",
+      "consequence": "Directive-named must-haves carry a visible `engineer_priority` that sorts above computed WSJF, and the computed score stays untouched and honest underneath. Every lane can see that a rank was decided rather than derived. Costs a small schema and renderer change across the fleet's roadmap tooling.",
+      "size": "micro",
+      "reversibility": "reversible"
+    },
+    {
+      "key": "board-governs",
+      "label": "The board's computed rank governs; directives allocate eras separately",
+      "consequence": "One ordering, no new machinery, and scores stay pure. A feature the engineer calls an automatic-failure criterion can sit at rank 70 and never be selected, which is precisely today's situation and is what the directive was written to prevent.",
+      "size": "nano",
+      "reversibility": "reversible"
+    },
+    {
+      "key": "rescore-criticality",
+      "label": "Re-score directive-named features with time_criticality at maximum",
+      "consequence": "Needs no new field and lifts the three features immediately. It corrupts the one number other lanes use to refute each other, and it forecloses honest comparison across lanes forever because nobody can afterwards tell a measured criticality from a directive-driven one.",
+      "size": "nano",
+      "reversibility": "one-way"
+    }
+  ],
+  "recommendation": {
+    "option": "explicit-override",
+    "because": "Priority here is a decision, not an arithmetic result, and the honest way to express a decision is to record it as one rather than to bend the arithmetic until it agrees. It beats `board-governs` because it actually resolves the clash instead of ruling one side out, and it beats `rescore-criticality` decisively — that option buys the right rank today by destroying the refutability that makes the fleet's scores worth anything."
+  }
+},
+{
+  "qid": "Q-glpnetshiras-20260906T1245Z-03",
+  "header": "M6 c3/c4",
+  "block": "M6 clauses 3 and 4 — a kernel-managed QHSM/QMSM process and a genuine client-pushed async alert into the agent — are unbuilt on every host and claimed by no lane.",
+  "origin": "missing-requirement",
+  "severity": "critical",
+  "background": [
+    "MEASURED here: clause 3 is NOT MET — the client runs as a `systemd --user` unit, which dies with the session and is restarted by whoever remembers, not as a kernel-managed QHSM/QMSM object.",
+    "MEASURED here: clause 4 is only PARTIAL — alerts reach the agent through a `UserPromptSubmit` hook, so they fire only when the agent NEXT SPEAKS.",
+    "That makes clause 4 agent-POLLED, not client-PUSHED: it satisfies the letter of 'the agent is alerted' and none of the intent, and a lane doing six hours of deep work is alerted six hours late by exactly its own silence.",
+    "This lane's recorded scope is the ynet transport and the GLP REPL split; it is ruled out of the kernel, and the canonical client belongs to qhstate — so the two halves fall between three owners and have landed on none.",
+    "The fleet has already paid for this shape once: `Q-ARI0905-01` spent 32 hours on who may add a line to a roster while the service that should have made the line unnecessary went unbuilt."
+  ],
+  "impact_if_unanswered": "Every lane keeps reporting M6 on the strength of clause 1 alone, the fleet believes it has a realtime mailbox fabric while actually running a session-scoped daemon polled by an agent's own turn-taking, and the gap surfaces at the worst moment — when a lane goes quiet and stops being reachable.",
+  "options": [
+    {
+      "key": "allocate-by-owner",
+      "label": "Allocate clause 3 to a kernel-owning lane and clause 4 to the canonical client owner",
+      "consequence": "Each half goes to the lane that already owns the code it must live in, with the transport seam contributed from here. Needs you to name the two lanes explicitly today, and the work does not start until you do.",
+      "size": "midi",
+      "reversibility": "reversible"
+    },
+    {
+      "key": "glpnet-takes-both",
+      "label": "This lane takes both halves",
+      "consequence": "Single owner, no coordination cost, and it starts immediately. It puts kernel-process work in a lane that recorded rulings say must not write the kernel, and it repeats the duplicate-implementation defect that minted feature 012 twice.",
+      "size": "maxi",
+      "reversibility": "reversible"
+    },
+    {
+      "key": "declare-m6-at-c1-c2",
+      "label": "Redefine M6 as clauses 1 and 2 only, and file 3 and 4 as a separate later feature",
+      "consequence": "Makes today's M6 reporting honest at once and stops the fleet claiming a capability it lacks. It forecloses the kernel-managed and client-pushed design as part of the M6 must-have, so the fabric that the mailbox correction says must scale to 10^8 mailboxes stops being today's requirement and becomes an aspiration on a backlog.",
+      "size": "nano",
+      "reversibility": "one-way"
+    }
+  ],
+  "recommendation": {
+    "option": "allocate-by-owner",
+    "because": "Both halves are cross-cutting must-haves whose only real blocker is that nobody is named, and naming owners costs you two lines today. It beats `glpnet-takes-both` because that option's speed comes from ignoring the ownership rulings that exist precisely to stop the fleet building one capability twice, and it beats redefining M6 because clause 4 is where the fabric's realtime claim actually lives — dropping it would leave the fleet with a mailbox that is only as timely as its slowest agent."
+  }
+},
+{
+  "qid": "Q-glpnetshiras-20260906T1245Z-04",
+  "header": "48h scope",
+  "block": "The 24/48-hour directive requires six service prototypes — YStore, YQuery, DuckLake, YNterchange, YMap and YGuard — without naming this lane, whose recorded scope is the ynet transport and the GLP REPL split.",
+  "origin": "missing-requirement",
+  "severity": "high",
+  "background": [
+    "Recorded rulings already place these elsewhere: YStore's base is @ospark's minio work, and the PostgreSQL triangle is ruled OLAMNIT plus ARIELLAS plus SHIRAS with GAVRI cache-only.",
+    "This lane's own memory records the fleet's most expensive recurring defect as building an owned thing twice, and that allocations hide in the background fields of unrelated questions — so starting without an explicit allocation is how collisions happen.",
+    "All six directives require a stable YNET kernel-mailbox interface as their front, and that interface is this lane's actual scope, so there is real work here either way.",
+    "But that front depends on M6 clauses 3 and 4, which question 03 above shows are unbuilt and unowned — so the six prototypes are being specified on top of a seam that does not yet exist.",
+    "@shiras.yngapp has already claimed the YNET kernel-mailbox FRONT for the YQuery store seam, which overlaps the seam work this lane would otherwise do."
+  ],
+  "impact_if_unanswered": "This lane either sits out a programme the directive calls mandatory, or starts a seventh rival implementation of something another lane already owns — and on today's evidence the second is more likely than the first.",
+  "options": [
+    {
+      "key": "seam-only",
+      "label": "Stay on the ynet transport and REPL split, and contribute the mailbox seam the six prototypes need",
+      "consequence": "Honours every recorded allocation, puts this lane on the dependency every one of the six is blocked behind, and needs no new claim. This lane ships no service prototype of its own, so if you are counting prototypes per lane this one shows zero.",
+      "size": "midi",
+      "reversibility": "reversible"
+    },
+    {
+      "key": "take-ynterchange",
+      "label": "Also take YNterchange, the streaming and queuing service",
+      "consequence": "YNterchange is explicitly specified as the mailbox mechanism's syntax and semantics over shared memory instead of copying, which is the closest of the six to this lane's transport work and reuses it directly. It is a large build on top of a seam that does not yet exist, and it needs coordination with @shiras.yngapp's claimed mailbox front.",
+      "size": "maxi",
+      "reversibility": "reversible"
+    },
+    {
+      "key": "await-allocation",
+      "label": "Publish the seam contract and build nothing until the fleet allocates the six explicitly",
+      "consequence": "Zero collision risk and it forces the allocation the programme is missing. It spends hours of a 24-hour window waiting, and the directive treats non-delivery as a scored failure.",
+      "size": "micro",
+      "reversibility": "reversible"
+    }
+  ],
+  "recommendation": {
+    "option": "seam-only",
+    "because": "All six prototypes need the YNET kernel-mailbox front before any of them can be more than a wrapper, and that front is the one piece of this programme that is unambiguously this lane's to build — so it is both the highest-leverage work available here and the only option with no ownership conflict. `take-ynterchange` is the runner-up and I would take it as a second if you want a prototype from this lane, but it should follow the seam rather than race it, and it needs a boundary agreed with @shiras.yngapp first."
+  }
+}
+]
