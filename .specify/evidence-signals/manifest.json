@@ -86,7 +86,8 @@
       "contention": null,
       "owner": "olamnit-glpnet",
       "disposition": "owned",
-      "notes": "FR-017: this audit is subject to its own invariant. It must never exit 0 while reporting a problem -- that is measured instance 4 (buildkit-scheduler reject exiting 0 while refusing)."
+      "notes": "FR-017: this audit is subject to its own invariant. It must never exit 0 while reporting a problem -- that is measured instance 4 (buildkit-scheduler reject exiting 0 while refusing).",
+      "sites": 4
     },
     {
       "id": "evidence-signal-audit-scan-completeness",
@@ -106,7 +107,8 @@
       "contention": null,
       "owner": "olamnit-glpnet",
       "disposition": "owned",
-      "notes": "MEASURED DURING IMPLEMENTATION, 2026-09-06: a shell round-trip wrote literal backspace bytes (0x08) where word-boundary escapes were intended, so every pattern required a character that never occurs. The audit ran, wrote a report, emitted a receipt and exited 3 -- and found 1 hit where ground truth had ~400. Exit code and report presence were both fine. Only asserting on content only the completed work could produce caught it. That is FR-010, demonstrated on this feature's own tool within ten minutes of writing it, and it is why test_scan_finds_a_known_planted_decision_site exists."
+      "notes": "MEASURED DURING IMPLEMENTATION, 2026-09-06: a shell round-trip wrote literal backspace bytes (0x08) where word-boundary escapes were intended, so every pattern required a character that never occurs. The audit ran, wrote a report, emitted a receipt and exited 3 -- and found 1 hit where ground truth had ~400. Exit code and report presence were both fine. Only asserting on content only the completed work could produce caught it. That is FR-010, demonstrated on this feature's own tool within ten minutes of writing it, and it is why test_scan_finds_a_known_planted_decision_site exists.",
+      "sites": 2
     },
     {
       "id": "hooknotifieridleracetests-emptiness",
@@ -144,7 +146,8 @@
       "contention": null,
       "owner": "olamnit-glpnet",
       "disposition": "owned",
-      "notes": "Declared and honestly UNPROVEN (FR-015): the surface exists and is read as evidence, and this lane has not yet demonstrated the property. Absence of a check is never a pass."
+      "notes": "Declared and honestly UNPROVEN (FR-015): the surface exists and is read as evidence, and this lane has not yet demonstrated the property. Absence of a check is never a pass.",
+      "sites": 3
     },
     {
       "id": "receiverandspooltests-idle-predicate",
@@ -163,7 +166,8 @@
       "contention": null,
       "owner": "olamnit-glpnet",
       "disposition": "owned",
-      "notes": "A CONSUMER, in scope under FR-006. These are the reads that threw NullReferenceException when instance 1's window opened, so they are the highest-value consumers in the lane."
+      "notes": "A CONSUMER, in scope under FR-006. These are the reads that threw NullReferenceException when instance 1's window opened, so they are the highest-value consumers in the lane.",
+      "sites": 5
     },
     {
       "id": "receiverandspooltests-wait",
@@ -182,7 +186,8 @@
       "contention": null,
       "owner": "olamnit-glpnet",
       "disposition": "owned",
-      "notes": "Declared and honestly UNPROVEN (FR-015): the surface exists and is read as evidence, and this lane has not yet demonstrated the property. Absence of a check is never a pass."
+      "notes": "Declared and honestly UNPROVEN (FR-015): the surface exists and is read as evidence, and this lane has not yet demonstrated the property. Absence of a check is never a pass.",
+      "sites": 4
     },
     {
       "id": "agenthook-exit-status",
@@ -277,7 +282,8 @@
       "contention": null,
       "owner": "olamnit-glpnet",
       "disposition": "owned",
-      "notes": "WaitForNotifications delegates straight to HookNotifier.WaitForIdle, so it inherits whatever that surface's ordering guarantee is. WaitForDurable is a separate deadline loop and is NOT covered by instance 1's fix. Unproven until each is driven under contention with a control."
+      "notes": "WaitForNotifications delegates straight to HookNotifier.WaitForIdle, so it inherits whatever that surface's ordering guarantee is. WaitForDurable is a separate deadline loop and is NOT covered by instance 1's fix. Unproven until each is driven under contention with a control.",
+      "sites": 3
     },
     {
       "id": "program-emptiness",
@@ -315,7 +321,8 @@
       "contention": null,
       "owner": "olamnit-glpnet",
       "disposition": "owned",
-      "notes": "Declared and honestly UNPROVEN (FR-015): the surface exists and is read as evidence, and this lane has not yet demonstrated the property. Absence of a check is never a pass."
+      "notes": "Declared and honestly UNPROVEN (FR-015): the surface exists and is read as evidence, and this lane has not yet demonstrated the property. Absence of a check is never a pass.",
+      "sites": 3
     },
     {
       "id": "ynetlistenerservicetests-liveness-flag",
@@ -334,7 +341,8 @@
       "contention": null,
       "owner": "olamnit-glpnet",
       "disposition": "owned",
-      "notes": "Decisions on IsHealthy in the listener tests. FR-012 applies: a health flag that a restart does not preserve is measured instance 5's shape. Unproven -- not measured either way here."
+      "notes": "Decisions on IsHealthy in the listener tests. FR-012 applies: a health flag that a restart does not preserve is measured instance 5's shape. Unproven -- not measured either way here.",
+      "sites": 2
     },
     {
       "id": "skademlia-emptiness",
@@ -353,7 +361,8 @@
       "contention": null,
       "owner": "olamnit-glpnet",
       "disposition": "owned",
-      "notes": "Declared and honestly UNPROVEN (FR-015): the surface exists and is read as evidence, and this lane has not yet demonstrated the property. Absence of a check is never a pass."
+      "notes": "Declared and honestly UNPROVEN (FR-015): the surface exists and is read as evidence, and this lane has not yet demonstrated the property. Absence of a check is never a pass.",
+      "sites": 2
     },
     {
       "id": "quicnativeloader-emptiness",
@@ -429,7 +438,8 @@
       "contention": null,
       "owner": "olamnit-glpnet",
       "disposition": "owned",
-      "notes": "Same class as roadmap_open_table.py: decisions taken on a subprocess returncode with no corroborating assertion on content. Unproven."
+      "notes": "Same class as roadmap_open_table.py: decisions taken on a subprocess returncode with no corroborating assertion on content. Unproven.",
+      "sites": 2
     },
     {
       "id": "evidence-signal-audit-idle-predicate",
@@ -448,7 +458,8 @@
       "contention": null,
       "owner": "olamnit-glpnet",
       "disposition": "owned",
-      "notes": "Declared and honestly UNPROVEN (FR-015): the surface exists and is read as evidence, and this lane has not yet demonstrated the property. Absence of a check is never a pass."
+      "notes": "Declared and honestly UNPROVEN (FR-015): the surface exists and is read as evidence, and this lane has not yet demonstrated the property. Absence of a check is never a pass.",
+      "sites": 3
     },
     {
       "id": "evidence-signal-audit-liveness-flag",
@@ -486,7 +497,8 @@
       "contention": null,
       "owner": "olamnit-glpnet",
       "disposition": "owned",
-      "notes": "Declared and honestly UNPROVEN (FR-015): the surface exists and is read as evidence, and this lane has not yet demonstrated the property. Absence of a check is never a pass."
+      "notes": "Declared and honestly UNPROVEN (FR-015): the surface exists and is read as evidence, and this lane has not yet demonstrated the property. Absence of a check is never a pass.",
+      "sites": 2
     },
     {
       "id": "roadmap-open-table-exit-status",
@@ -543,7 +555,8 @@
       "contention": null,
       "owner": "olamnit-glpnet",
       "disposition": "owned",
-      "notes": "This feature's OWN conformance harness. FR-017 puts the auditor under the audit, so its simulators and their controls are declared like anything else. They are UNPROVEN in the manifest's sense -- the harness proves the mechanisms, not itself -- and saying so is the point: an auditor that quietly exempted itself would be measured instance 2."
+      "notes": "This feature's OWN conformance harness. FR-017 puts the auditor under the audit, so its simulators and their controls are declared like anything else. They are UNPROVEN in the manifest's sense -- the harness proves the mechanisms, not itself -- and saying so is the point: an auditor that quietly exempted itself would be measured instance 2.",
+      "sites": 7
     },
     {
       "id": "test-evidence-signal-conformance-idle-predicate",
@@ -562,7 +575,29 @@
       "contention": null,
       "owner": "olamnit-glpnet",
       "disposition": "owned",
-      "notes": "This feature's OWN conformance harness. FR-017 puts the auditor under the audit, so its simulators and their controls are declared like anything else. They are UNPROVEN in the manifest's sense -- the harness proves the mechanisms, not itself -- and saying so is the point: an auditor that quietly exempted itself would be measured instance 2."
+      "notes": "This feature's OWN conformance harness. FR-017 puts the auditor under the audit, so its simulators and their controls are declared like anything else. They are UNPROVEN in the manifest's sense -- the harness proves the mechanisms, not itself -- and saying so is the point: an auditor that quietly exempted itself would be measured instance 2.",
+      "sites": 2
+    },
+    {
+      "id": "test-evidence-signal-audit-wait",
+      "path": "scripts/tests/test_evidence_signal_audit.py",
+      "symbol": "wait/drain call sites in fixtures",
+      "kind": "wait",
+      "consumers": [
+        "scripts/tests/test_evidence_signal_audit.py (its own fixtures)"
+      ],
+      "governed_by": [
+        "FR-004"
+      ],
+      "conformance_check": null,
+      "negative_control": null,
+      "iterations": null,
+      "contention": null,
+      "sites": 2,
+      "owner": "olamnit-glpnet",
+      "disposition": "owned",
+      "notes": "Fixture text inside the audit's own tests -- planted `wait_for_a()`/`wait_for_b()` call sites used to prove the surplus-hit rule. The scan cannot tell a fixture from production code, and it should not try: a scan that decided which hits 'do not count' would be deciding its own denominator. Declared and honestly UNPROVEN."
     }
-  ]
+  ],
+  "sites_note": "`sites` declares how many scan hits of a (path, kind) an entry covers. Without it, one entry silenced every other hit of that kind in the file and the denominator shrank when you looked at it (adversarial review, 2026-09-06). The number is declared so widening coverage is visible."
 }

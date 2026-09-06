@@ -2697,7 +2697,29 @@ echo ""
 section "W" "Fleet-tooling positive controls"
 echo ""
 set +e
-PY_BIN=${PY_BIN:-$(command -v python3 || command -v python)}
+# RESOLVE A PYTHON THAT ACTUALLY RUNS -- existence is not capability.
+#
+# `command -v python3` succeeds on this host and returns the Windows Store STUB
+# under WindowsApps, which is not Python: it prints "Python was not found" and
+# exits 49. Six Section W checks failed that way on 2026-09-06 and read as
+# content mismatches rather than as a missing interpreter, because the suite
+# had asked "does a path exist" instead of "does it work". That conflation is
+# feature 108's class, committed by this suite. So: probe every candidate by
+# RUNNING it, and take the first that answers.
+resolve_python() {
+    for cand in "$SCRIPT_DIR/../codeconv/.venv/Scripts/python.exe" \
+                "$(command -v python3 2>/dev/null)" \
+                "$(command -v python 2>/dev/null)" \
+                "$(command -v py 2>/dev/null)"; do
+        [ -n "$cand" ] || continue
+        if out=$("$cand" -c 'print("PYOK")' 2>/dev/null) && [ "$out" = "PYOK" ]; then
+            printf '%s' "$cand"
+            return 0
+        fi
+    done
+    return 1
+}
+PY_BIN=${PY_BIN:-$(resolve_python)}
 if [ -z "$PY_BIN" ]; then
     skip "Section W (fleet-tooling positive controls)" "no python interpreter on PATH"
 else
@@ -2820,7 +2842,7 @@ echo ""
 section "X" "Evidence-signal ordering (feature 108)"
 echo ""
 set +e
-PY_BIN=${PY_BIN:-$(command -v python3 || command -v python)}
+PY_BIN=${PY_BIN:-$(resolve_python)}
 if [ -z "$PY_BIN" ]; then
     skip "Section X (evidence-signal ordering)" "no python interpreter on PATH"
 else

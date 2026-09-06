@@ -111,10 +111,15 @@ def classify(exit_code: int, output: str) -> tuple[str, str]:
         return REFUSED, "the output says it refused"
     if "## findings" not in output.lower():
         return DID_NOT_RUN, "no findings section -- the review did not run"
+    # BOTH success outcomes are gated on exit_code == 0. The first version returned
+    # RAN_AND_EMPTY for `classify(1, "## Findings\nNo findings.")` -- a successful empty run
+    # reported for a producer that FAILED, which is an evidence signal reporting success in a
+    # failed state: this feature's own class, inside its own harness. Found by adversarial
+    # review, 2026-09-06.
+    if exit_code != 0:
+        return INDETERMINATE, "review-shaped output but the producer exited non-zero"
     if "no findings" in output.lower():
         return RAN_AND_EMPTY, "findings section present and empty"
-    if exit_code != 0:
-        return INDETERMINATE, "produced findings but exited non-zero"
     return RAN_AND_COMPLETE, "findings section present and populated"
 
 
@@ -137,6 +142,12 @@ def test_refusal_is_not_success():
 def test_ran_and_empty_is_distinguishable_from_did_not_run():
     assert classify(0, "## Findings\nNo findings.\n")[0] == RAN_AND_EMPTY
     assert classify(0, "")[0] == DID_NOT_RUN
+
+
+def test_a_failed_producer_is_never_a_successful_empty_run():
+    """Review-shaped output plus a non-zero exit is INDETERMINATE, never RAN_AND_EMPTY."""
+    assert classify(1, "## Findings\nNo findings.\n")[0] == INDETERMINATE
+    assert classify(1, "## Findings\n1. [P1] x\n")[0] == INDETERMINATE
 
 
 def test_size_is_not_evidence():
@@ -241,11 +252,31 @@ def _pending_by_files(spool: _Spool) -> int:
     return len(list((spool.root / "alerts").glob("*.json")))
 
 
+def _pending_by_unacked_files(spool: _Spool) -> int:
+    """A conforming second observer: count files whose RECORD says unacknowledged."""
+    import glob as _g
+    n = 0
+    for f in _g.glob(str(spool.root / "alerts" / "*.json")):
+        with open(f, encoding="utf-8") as fh:
+            if not json.load(fh)["acknowledged"]:
+                n += 1
+    return n
+
+
 def test_two_observers_of_one_state_must_agree(tmp_path):
+    """The test must actually CONSULT both observers.
+
+    Its first version asserted only `_pending_by_records(...) == 0` and never called a second
+    observer at all -- so a test named "two observers must agree" passed without exercising the
+    second one, and would have passed in the very defective state its control demonstrates.
+    Found by adversarial review, 2026-09-06.
+    """
     s = _Spool(tmp_path, clobbering=False)
     s.deliver("m-1", "14:54:30")
     s.ack("m-1")
-    assert _pending_by_records(s, ["m-1"]) == 0
+    first = _pending_by_records(s, ["m-1"])
+    second = _pending_by_unacked_files(s)
+    assert first == second == 0, f"observers disagree: records={first} files={second}"
 
 
 def test_two_observer_negative_control_file_count_disagrees(tmp_path):

@@ -190,3 +190,49 @@ recorded there as finding **D1** rather than quietly corrected.
 1 non-conforming (disclosed instance 8) and 24 unproven. That is the correct state, not a failure:
 an unproven surface is declared work, and the alternative — claiming conformance without evidence —
 is the defect this feature exists to name.
+
+
+---
+
+## Adversarial review (`/bk-codexreview`) — 2026-09-06
+
+Reviewed with the **reading-gate discharge** prepended (three prior `codex exec` false-greens are
+recorded in the restart brief, the newest of which emitted 116 KB and reviewed nothing after obeying
+a STOP-AND-WAIT gate). The result was asserted on **content** — a populated `## Findings` section —
+never on size, which is FR-010 applied to the review of a feature about FR-010.
+
+**8 findings: 4 P1, 4 P2. All correct. All fixed. None deferred.**
+
+| # | sev | finding | fix |
+|---|---|---|---|
+| 1 | P1 | `classify()` granted **`conforming`** on the mere *existence* of a cited test — a test could be emptied or broken with its name intact and still read as evidence | The audit now **executes** every cited Python check via pytest + JUnit XML and requires a pass. Non-Python refs (C#) report `not-executable` → **unproven, never conforming**. Guarded against re-entry by a depth marker. |
+| 2 | P1 | the harness's own `classify()` returned `RAN_AND_EMPTY` for `classify(1, "…No findings…")` — a **successful empty run reported for a producer that failed** | Both success outcomes gated on `exit_code == 0`; review-shaped output with a non-zero exit is INDETERMINATE. New regression `test_a_failed_producer_is_never_a_successful_empty_run`. |
+| 3 | P1 | `test_two_observers_of_one_state_must_agree` **never called the second observer** — it would have passed in the exact defective state its own control demonstrates | Added a conforming second observer; the test now asserts both agree. |
+| 4 | P1 | one manifest entry silenced **every other hit of the same kind** in that file — the denominator shrank when you looked at it | Cross-check now compares against a **declared `sites` count**. Widening coverage is a visible, reviewable edit instead of an invisible one. Regression `test_one_entry_does_not_silence_surplus_hits_of_the_SAME_kind`. |
+| 5 | P2 | excluded directories were pruned **silently**, contradicting FR-020 and the module's own comment | Exclusions inside a declared scope are recorded as `excluded-directory` / `excluded-glob` and reported. Regression added. |
+| 6 | P2 | `validate_manifest` did not type-check, so `"path": 1` raised a bare `TypeError` instead of the promised field-named refusal | `_req_str` type-checks every field before use — a refusal a crash can pre-empt is not a refusal. |
+| 7 | P2 | `manifest.schema.json` **rejected the real manifest** (no `scoped_regions`) while accepting a scope-less one the audit refuses | Schema now requires `scoped_regions` with its `{path, rationale}` shape, and allows `out_of_scope_note`. |
+| 8 | P2 | tasks T017/T018/T037 claimed classifier / size-detector / adoption-override code **in the audit** when those live only in the harness | Claim narrowed below — the record now says what the audit actually enforces. |
+
+### Finding 8, corrected in full
+
+**T017, T018 and T037 are re-scoped to the harness, not the audit.** The five-way outcome
+classifier, the size-as-evidence detector and the FR-006 adoption/override logic exist as
+**mechanism simulators with negative controls** in `scripts/tests/test_evidence_signal_conformance.py`.
+They are **not** enforced by `scripts/evidence_signal_audit.py`. The audit enforces: manifest
+validation and refusal, the bidirectional scan/manifest cross-check with declared `sites`,
+execution of cited checks, classification, examined/unexamined accounting, the receipt, and the
+exit-code contract.
+
+Saying otherwise would be a completed checklist promising protection the tool does not give —
+which is this feature's own class, in its own record. Wiring the FR-006 gate into the audit is a
+follow-up, and it is named as one rather than ticked.
+
+### State after the fixes
+
+- **41/41 Python tests pass** (was 38; three regressions added by the review).
+- **Audit: 0 errors**, 7 cited checks **executed** — 7 pass, 0 fail, 0 not-executable.
+- **29 surfaces** declared; 2 conforming, 1 non-conforming (disclosed instance 8), 26 unproven.
+- `hook-notifier-wait-for-idle` moved **conforming → unproven**, correctly: its cited check is a
+  C# test this audit cannot execute, and "I could not run it" is not "it passed".
+- Exit **1** — findings present. That is the honest state and the suite treats it as such.

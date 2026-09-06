@@ -186,6 +186,15 @@ def test_scan_with_broken_patterns_is_caught_by_the_planted_site(monkeypatch, tm
         "above discriminates nothing")
 
 
+def test_excluded_dirs_inside_a_declared_scope_are_reported_not_pruned_silently(tmp_path):
+    """FR-020 again: an exclusion inside a declared scope must be visible, not silently pruned."""
+    (tmp_path / "src").mkdir()
+    (tmp_path / "src" / "obj").mkdir()
+    (tmp_path / "src" / "obj" / "gen.py").write_text(PLANTED, encoding="utf-8")
+    _, _, unexamined = esa.scan(str(tmp_path), [{"path": "src", "rationale": "r"}])
+    assert {"path": "src/obj/", "reason": "excluded-directory"} in unexamined
+
+
 def test_out_of_scope_files_are_reported_not_omitted(tmp_path):
     """FR-020: an unexamined region that vanishes from the denominator is how coverage lies."""
     (tmp_path / "src").mkdir()
@@ -215,6 +224,27 @@ def test_manifest_only_entry_is_an_error(tmp_path):
     assert manifest_only == ["a-surface"]
 
 
+def test_one_entry_does_not_silence_surplus_hits_of_the_SAME_kind(tmp_path):
+    """A file with two waits declared once must still report the second (FR-014b).
+
+    Matching on (path, kind) without a count let one entry cover every hit of that kind in the
+    file, so the denominator shrank when you looked at it. Found by adversarial review.
+    """
+    (tmp_path / "src").mkdir()
+    (tmp_path / "src" / "w.py").write_text(
+        "wait_for_a()\nwait_for_b()\n", encoding="utf-8")
+    hits, _, _ = esa.scan(str(tmp_path), [{"path": "src", "rationale": "r"}])
+    m = {"surfaces": [_surface(path="src/w.py", kind="wait", governed_by=["FR-004"],
+                               conformance_check=None)]}
+    scan_only, _ = esa.cross_check(m, hits, str(tmp_path))
+    assert len(scan_only) == 1 and scan_only[0]["surplus"] is True
+
+    # Declaring sites=2 covers both -- explicitly, and visibly in the manifest.
+    m["surfaces"][0]["sites"] = 2
+    scan_only, _ = esa.cross_check(m, hits, str(tmp_path))
+    assert scan_only == []
+
+
 def test_one_declared_kind_does_not_silence_another_kind_in_the_same_file(tmp_path):
     """Matching on path alone would let one entry shrink the denominator for a whole file."""
     (tmp_path / "src").mkdir()
@@ -230,11 +260,17 @@ def test_one_declared_kind_does_not_silence_another_kind_in_the_same_file(tmp_pa
 # Exit codes -- the contract this tool must not itself violate
 # ---------------------------------------------------------------------------
 def _run(tmp_path, manifest_path):
+    # Clear the recursion-depth marker explicitly. Without this the fixture behaves differently
+    # depending on whether pytest was started by a human or by the audit itself -- and a test
+    # whose verdict depends on who invoked it is not evidence about the code. The audit's own
+    # execution caught this, which is the point of it executing cited checks at all.
+    env = dict(os.environ)
+    env.pop(esa.DEPTH_ENV, None)
     return subprocess.run(
         [sys.executable, os.path.join(REPO, "scripts", "evidence_signal_audit.py"),
          "--repo", str(tmp_path), "--manifest", manifest_path,
          "--report", str(tmp_path / "out" / "report.json")],
-        capture_output=True, text=True)
+        capture_output=True, text=True, env=env)
 
 
 def test_exit_codes_are_distinct_per_failure_class(tmp_path):
