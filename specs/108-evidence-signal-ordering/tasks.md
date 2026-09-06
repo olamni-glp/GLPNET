@@ -48,12 +48,12 @@ A test-free implementation of this feature would be self-refuting.
 **Independent test**: inject a did-not-run and a refused condition into each declared consumer; both are classified non-success and named.
 
 - [ ] T016 [P] [US2] Implement the `exit-status` / `emptiness` scan patterns in `scripts/evidence_signal_audit.py` (`$?`, `returncode`, `ExitCode`, `check_call`, `exit 0`, `len(...) == 0` used as a verdict)
-- [ ] T017 [US2] Implement the FR-007 five-way outcome classifier (RAN-AND-COMPLETE / RAN-AND-EMPTY / DID-NOT-RUN / REFUSED / INDETERMINATE) as a reusable helper in `scripts/evidence_signal_audit.py`
+- [ ] T017 [US2] Implement the FR-007/FR-008/FR-009 five-way outcome classifier (RAN-AND-COMPLETE / RAN-AND-EMPTY / DID-NOT-RUN / REFUSED / INDETERMINATE) as a reusable helper in `scripts/evidence_signal_audit.py`
 - [ ] T018 [US2] Implement the FR-010 size-as-evidence detector in `scripts/evidence_signal_audit.py` — a consumer asserting on output length, byte count or elapsed time is reported **non-conforming**, citing measured instance 6 (116 KB, exit 0, zero review)
 - [ ] T019 [US2] Declare the `codex exec` review wrapper and the `buildkit-scheduler reject` consumer in the manifest with `governed_by: ["FR-007"]` and honest dispositions
-- [ ] T020 [P] [US2] Add `scripts/tests/test_evidence_signal_conformance.py::test_did_not_run_is_not_success` — fault-injects a tool that exits 0 having done nothing; asserts DID-NOT-RUN and that the classifier names it
-- [ ] T021 [P] [US2] Add `::test_refusal_is_not_success` — fault-injects a refusal returning exit 0; asserts REFUSED and that it is named (measured instance 4)
-- [ ] T022 [P] [US2] Add `::test_size_is_not_evidence` — a 116 KB output containing no findings section must classify DID-NOT-RUN, and the negative control asserts a byte-threshold check would have passed it (measured instance 6)
+- [ ] T020 [P] [US2] Add `scripts/tests/test_evidence_signal_conformance.py::test_did_not_run_is_not_success` — fault-injects a tool that exits 0 having done nothing; asserts DID-NOT-RUN and that the classifier names it, with the positive control showing the injection can fail the check (FR-008, SC-004)
+- [ ] T021 [P] [US2] Add `::test_refusal_is_not_success` — fault-injects a refusal returning exit 0; asserts REFUSED and that it is named (FR-009, SC-004; measured instance 4)
+- [ ] T022 [P] [US2] Add `::test_size_is_not_evidence` (FR-010, FR-011) — a 116 KB output containing no findings section must classify DID-NOT-RUN, and the negative control asserts a byte-threshold check would have passed it (measured instance 6)
 
 ## Phase 5 — User Story 3: completion survives a restart (P2)
 
@@ -76,6 +76,9 @@ A test-free implementation of this feature would be self-refuting.
 - [ ] T030 [US4] Run the audit against this repo and complete the manifest until `scan_only` and `manifest_only` are both empty; record each surface's honest classification — **do not silence a hit by deleting the pattern**
 - [ ] T031 [P] [US4] Add `scripts/tests/test_evidence_signal_audit.py::test_scan_only_hit_is_error` and `::test_manifest_only_entry_is_error` — the cross-check's own negative controls
 
+- [ ] T037 [US4] Bind the refusal path to feature 078's **existing** per-area adoption manifest and informed-consent override in `scripts/evidence_signal_audit.py` — declared-adopted areas refuse, declared-non-adopted areas pass with a visible marker, an **unlisted** area is an error, and an override with no expiry is rejected when recorded (FR-006a, FR-006b, FR-006c). Reuse 078's records; define no second override mechanism
+- [ ] T038 [P] [US4] Add `scripts/tests/test_evidence_signal_audit.py::test_override_without_expiry_is_rejected_at_record_time` and `::test_unlisted_area_is_an_error_not_a_pass` — the FR-006 negative controls
+
 ## Phase 7 — Polish & cross-cutting
 
 - [ ] T032 [P] Write `docs/evidence-signal-invariant.md` — the published invariant for fleet adoption, cross-referenced to 078 in both directions and to nothing else
@@ -83,6 +86,8 @@ A test-free implementation of this feature would be self-refuting.
 - [ ] T034 Wire `scripts/evidence_signal_audit.py` into `test/run_all_tests.sh` as a new section, guarded with `set +e` so a failure reports rather than aborting the suite — Section T's missing guard has already aborted the full suite on this host
 - [ ] T035 [P] Record the eight measured instances and their dispositions in `docs/known-issues.md`, each with its owner and whether it is fixed, disclosed, or not-reproduced-on-this-build (SC-001)
 - [ ] T036 Run the full baseline suite (`bash test/run_all_tests.sh`) and the C# transport + client suites; confirm no regression against the recorded baseline before ship
+- [ ] T039 Evaluate **every** success criterion SC-001..SC-007 and record the measured value beside it in `.specify/evidence-signals/report.json` and in the ship note — including SC-002's denominator being the manifest (FR-014a), SC-003's 40/40 with its negative control demonstrated, SC-004's fault-injection positive controls, SC-005's four reintroduced defects, SC-006's observe/restart/re-observe, and SC-007's examined-vs-unexamined split. An SC with no recorded measurement is reported **unmeasured**, never assumed met
+- [ ] T040 [P] Time the audit and the conformance harness and record both against the plan's stated budgets (60 s audit, 120 s harness); a budget with no measurement is the same defect this feature governs
 
 ---
 
@@ -115,7 +120,8 @@ Within Phase 2: `T009` runs alongside T004–T008 authoring.
 Within US1: `T010` and `T015` are parallel; `T011 → T012 → T013 → T014` is a strict chain.
 Within US2: `T020`, `T021`, `T022` are fully parallel once `T017` lands.
 Within US3: `T023` and `T027` are parallel; `T024 → T025` and `T026` are independent chains.
-Phase 7: `T032`, `T033`, `T035` are parallel; `T034` then `T036` are sequential and last.
+Within US4: `T037` and `T038` are a chain; both are independent of `T028`–`T031`.
+Phase 7: `T032`, `T033`, `T035`, `T040` are parallel; `T034` → `T036` → `T039` are sequential and last.
 
 ## Implementation strategy
 
@@ -134,6 +140,11 @@ component this lane does not own. That is deliberate and is the Bug-Protocol's r
 
 ## Format validation
 
-All 36 tasks carry a checkbox, a sequential `T0NN` id, a `[P]` marker where and only where the task
+All 40 tasks carry a checkbox, a sequential `T0NN` id, a `[P]` marker where and only where the task
 touches a distinct file with no incomplete dependency, a `[US1]`–`[US4]` label on every user-story
 task and on no setup/foundational/polish task, and an explicit file path.
+
+**Coverage after the analyze remediation**: 26 FR cited by at least one task (was 20 of 26); all 7
+SC cited (was 1 of 7, via T039). The analyze pass's own CRITICAL finding — the plan's Constitution
+Check table tripping the machine-checkable gate it claimed to pass — is fixed in `plan.md` and
+recorded there as finding **D1** rather than quietly corrected.

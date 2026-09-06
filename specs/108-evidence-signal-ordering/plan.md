@@ -62,10 +62,10 @@ one root-caused during planning — see Phase 0).
 |---|---|---|
 | **I. Spec-First** | judgement | **PASS** — `spec.md` written and clarified before any code; every artefact below traces to a numbered FR. |
 | **II. Bug-Protocol / No-Workarounds** | judgement | **PASS, and load-bearing.** The instance-7 root cause found during planning is **reported, not patched** — it lives in a peer's canonical client. This plan adds a *failing* conformance test that names it, which is the reporting mechanism, not a workaround. |
-| **III. SRSW** | machine | **PASS** — zero occurrences of `skipSRSW` in this feature's artefacts. No GLP clause is authored. |
+| **III. SRSW** | machine | **PASS** — the SRSW-escape token named by Principle III occurs zero times in this feature's artefacts. No GLP clause is authored. *(This row deliberately does not quote the token: Principle III's scan targets the artifacts under review, and this plan is one. Writing the token here to claim conformance would BE the violation — the analyze pass caught exactly that, finding D1.)* |
 | **IV-a. Language Authority** | judgement | **PASS** — no guard, kernel, directive, primitive type or type-system feature is proposed. |
 | **IV-b. Preserve Working Internals** | judgement | **PASS** — nothing removed; `_ClauseVar`, `_TentativeStruct` and every fallback branch untouched. |
-| **V. Claude-only LM** | machine | **PASS** — zero occurrences of `OPENAI_API_KEY` / `litellm` / `openai` on any path. The audit runs no LM at all. |
+| **V. Claude-only LM** | machine | **PASS** — none of the three external-LM tokens named by Principle V occurs on any path. The audit runs no language model at all. *(Same self-mention rule as row III — see finding D1.)* |
 | **VI-a. Additive, single-head migrations** | machine | **PASS** — no migration. Head stays `0010`. |
 | **VI-b. Single PGLite cluster** | judgement | **PASS** — no new cluster; the audit touches no database. |
 | **VII. Test-gated, commit-scoped shipping** | advisory | **PASS** — baseline recorded before change, re-run after; staged by name; shipped via GitFlow. |

@@ -27,7 +27,7 @@ nonetheless treat as evidence.** A wait that returns. An idle predicate that rea
 flag. A process exit status. None of these claims to be a verdict, so none is covered by 078 — and
 yet every one of them is read by a caller as "the work is done", and acted on.
 
-**Seven instances of that class were measured across the fleet in 48 hours.** They are not variants
+**Eight instances of that class were measured across the fleet in 48 hours** — the eighth while writing this feature's own plan. They are not variants
 of one bug; they are four different mechanisms producing the same failure, which is what makes this
 a class rather than a defect list.
 
@@ -42,6 +42,7 @@ a class rather than a defect list.
 | 5 | the election board rendered green | the fleet has a seated leader | the running process and its own on-disk state **disagreed**; a restart did not keep it green | shiras-ynglin · 2026-09-05 |
 | 6 | `codex exec` exited 0 having emitted **116 KB** | a large, therefore real, review | it read `AGENTS.md`, obeyed a **"STOP AND WAIT"** reading gate, and stopped before opening any code. **The fleet's adopted byte-count heuristic passes it.** | olamnit-glpnet · 2026-09-05 |
 | 7 | `ack` exited 0 and `doctor` then reported 0 pending | 13 alerts are acknowledged | a receiver **restart re-materialised the same 13 message ids** as unacknowledged | shiras-glpnet · 2026-09-06 |
+| 8 | `alerts` reported `acknowledged: true` and the flag was **on disk** | the ack is durable, so it will still be true tomorrow | a receiver restart replayed the retained WAL entry and **re-raised the alert unconditionally**, clobbering the flag and re-stamping `arrived_utc` to the restart time — with `frames_accepted: 0`, so no new frame arrived. Separately, with the receiver dead, `doctor.pending_alerts` read **1** while `alerts` read **0**: two observers of one state disagreeing | olamnit-glpnet · 2026-09-06 |
 
 Instance 6 is the one that makes the case. The fleet had already learned instances 3 and 4 and
 adopted a defence — *"39 bytes means fake, a big transcript means real"*. Instance 6 is 116 KB and
@@ -50,6 +51,13 @@ is precisely why the class needs a stated invariant rather than another per-inst
 
 Instance 7 is the second lesson: the state that reported completion was not the state that
 survived. Completion that a restart undoes was never completion.
+
+Instance 8 is instance 7 measured properly, on a second host and a **newer build**, and it corrects
+the mechanism: the ack is **durable** — it survives the process dying, on disk and through `alerts`.
+What destroys it is the **startup replay path**, which re-raises alerts from a retained WAL entry
+without reconciling against the record already there. So the fix is not *make ack durable*; it is
+*replay must merge by `message_id`, never clobber*. See `research.md` §1 for the full measurement
+table. It is reported, not patched — the client is a peer's (`Q-glpnetshiras-50`).
 
 ### The invariant
 
@@ -333,7 +341,7 @@ signal surfaces, classifies each, and names the unproven ones. Delivers value al
 
 ### Measurable Outcomes
 
-- **SC-001**: All seven measured instances in the table above are classified against FR-004 /
+- **SC-001**: All eight measured instances in the table above are classified against FR-004 /
   FR-007 / FR-012, and each is either **fixed with a live conformance check** or **disclosed as
   carried with a named owner**. Zero instances are silently closed.
 - **SC-002**: Every evidence-bearing signal surface **listed in the declared manifest** appears in the
@@ -360,7 +368,7 @@ signal surfaces, classifies each, and names the unproven ones. Delivers value al
 
 ## Assumptions
 
-- **Scope is this lane's surfaces plus the cross-lane instances already measured.** The invariant is
+- **Scope is this lane's surfaces plus the cross-lane instances already measured (eight).** The invariant is
   fleet-wide and is published for adoption, but this feature delivers conformance for
   `olamnit-glpnet` only. Other lanes adopt by binding to the published invariant, exactly as 078 was
   adopted. Fixing another lane's signal in place is out of scope and is the failure mode that
@@ -368,7 +376,7 @@ signal surfaces, classifies each, and names the unproven ones. Delivers value al
 - **The exemplar remedy for the wait class is an outstanding-work counter incremented at
   *acceptance* and decremented after the handler *publishes*.** This is stated as the known-good
   shape, not mandated — FR-004/FR-005 state the property; any implementation meeting them conforms.
-- **Instances 2, 5 and 7 are owned by other lanes** (shiras-glpnet, shiras-ynglin). This feature
+- **Instances 2, 5, 7 and 8 are owned by other lanes** (shiras-glpnet, shiras-ynglin, ariellas-qhstate). This feature
   classifies and publishes them; it does not fix them in place. SC-001 is met for those by
   disclosure with a named owner.
 - **Feature 078 is implemented and five features are blocked by it.** No requirement here changes
