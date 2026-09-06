@@ -41,11 +41,24 @@ def _manifest(tmp_path, surfaces=None, **over):
 
 
 def _surface(**over):
+    # feature 109 FR-019: `owned` now REQUIRES both a conformance_check and a negative_control.
+    # The default therefore carries both. A caller that drops the check must also drop the claim
+    # -- see _unproven_surface -- because "owned with nothing checked" is exactly the default-value
+    # misuse the tiered disposition was added to stop (it was true of 25 of 29 real surfaces).
     s = {
         "id": "a-surface", "path": "src/thing.py", "symbol": "sym", "kind": "exit-status",
         "consumers": ["c"], "governed_by": ["FR-007"], "conformance_check": "t::x",
+        "negative_control": "t::x_negative",
         "owner": "test-lane", "disposition": "owned",
     }
+    s.update(over)
+    return s
+
+
+def _unproven_surface(**over):
+    """A surface honestly declared as not-yet-proven (feature 109 `declared-unproven`)."""
+    s = _surface(conformance_check=None, negative_control=None,
+                 disposition="declared-unproven")
     s.update(over)
     return s
 
@@ -90,7 +103,8 @@ def test_a_proven_fr004_claim_without_a_negative_control_is_refused(tmp_path):
     """FR-018a: a contention claim with no demonstrated way to fail is not evidence."""
     with pytest.raises(esa.ManifestError, match="negative_control"):
         esa.load_manifest(_manifest(tmp_path, [
-            _surface(kind="wait", governed_by=["FR-004"], conformance_check="t::x")]))
+            _surface(kind="wait", governed_by=["FR-004"], conformance_check="t::x",
+                     negative_control=None)]))
 
 
 def test_an_unproven_fr004_surface_is_ACCEPTED(tmp_path):
@@ -101,7 +115,7 @@ def test_an_unproven_fr004_surface_is_ACCEPTED(tmp_path):
     was meant to close. Found by using this tool on this repo, 2026-09-06.
     """
     doc = esa.load_manifest(_manifest(tmp_path, [
-        _surface(kind="wait", governed_by=["FR-004"], conformance_check=None)]))
+        _unproven_surface(kind="wait", governed_by=["FR-004"])]))
     assert len(doc["surfaces"]) == 1
 
 
@@ -116,14 +130,15 @@ def test_disclosed_surface_owned_by_this_lane_is_refused(tmp_path):
     """'Disclosed' means someone else owns it. Disclosing to yourself is not disclosure."""
     with pytest.raises(esa.ManifestError, match="owner"):
         esa.load_manifest(_manifest(tmp_path, [
-            _surface(disposition="disclosed", owner="test-lane")]))
+            _surface(disposition="disclosed", owner="test-lane",
+                     disclosed_to="test-lane")]))
 
 
 # ---------------------------------------------------------------------------
 # Classification -- absence of evidence is never a pass
 # ---------------------------------------------------------------------------
 def test_a_surface_with_no_conformance_check_is_unproven_never_conforming(tmp_path):
-    v = esa.classify(_surface(conformance_check=None), str(tmp_path))
+    v = esa.classify(_unproven_surface(), str(tmp_path))
     assert v["classification"] == "unproven"
     assert "FR-015" in v["failed_frs"]
 
@@ -138,7 +153,8 @@ def test_a_cited_check_that_does_not_exist_is_not_conforming(tmp_path):
 
 
 def test_a_disclosed_surface_is_non_conforming_and_names_its_owner(tmp_path):
-    v = esa.classify(_surface(disposition="disclosed", owner="another-lane"), str(tmp_path))
+    v = esa.classify(_surface(disposition="disclosed", owner="another-lane",
+                              disclosed_to="another-lane"), str(tmp_path))
     assert v["classification"] == "non-conforming"
     assert "another-lane" in v["evidence"]
 
@@ -286,14 +302,18 @@ def test_exit_codes_are_distinct_per_failure_class(tmp_path):
     assert _run(tmp_path, _manifest(tmp_path)).returncode == esa.EXIT_DISAGREEMENT
 
     # findings: declared, but unproven
-    mp = _manifest(tmp_path, [_surface(conformance_check=None)])
+    mp = _manifest(tmp_path, [_unproven_surface()])
     assert _run(tmp_path, mp).returncode == esa.EXIT_FINDINGS
 
     # clean -- the cited check must EXIST, because the audit verifies it (FR-016). Citing a
     # test nobody wrote is a conformance claim with no evidence, and the audit says so.
+    # feature 109 FR-019: `owned` also needs a negative_control, and the audit VERIFIES that a
+    # cited check EXISTS (FR-016) -- so the negative control has to be a real test, not a string.
     (tmp_path / "src" / "check_test.py").write_text(
-        "def test_x():\n    pass\n", encoding="utf-8")
-    mp = _manifest(tmp_path, [_surface(conformance_check="src/check_test.py::test_x")])
+        "def test_x():\n    pass\n\n\ndef test_x_negative():\n    pass\n", encoding="utf-8")
+    mp = _manifest(tmp_path, [_surface(
+        conformance_check="src/check_test.py::test_x",
+        negative_control="src/check_test.py::test_x_negative")])
     r = _run(tmp_path, mp)
     assert r.returncode == esa.EXIT_CLEAN, r.stdout + r.stderr
 
@@ -303,7 +323,7 @@ def test_audit_never_exits_zero_while_reporting_a_problem(tmp_path):
     committing that class would be worthless, so this is checked directly rather than assumed."""
     (tmp_path / "src").mkdir()
     (tmp_path / "src" / "thing.py").write_text(PLANTED, encoding="utf-8")
-    for surfaces in ([], [_surface(conformance_check=None)],
+    for surfaces in ([], [_unproven_surface()],
                      [_surface(disposition="disclosed", owner="other")]):
         r = _run(tmp_path, _manifest(tmp_path, surfaces))
         report = json.loads((tmp_path / "out" / "report.json").read_text(encoding="utf-8"))
@@ -323,3 +343,151 @@ def test_receipt_records_the_target_as_resolved(tmp_path):
     assert receipt["resolved_target"] == os.path.realpath(str(tmp_path))
     assert receipt["check"] == "evidence-signal-audit"
     assert receipt["outcome"] in ("PASS", "FAIL", "UNREAD")
+
+
+# ---------------------------------------------------------------------------
+# Feature 109 — the denominator (US3). Every test here has a negative control,
+# because the defects these pin all LOOKED like clean runs.
+# ---------------------------------------------------------------------------
+def test_fr017_two_step_status_capture_is_found(tmp_path):
+    """The idiom the repo's own suite actually uses, which the scan found ZERO of.
+
+    test/run_all_tests.sh never writes `if [ $? -eq 0 ]`. It writes `MAD_EXIT=$?` and then
+    `if [ $MAD_EXIT -eq 0 ]`. Before this, the repo's largest exit-status consumer -- a ~2900-line
+    suite whose entire job is deciding on exit statuses -- contributed 0 hits, and the audit
+    reported that as a clean scan.
+    """
+    (tmp_path / "src").mkdir()
+    (tmp_path / "src" / "s.sh").write_text(
+        'run_thing\nMAD_EXIT=$?\nif [ $MAD_EXIT -eq 0 ]; then echo ok; fi\n', encoding="utf-8")
+    hits, _examined, _ux = esa.scan(str(tmp_path), [{"path": "src"}])
+    symbols = {h["symbol"] for h in hits}
+    assert any("capture of $?" in s for s in symbols), symbols
+
+
+def test_fr017_negative_control_a_bare_report_of_status_is_NOT_a_decision_site(tmp_path):
+    """The negative control for the rule above, and it is the reason the rule is narrow.
+
+    FR-002 scopes a signal to where a consumer DECIDES on it. `echo "rc=$?"` reports and decides
+    nothing. If this ever starts matching, the patterns have drifted back to matching MENTIONS,
+    which produced 876 unactionable hits and an audit nobody ran.
+    """
+    (tmp_path / "src").mkdir()
+    (tmp_path / "src" / "s.sh").write_text(
+        'run_thing\necho "rc=$?"\nprintf "%s\n" "$?"\n', encoding="utf-8")
+    hits, _examined, _ux = esa.scan(str(tmp_path), [{"path": "src"}])
+    assert hits == [], hits
+
+
+def test_fr017_capture_pattern_is_line_anchored_and_multiline_is_applied(tmp_path):
+    """Regression for a defect introduced by this very feature and caught before it shipped.
+
+    The capture pattern is line-anchored (`^VAR=$?$`). PATTERNS were compiled WITHOUT re.MULTILINE,
+    so `^`/`$` matched only at the start and end of the whole file and the pattern silently matched
+    nothing -- a dead regex reporting a clean scan, the same class as feature 108's own unmatchable
+    patterns. Asserting the flag directly means a future refactor cannot quietly drop it.
+    """
+    assert all(rx.flags & esa.re.MULTILINE for _kind, rx, _name in esa.COMPILED)
+
+
+def test_fr016_in_scope_unscannable_source_files_are_censused_not_dropped(tmp_path):
+    """`regions UNREAD 0` used to be true and misleading at the same time.
+
+    An unscannable file was skipped BEFORE the in-scope test, so it never entered `unexamined`
+    and the region was still reported examined. 1651 real source files were invisible this way.
+    """
+    (tmp_path / "src").mkdir()
+    (tmp_path / "src" / "a.py").write_text("x = 1\n", encoding="utf-8")
+    (tmp_path / "src" / "b.gleam").write_text("pub fn main() { Nil }\n", encoding="utf-8")
+    (tmp_path / "src" / "c.glp").write_text("foo(X, X?).\n", encoding="utf-8")
+    _hits, examined, ux = esa.scan(str(tmp_path), [{"path": "src"}])
+    census = esa._suffix_census(ux)
+    assert census.get(".gleam") == 1, census
+    assert census.get(".glp") == 1, census
+    assert "src/a.py" in examined
+
+
+def test_fr016_negative_control_an_all_scannable_region_censuses_zero(tmp_path):
+    """If the census reported a number for a region with nothing unopened, it would be noise."""
+    (tmp_path / "src").mkdir()
+    (tmp_path / "src" / "a.py").write_text("x = 1\n", encoding="utf-8")
+    _hits, _examined, ux = esa.scan(str(tmp_path), [{"path": "src"}])
+    assert esa._suffix_census(ux) == {}
+
+
+def test_fr016_non_source_files_never_pad_the_census(tmp_path):
+    """A .pdf in a scoped region is not an unaudited evidence signal.
+
+    Counting it as one would inflate the gap into a number nobody can act on -- the mirror image
+    of the confident zero, and just as useless.
+    """
+    (tmp_path / "src").mkdir()
+    (tmp_path / "src" / "doc.pdf").write_bytes(b"%PDF-1.4\n")
+    (tmp_path / "src" / "notes.md").write_text("# hi\n", encoding="utf-8")
+    _hits, _examined, ux = esa.scan(str(tmp_path), [{"path": "src"}])
+    assert esa._suffix_census(ux) == {}
+    assert any(u["reason"] == "non-source-file" for u in ux)
+
+
+def test_fr018_every_declared_suffix_carries_a_rationale(tmp_path):
+    """A language present in the repo and absent from the scan is a DECLARED gap, never a silent
+    one. An unscanned suffix with no rationale is indistinguishable from an oversight."""
+    assert esa.SUFFIX_DECLARATIONS
+    for suffix, scanned, rationale in esa.SUFFIX_DECLARATIONS:
+        assert suffix.startswith("."), suffix
+        assert isinstance(rationale, str) and len(rationale) > 20, (suffix, rationale)
+        if not scanned:
+            assert "NOT SCANNED" in rationale, suffix
+    assert set(esa.SCAN_SUFFIXES).isdisjoint(esa.UNSCANNED_SUFFIXES)
+
+
+def test_fr019_owned_without_a_negative_control_is_refused(tmp_path):
+    """`owned` is a claim, not a default. It was the default on 25 of 29 real surfaces."""
+    with pytest.raises(esa.ManifestError, match="negative_control"):
+        esa.load_manifest(_manifest(tmp_path, [_surface(negative_control=None)]))
+
+
+def test_fr019_not_a_signal_without_a_rationale_is_refused(tmp_path):
+    """Otherwise `not-a-signal` is the cheapest possible way to fake coverage."""
+    with pytest.raises(esa.ManifestError, match="rationale"):
+        esa.load_manifest(_manifest(tmp_path, [
+            _surface(disposition="not-a-signal", conformance_check=None,
+                     negative_control=None)]))
+
+
+def test_fr019_negative_control_not_a_signal_WITH_a_rationale_is_accepted(tmp_path):
+    """The rule must leave a legal way to say 'I looked, and it is not a signal'."""
+    doc = esa.load_manifest(_manifest(tmp_path, [
+        _surface(disposition="not-a-signal", conformance_check=None, negative_control=None,
+                 rationale="this is the regex source that defines the pattern, not a call site")]))
+    assert doc["surfaces"][0]["disposition"] == "not-a-signal"
+
+
+def test_fr019_disclosed_without_a_named_owner_is_refused(tmp_path):
+    """A defect disclosed to nobody is a defect kept."""
+    with pytest.raises(esa.ManifestError, match="disclosed_to"):
+        esa.load_manifest(_manifest(tmp_path, [
+            _surface(disposition="disclosed", owner="other-lane")]))
+
+
+def test_fr020_a_surface_with_no_disposition_is_refused(tmp_path):
+    s = _surface()
+    del s["disposition"]
+    with pytest.raises(esa.ManifestError, match="disposition"):
+        esa.load_manifest(_manifest(tmp_path, [s]))
+
+
+def test_fr021_coverage_is_per_disposition_and_never_a_blended_percentage(tmp_path):
+    """Four numbers cannot be gamed by dismissing things without the gaming being visible in
+    WHICH number grew. One percentage can."""
+    m = {"surfaces": [
+        {"disposition": "owned"}, {"disposition": "owned"},
+        {"disposition": "declared-unproven"}, {"disposition": "not-a-signal"},
+        {"disposition": "disclosed"},
+    ]}
+    counts = esa._disposition_counts(m)
+    assert counts["owned"] == 2
+    assert counts["declared-unproven"] == 1
+    assert counts["not-a-signal"] == 1
+    assert counts["disclosed"] == 1
+    assert set(counts) == set(esa.DISPOSITIONS)

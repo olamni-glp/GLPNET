@@ -51,6 +51,22 @@ EXIT_UNEXAMINED = 4       # a region we were asked to examine could not be read 
 
 KINDS = ("wait", "idle-predicate", "liveness-flag", "exit-status", "emptiness")
 
+# FR-019 (feature 109), engineer ruling Q-olg17-03: the tiered disposition. Every declared site
+# carries exactly one, and the required fields differ per tier -- see validate_manifest. Widening
+# the audit to a region this lane does not own is only honest if "I looked and it is not a signal"
+# and "it is a signal and someone else owns it" are both sayable, and both reviewable.
+#
+# `declared-unproven` was added when the per-tier rule was first ENFORCED and immediately found
+# that 25 of the 29 existing surfaces claimed `owned` while carrying NO conformance_check and NO
+# negative_control. `owned` had become the default value rather than a claim. The two ways out
+# were to fabricate 25 checks -- which is the placeholder coverage engineer ruling Q-olg17-03
+# exists to prevent -- or to give the honest state a name. This is the name: "this IS a signal,
+# this lane DOES own it, and it is NOT yet proven". It is an extension of Q-olg17-03's three
+# tiers, made under that ruling's stated principle that the burden is proportional to standing,
+# and it is recorded as an extension rather than presented as part of the ruling.
+DISPOSITIONS = ("owned", "declared-unproven", "not-a-signal", "disclosed",
+                "not-reproduced-on-this-build")
+
 # A nested invocation must not execute cited checks: this audit's own tests spawn it as a
 # subprocess, and executing checks from inside one of those would re-enter pytest unbounded.
 DEPTH_ENV = "EVIDENCE_SIGNAL_AUDIT_DEPTH"
@@ -89,12 +105,80 @@ PATTERNS: tuple[tuple[str, str, str], ...] = (
     ("exit-status", r"\b(?:check_call|check_output)\s*\(", "check_call (raises on non-zero)"),
     ("exit-status", r"\$\?\s*(?:-eq|-ne|==|!=)", "decision on $?"),
     ("exit-status", r"\bif\s*\[\s*\$\?", "branch on $?"),
+    # FR-017 (feature 109). The two patterns above matched ZERO of the six-plus real decision
+    # sites in test/run_all_tests.sh, which is the repo's largest exit-status consumer -- a
+    # ~2900-line suite whose entire job is deciding on exit statuses. It does not write
+    # `if [ $? -eq 0 ]`. It writes the TWO-STEP form:
+    #
+    #     MAD_EXIT=$?                    <- capture
+    #     if [ $MAD_EXIT -eq 0 ]; then   <- decide
+    #
+    # The capture is the scope-defining event: FR-002 says a signal is in scope when a consumer
+    # DECIDES on it, and a capture into a named variable exists in order to be decided on later
+    # (`echo "rc=$?"` reports and is deliberately NOT matched -- it neither captures nor decides).
+    # Matching the capture rather than the branch also means the site is found once, at the point
+    # the status becomes evidence, instead of once per branch that reads it.
+    ("exit-status", r"^\s*(?:local\s+|declare\s+)?[A-Za-z_]\w*=\$\?\s*(?:#.*)?$",
+     "capture of $? into a variable (two-step decision)"),
+    ("exit-status", r"\bif\s*\[\s*\"?\$\{?[A-Za-z_]\w*(?:_(?:EXIT|RC|STATUS|CODE))\}?\"?\s*(?:-eq|-ne)",
+     "branch on a captured status variable"),
+    ("exit-status", r"\$LASTEXITCODE\s*(?:-eq|-ne|==|!=)", "decision on $LASTEXITCODE"),
     ("emptiness", r"\blen\([^)]*\)\s*==\s*0\b", "len(...) == 0 as a verdict"),
     ("emptiness", r"\bCount\s*==\s*0\b", "Count == 0 as a verdict"),
 )
-COMPILED = tuple((kind, re.compile(rx), name) for kind, rx, name in PATTERNS)
+# re.MULTILINE, and it is load-bearing rather than cosmetic. The FR-017 capture pattern is
+# line-anchored (`^VAR=$?$`) so that it matches a whole-line capture and not a `$?` buried in a
+# larger expression. Without MULTILINE, `^` and `$` match only at the start and end of the WHOLE
+# FILE, so that pattern silently matched nothing -- a dead regex that reports a clean scan, which
+# is the same class of defect as feature 108's own unmatchable patterns (1 hit against ~400 real
+# ones, with the exit code and the report both looking fine). Pinned by a negative-control test.
+COMPILED = tuple((kind, re.compile(rx, re.MULTILINE), name) for kind, rx, name in PATTERNS)
 
-SCAN_SUFFIXES = (".py", ".cs", ".dart", ".sh", ".ps1")
+# ---------------------------------------------------------------------------
+# Declared suffix set (FR-018, feature 109).
+#
+# This used to be a bare 5-tuple, and that was a measured defect, not a style problem.
+# `scan()` dropped a file whose suffix was absent BEFORE testing whether it was in scope, so an
+# unscannable file never reached `unexamined` and never appeared in the report. The audit
+# therefore printed `regions UNREAD 0` while never opening 1651 files INSIDE the regions it
+# called examined: 223 `.gleam`, 1416 `.glp` and 12 `.mjs`, measured 2026-09-06. `glp_gleam/src`
+# scanned to `examined=0, sites=0`, which reads as CLEAN and means NEVER LOOKED AT.
+#
+# That is this feature's own thesis turned on itself: an unexamined surface counts against the
+# total. The set is now DECLARED -- every suffix present in a scoped region is listed with a
+# rationale, and the unscanned ones are PRINTED on every run, so the gap is visible rather than
+# structural and silent.
+SUFFIX_DECLARATIONS: tuple[tuple[str, bool, str], ...] = (
+    (".py",    True,  "Python: the audit, the harness and codeconv. Patterns cover returncode, "
+                      "check_call and len()==0 decision sites."),
+    (".cs",    True,  "C#: the YNET client and transport this lane owns. Patterns cover ExitCode, "
+                      "WaitFor*, IsIdle, IsHealthy and Count==0."),
+    (".dart",  True,  "Dart: the GLP runtime and REPL."),
+    (".sh",    True,  "Bash: the REPL suite, which is the repo's largest exit-status consumer."),
+    (".ps1",   True,  "PowerShell: launchers and host probes."),
+    (".gleam", False, "NOT SCANNED -- 223 files. Gleam's idioms (Result/Option, `case`) share no "
+                      "token with the five kinds, so the current patterns would find nothing and "
+                      "report a confident zero. Closing this needs Gleam-specific patterns and is "
+                      "a declared follow-up, NOT a claim of cleanliness."),
+    (".glp",   False, "NOT SCANNED -- 1416 files. GLP has no exit status and no process; its "
+                      "evidence signals are suspension and guard outcomes, a different kind set "
+                      "that this feature does not define. Declared gap, not an omission."),
+    (".mjs",   False, "NOT SCANNED -- 12 files, and this is the one that matters most: "
+                      "prereq-patterns/pglite/pglite_bridge.mjs is the repo's most load-bearing "
+                      "readiness/liveness surface and is invisible to this audit. Highest-priority "
+                      "follow-up of the three."),
+)
+SCAN_SUFFIXES = tuple(s for s, scanned, _ in SUFFIX_DECLARATIONS if scanned)
+UNSCANNED_SUFFIXES = tuple(s for s, scanned, _ in SUFFIX_DECLARATIONS if not scanned)
+
+# Suffixes that carry executable logic and could therefore hold an evidence signal. A file whose
+# suffix is here but which is NOT in SCAN_SUFFIXES is a real, countable gap. Anything else in a
+# scoped region (documents, archives, binaries, build leftovers) is recorded but never censused
+# by suffix -- see the note at its use site.
+SOURCE_SUFFIXES = frozenset(SCAN_SUFFIXES) | frozenset(UNSCANNED_SUFFIXES) | frozenset({
+    ".erl", ".ex", ".exs", ".js", ".ts", ".mts", ".cjs", ".go", ".rs", ".java", ".scala",
+    ".kt", ".rb", ".pl", ".psm1", ".bash", ".zsh", ".fs", ".fsx", ".c", ".h", ".cc", ".cpp",
+})
 
 # Regions never scanned. Each exclusion is a deliberate, stated decision, and every excluded
 # region is REPORTED as unexamined rather than dropped (FR-020).
@@ -187,7 +271,8 @@ def validate_manifest(doc: object) -> None:
 
         for field in ("id", "path", "symbol", "kind", "owner", "disposition"):
             _req_str(s, field, where)
-        for field in ("conformance_check", "negative_control", "contention", "notes"):
+        for field in ("conformance_check", "negative_control", "contention", "notes",
+                      "rationale", "disclosed_to"):
             _req_str(s, field, where, allow_none=True)
         if s.get("iterations") is not None and not isinstance(s["iterations"], int):
             raise ManifestError(f"{where}.iterations: must be an integer or null")
@@ -219,8 +304,35 @@ def validate_manifest(doc: object) -> None:
         gov = s["governed_by"]
         if not isinstance(gov, list) or not gov or any(g not in GOVERNED for g in gov):
             raise ManifestError(f"{where}.governed_by: non-empty subset of {GOVERNED}")
-        if s["disposition"] not in ("owned", "disclosed", "not-reproduced-on-this-build"):
-            raise ManifestError(f"{where}.disposition: unrecognised {s['disposition']!r}")
+        if s["disposition"] not in DISPOSITIONS:
+            raise ManifestError(f"{where}.disposition: unrecognised {s['disposition']!r}; "
+                                f"must be one of {DISPOSITIONS}")
+
+        # FR-019 (feature 109), engineer ruling Q-olg17-03. The declaration burden is
+        # PROPORTIONAL TO STANDING, and each disposition is refused unless it carries the field
+        # that makes it honest. Without this, `not-a-signal` is a free pass: a lane could dispose
+        # of its way to a clean report one word at a time. With it, every disposition has to say
+        # something a reviewer can disagree with.
+        if s["disposition"] == "owned":
+            if not s.get("conformance_check"):
+                raise ManifestError(
+                    f"{where}: disposition 'owned' requires a conformance_check. Owning a signal "
+                    "and not checking it is the claim this feature exists to refuse.")
+            if not s.get("negative_control"):
+                raise ManifestError(
+                    f"{where}: disposition 'owned' requires a negative_control. A check that "
+                    "cannot fail has measured nothing, whatever it printed.")
+        elif s["disposition"] == "not-a-signal":
+            if not s.get("rationale"):
+                raise ManifestError(
+                    f"{where}: disposition 'not-a-signal' requires a 'rationale' saying why this "
+                    "site is not read as evidence. An unexplained dismissal is indistinguishable "
+                    "from an oversight, and is the cheapest way to fake coverage.")
+        elif s["disposition"] == "disclosed":
+            if not s.get("disclosed_to"):
+                raise ManifestError(
+                    f"{where}: disposition 'disclosed' requires 'disclosed_to' naming the owning "
+                    "lane. A defect disclosed to nobody is a defect kept.")
 
         # FR-018a. A contention claim with no way to be wrong is worse than an absent entry,
         # so this is a REFUSAL, not an 'unproven' classification.
@@ -289,9 +401,24 @@ def scan(repo: str, scoped: list[dict]) -> tuple[list[dict], list[str], list[dic
                 unexamined.append({"path": rel_d + "/", "reason": "excluded-directory"})
 
         for fn in filenames:
-            if not fn.endswith(SCAN_SUFFIXES):
-                continue
             rel = f"{rel_dir}/{fn}" if rel_dir else fn
+            if not fn.endswith(SCAN_SUFFIXES):
+                # FR-016 (feature 109). This `continue` used to sit BEFORE the in-scope test, so
+                # an unscannable file inside a declared region vanished from the report entirely
+                # and the region was still called examined. A file we cannot open inside a region
+                # we claim to have examined is UNEXAMINED, and it is now recorded as such, named
+                # by suffix, so the census can be reported per region.
+                if _in_scope(rel, scoped) and not _excluded(rel):
+                    ext = os.path.splitext(fn)[1].lower()
+                    # Only SOURCE files are censused by suffix. A `.pdf`, `.zip` or `.md` inside a
+                    # scoped region is not an unaudited evidence signal, and counting it as one
+                    # would inflate the gap number into something nobody can act on -- the mirror
+                    # image of the confident zero, and just as useless. Non-source files are still
+                    # recorded, but aggregated under one reason so they cannot pad the census.
+                    reason = (f"unscannable-suffix:{ext}" if ext in SOURCE_SUFFIXES
+                              else "non-source-file")
+                    unexamined.append({"path": rel, "reason": reason})
+                continue
             in_scope = _in_scope(rel, scoped)
             if _excluded(rel):
                 if in_scope:
@@ -532,8 +659,19 @@ def audit(repo: str, manifest_path: str, report_path: str) -> tuple[dict, int]:
 
     # A stated scope boundary is not a read failure. A region we FAILED to read is a different
     # thing and still trips EXIT_UNEXAMINED. Both stay in the report either way.
+    #
+    # FR-016/FR-018 (feature 109) add a THIRD category, and keeping it distinct is the whole
+    # point. A file inside a scoped region whose suffix this audit does not scan is:
+    #   - NOT a scope boundary  -- it is inside the declared scope;
+    #   - NOT a read failure    -- we can read it, we have declared that we do not scan it.
+    # It is a DECLARED GAP. Folding it into `unread` would make every run exit UNEXAMINED and the
+    # signal would be turned off within a day; folding it into BOUNDARY would hide it, which is
+    # the confident zero this feature exists to remove. So it is counted, named by suffix, and
+    # printed on every run -- visible without being fatal.
     BOUNDARY = ("out-of-declared-scope", "excluded-directory", "excluded-glob")
-    unread = [u for u in unexamined if u["reason"] not in BOUNDARY]
+    unread = [u for u in unexamined
+              if u["reason"] not in BOUNDARY and not _is_declared_gap(u["reason"])]
+    unopened_by_suffix = _suffix_census(unexamined)
     if totals["errors"]:
         code, outcome = EXIT_DISAGREEMENT, "FAIL"
     elif unread:
@@ -558,6 +696,12 @@ def audit(repo: str, manifest_path: str, report_path: str) -> tuple[dict, int]:
         "manifest_only": manifest_only,
         "regions_examined": examined,
         "regions_unexamined": unexamined,
+        "unopened_by_suffix": unopened_by_suffix,
+        "suffix_declarations": [
+            {"suffix": s, "scanned": scanned, "rationale": why}
+            for s, scanned, why in SUFFIX_DECLARATIONS
+        ],
+        "disposition_counts": _disposition_counts(manifest),
         "totals": totals,
         "receipt_path": os.path.relpath(receipt_path, repo).replace(os.sep, "/"),
     }
@@ -571,6 +715,44 @@ def audit(repo: str, manifest_path: str, report_path: str) -> tuple[dict, int]:
 BOUNDARY = ("out-of-declared-scope", "excluded-directory", "excluded-glob")
 
 
+def _disposition_counts(manifest: dict) -> dict[str, int]:
+    """Per-disposition counts — the coverage statement (FR-021).
+
+    Deliberately NOT collapsed into one percentage. A blended figure makes `owned` (checked, with
+    a negative control) indistinguishable from `not-a-signal` (dismissed with a sentence), so a
+    lane could raise its coverage number by dismissing things. Four numbers cannot be gamed that
+    way without the gaming being visible in which number grew.
+    """
+    counts = {d: 0 for d in DISPOSITIONS}
+    for s in manifest.get("surfaces", []):
+        d = s.get("disposition")
+        if d in counts:
+            counts[d] += 1
+    return counts
+
+
+def _is_declared_gap(reason: str) -> bool:
+    """A file inside scope that this audit has declared it does not scan (FR-018)."""
+    return reason.startswith("unscannable-suffix:") or reason == "non-source-file"
+
+
+def _suffix_census(unexamined: list[dict]) -> dict[str, int]:
+    """Count in-scope source files left unopened, by suffix (FR-016).
+
+    This is the number that did not exist before feature 109. The audit reported
+    `regions UNREAD 0` while never opening 1651 source files inside regions it called examined,
+    because an unscannable file was dropped before the in-scope test and so never entered the
+    report at all. A region is no longer callable 'examined' on the strength of the subset the
+    scanner happens to read.
+    """
+    census: dict[str, int] = {}
+    for u in unexamined:
+        r = u["reason"]
+        if r.startswith("unscannable-suffix:"):
+            census[r.split(":", 1)[1]] = census.get(r.split(":", 1)[1], 0) + 1
+    return dict(sorted(census.items(), key=lambda kv: -kv[1]))
+
+
 def render(report: dict) -> str:
     t = report["totals"]
     ux = report["regions_unexamined"]
@@ -580,7 +762,8 @@ def render(report: dict) -> str:
         f"  manifest sha256   {report['manifest_sha256'][:16]}...",
         f"  regions examined  {len(report['regions_examined'])}",
         f"  scope boundary    {sum(1 for u in ux if u['reason'] in BOUNDARY)}",
-        f"  regions UNREAD    {sum(1 for u in ux if u['reason'] not in BOUNDARY)}",
+        f"  regions UNREAD    "
+        f"{sum(1 for u in ux if u['reason'] not in BOUNDARY and not _is_declared_gap(u['reason']))}",
         f"  checks executed   {sum(1 for v in cr.values() if v == 'pass')} pass"
         f" / {sum(1 for v in cr.values() if v == 'fail')} fail"
         f" / {sum(1 for v in cr.values() if v == 'not-executable')} not-executable",
@@ -590,6 +773,23 @@ def render(report: dict) -> str:
         f"  errors            {t['errors']}",
         f"  receipt           {report['receipt_path']}",
     ]
+
+    # FR-021: per-disposition counts ARE the coverage statement. No blended percentage is
+    # printed anywhere, deliberately -- see _disposition_counts.
+    dc = report.get("disposition_counts") or {}
+    if dc:
+        out.append("  disposition       "
+                   + "  ".join(f"{k}={v}" for k, v in dc.items() if v or k == "owned"))
+
+    # FR-016: in-scope source files this audit did NOT open, by suffix. Before feature 109 this
+    # number did not exist and the same run printed `regions UNREAD 0`.
+    census = report.get("unopened_by_suffix") or {}
+    if census:
+        total = sum(census.values())
+        out.append(f"  UNOPENED in scope {total} source file(s) -- "
+                   + ", ".join(f"{k} x{v}" for k, v in census.items()))
+        out.append("                    (declared gaps, not clean: see suffix_declarations "
+                   "in the report for the rationale on each)")
     for v in report["surfaces"]:
         if v["classification"] != "conforming":
             frs = ",".join(v["failed_frs"]) or "-"
