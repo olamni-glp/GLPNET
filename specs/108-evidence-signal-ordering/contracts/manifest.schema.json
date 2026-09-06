@@ -1,0 +1,126 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Evidence-signal manifest (feature 108, FR-014a)",
+  "type": "object",
+  "required": [
+    "version",
+    "lane",
+    "surfaces"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "version": {
+      "const": 1
+    },
+    "lane": {
+      "type": "string",
+      "minLength": 1
+    },
+    "generated_note": {
+      "type": "string"
+    },
+    "surfaces": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/surface"
+      }
+    }
+  },
+  "$defs": {
+    "surface": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "path",
+        "symbol",
+        "kind",
+        "consumers",
+        "governed_by",
+        "conformance_check",
+        "owner",
+        "disposition"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
+        },
+        "path": {
+          "type": "string",
+          "pattern": "^[^\\]+$"
+        },
+        "symbol": {
+          "type": "string",
+          "minLength": 1
+        },
+        "kind": {
+          "enum": [
+            "wait",
+            "idle-predicate",
+            "liveness-flag",
+            "exit-status",
+            "emptiness"
+          ]
+        },
+        "consumers": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string"
+          }
+        },
+        "governed_by": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "enum": [
+              "FR-004",
+              "FR-007",
+              "FR-012"
+            ]
+          }
+        },
+        "conformance_check": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "negative_control": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "iterations": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1
+        },
+        "contention": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "owner": {
+          "type": "string",
+          "minLength": 1
+        },
+        "disposition": {
+          "enum": [
+            "owned",
+            "disclosed",
+            "not-reproduced-on-this-build"
+          ]
+        },
+        "notes": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}
