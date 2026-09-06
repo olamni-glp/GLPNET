@@ -307,6 +307,45 @@ public sealed record FederationIdentity(
     {
         Directory.CreateDirectory(dir);
 
+        // 🔴 File.Move(overwrite: false) IS NOT AN ATOMIC EXCLUSIVE CLAIM. On this runtime it is a
+        // check-then-rename, so two concurrent callers can BOTH pass the existence check and both
+        // rename — the second silently clobbering the first. Every peer pinned from the loser's
+        // return value would have been pinning a key this host does not hold.
+        //
+        // FileMode.CreateNew IS atomic and exclusive (O_EXCL on POSIX, CREATE_NEW on Windows), so
+        // the claim is taken on a separate marker file and only the claim's winner writes the key.
+        //
+        // 🔴 THE CLAIM IS TAKEN BEFORE THE KEYPAIR IS GENERATED, NOT AFTER. Generating a P-256 key,
+        // self-signing it and exporting a PFX costs real milliseconds. Doing that work BEFORE the
+        // claim meant every caller paid it, and — far worse — meant a caller could still be holding
+        // a "the pfx is absent" decision it made tens of milliseconds ago when it finally reached
+        // the claim. See the double-check below, which is the half that actually closes the race.
+        var claimPath = pfxPath + ".claim";
+        var claimed = false;
+        if (!rotate)
+        {
+            if (!TryClaim(claimPath))
+                return AdoptTheWinner(pfxPath, fpPath, claimPath); // lost the race — adopt, never mint
+            claimed = true;
+
+            // 🔴 DOUBLE-CHECK UNDER THE CLAIM — this is the actual fix for the two-identity defect.
+            // Winning the claim is NOT evidence that no identity exists. The claim is RELEASED the
+            // instant the first minter publishes, so a caller that entered Create while the pfx was
+            // genuinely absent can arrive here AFTER that winner finished, take a perfectly valid
+            // FRESH claim, and mint a SECOND identity straight over the first — with Created: true,
+            // so it believes it is the host's minter and hands its pin to every peer it meets.
+            //
+            // Measured on develop before this fix: 16 concurrent first-starts returned TWO DISTINCT
+            // pins (glp_link.tests FederationIdentityTests.ConcurrentFirstStart_ConvergesOnOneIdentity).
+            // Re-checking here is what turns the claim from a FIRST-ARRIVAL MARKER into genuine
+            // mutual exclusion. A claim you can re-acquire after the work is done excludes nobody.
+            if (File.Exists(pfxPath))
+            {
+                TryDelete(claimPath);
+                return LoadAfterEnsuringSidecar(pfxPath, fpPath);
+            }
+        }
+
         using var ec = ECDsa.Create(ECCurve.NamedCurves.nistP256);
         var req = new CertificateRequest($"CN={commonName}", ec, HashAlgorithmName.SHA256);
         req.CertificateExtensions.Add(new X509BasicConstraintsExtension(false, false, 0, true));
@@ -318,19 +357,6 @@ public sealed record FederationIdentity(
         var now = DateTimeOffset.UtcNow;
         using var minted = req.CreateSelfSigned(now.AddMinutes(-1), now.Add(Lifetime));
         var pfxBytes = minted.Export(X509ContentType.Pfx);
-
-        // 🔴 File.Move(overwrite: false) IS NOT AN ATOMIC EXCLUSIVE CLAIM. On this runtime it is a
-        // check-then-rename, so two concurrent callers can BOTH pass the existence check and both
-        // rename — the second silently clobbering the first. Measured: 16 concurrent first-starts
-        // returned TWO DISTINCT identities, i.e. two callers each believed they had minted the
-        // host's identity and the file held only one of them. Every peer pinned from the loser's
-        // return value would have been pinning a key this host does not hold.
-        //
-        // FileMode.CreateNew IS atomic and exclusive (O_EXCL on POSIX, CREATE_NEW on Windows), so
-        // the claim is taken on a separate marker file and only the claim's winner writes the key.
-        var claimPath = pfxPath + ".claim";
-        if (!rotate && !TryClaim(claimPath))
-            return AdoptTheWinner(pfxPath, fpPath, claimPath); // lost the race — adopt, never mint
 
         var tempPfx = pfxPath + ".tmp-" + Guid.NewGuid().ToString("N");
         try
@@ -344,7 +370,7 @@ public sealed record FederationIdentity(
         catch
         {
             TryDelete(tempPfx);
-            if (!rotate) TryDelete(claimPath); // release the claim so the next start can retry
+            if (claimed) TryDelete(claimPath); // release the claim so the next start can retry
             throw;
         }
 
@@ -353,7 +379,11 @@ public sealed record FederationIdentity(
         WriteSidecar(fpPath, pin, replace: true);
         // Released only now, so a loser that is still waiting sees the claim disappear ONLY after
         // the key is on disk and readable.
-        TryDelete(claimPath);
+        //
+        // Guarded by `claimed`: a rotate: true call never TAKES a claim, and an unguarded delete
+        // here let a rotation destroy a concurrent first-start's claim — handing two live callers
+        // the right to mint at once, which is the very defect the claim exists to prevent.
+        if (claimed) TryDelete(claimPath);
         return new FederationIdentity(cert, pin, pfxPath, Created: true);
     }
 

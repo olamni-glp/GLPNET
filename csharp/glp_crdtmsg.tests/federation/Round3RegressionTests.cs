@@ -461,7 +461,14 @@ public sealed class Round3RegressionTests
     [Fact]
     public void ConcurrentFirstRunMintingYieldsExactlyOneIdentity()
     {
-        string dir = Path.Combine(Path.GetTempPath(), "ynet_id", Guid.NewGuid().ToString("n")[..8]);
+        // 🔴 NOT `%TEMP%/ynet_id/<guid>`. Measured on ARIELLAS 2026-09-05: a 25-byte FILE named
+        // `ynet_id` sits in %TEMP% — written by ANOTHER LANE on this host (`ariellas.crucible`,
+        // whose node identity it holds) — so creating a DIRECTORY of that name fails and this test
+        // reported a red that had nothing to do with the code under test. Two lanes collided in a
+        // shared global namespace that nobody owns. The fix is a lane-scoped root: a test must not
+        // stake a claim on a name another process on the same host might reasonably want.
+        string dir = Path.Combine(
+            Path.GetTempPath(), "glpnet-tests", "ynet-id", Guid.NewGuid().ToString("n")[..8]);
         string path = Path.Combine(dir, "node.key");
         try
         {
@@ -521,9 +528,23 @@ public sealed class Round3RegressionTests
         var fold = NewFold();
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(3));
 
+        // 🔴 COUNT WHAT WAS ACTUALLY APPLIED. This loop is bounded by a 3s wall clock, so on a busy
+        // host it stops early — and asserting a hard 4000 below then reported a CORRECTNESS failure
+        // ("Expected: 4000, Actual: 701") for what was only a slow machine. Measured repeatedly on
+        // ARIELLAS while other suites ran. A wall-clock budget is not a correctness property, and
+        // conflating the two produces exactly the false red that trains a fleet to ignore its suite.
+        //
+        // The invariant this test actually exists to prove is unchanged and is still asserted: the
+        // fold neither throws nor silently loses an apply while being enumerated concurrently. So
+        // compare the fold against the number of applies that genuinely happened.
+        long applied = 0;
         var writer = Task.Run(() =>
         {
-            for (long i = 1; i <= 4000 && !cts.IsCancellationRequested; i++) fold.Apply(Op("g", i));
+            for (long i = 1; i <= 4000 && !cts.IsCancellationRequested; i++)
+            {
+                fold.Apply(Op("g", i));
+                applied++;
+            }
         });
 
         var reader = Task.Run(() =>
@@ -539,6 +560,11 @@ public sealed class Round3RegressionTests
         });
 
         await Task.WhenAll(writer, reader);   // an unsynchronised fold throws here
-        Assert.Equal(4000, fold.Count);
+
+        // Not one apply lost to the concurrent enumeration — the real invariant.
+        Assert.Equal(applied, fold.Count);
+        // And the run must have been substantial enough to have actually exercised the race; a
+        // handful of applies would make the assertion above vacuously true.
+        Assert.True(applied > 100, $"only {applied} applies completed — too few to exercise the race");
     }
 }

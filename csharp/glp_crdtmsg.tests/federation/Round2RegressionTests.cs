@@ -843,7 +843,10 @@ public sealed class Round2RegressionTests
     [Fact]
     public void APreProvisionedKeyIsLoadedRatherThanReminted()
     {
-        string dir = Path.Combine(Path.GetTempPath(), "ynet_id", Guid.NewGuid().ToString("n")[..8]);
+        // Lane-scoped root — see the note in Round3RegressionTests: `%TEMP%/ynet_id` is a FILE on
+        // ARIELLAS, owned by another lane on this host, so a directory of that name cannot be made.
+        string dir = Path.Combine(
+            Path.GetTempPath(), "glpnet-tests", "ynet-id", Guid.NewGuid().ToString("n")[..8]);
         string path = Path.Combine(dir, "preprovisioned.pfx");
         try
         {

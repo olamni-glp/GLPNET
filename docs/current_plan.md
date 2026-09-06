@@ -6,13 +6,35 @@ SPDX-License-Identifier: MIT
 
 # Restart pointer — **THIN POINTER ONLY, NOT A WORK LEDGER**
 
-> Last verified **2026-09-04T16:40Z** by the `gavriella` lane, against durable rows — not from a
-> summary. **ACTIVE ERA: `102-quic-federation-transport`** (engineer ruling `Q-GLPNETG27-01`;
-> `specify` COMPLETE, slot HELD since 10:09Z). Full handoff:
-> `docs/restart/RESTART-gavriella-glpnet-20260904-wave27.md`.
-> 🔴 The `078-verification-receipts` marathon run below is **still open (28/111, 214 items) and was
-> DEFERRED, not cancelled** — `resume marathon` still resumes it until a `102` run can be opened
-> (blocked at time of writing by a peer lane's live codexreview holding the registry).
+> ## 🔴 READ THIS FIRST — `resume marathon` WILL LIE TO YOU IF YOU TYPE IT BARE
+>
+> Verified **2026-09-07T00:15Z** by `ariellas.glpnet` against durable rows, not a summary.
+>
+> **ACTIVE RUN: `mrun-dd5a677a874f`, feature `105-federation-identity-mint-race`, seq 16,
+> 12 outstanding backlog items.**
+>
+> ```
+> PYTHONUTF8=1 buildkit-marathon status --feature 105-federation-identity-mint-race
+> PYTHONUTF8=1 buildkit-marathon resume --feature 105-federation-identity-mint-race
+> ```
+>
+> **`--feature` IS MANDATORY.** `.specify/feature.json` points at `specs/085-onrestart-fleet-resume`
+> — correctly, because feature 105 was a fix and never had a spec dir. So a bare
+> `buildkit-marathon status` resolves to **085** and answers:
+>
+> ```
+> no active marathon run for feature '085-onrestart-fleet-resume'.
+> ```
+>
+> **That answer is true and useless.** It is not "there is nothing to resume" — it is "you asked
+> about the wrong feature." Measured this session: bare `status` reported no run while
+> `mrun-dd5a677a874f` was open on 105 with 12 items outstanding. **If you type `resume marathon`
+> and are told there is no active run, you have hit this. Re-ask with `--feature`.**
+>
+> 🔒 **Serialise every buildkit CLI call.** One `pgdb/.lock` per repo. This session lost ~20 minutes
+> to PID 4160 (`buildkit-marathon takt --feature host-interconnectivity-hardening`) holding it, CPU
+> climbing the whole time. That is **contention with a live peer process, not a stuck lock — do not
+> kill it.** Wait, or raise `BUILDKIT_LOCK_WAIT_SECONDS` (300 worked).
 
 > Previously verified **2026-08-31T11:30Z** by the `gavriella` lane, against durable rows — not from a
 > summary. Per CLAUDE.md § *Multi-Stage Task Persistence & Restart-Resume*, the **roadmap + buildkit

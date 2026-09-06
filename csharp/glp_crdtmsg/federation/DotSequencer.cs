@@ -51,6 +51,13 @@ public sealed class DotSequencer
         _floor = floor;
     }
 
+    /// <summary>
+    /// How long an allocation waits for a contended sequence file before it gives up and raises.
+    /// This is a fault boundary, not a correctness budget: allocation is correct at any wait, and
+    /// exceeding this means a holder is stuck, not that the host is merely busy.
+    /// </summary>
+    public static readonly TimeSpan ContentionTimeout = TimeSpan.FromSeconds(30);
+
     /// <summary>The default sequence path — beside the node identity, outside the repo.</summary>
     public static string DefaultPath() =>
         Path.Combine(Path.GetDirectoryName(FederationConfig.DefaultPath())!, "dot.seq");
@@ -64,7 +71,28 @@ public sealed class DotSequencer
         Directory.CreateDirectory(Path.GetDirectoryName(_path)!);
 
         // Retry only for the contended-file case. Any other failure is a real fault and is raised.
-        for (int attempt = 0; ; attempt++)
+        //
+        // Contention is EXPECTED here — several callers legitimately allocate at once, and this
+        // class exists to be "safe against a second process racing it". Two properties make that
+        // wait sound, and the previous `Sleep(10)` capped at 50 attempts had neither:
+        //
+        //   * A DEADLINE, not an attempt count. The old budget was 50 x 10ms = 500ms, justified by
+        //     the comment "it releases in us". This very method falsifies that: it calls
+        //     Flush(flushToDisk: true) — a real FlushFileBuffers — while still holding the file, so
+        //     a holder's tenure is MILLISECONDS. 200 concurrent allocations need more queue than
+        //     500ms, the unluckiest caller ran out of attempts, and the IOException escaped.
+        //
+        //   * JITTER. A fixed 10ms period is a thundering herd: every waiter wakes on the same
+        //     boundary, one wins, the rest re-collide, and one caller can lose repeatedly.
+        //     Randomising each wait de-synchronises the convoy.
+        //
+        // Measured on an idle host, ConcurrentAllocationsNeverCollide alone, each run a separate
+        // process: 2 failures in 12 runs BEFORE this change, 0 failures in 30 runs AFTER it. The
+        // deadline stays bounded on purpose — a genuinely stuck holder must still fail loudly
+        // rather than hang forever.
+        long deadline = Environment.TickCount64 + (long)ContentionTimeout.TotalMilliseconds;
+        int backoffCapMs = 1;
+        while (true)
         {
             try
             {
@@ -90,9 +118,12 @@ public sealed class DotSequencer
 
                 return new Dot(_nodeId, next);
             }
-            catch (IOException) when (attempt < 50)
+            catch (IOException) when (Environment.TickCount64 < deadline)
             {
-                Thread.Sleep(10);   // another process holds the sequence file; it releases in µs
+                // Full jitter over a doubling window: every waiter picks a different wake instant,
+                // so the convoy breaks up instead of re-colliding on a shared boundary.
+                Thread.Sleep(Random.Shared.Next(1, backoffCapMs + 1));
+                if (backoffCapMs < 16) backoffCapMs *= 2;
             }
         }
     }
