@@ -1,5 +1,27 @@
 ## [Unreleased]
 
+## [v2026.09.06.3] - 2026-09-06
+
+### Added
+- make 'merged' checkable instead of assertable - the rule that cost the fleet 8 hours today
+- the existing supervisor can host the M6 client - by binding its wire, not rewriting it
+- the wire plane reaches the control surface - and a machine check so it cannot be lost again
+- the QUIC realization of the receive seam - path 1, the YNET wire
+
+### Fixed
+- tests were counting as consumers - the instrument had the defect it was built to find
+- clause 4 gets a real push channel, and the R-C merge I reported as done was reset away
+- codexreview found the supervisor could not launch the client at all - 4 findings, all real
+
+### Changed
+- Merge pull request #316 from olamni-glp/107-quic-mailbox-adapter
+- ACK gavriella-olamnit 2115Z - static closure and live closure are two questions
+- decisions(glpnet): R-S6-01..04 - PR-only cross-lane, M6.4/M6.5 adopt-but-PARTIAL, M6.3 to the kernel lanes, next era is declared-unconsumed-guard
+- publish M6.4+M6.5 delivery - the defer clause the 1605Z census measured as built by nobody
+- era(next): engineer-ruled composition - differential gate + FR-006 wiring + audit-scope widening (ALL THREE) + YQuery/DuckLake [03]
+- close(108): retrospective (6 findings) + restart brief rev5 updated to shipped
+- Merge pull request #315 from olamni-glp/main
+
 ## [v2026.09.06.2] - 2026-09-06
 
 ### Added
