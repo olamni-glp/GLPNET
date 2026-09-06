@@ -1,5 +1,22 @@
 ## [Unreleased]
 
+## [v2026.09.06.5] - 2026-09-06
+
+### Changed
+- Merge pull request #322 from olamni-glp/109-differential-acceptance-gate
+- spec(109): FR-019 ratified at four tiers, and the two undelivered commitments disclosed IN THE SPEC
+- Merge branch 'develop' of https://github.com/olamni-glp/GLPNET into develop
+- eras 107 and 109 shipped; slot free; next is ynet-frame-field-parity (WSJF 10.5)
+- ack(Q20): re-cast in the canonical FTAP store, and four of the six forking tools were mine
+- export after era 109 released - 21 epics, 147 features
+- Merge pull request #321 from olamni-glp/main
+- fix(109) codexreview: four checks in this feature could not fail, and one of them was mine
+- feat(109) US1: a cross-runtime criterion can no longer be discharged from one runtime
+- era(109): T24 v4.1 with [13] YYBeacon, restart brief rev6, roadmap export + open-features table
+- feat(109) US2: the audit REFUSES, and the adoption/override rules have exactly one implementation
+- feat(109) US3: the audit can no longer report a confident zero over a surface it never opened
+- spec(109) + fleet(T24 v4.0): differential gate spec; T24 superset amended with [04]-[12], LEADER+PLANNER, AF criteria - 0 v3.0 lines dropped
+
 ## [v2026.09.06.4] - 2026-09-06
 
 ### Added
