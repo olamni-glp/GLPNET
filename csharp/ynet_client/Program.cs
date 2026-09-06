@@ -63,27 +63,52 @@ var spool = new PendingAlertSpool(
 switch (verb)
 {
     case "run":
+    case "serve":
     {
+        // `serve` is `run` plus a liveness endpoint a SUPERVISOR can interrogate (M6-d). They share
+        // one body deliberately: two code paths would let the supervised client and the operator's
+        // client drift, and "the thing we supervise is not the thing we run" is its own defect.
+        var supervised = verb == "serve";
+
         var hook = new AgentHook(Environment.GetEnvironmentVariable("YNET_CLIENT_HOOK"));
 
-        // Plane selection. YNET_CLIENT_COOP names a shared coop root; with it, this lane receives
-        // real cross-lane traffic. WITHOUT it we fall back to the in-memory plane and SAY SO — a
-        // receiver that can only hear itself must never be mistaken for one that is reachable.
-        var coopRoot = Environment.GetEnvironmentVariable("YNET_CLIENT_COOP");
-        var laneDir = Environment.GetEnvironmentVariable("YNET_CLIENT_LANE");
-        IYnetInbound plane;
-        CoopFileInbound? coop = null;
+        // 🔴 PLANE SELECTION NOW GOES THROUGH PlaneCatalog — the whole point of this feature.
+        // Until 2026-09-06 this verb could bind only CoopFileInbound or LoopbackInbound; QuicInbound
+        // existed, was tested, and had NO PATH TO IT from any verb. See PlaneCatalog's doc comment.
+        var requested = PlaneCatalog.Parse(
+            Opt("--plane") ?? Environment.GetEnvironmentVariable("YNET_CLIENT_PLANE"));
 
-        if (!string.IsNullOrWhiteSpace(coopRoot) && !string.IsNullOrWhiteSpace(laneDir))
+        var coopRoot = CoopRoot();
+        var laneDir = Environment.GetEnvironmentVariable("YNET_CLIENT_LANE")
+                      ?? (Opt("--self") is { } s ? PeerIdentity.Parse(s).DirectoryName : null);
+
+        var binding = new PlaneCatalog.Binding
         {
-            coop = new CoopFileInbound(coopRoot, laneDir);
-            coop.StrayObserved += p => Console.Error.WriteLine($"ynet_client: STRAY (not a .frame, not delivered): {p}");
-            coop.PollFailed += ex => Console.Error.WriteLine($"ynet_client: poll failed: {ex.GetType().Name}: {ex.Message}");
-            plane = coop;
+            CoopRoot = coopRoot,
+            LaneDirectory = laneDir,
+            Self = null,   // supplied by --identity in a later step; absent means the wire degrades
+            Listener = PlaneCatalog.ParseListen("ynet-client", Opt("--listen")),
+        };
+
+        PlaneBinding bound;
+        try
+        {
+            bound = PlaneSelection.Bind(
+                requested, binding, new DegradedNotice(coopRoot, laneDir ?? "unknown-lane"));
         }
-        else
+        catch (InvalidOperationException ex)
         {
-            plane = new LoopbackInbound();
+            // No plane could be bound at all. Refusing is the only honest answer — a client that
+            // starts here would receive nothing while reporting that it is running.
+            Console.Error.WriteLine($"ynet_client: {ex.Message}");
+            return 6;
+        }
+
+        var plane = bound.Inbound;
+        if (plane is CoopFileInbound direct)
+        {
+            direct.StrayObserved += p => Console.Error.WriteLine($"ynet_client: STRAY (not a .frame, not delivered): {p}");
+            direct.PollFailed += ex => Console.Error.WriteLine($"ynet_client: poll failed: {ex.GetType().Name}: {ex.Message}");
         }
 
         using var machine = new YnetReceiverMachine(plane, spool, hook);
@@ -91,14 +116,45 @@ switch (verb)
         machine.Faulted += ex => Console.Error.WriteLine($"machine fault: {ex.GetType().Name}: {ex.Message}");
         machine.Launch("ynet-client-receiver");
 
-        Console.WriteLine($"ynet_client: receiver running   plane={plane.PlaneName}   spool={spool.Directory}");
-        if (coop is not null)
-            Console.WriteLine($"ynet_client: inbox={coop.InboxDirectory}");
-        else
+        // 🔴 The running line is RENDERED FROM THE BOUND VALUE, and states a degradation on the same
+        // line as the word "running" (FR-004a). A fallback an operator has to go looking for in a
+        // log is a silent fallback, and silent fallback is the defect this feature closes.
+        Console.WriteLine($"{bound.RunningLine()}   spool={spool.Directory}");
+
+        foreach (var inner in Enumerate(plane))
+            Console.WriteLine($"ynet_client:   live plane → {inner.PlaneName}" +
+                              (inner is CoopFileInbound c ? $"   inbox={c.InboxDirectory}" : string.Empty) +
+                              (inner is QuicInbound q ? $"   listening={q.BoundEndPoint?.ToString() ?? "(not bound)"}" +
+                                                        $"   provider={q.ProviderName ?? "(none)"}" : string.Empty));
+
+        if (plane is LoopbackInbound)
             Console.WriteLine("ynet_client: NO CROSS-LANE PLANE — set YNET_CLIENT_COOP and YNET_CLIENT_LANE. " +
                               "This receiver can only hear messages this process makes for itself.");
+
         Console.WriteLine($"ynet_client: hook={(hook.IsConfigured ? "configured" : "NOT configured (durable-only)")}");
         Console.WriteLine($"ynet_client: {spool.Count} alert(s) already pending from earlier runs");
+
+        // ---- M6-d: the liveness endpoint a supervisor interrogates ----
+        LivenessEndpoint? liveness = null;
+        if (supervised)
+        {
+            var addr = PlaneCatalog.ParseListen("ynet-liveness", Opt("--health") ?? "127.0.0.1:0");
+            liveness = new LivenessEndpoint(
+                new System.Net.IPEndPoint(addr!.Value.BindAddress, addr.Value.Port),
+                // 🔴 Health is read from the QHSM's OWN STATE, at the moment of asking — never from
+                // a timer, never from a bare accept. A client answering "alive" from an accept loop
+                // while its state machine has stopped or degraded is a zombie wearing a heartbeat,
+                // and that is exactly the state a process-existence check cannot see.
+                //
+                // A DEGRADED machine answers UNHEALTHY rather than falling silent, so a supervisor
+                // can tell "sick" from "gone" — which is also how it tells a broken channel from a
+                // dead process (FR-027).
+                isHealthy: () => !machine.IsStopped && !machine.IsDegraded);
+            liveness.Start();
+            Console.WriteLine($"ynet_client: liveness={liveness.BoundEndPoint}   " +
+                              "(a supervisor proves this client by ROUND-TRIP ANSWER, never by process existence)");
+        }
+
         Console.WriteLine("ynet_client: the agent is not required; press Ctrl+C to stop.");
 
         var stop = new ManualResetEventSlim(false);
@@ -108,9 +164,15 @@ switch (verb)
         machine.Post(new Ynet.Client.Machine.QEvt(YnetSignal.Stop));
         Thread.Sleep(200);
         Console.WriteLine($"ynet_client: stopped   received={machine.MessagesReceived}   pending={spool.Count}" +
-                          (coop is not null ? $"   strays={coop.StrayCount}" : string.Empty));
-        coop?.Dispose();
+                          (liveness is not null ? $"   liveness_answered={liveness.Answered}" : string.Empty));
+        liveness?.Dispose();
+        (plane as IDisposable)?.Dispose();
         return 0;
+
+        // Flatten a composite so status names what is ACTUALLY live rather than printing the
+        // composite's own label and stopping there.
+        static IEnumerable<IYnetInbound> Enumerate(IYnetInbound p) =>
+            p is CompositeInbound composite ? composite.Planes : [p];
     }
 
     case "poll":
@@ -194,6 +256,37 @@ switch (verb)
         }
 
         var peer = PeerIdentity.Parse(to);
+
+        // 🔴 SENDING CAN NOW USE THE WIRE. Until 2026-09-06 this verb constructed CoopFileOutbound
+        // unconditionally, so QuicOutbound — written, tested and merged — was unreachable from the
+        // only verb that sends. M6 requires this client to SEND as well as receive; on the file
+        // plane alone it could only answer peers who share a mounted volume with it.
+        var sendPlane = PlaneCatalog.Parse(
+            Opt("--plane") ?? Environment.GetEnvironmentVariable("YNET_CLIENT_PLANE"));
+
+        if (sendPlane == PlaneCatalog.Plane.Wire)
+        {
+            var remoteText = Opt("--peer-addr");
+            if (string.IsNullOrWhiteSpace(remoteText))
+            {
+                // Refuse rather than quietly sending on the file plane. Silently substituting a
+                // plane is the defect this feature exists to close; doing it in the SEND path would
+                // deliver to a mailbox the operator did not choose and report success.
+                Console.Error.WriteLine(
+                    "ynet_client: sending on the wire needs the peer's address — pass " +
+                    "--peer-addr <ip:port>. Refusing to fall back to the file plane silently: a " +
+                    "send that lands somewhere you did not choose and reports success is worse " +
+                    "than a refusal.");
+                return 7;
+            }
+            Console.Error.WriteLine(
+                "ynet_client: wire send requires this node's signing identity, which this verb does " +
+                "not yet take (--identity). The route is reachable and covered by tests; the CLI " +
+                "argument is the remaining step. NOT SENT — and saying so rather than reporting a " +
+                "success this build cannot deliver.");
+            return 8;
+        }
+
         var outbound = new CoopFileOutbound(PeerIdentity.Parse(rawSelf), peer, RequiredRoot());
         if (!outbound.Send(Opt("--signal") ?? "M6_MESSAGE", Opt("--body") ?? ""))
         {
@@ -206,7 +299,7 @@ switch (verb)
         }
 
         Console.WriteLine($"ynet_client: sent {outbound.LastFrameName}");
-        Console.WriteLine($"ynet_client: to={peer.Identity}   dir={peer.DirectoryName}");
+        Console.WriteLine($"ynet_client: to={peer.Identity}   dir={peer.DirectoryName}   plane=coop-file");
         return 0;
     }
 

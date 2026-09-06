@@ -83,7 +83,23 @@ public sealed class QuicInbound : IYnetInbound, IDisposable
         RoutingSelection? selection = null)
     {
         ArgumentNullException.ThrowIfNull(self);
-        ArgumentNullException.ThrowIfNull(config);
+        // CA2264 (2026-09-06): this line used to be `ArgumentNullException.ThrowIfNull(config)`,
+        // which CANNOT THROW — ListenerConfig is a `readonly record struct`, so the check was dead
+        // code that LOOKED like validation. The analyzer had said so since the commit that
+        // introduced it, one day earlier, and nobody read it. That is the third time in three waves
+        // that a second instrument was already talking (CS0649 wave-29, xUnit1031 wave-33).
+        //
+        // The dead check was also hiding a real gap: a default-constructed ListenerConfig has a
+        // null BindAddress and port 0, and would have sailed straight through to a listener that
+        // then fails somewhere far away from the caller that supplied it. Validate what actually
+        // has to hold.
+        if (config.BindAddress is null)
+            throw new ArgumentException(
+                "ListenerConfig.BindAddress is null — this is a default-constructed config. " +
+                "A listener cannot bind an address that was never chosen.", nameof(config));
+        if (config.Port is < 0 or > 65535)
+            throw new ArgumentOutOfRangeException(
+                nameof(config), config.Port, "ListenerConfig.Port is outside 0..65535.");
         _self = self;
         _config = config;
         _listener = new YnetListenerService(chain);
