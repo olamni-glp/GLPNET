@@ -157,6 +157,68 @@ public class SupervisedLivenessTests
         Assert.Equal(ResponseKind.Ack, response.Kind);
     }
 
+    /// <summary>
+    /// 🔴 THE TEST I DID NOT WRITE, added from codexreview finding P1 (2026-09-06).
+    ///
+    /// A peer that connects and then simply HOLDS the socket — sending nothing, closing nothing —
+    /// used to park the sole accept loop forever. The supervisor's next connection was never
+    /// accepted, its ping went unanswered, and it would kill and restart a perfectly healthy client:
+    /// a denial-of-service primitive against our own supervision, reachable by anyone who can open
+    /// a socket to the probe port.
+    ///
+    /// My earlier "survives a rude peer" test passed against that defect, because its rude client
+    /// DISPOSED the socket and the FIN made the read return promptly. Connect-and-hold is the case
+    /// the test never wrote, and it is the one that mattered.
+    /// </summary>
+    [Fact]
+    public async Task A_peer_that_connects_and_holds_does_not_starve_the_probe()
+    {
+        var port = FreePort();
+        using var liveness = new SupervisedLiveness("127.0.0.1", port, isHealthy: () => true);
+        liveness.Start();
+        Assert.True(liveness.Bound.Wait(Budget));
+
+        // Connect and hold. No send, no close, no dispose until the test ends.
+        using var squatter = new System.Net.Sockets.TcpClient();
+        await squatter.ConnectAsync("127.0.0.1", port);
+
+        // The supervisor must still get its answer.
+        await using var channel = await ClientChannel.ConnectAsync("127.0.0.1", port, Budget);
+        var response = await channel.RoundTripAsync(
+            RequestFrame.Empty(channel.NextRequestId(), RequestKind.Ping));
+
+        Assert.Equal(ResponseKind.Ack, response.Kind);
+    }
+
+    /// <summary>
+    /// 🔴 REPEATED PINGS ON ONE CHANNEL — codexreview finding P2 (2026-09-06).
+    ///
+    /// The supervisor RETAINS a successful ClientChannel and sends every later ping over it
+    /// (Supervisor.cs:94,145). An earlier version of this responder answered exactly one request per
+    /// connection, so every check after the first met a deliberately broken channel and leaned on
+    /// the supervisor's single reconnect allowance — turning one transient reconnect failure into a
+    /// false death verdict for a healthy client.
+    /// </summary>
+    [Fact]
+    public async Task One_channel_answers_many_pings_the_way_the_supervisor_uses_it()
+    {
+        var port = FreePort();
+        using var liveness = new SupervisedLiveness("127.0.0.1", port, isHealthy: () => true);
+        liveness.Start();
+        Assert.True(liveness.Bound.Wait(Budget));
+
+        await using var channel = await ClientChannel.ConnectAsync("127.0.0.1", port, Budget);
+
+        for (var i = 0; i < 5; i++)
+        {
+            var response = await channel.RoundTripAsync(
+                RequestFrame.Empty(channel.NextRequestId(), RequestKind.Ping));
+            Assert.Equal(ResponseKind.Ack, response.Kind);
+        }
+
+        Assert.Equal(5, liveness.Acked);
+    }
+
     /// <summary>The answer is recomputed on every ping. A cached answer is a LEASE, and a lease
     /// renews whether or not anything is working — which seats a zombie forever.</summary>
     [Fact]
@@ -168,10 +230,10 @@ public class SupervisedLivenessTests
         liveness.Start();
         Assert.True(liveness.Bound.Wait(Budget));
 
-        for (var i = 0; i < 3; i++)
+        await using (var channel = await ClientChannel.ConnectAsync("127.0.0.1", port, Budget))
         {
-            await using var channel = await ClientChannel.ConnectAsync("127.0.0.1", port, Budget);
-            await channel.RoundTripAsync(RequestFrame.Empty(channel.NextRequestId(), RequestKind.Ping));
+            for (var i = 0; i < 3; i++)
+                await channel.RoundTripAsync(RequestFrame.Empty(channel.NextRequestId(), RequestKind.Ping));
         }
 
         Assert.Equal(3, calls);

@@ -114,7 +114,23 @@ public sealed class SupervisedLiveness : IDisposable
                                _cts.Token,
                                onBound: () => Bound.Set()))
             {
-                await ServeOne(endpoint).ConfigureAwait(false);
+                // 🔴 EACH CONNECTION IS SERVED OFF THE ACCEPT LOOP — codexreview finding P1,
+                // 2026-09-06. Previously this awaited ServeOne inline, so ONE peer that connected
+                // and then sent nothing parked the sole accept loop forever: the supervisor's next
+                // connection was never accepted, its ping went unanswered, and it would kill and
+                // restart a perfectly healthy client. A denial-of-service primitive aimed at our own
+                // supervision, reachable by anyone who can open a socket to the probe port.
+                //
+                // My own test did not catch it, and the reason is worth keeping: the rude client in
+                // that test DISPOSED its socket, sending FIN, so the read returned null promptly. A
+                // peer that connects and simply HOLDS is the case the test never wrote.
+                var accepted = endpoint;
+                var worker = new Thread(() => ServeConnection(accepted).GetAwaiter().GetResult())
+                {
+                    IsBackground = true,
+                    Name = "ynet-liveness-conn",
+                };
+                worker.Start();
             }
         }
         catch (OperationCanceledException)
@@ -129,44 +145,75 @@ public sealed class SupervisedLiveness : IDisposable
         }
     }
 
-    private async Task ServeOne(ILinkEndpoint endpoint)
+    /// <summary>How long one connection may stay silent before it is dropped. Bounded because an
+    /// unbounded wait is a socket a peer can hold forever, and holding sockets is free.</summary>
+    public static readonly TimeSpan IdleTimeout = TimeSpan.FromSeconds(60);
+
+    /// <summary>
+    /// Serve one connection for as long as the peer keeps using it.
+    ///
+    /// 🔴 <b>Repeated pings on ONE channel</b> — codexreview finding P2, 2026-09-06. The supervisor
+    /// RETAINS a successful <c>ClientChannel</c> and sends every later ping over it
+    /// (<c>Supervisor.cs:94,145</c>). An earlier version of this method answered exactly one request
+    /// and closed, so every health check after the first met a deliberately broken connection and
+    /// depended on the supervisor's single reconnect allowance — turning one transient reconnect
+    /// failure into a false death verdict. Serve until the peer closes.
+    /// </summary>
+    private async Task ServeConnection(ILinkEndpoint endpoint)
     {
         try
         {
-            var bytes = await endpoint.RecvBytesAsync(_cts.Token).ConfigureAwait(false);
-            if (bytes is null) return;
-
-            var request = RequestResponseCodec.DecodeRequestFrame(bytes);
-
-            // Health is read HERE, at the moment of asking, from the receiver's own state.
-            var healthy = false;
-            try { healthy = _isHealthy(); }
-            catch { healthy = false; }
-
-            if (!healthy)
+            while (!_cts.IsCancellationRequested)
             {
-                // Say nothing. The supervisor's PingTimeout elapses and it treats this client as
-                // dead — which it effectively is. Answering "Ack" here to be polite is exactly how
-                // a zombie survives supervision forever.
-                Interlocked.Increment(ref _refused);
-                return;
+                // A per-read deadline, so a peer that connects and says nothing costs one idle
+                // thread for a bounded time rather than a socket held forever.
+                using var idle = CancellationTokenSource.CreateLinkedTokenSource(_cts.Token);
+                idle.CancelAfter(IdleTimeout);
+
+                byte[]? bytes;
+                try
+                {
+                    bytes = await endpoint.RecvBytesAsync(idle.Token).ConfigureAwait(false);
+                }
+                catch (OperationCanceledException)
+                {
+                    return;   // idle too long, or shutting down
+                }
+
+                if (bytes is null) return;   // peer closed — the ordinary end of a channel
+
+                RequestFrame request;
+                try { request = RequestResponseCodec.DecodeRequestFrame(bytes); }
+                catch (Exception) { return; }   // not our protocol; drop this connection only
+
+                // Health is read HERE, at the moment of asking, from the receiver's own state.
+                var healthy = false;
+                try { healthy = _isHealthy(); }
+                catch { healthy = false; }
+
+                if (!healthy)
+                {
+                    // Say nothing and close. The supervisor's PingTimeout elapses and it treats this
+                    // client as dead — which it effectively is. Answering "Ack" to be polite is
+                    // exactly how a zombie survives supervision forever.
+                    Interlocked.Increment(ref _refused);
+                    return;
+                }
+
+                // Only Ping is answered. This endpoint is a liveness probe, not a control channel:
+                // a client that served arbitrary request kinds here would be a second,
+                // unauthenticated control surface, and the one the fleet audits is the CLI.
+                if (request.Kind != RequestKind.Ping) continue;
+
+                var response = ResponseFrame.Text(request.RequestId, ResponseKind.Ack, "pong");
+                await endpoint.SendBytesAsync(
+                    RequestResponseCodec.EncodeResponseFrame(response, 1), _cts.Token).ConfigureAwait(false);
+                Interlocked.Increment(ref _acked);
             }
-
-            // Only Ping is answered. This endpoint is a liveness probe, not a control channel:
-            // a client that accepted arbitrary requests here would be a second, unauthenticated
-            // control surface, and the one the fleet audits is the CLI.
-            if (request.Kind != RequestKind.Ping) return;
-
-            var response = ResponseFrame.Text(request.RequestId, ResponseKind.Ack, "pong");
-            await endpoint.SendBytesAsync(
-                RequestResponseCodec.EncodeResponseFrame(response, 1), _cts.Token).ConfigureAwait(false);
-            Interlocked.Increment(ref _acked);
         }
         catch (Exception)
         {
-            // One bad connection must never end the accept loop. A peer able to kill this loop could
-            // make the supervisor kill a healthy client — a denial-of-service primitive aimed at our
-            // own supervision.
+            // One bad connection must never take anything else down with it.
         }
         finally
         {

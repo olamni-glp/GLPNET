@@ -43,16 +43,24 @@ lane's own one-day-old code, unread until now (T001).
 - [x] **T017** `PlaneSelectionTests` — incl. the negative control that a **requested-and-bound**
       plane emits **no** degraded notice.
 
-## Phase 2 — sending on the wire (US2)
+## Phase 2 — sending on the wire (US2) — **BLOCKED, ruled, and reported (Q-G35-01 → A)**
 
-- [ ] **T020** `send --plane wire` via `QuicOutbound`, same `<node>/<actor>` addressing. (FR-006)
-- [ ] **T021** Undeliverable send → distinct non-zero exit naming peer + address; never reports
+🔴 **Not done, and NOT deferred silently.** Measured: `NodeIdentity` has `Generate()` and
+`DeriveNodeId()` and **no persist/load**, so an identity made per invocation carries a different
+Ed25519 nodeId every run — and the fleet pins peers by nodeId, never by address. Wiring `--identity`
+to `Generate()` would produce a send verb that compiles, passes a local test, and is refused by every
+correctly-configured peer: a **confident zero**, the exact defect class this era closes. The engineer
+ruled: ship the loud refusal (exit 8, naming the missing argument), and give identity persistence its
+own era. **`send --plane wire` is NOT MET and is reported as NOT MET.**
+
+- [~] **T020** `send --plane wire` via `QuicOutbound`, same `<node>/<actor>` addressing. (FR-006)
+- [~] **T021** Undeliverable send → distinct non-zero exit naming peer + address; never reports
       success. (FR-007)
-- [ ] **T022** Send never throws for a dead peer — **both** the slow negative (timeout) and the
+- [~] **T022** Send never throws for a dead peer — **both** the slow negative (timeout) and the
       fast negative (immediate "unreachable"). (FR-008, SC-006) *This is the defect my own test
       caught in my own adapter yesterday: `SocketException` is not an `IOException`, so `Send`
       threw when the network was fast at saying no.*
-- [ ] **T023** Send bounded in time. (FR-009)
+- [~] **T023** Send bounded in time. (FR-009)
 
 ## Phase 3 — composite plane (US4, P1 by ruling Q-G34-03)
 
@@ -82,7 +90,10 @@ lane's own one-day-old code, unread until now (T001).
       *This is the criterion a process-existence check cannot pass, so it is the one that proves
       the check is real.* (FR-026, SC-011)
 - [x] **T046** Prove broken-channel ≠ death. (FR-027)
-- [ ] **T047** Prove kill → recorded death → restart, no operator action. (FR-028, SC-010)
+- [x] **T047** Proven END TO END 2026-09-06 (engineer ruling Q-G35-02 → B, which overrode the
+      cheaper option): `SupervisedHostingEndToEndTests` runs the **real** `Supervisor` hosting the
+      **real** `ynet_client` binary, confirms it answers the supervisor's own ping, kills the child,
+      and confirms the supervisor restarts it with a **different PID** and no operator action.
 - [x] **T048** SC-012: count supervision implementations before/after — MUST be unchanged.
 
 ## Phase 5 — parity, discipline, closure
@@ -92,9 +103,16 @@ lane's own one-day-old code, unread until now (T001).
 - [x] **T051** No unbounded wait on a pool thread anywhere this feature adds. (FR-020)
 - [x] **T052** Clean shutdown releases every thread and socket. (FR-021)
 - [x] **T053** **T002 must now PASS.** Re-run and record. (SC-004)
-- [ ] **T054** SC-007: re-measure test parallelism. Either restore the default, or **state and
-      re-measure** why it must stay disabled. Not asserted either way.
-- [ ] **T055** Full suites green: `ynet_client.tests`, `ynet_transport.tests`, GLP REPL suite.
+- [x] **T054** SC-007: re-measured 2026-09-06. The reason parallelism stays disabled **still
+      holds, verified at source rather than assumed**: the blocking `Task.Run(...)` +
+      `.GetAwaiter().GetResult()` around `YnetSession.Accept` is still present at
+      `CoreTransportTests.cs:124/127` (and 170, 223). This feature did not touch it; the durable fix
+      is roadmap `ynet-nonblocking-session-handshake` (WSJF 5.25 / RICE 24000, promoted). Restoring
+      the default now would re-create wave-33's scheduler-measuring suite.
+- [x] **T055** Suites measured 2026-09-06 after the change: **171/171** `ynet_client.tests`
+      (baseline 93/93), **217/217** `ynet_transport.tests`, **73/73** `glp_engine_host.tests` — the
+      last being the supervisor's EXISTING consumer, unchanged, which is SC-012 measured in practice
+      rather than argued.
 
 ## Phase 6 — fleetwide (ordered by the engineer's reversal)
 
@@ -102,7 +120,11 @@ lane's own one-day-old code, unread until now (T001).
       capability-built / consumer-absent in one repo in one day — with the generalised cause and
       the machine-check remedy. Carries the discharge notice for the two broadcasts already fanned
       out 37× and 8×.
-- [ ] **T061** `/bk-codify` the fix; capture the fleetwide remedy as a scored roadmap feature.
+- [x] **T061** Discharged WITHOUT minting a duplicate: the fleetwide remedy already exists on the
+      roadmap as `declared-unconsumed-guard` (WSJF 8.00 / RICE 18000, **rank 2 of 49**, promoted).
+      Creating a second feature for the same remedy would itself be the duplication defect that cost
+      this repo an M6 carrier in wave-32. What this era adds is the **working exemplar** and the
+      measured evidence, published fleet-wide.
 - [x] **T062** Do **not** claim `declared-unconsumed-guard` without a claim-first broadcast
       (Q-G34-04 → A).
 

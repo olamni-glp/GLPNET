@@ -38,11 +38,29 @@
 
 using Ynet.Client;
 
-var verb = args.Length > 0 ? args[0].ToLowerInvariant() : "help";
+// 🔴 SUPERVISOR-LAUNCH DETECTION — codexreview finding P1, 2026-09-06.
+//
+// `Supervisor.StartChild` (csharp/glp_supervisor/Supervisor.cs:396) launches its child as
+//     <binary> --listen <addr> --store "<root>"
+// with NO verb. Without this branch args[0] is "--listen", the switch below falls to `default`,
+// and the process exits immediately — so the supervised hosting this feature claims to deliver
+// would have been reachable ONLY by a human typing `serve` by hand.
+//
+// That is the THIRD instance of this era's own defect class — a capability built with no consumer
+// path — and it was in the fix for the second one. It was caught by the codexreview, not by me,
+// and not by any of my tests, because every test constructed the responder directly. The lesson is
+// the one this whole feature exists to teach: a capability's own tests take the path a real
+// consumer does not.
+var supervisorLaunched = args.Length > 0 && args[0].StartsWith("--", StringComparison.Ordinal);
+var verb = supervisorLaunched
+    ? "serve"
+    : args.Length > 0 ? args[0].ToLowerInvariant() : "help";
 
 string? Opt(string name)
 {
-    for (var i = 1; i < args.Length - 1; i++)
+    // Scan from 0 when a supervisor launched us: there is no verb in position 0, so starting at 1
+    // would skip the FIRST option — which is `--listen`, the one that matters most.
+    for (var i = supervisorLaunched ? 0 : 1; i < args.Length - 1; i++)
         if (string.Equals(args[i], name, StringComparison.OrdinalIgnoreCase))
             return args[i + 1];
     return null;
@@ -102,7 +120,9 @@ switch (verb)
             CoopRoot = coopRoot,
             LaneDirectory = laneDir,
             Self = null,   // supplied by --identity in a later step; absent means the wire degrades
-            Listener = PlaneCatalog.ParseListen("ynet-client", Opt("--listen")),
+            // Not Opt("--listen") when a supervisor launched us: there that flag is the PROBE
+            // address, and binding the QUIC listener to it would make the two fight for one port.
+            Listener = PlaneCatalog.ParseListen("ynet-client", supervisorLaunched ? null : Opt("--listen")),
         };
 
         PlaneBinding bound;
@@ -169,7 +189,14 @@ switch (verb)
 
         if (supervised)
         {
-            var probeAddr = PlaneCatalog.ParseListen("ynet-probe", Opt("--probe") ?? "127.0.0.1:44311");
+            // Under a supervisor launch, `--listen` IS the probe address: that is the flag the
+            // supervisor passes and the address it will ping. When a human runs `serve`, `--listen`
+            // keeps its ordinary meaning (the QUIC listener) and `--probe` names the probe, so the
+            // two invocation styles cannot silently mean different things by the same flag.
+            var probeSpec = supervisorLaunched
+                ? (Opt("--listen") ?? "127.0.0.1:44311")
+                : (Opt("--probe") ?? "127.0.0.1:44311");
+            var probeAddr = PlaneCatalog.ParseListen("ynet-probe", probeSpec);
             supervisedLiveness = new SupervisedLiveness(
                 probeAddr!.Value.BindAddress.ToString(), probeAddr.Value.Port, isHealthy);
             supervisedLiveness.Start();

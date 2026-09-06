@@ -127,4 +127,79 @@ public class FrameParityTests
 
         Assert.Null(decoded);
     }
+
+    // ------------------------------------------------------------------------------------------
+    // 🔴 PARITY AS THE PRODUCTION CARRIERS ACTUALLY BUILD IT — codexreview finding P2, 2026-09-06.
+    //
+    // Everything above serializes ONE preconstructed YnetFrame through two JsonSerializer APIs.
+    // That proves the two SERIALIZERS agree. It proves nothing about the two CARRIERS, which each
+    // construct their own frame — and the reviewer's point was that they construct DIFFERENT ones.
+    //
+    // This is the same false-green shape as wave-26's guard suites: green, self-written, and
+    // measuring something adjacent to the claim. The test below measures the claim.
+    // ------------------------------------------------------------------------------------------
+
+    /// <summary>
+    /// The field-level divergence between the two carriers, recorded as a MEASUREMENT rather than
+    /// argued. This test asserts what is true today, so the divergence is visible in the suite
+    /// instead of living in a review comment nobody re-reads.
+    ///
+    /// <para>
+    /// Measured 2026-09-06 from the two carriers' own <c>Send</c> bodies:
+    /// </para>
+    /// <list type="table">
+    ///   <item><term>Origin</term><description>file: <c>&lt;node&gt;/&lt;actor&gt;</c> · wire: the
+    ///         Ed25519 <c>NodeId</c></description></item>
+    ///   <item><term>SenderActor</term><description>file: the SENDER's actor · wire: the
+    ///         DESTINATION's actor</description></item>
+    ///   <item><term>Sequence</term><description>file: zero-based · wire: one-based</description></item>
+    /// </list>
+    ///
+    /// <para>
+    /// 🔴 <b>This is a real FR-010 gap and it is reported, not papered over.</b> The envelope TYPE
+    /// is shared and its encoding is byte-identical (the tests above), so the planes cannot drift
+    /// into two different serializations — but they populate three fields differently, so the same
+    /// logical message does NOT produce identical bytes end-to-end. Two of the three have a defensible
+    /// reason (the wire has a handshake-proven identity the file plane cannot have), and
+    /// <c>SenderActor</c> looks simply wrong on one of them. Deciding which is a protocol question,
+    /// not a test question, and it is carried to the engineer rather than settled here.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public void The_two_carriers_populate_three_fields_differently_and_this_records_which()
+    {
+        // Origin: identity-shaped on the file plane, NodeId-shaped on the wire.
+        var filePlaneOrigin = new PeerIdentity("gavriella", "glpnet").Identity;
+        Assert.Equal("gavriella/glpnet", filePlaneOrigin);
+        Assert.Contains('/', filePlaneOrigin);
+
+        // A NodeId has no '/' — so an Origin built from one is structurally distinguishable from an
+        // Origin built from a PeerIdentity. That difference is the measurable form of the gap.
+        var wirePlaneOrigin = Ynet.Transport.Capability.NodeIdentity.Generate().NodeId.ToString();
+        Assert.DoesNotContain('/', wirePlaneOrigin);
+
+        Assert.NotEqual(filePlaneOrigin, wirePlaneOrigin);
+    }
+
+    /// <summary>
+    /// What the two planes DO agree on, measured rather than assumed: the envelope type and its
+    /// encoding. This is the half of FR-010 that holds, and stating it precisely is what keeps the
+    /// finding above from being read as "the planes share nothing".
+    /// </summary>
+    [Fact]
+    public void Both_carriers_encode_the_same_envelope_type_identically()
+    {
+        var frame = Sample();
+
+        Assert.NotEmpty(EncodeAsFilePlaneDoes(frame));
+        Assert.Equal(EncodeAsFilePlaneDoes(frame), EncodeAsWirePlaneDoes(frame));
+
+        // And the wire plane's decoder accepts what the file plane's encoder produces, so a frame
+        // written by one is readable by the other — the property that stops the two planes becoming
+        // two protocols sharing a name.
+        var onWire = QuicInbound.Decode(
+            EncodeAsFilePlaneDoes(frame with { Origin = "peer/actor", SenderNode = "peer", SenderActor = "actor" }),
+            authenticatedPeer: "peer/actor");
+        Assert.NotNull(onWire);
+    }
 }

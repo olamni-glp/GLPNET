@@ -25,6 +25,9 @@
          socket: a test that spoke a private protocol would prove the endpoint answers something and
          prove nothing about whether the supervisor can host the client. -->
     <ProjectReference Include="..\glp_repl_client\GlpReplClient.csproj" />
+    <!-- The end-to-end M6-d test drives the REAL Supervisor hosting the REAL client binary
+         (engineer ruling Q-G35-02 -> B: composition from proven parts is not sufficient to ship). -->
+    <ProjectReference Include="..\glp_supervisor\GlpSupervisor.csproj" />
   </ItemGroup>
 
 </Project>
