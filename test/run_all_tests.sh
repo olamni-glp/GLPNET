@@ -2429,6 +2429,17 @@ set +e
 SBREPL_BIN="$SCRIPT_DIR/../out/csharp/glp_repl/bin/Debug/${GLPREPL_TFM}/glp_repl.exe"
 if [ "$GLPREPL_STALE" -eq 1 ] && [ -f "$SBREPL_BIN" ]; then
     unsearchable "Section T (064 service-box drills)" "$GLPREPL_STALE_WHY"
+elif [ ! -f "$SCRIPT_DIR/../glpquick-cert/glpquick.pfx" ]; then
+    # The drills REQUIRE QUIC trust material, and this section's own header says so. Absent it
+    # they exit non-zero and were recorded as a FAIL -- a red that means "the prerequisite is
+    # missing" while reading as "the drill found a defect". A missing prerequisite is a NOT-RUN,
+    # and this suite already has a class for that. On OLAMNIT `glpquick-cert/` holds only
+    # `glpquick.macaroon.key`; the .pfx is a tracked-private-key item that has never been here.
+    #
+    # This was invisible until 2026-09-06: the stale-binary gate had been suppressing Section T
+    # entirely, so the two FAILs only appeared once a rebuild let the section run at all. An
+    # unmeasured criterion goes stale exactly like an unmeasured note (feature 108).
+    unsearchable "Section T (064 service-box drills)" "QUIC trust material glpquick-cert/glpquick.pfx is ABSENT on this host — the drills require it and exit non-zero without it; that is a missing prerequisite, not a drill failure. Standalone gates: test/service_box/resume_drill.sh + test/service_box/history_drill.sh"
 elif [ -f "$SBREPL_BIN" ]; then
     output=$(bash "$SCRIPT_DIR/service_box/resume_drill.sh" 2>&1)
     check "T-1: US1 resume drill (auto-arm, diagnostics, SC-005 transcript)" "resume drill: PASS=7 FAIL=0" "$output"
