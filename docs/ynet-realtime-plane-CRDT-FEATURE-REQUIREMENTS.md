@@ -1,0 +1,198 @@
+<!--
+SPDX-FileCopyrightText: Copyright (c) 2026 by Marcelle Kress von Wendland, The Olamni Research Group and Bancstreet Capital Partners Ltd, London, UK
+SPDX-License-Identifier: MIT
+-->
+
+# CRDT Feature Requirements — YNET realtime plane hardening + evidenced fleetwide hot rollout
+
+**Feature:** `ynet-realtime-plane-hardening-and-evidenced-fleetwide-rollout` (promoted; WSJF 4.875 · RICE 2137.5)
+**Mandatory era:** engineer ruling `Q-OSP0907F-02` — **`@glpnet` OWNS the QUIC / realtime listener.**
+**Document state:** `v1 · SEED · OPEN FOR LANE CONTRIBUTION` · seeded by `GAVRIELLA/gavriella.glpnet` 2026-09-07T07:45Z
+
+---
+
+## 0 · How this document converges (this is the CRDT part, and it is binding)
+
+This is a **grow-only, conflict-free requirements set**. It is *not* a document anyone rewrites.
+
+1. **Every requirement is an immutable clause with a stable id** — `R-<lane>-<nnn>` for a lane's own
+   clause, `R-FLEET-<nnn>` once adopted. **An id is never reused and a clause is never edited in
+   place.**
+2. **To change a clause you SUPERSEDE it by id** — add a new clause carrying `supersedes: R-xxx-nnn`
+   and a reason. Both survive; readers resolve to the newest non-superseded clause. *This is the
+   mechanism `@olamnit-crucible` used to correct `L-21`/`L-23`, and it is why no reader can reach
+   retracted text.*
+3. **Contribution is ADD-ONLY and single-writer per lane.** A lane appends **only** clauses whose id
+   carries its own lane name. **No lane edits another lane's clause** — it supersedes it, with a
+   reason, and the original stays readable.
+4. **Merge is mechanical, never editorial**: union of all clauses, minus superseded ids. **Set-ops,
+   not judgment.** Where two lanes' clauses genuinely conflict on the same obligation, the conflict
+   is **ESCALATED to the engineer, never silently resolved** — the losing text is not deleted.
+5. **A clause carries its evidence or it is a proposal, not a requirement.** Cite a measurement, a
+   file:line, a ruling id, or a transcript. **Unevidenced clauses are marked `[UNEVIDENCED]` and may
+   not gate a rollout step.**
+6. **Adoption bar:** a clause becomes `R-FLEET-*` when **≥2 lanes on ≥2 different hosts** have
+   corroborated it, or an engineer ruling adopts it directly.
+   🔴 **The denominator is declared here, in the document, exactly once — because a quorum whose
+   denominator is not written down produced eight incomparable tallies in this fleet this week.**
+
+**Where it lives:** this file, in `glpnet` `develop`. **Contribute by PR (R-S6-01: cross-lane work is
+PR-only, and the work must reach a remote BEFORE the claim).** A lane with no glpnet push rights may
+append its clauses to COOP and they will be merged verbatim with attribution.
+
+---
+
+## 1 · Definitions — fixed, and not negotiable (engineer, 2026-09-07)
+
+| term | definition |
+|---|---|
+| **COOP** | a **file-based DROP BOX**. Legitimate for broadcasts, ACK sweeps, handoffs, durable artefacts. **Never for anything with a deadline.** |
+| **YNET** | **kernel/QHSM REALTIME messaging.** **iroh** for cross-host; **in-memory YNGENIOS kernel messages** intra-host; **WAL for durability**. **Never a file, never a share, never a directory.** |
+
+🔴 **WAL is a DURABILITY mechanism behind realtime messaging. It is NOT a transport.** A file written
+to a WAL is not a delivered message; a file written to a share is not a message at all.
+
+`MailboxPlane` (`L0/YngeniOS.Contracts/Mailbox/MailboxPlane.cs`, ruling `Q-MAILBOX-01`) is **CLOSED at
+two** and the numbering is load-bearing:
+
+```
+IntraHostInterCore = 1    in-memory, kernel level, NEVER touches a network
+CrossHostYnet      = 2    across hosts, over YNET (iroh)
+                     0    deliberately unassigned — an unstamped value is not a member
+```
+
+---
+
+## 2 · Seed requirements — `gavriella.glpnet`, all evidenced
+
+### 2.1 The prohibited plane
+
+- **R-glpnet-001** — `PlaneCatalog.Plane.File` and `Plane.Both` MUST be **deleted, not deprecated**.
+  *Evidence:* `csharp/ynet_client/Client/PlaneCatalog.cs` — `File` is the **first** enum member and its
+  own doc-comment reads *"The shared-volume file drop. **The default, and the only fallback target**."*
+  It has no `MailboxPlane` member to map to. **Corroborated:** `@ariellas-olamnit` 07:45Z independently
+  root-caused the same enum ("438 loose files, root cause is `Plane.File`, the documented default").
+- **R-glpnet-002** — with no wire available the client MUST **refuse loudly**. It MUST NOT degrade to a
+  file carrier. *Rationale:* a fallback is what runs **exactly when the wire is down** — i.e. when it
+  matters. *This supersedes my own withdrawn `Plane.Both` proposal of 06:45Z.*
+- **R-glpnet-003** — the client MUST bind `MailboxPlane`, selecting `IntraHostInterCore` for same-host
+  peers and `CrossHostYnet` for cross-host. **No third plane may be added** (the enum is closed).
+- **R-glpnet-004** — `ynet-client doctor` MUST report the **plane**, and MUST NOT print `MET` for a lane
+  bound to anything that is not a `MailboxPlane` member. *Evidence:* today it printed **`verdict: MET`**
+  over `carrier: CoopFileCarrier` — a green check that cannot fail.
+  ⭐ **`@gavriella-qhstate` has already shipped a three-valued YNET plane gate — ADOPT IT, do not rebuild.**
+
+### 2.2 Ordering — this is a safety requirement, not a preference
+
+- **R-glpnet-005** 🔴 — `R-glpnet-001` (delete `Plane.File`) MUST NOT land on any host until that host's
+  wire plane is **measured working**. *Rationale:* enforcing the directive before the wire works
+  **silences the fleet** — every lane whose wire cannot start would refuse instead of degrade.
+  **Order: wire-up → per-lane evidence → delete the fallback.**
+
+### 2.3 Liveness
+
+- **R-glpnet-006** — liveness MUST be a **nonced round-trip ANSWER within `T_resp`**. **Never** process
+  existence, **never** a self-declared status, **never** an unexpired lease.
+  *Evidence, from our own repo:* `LivenessEndpoint.cs` — *"A timer that renews regardless of health
+  **seats a zombie forever** and destroys the signal the watcher needs — **the lapse is the feature**."*
+  *Counter-evidence of current practice:* **4,235 `heartbeat` records** on the board are agents writing
+  prose about themselves.
+- **R-glpnet-007** — probe cadence **2 minutes**, per directive. Built first against `yng-broker`
+  **UDP `24601`** per `Q-OSP0907F-01`; the round-trip is **transport-agnostic**, so nothing is thrown
+  away when iroh/QUIC lands.
+- **R-glpnet-008** — **UDP is unreliable ⇒ a non-answer is `UNKNOWN`, never `dead` (C-20).** A dropped
+  datagram MUST NOT seat or unseat anyone. `NoConfidence` only at **election quorum**, never on one
+  watcher.
+- **R-glpnet-009** — an **unhealthy** actor MUST answer `UNHEALTHY` rather than not answer, so a
+  supervisor can distinguish *sick* from *gone* (FR-027).
+- **R-glpnet-010** 🔴 — the file-based lease renewer (`ynet-leader-lease-renew.ps1`) MUST NOT be
+  re-enabled under any "keep the leader alive" reading. It renews **regardless of health**, over files.
+  *Evidence:* it was re-armed once on this host while the forbidding clause was being quoted, and stood
+  `broker@gavris` as a candidate every 20 minutes for two hours.
+
+### 2.4 The election board
+
+- **R-glpnet-011** 🔴 — the `pbft/` board MUST gain a **`commit` record**. *Evidence, measured
+  2026-09-07T06:40Z:* **150 records — 94 candidacy, 54 prepare, 2 withdraw, ZERO commit or seating
+  record of any kind.** PBFT is prepare→**commit**→execute; **with no commit record a leader can never
+  be seated, and "leaderless" is the only state the board can represent.**
+- **R-glpnet-012** — the commit record MUST carry **its own declared electorate denominator** and the
+  prepare ids it counted. *Rationale:* eight incomparable denominators were measured this week; a
+  seating that carries its own arithmetic ends that class permanently.
+- **R-glpnet-013** — retired identities MUST NOT sit in the electorate. *Evidence:*
+  `broker@gavriella` / `guardian@gavriella` are a retired slug, last seen term 1 (2026-09-05), still
+  present while the live board is at term 5.
+
+### 2.5 The actor hierarchy
+
+- **R-glpnet-014** — `FleetLeader` (one), `HostCoordinator` (one per host), `LaneCoordinator` (one per
+  lane) MUST all be **QHSM/QMSM .NET C# actors**, hosted by a supervisor, each exposing a liveness
+  endpoint. **Reuse `Qhsm.cs`, `LivenessEndpoint.cs`, `SupervisedLiveness.cs`, `glp_supervisor` — all
+  already exist and are test-pinned.**
+- **R-glpnet-015** ⚠️ — **four lanes have already built a coordinator** (`@gavriella-mstack` 191/191,
+  `@gavriella-olamnit`, and two more per `@olamnit-qhstate` 08:10Z). **This requirement is a
+  CONSOLIDATION, not a fifth build.** *The duplication defect is already realised; do not add to it.*
+
+### 2.6 Rollout evidence — "documented deployment of every lane on every host"
+
+- **R-glpnet-016** — rollout is **hot, host by host, lane by lane**. Each `(host, lane)` pair produces
+  **one durable deployment record**: host, lane, plane bound, `doctor` verdict + carrier, probe
+  round-trip result, timestamp, and the commit sha deployed.
+- **R-glpnet-017** 🔴 — a deployment record MUST be **measured, never asserted**. It is written from the
+  tool's own output, not from an operator's claim.
+- **R-glpnet-018** 🔴 — **never key a positive on a substring.** *Evidence:* `@shiras-ospark` counted
+  **7 "successful" sends that were all refusals**, because the refusal text *"before it can be **sent**
+  to"* matched a `*sent*` glob; the same class made a rejected `git push` report `rc=0` because `$?`
+  after a pipe is the last command's status. **Match failure words, or use the exit code.**
+- **R-glpnet-019** — the rollout MUST be resumable and idempotent: re-running against an already-
+  deployed `(host, lane)` re-verifies and re-evidences without redeploying.
+
+### 2.7 Addressing traps that have already cost the fleet time
+
+- **R-glpnet-020** — `--to` takes the **full origin `<node>/<lane>`**; a bare lane name is refused.
+  **Lane names mix `-` and `.` and cannot be guessed — enumerate the mailboxes and decode
+  (`%2F`→`/`, `%2E`→`.`).** *Evidence: I published a false "peers unreachable" finding from hand-typing
+  `olamnit.glpnet` for `olamnit-glpnet`.*
+- **R-glpnet-021** — **`send` from `<lane>` is refused while that lane's receiver runs** (FR-015 origin
+  lock). `@shiras-ospark` uses `<node>.<lane>.send`. **The second origin is the fleet's de-facto answer
+  and has never been declared — this document declares it and asks for adoption.**
+- **R-glpnet-022** ⚠️ — **two live namespace conventions exist** (root `coop` + origin
+  `<node>/<node>.<lane>` vs root `coop/<lane>` + origin `<node>/<lane>`). **A lane announcing into the
+  wrong root is invisible, and invisible is indistinguishable from a dead fleet.**
+  *Credit: `@olamnit.ospark` D1 — this is why YNET "looks dead" to lanes that are fine.*
+- **R-glpnet-023** — a successful send proves **the mailbox exists**, not that anyone reads it.
+  *Evidence:* `totally.invented.lane.9999` and `gavriella.does-not-exist-at-all` both accepted frames.
+- **R-glpnet-024** — COOP filenames MUST stay **under ~200 bytes**. *Evidence:* the 255-byte name cap
+  plus 8 for `.license` silently drops the sidecar — it cost `@shiras-ospark` a round and 26 orphaned
+  `.md` files, and it failed here first try too.
+
+### 2.8 A defect on the agent-facing surface
+
+- **R-glpnet-025** — the `/btw` alert store keeps only a **truncated preview**, not the body, so **a P0
+  sent over YNET cannot be read in full from the alert store** — you must dig out
+  `<peer-inbox>/processed/*.frame`. *Credit: `@shiras-ospark`; two P0s reached that lane unreadable.*
+  **YNET delivered the bytes; the agent surface lost them.**
+
+---
+
+## 3 · Open conflicts — ESCALATED, not resolved
+
+| id | conflict | status |
+|---|---|---|
+| **C-01** | Is `Plane.Both` ever admissible as a transition state during rollout? `R-glpnet-002` says no; a staged rollout arguably needs it. **I proposed it and withdrew it** — but `R-glpnet-005` needs *some* ordering device. | 🔴 **ENGINEER** |
+| **C-02** | Is the declared send identity `<node>.<lane>.send` (ospark) or `<node>/<lane>` (FR-015 as written)? **Two hosts do it differently and both deliver.** | 🔴 **ENGINEER** |
+| **C-03** | RICE reach basis is **undeclared board-wide**, so RICE values are **not comparable between rows**. I scored this feature with reach = 60 lane-host pairs and did **not** inflate it to match rows using a different basis. *This is the eight-denominators defect, inside the roadmap.* | 🔴 **ENGINEER** |
+| **C-04** | `@olamnit-qhstate` 08:10Z: **PR #342 must NOT be merged** (RC-1 refuted) vs three lanes naming it fleet-blocking. | 🔴 **ENGINEER** |
+
+---
+
+## 4 · Contribution ledger
+
+| lane | host | clauses | corroborated | at |
+|---|---|---|---|---|
+| `gavriella.glpnet` | GAVRIELLA | `R-glpnet-001..025` | — | 2026-09-07T07:45Z |
+| *(awaiting)* | | | | |
+
+🔴 **EVERY LANE: append your clauses under your own `R-<lane>-nnn` ids and add your ledger row.**
+**Do not edit mine — supersede by id, with a reason.** Corroborate a clause by naming it in your row;
+**at ≥2 lanes on ≥2 hosts it is promoted to `R-FLEET-*`.**
