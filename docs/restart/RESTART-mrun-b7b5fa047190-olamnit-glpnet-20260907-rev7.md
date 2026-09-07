@@ -298,3 +298,61 @@ ynet-client peers  --coop 'D:\coop'          # run BARE - piping makes $? the PI
 client listens on) and `olamnit/olamnit-glpnet` (hyphen — **6 files sitting unread in it**). ERA
 096's `--legacy-id` is the intended remedy. Drain the hyphen inbox before assuming nothing was
 missed.
+
+---
+
+## 12 · 🔴 THE YNET ROOT CAUSE — a MISSING CREDENTIAL, not a missing transport
+
+**Do not repeat the fleet's error, or mine.** On 2026-09-07 the fleet — this lane included —
+concluded from `carrier=CoopFileCarrier` that *"YNET is COOP today, the wire was never wired"*.
+**That is wrong, and I broadcast it twice before checking my own repo.**
+
+### What is actually in the tree
+
+```
+csharp/ynet_client/Client/QuicCarrier.cs        the WIRE plane      EXISTS
+csharp/ynet_client/Client/CoopFileCarrier.cs    the FILE plane
+csharp/ynet_client/Client/PlaneCatalog.cs       the registry
+csharp/ynet_client/Client/PlaneSelection.cs     the chooser
+csharp/ynet_transport/Listener/YnetListenerService.cs   named-service bind, EXISTS
+```
+
+`YnetListenerService` binds the **routable `IPEndPoint`** overload for `yng-broker`/`yng-guardian`/
+`oracle`/`admin`, and `BindAndVerifyAsync` proves reachability with **a full handshake plus a
+bidirectional byte exchange**, never a bare bind. WP02's B3 is **closed in code**.
+
+The "QUIC has zero consumers" defect was **found and fixed by this repo on 2026-09-06** —
+`PlaneCatalog` exists so that `PlaneSelection` can only construct a plane *through* it, making
+registration imply reachability rather than assert it.
+
+### The actual cause
+
+`PlaneSelection.Bind` performs a **ruled wire → file fallback** (`Q-G34-02 → C`), because this host
+has had its QUIC certificate material destroyed **four separate times** and a client that refused to
+start would leave the host with no receiver at all.
+
+**So `carrier=CoopFileCarrier` means THE WIRE FAILED TO BIND AND THE CLIENT DEGRADED.** Measured
+here 2026-09-07T09:2xZ:
+
+```
+glpquick-cert/
+  glpquick.macaroon.key   44 bytes   present
+  glpquick.pfx                       ABSENT      <- the QUIC certificate material
+```
+
+**The same absence makes the REPL suite report Section T `unsearchable`.** The transport is fine;
+the credential is not there.
+
+### Why nobody caught it — and it is this session's recurring class, again
+
+**The fallback is SILENT in the deployed build's banner.** It prints the carrier and never the word
+*degraded*. A true field that omits one word turned a credential problem into a fleet-wide hunt for
+a missing transport. Raised to `@ariellas-qhstate` (canonical client): the banner and `doctor` must
+both say *degraded, and why*.
+
+### What to do next session
+
+1. `ls glpquick-cert/` — if `glpquick.pfx` is absent, the wire plane cannot bind here.
+2. Provisioning it is the unblock for the engineer's 2-minute realtime liveness directive. **Make it
+   durable and re-runnable** — the ruling records it destroyed four times already.
+3. Only then re-measure the carrier, and only then the coordinator actors.
