@@ -3,6 +3,7 @@
 
 using System.Net;
 using System.Text;
+using Xunit.Abstractions;
 using Ynet.Client;
 using Ynet.Transport.Capability;
 
@@ -19,13 +20,21 @@ namespace Ynet.Client.Tests;
 /// offered a seam and the frame was constructed inline inside <c>Send</c>. Feature 110 added the
 /// seam. Both classes are kept: they test real and different things.
 /// </para>
+///
+/// <para>
+/// <b>Six findings from an adversarial review are answered in this file</b>, three of them HIGH.
+/// The corrections are marked at the tests that carry them, because the reasoning is the valuable
+/// part and a silent fix teaches nobody.
+/// </para>
 /// </summary>
 public class FrameFieldParityTests : IDisposable
 {
     private readonly string _root;
+    private readonly ITestOutputHelper _out;
 
-    public FrameFieldParityTests()
+    public FrameFieldParityTests(ITestOutputHelper output)
     {
+        _out = output;
         _root = Path.Combine(Path.GetTempPath(), "ynet-parity-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(_root);
     }
@@ -42,8 +51,20 @@ public class FrameFieldParityTests : IDisposable
     private static readonly PeerIdentity Self = new("nodeA", "laneA");
     private static readonly PeerIdentity Peer = new("nodeB", "laneB");
 
-    /// <summary>The FIRST frame each carrier constructs for one identical logical send.</summary>
-    private (YnetFrame File, YnetFrame Wire) ConstructedPair()
+    /// <summary>
+    /// The FIRST frame each carrier constructs for one identical logical send.
+    ///
+    /// <para>
+    /// 🔴 <b>SCOPE, per review finding 5.</b> This drives <c>BuildFrame</c> directly, so it
+    /// deliberately bypasses each carrier's send preconditions. That is correct for comparing
+    /// CONSTRUCTION and it is NOT a claim about two long-running carriers: the file plane
+    /// increments only after a reachability check, while the wire plane increments before size and
+    /// connection validation, so in service the two counters drift and absolute equality is
+    /// meaningless. What is compared here is the BASIS (does the first frame number 1?), which is
+    /// the property Q-110-02 actually ruled.
+    /// </para>
+    /// </summary>
+    private (YnetFrame File, YnetFrame Wire) ConstructedPair(string fileBody = Body, string wireBody = Body)
     {
         var file = new CoopFileOutbound(Self, Peer, _root);
 
@@ -52,10 +73,9 @@ public class FrameFieldParityTests : IDisposable
         using var wire = new QuicOutbound(
             selfNode, peerNode.NodeId, Peer, new IPEndPoint(IPAddress.Loopback, 47999));
 
-        var message = new YnetMessage("mid-110", "nodeA/laneA", Signal, Encoding.UTF8.GetBytes(Body));
+        var message = new YnetMessage("mid-110", "nodeA/laneA", Signal, Encoding.UTF8.GetBytes(wireBody));
 
-        // First frame from each: this is what makes the Sequence comparison a comparison of BASIS.
-        return (file.BuildFrame(Signal, Body), wire.BuildFrame(message));
+        return (file.BuildFrame(Signal, fileBody), wire.BuildFrame(message));
     }
 
     /// <summary>
@@ -74,50 +94,65 @@ public class FrameFieldParityTests : IDisposable
         Assert.False(string.IsNullOrEmpty(wire.SenderActor));
     }
 
+    /// <summary>
+    /// The acceptance gate. 🔴 <b>Review finding 1</b>: this now PRINTS the full report on the
+    /// GREEN path. Previously the report appeared only inside a failure message, so a passing run
+    /// showed nothing and every permitted divergence was invisible — which is precisely the
+    /// suppression FR-006 exists to prevent. A ruled divergence you never see is not a declared
+    /// decision, it is a hidden one.
+    /// </summary>
     [Fact]
     public void Every_field_is_either_agreed_or_ruled_never_unruled()
     {
         var (file, wire) = ConstructedPair();
         var comparisons = FrameFieldParity.Compare(file, wire);
 
-        Assert.NotEmpty(comparisons);
-
-        var unruled = comparisons.Where(c => c.Verdict == FrameFieldVerdict.DivergesUnruled).ToList();
+        _out.WriteLine("Carrier frame-field parity — every field, pass or fail:");
+        _out.WriteLine(FrameFieldParity.Report(comparisons));
 
         Assert.True(
-            unruled.Count == 0,
+            FrameFieldParity.Accepts(comparisons),
             "Unruled divergence between the two carriers:" + Environment.NewLine
             + FrameFieldParity.Report(comparisons));
     }
 
     /// <summary>
-    /// FR-007 — the check ENUMERATES the envelope rather than trusting a hand list. The brief for
-    /// this feature said three fields diverged; there were four. A hand-maintained list would have
-    /// reproduced the brief's error instead of catching it.
+    /// FR-007 — the check ENUMERATES the envelope rather than trusting a hand list.
+    ///
+    /// <para>
+    /// 🔴 <b>Review finding 3b</b>: the first version derived BOTH sides with the same reflection
+    /// expression the production code uses, so it was circular and could not expose a reflection
+    /// change. The expected set is now an explicit literal — a hand list is exactly right HERE,
+    /// because a test's oracle must be INDEPENDENT of the thing it checks.
+    /// </para>
     /// </summary>
     [Fact]
     public void Every_envelope_field_is_covered_by_the_comparison()
     {
         var (file, wire) = ConstructedPair();
-        var compared = FrameFieldParity.Compare(file, wire).Select(c => c.Field).ToHashSet(StringComparer.Ordinal);
+        var compared = FrameFieldParity.Compare(file, wire)
+            .Select(c => c.Field)
+            .OrderBy(f => f, StringComparer.Ordinal)
+            .ToArray();
 
-        var declared = typeof(YnetFrame)
-            .GetProperties(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance)
-            .Select(p => p.Name)
-            .ToHashSet(StringComparer.Ordinal);
-
-        Assert.Equal(declared, compared);
+        Assert.Equal(
+            new[] { "Body", "Origin", "SenderActor", "SenderNode", "Sequence", "Signal" },
+            compared);
     }
 
     /// <summary>
-    /// FR-006 — a ruled divergence PASSES and is still REPORTED, with both values and its ruling.
-    /// A decision that becomes invisible is indistinguishable from a suppression.
+    /// FR-006 — a ruled divergence PASSES, is REPORTED with both values and its ruling, and now
+    /// also carries its SOURCE PROVENANCE (🔴 review finding 4: FR-008 required provenance as data;
+    /// it existed only in comments the report could never print).
     /// </summary>
     [Fact]
-    public void Ruled_divergences_are_reported_with_both_values_and_their_ruling()
+    public void Ruled_divergences_are_reported_with_both_values_their_ruling_and_their_source()
     {
         var (file, wire) = ConstructedPair();
         var comparisons = FrameFieldParity.Compare(file, wire);
+
+        var report = FrameFieldParity.Report(comparisons);
+        _out.WriteLine(report);
 
         var ruled = comparisons.Where(c => c.Verdict == FrameFieldVerdict.DivergesRuled).ToList();
         Assert.NotEmpty(ruled);
@@ -127,26 +162,28 @@ public class FrameFieldParityTests : IDisposable
             Assert.NotNull(c.Ruling);
             Assert.NotEmpty(c.Ruling!.RulingId);
             Assert.NotEmpty(c.Ruling.Rationale);
+            Assert.NotEmpty(c.Ruling.FilePlaneSource);
+            Assert.NotEmpty(c.Ruling.WirePlaneSource);
             Assert.NotEqual(c.FilePlaneValue, c.WirePlaneValue);
 
-            var line = c.ToString();
-            Assert.Contains(c.Ruling.RulingId, line, StringComparison.Ordinal);
-            Assert.Contains(c.FilePlaneValue, line, StringComparison.Ordinal);
-            Assert.Contains(c.WirePlaneValue, line, StringComparison.Ordinal);
+            Assert.Contains(c.Ruling.RulingId, report, StringComparison.Ordinal);
+            Assert.Contains(c.FilePlaneValue, report, StringComparison.Ordinal);
+            Assert.Contains(c.WirePlaneValue, report, StringComparison.Ordinal);
+            Assert.Contains(c.Ruling.FilePlaneSource, report, StringComparison.Ordinal);
+            Assert.Contains(c.Ruling.WirePlaneSource, report, StringComparison.Ordinal);
         }
     }
 
     /// <summary>
     /// SC-002 / SC-005 — the divergence COUNT is produced by the check, never typed by a person.
-    /// Three fields are ruled may-diverge (Origin, SenderNode, SenderActor); Sequence agrees after
-    /// the Q-110-02 standardisation. A run reporting a different count is a finding, not a nuisance.
+    /// Three fields are ruled may-diverge; Sequence agrees after the Q-110-02 standardisation.
     /// </summary>
     [Fact]
     public void Exactly_the_three_ruled_fields_diverge_and_sequence_agrees()
     {
         var (file, wire) = ConstructedPair();
         var comparisons = FrameFieldParity.Compare(file, wire);
-        var report = Environment.NewLine + FrameFieldParity.Report(comparisons);
+        _out.WriteLine(FrameFieldParity.Report(comparisons));
 
         var diverging = comparisons
             .Where(c => c.Verdict != FrameFieldVerdict.Agrees)
@@ -157,95 +194,130 @@ public class FrameFieldParityTests : IDisposable
         Assert.Equal(new[] { "Origin", "SenderActor", "SenderNode" }, diverging);
 
         var sequence = comparisons.Single(c => c.Field == "Sequence");
-        Assert.True(sequence.Verdict == FrameFieldVerdict.Agrees,
-            "Sequence must be 1-based on BOTH planes after Q-110-02." + report);
+        Assert.Equal(FrameFieldVerdict.Agrees, sequence.Verdict);
         Assert.Equal("1", sequence.FilePlaneValue);
         Assert.Equal("1", sequence.WirePlaneValue);
     }
 
     /// <summary>
-    /// 🔴 FR-010 / SC-003 — <b>THE NEGATIVE CONTROL, AND IT IS NOT TAUTOLOGICAL.</b>
+    /// 🔴 FR-010 / SC-003 — <b>THE NEGATIVE CONTROL, REWRITTEN AFTER REVIEW FINDING 2.</b>
     ///
     /// <para>
-    /// Wave-34 recorded a control that compared two LITERALS and therefore proved nothing about the
-    /// thing under test. This control drives the <b>real classifier</b> over a <b>real constructed
-    /// pair</b>, with exactly one field forced to differ, and requires the classifier to return
-    /// <see cref="FrameFieldVerdict.DivergesUnruled"/> <b>naming that field</b>. A check never
-    /// observed failing is a check that cannot pass.
+    /// The first version was <b>not</b> a real control and the reviewer was right to kill it. It
+    /// took a correctly-constructed pair and mutated one with <c>wire with { Body = ... }</c> — so
+    /// it tampered with a RECORD, never with a CARRIER, and it asserted a classifier verdict
+    /// instead of driving the acceptance gate. Worse, the "observed failing" evidence recorded for
+    /// it was misattributed: that test went red pre-fix because <c>Sequence</c> was still divergent,
+    /// NOT because the Body tamper was detected. <b>An evidence file that credits the wrong cause is
+    /// worse than no evidence, because it retires the question.</b>
+    /// </para>
+    ///
+    /// <para>
+    /// This version makes the two CARRIERS genuinely disagree — each is asked to carry a different
+    /// body through its own real <c>BuildFrame</c> path — and then asserts that
+    /// <see cref="FrameFieldParity.Accepts"/>, <b>the same gate the passing test calls</b>, goes
+    /// false and names the field.
     /// </para>
     /// </summary>
     [Fact]
-    public void The_check_fails_when_a_must_agree_field_is_deliberately_diverged()
+    public void The_gate_rejects_when_the_two_carriers_genuinely_disagree_on_a_must_agree_field()
+    {
+        // Divergence produced BY THE CARRIERS: each constructs its own frame, with different bodies.
+        var (file, wire) = ConstructedPair(fileBody: Body, wireBody: Body + "-DIVERGED");
+
+        var comparisons = FrameFieldParity.Compare(file, wire);
+        _out.WriteLine(FrameFieldParity.Report(comparisons));
+
+        // The REAL gate must reject. This is the assertion the passing test relies on.
+        Assert.False(FrameFieldParity.Accepts(comparisons));
+
+        var body = comparisons.Single(c => c.Field == "Body");
+        Assert.Equal(FrameFieldVerdict.DivergesUnruled, body.Verdict);
+        Assert.Contains("DIVERGES-UNRULED", body.ToString(), StringComparison.Ordinal);
+
+        // Control on the control: ONLY Body is unruled-divergent, so the rejection is attributable
+        // to the divergence introduced and not to some unrelated field (the exact misattribution
+        // that made the previous evidence worthless).
+        Assert.Equal(
+            new[] { "Body" },
+            comparisons.Where(c => c.Verdict == FrameFieldVerdict.DivergesUnruled)
+                       .Select(c => c.Field).ToArray());
+    }
+
+    /// <summary>
+    /// 🔴 SC-004, <b>REWRITTEN AFTER REVIEW FINDING 3.</b>
+    ///
+    /// <para>
+    /// The first version asserted "there are currently no unruled fields" — which proves the
+    /// OPPOSITE of its own name and would pass even if <c>Compare</c> silently treated every
+    /// unknown differing field as agreeing. With the production table every field is ruled, so the
+    /// property is undemonstrable through it. This drives the ruling-table overload with
+    /// <c>SenderActor</c> REMOVED and requires the now-unruled, genuinely divergent field to come
+    /// back <see cref="FrameFieldVerdict.DivergesUnruled"/> and to fail the gate.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public void A_differing_field_with_no_ruling_is_unruled_and_fails_the_gate()
     {
         var (file, wire) = ConstructedPair();
 
-        // Body is MustAgree with no may-diverge ruling. Force exactly one difference on the real pair.
-        var tampered = wire with { Body = wire.Body + "-TAMPERED" };
-
-        var comparisons = FrameFieldParity.Compare(file, tampered);
-        var body = comparisons.Single(c => c.Field == "Body");
-
-        Assert.Equal(FrameFieldVerdict.DivergesUnruled, body.Verdict);
-        Assert.Contains("Body", body.ToString(), StringComparison.Ordinal);
-        Assert.Contains("DIVERGES-UNRULED", body.ToString(), StringComparison.Ordinal);
-
-        // And the aggregate the passing test relies on must actually go red.
-        Assert.Contains(comparisons, c => c.Verdict == FrameFieldVerdict.DivergesUnruled);
-
-        // Negative control on the control: every OTHER field is unaffected by the tamper.
-        Assert.DoesNotContain(
-            comparisons.Where(c => c.Field != "Body"),
-            c => c.Verdict == FrameFieldVerdict.DivergesUnruled);
-    }
-
-    /// <summary>
-    /// SC-004 — a field the ruling table does not cover, differing, fails and names itself. Proven
-    /// by driving the classifier with Signal removed from consideration is impossible without
-    /// mutating the table, so this proves the equivalent property directly: an unruled field name
-    /// yields DivergesUnruled rather than being skipped.
-    /// </summary>
-    [Fact]
-    public void An_unruled_field_that_differs_is_never_silently_skipped()
-    {
-        var ruledFields = FrameFieldParity.Rulings.Select(r => r.Field).ToHashSet(StringComparer.Ordinal);
-
-        var declared = typeof(YnetFrame)
-            .GetProperties(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance)
-            .Select(p => p.Name)
+        // SenderActor genuinely differs between the carriers. Remove its ruling and it must stop
+        // being permitted — the field is untouched, only the ruling is.
+        var withoutSenderActor = FrameFieldParity.Rulings
+            .Where(r => r.Field != "SenderActor")
             .ToList();
 
-        // Today every declared field is ruled. If someone adds one and does NOT rule it, this fails
-        // here rather than the new field drifting outside the check unnoticed.
-        var unruledDeclared = declared.Where(f => !ruledFields.Contains(f)).ToList();
+        var comparisons = FrameFieldParity.Compare(file, wire, withoutSenderActor);
+        _out.WriteLine(FrameFieldParity.Report(comparisons));
 
-        Assert.True(
-            unruledDeclared.Count == 0,
-            "YnetFrame gained field(s) with no ruling: " + string.Join(", ", unruledDeclared)
-            + ". Add a FrameFieldRuling, or the parity check cannot classify them.");
+        var senderActor = comparisons.Single(c => c.Field == "SenderActor");
+        Assert.Equal(FrameFieldVerdict.DivergesUnruled, senderActor.Verdict);
+        Assert.Null(senderActor.Ruling);
+        Assert.False(FrameFieldParity.Accepts(comparisons));
+
+        // And with the ruling restored the very same pair is accepted — proving the verdict tracks
+        // the RULING and not some incidental property of the frames.
+        Assert.True(FrameFieldParity.Accepts(FrameFieldParity.Compare(file, wire)));
     }
 
-    /// <summary>
-    /// FR-013 — the frame filename stays unique after Sequence became 1-based. Uniqueness is the
-    /// GUID's job; assert it rather than assume it.
-    /// </summary>
+    /// <summary>FR-013 — numbering starts at 1 and increments.</summary>
     [Fact]
     public void Frame_sequence_numbering_starts_at_one_and_increments()
     {
         var file = new CoopFileOutbound(Self, Peer, _root);
 
-        var first = file.BuildFrame(Signal, Body);
-        var second = file.BuildFrame(Signal, Body);
-        var third = file.BuildFrame(Signal, Body);
+        Assert.Equal(1, file.BuildFrame(Signal, Body).Sequence);
+        Assert.Equal(2, file.BuildFrame(Signal, Body).Sequence);
+        Assert.Equal(3, file.BuildFrame(Signal, Body).Sequence);
+    }
 
-        Assert.Equal(1, first.Sequence);
-        Assert.Equal(2, second.Sequence);
-        Assert.Equal(3, third.Sequence);
+    /// <summary>
+    /// 🔴 <b>Review finding 6</b> — the reachability check still precedes the increment, but
+    /// nothing pinned it, so moving the increment above the check would have passed the whole
+    /// suite. A refused send MUST NOT consume a sequence number: if it did, an unreachable peer
+    /// would silently punch holes in the numbering of a stream a reader may treat as gapless.
+    /// </summary>
+    [Fact]
+    public void A_send_refused_for_an_unreachable_peer_does_not_consume_a_sequence_number()
+    {
+        var outbound = new CoopFileOutbound(Self, Peer, _root);
+
+        Assert.False(outbound.PeerIsReachable);
+        Assert.False(outbound.Send("M6_LOST", "x"));
+        Assert.False(outbound.Send("M6_LOST", "x"));
+
+        // Now make the peer reachable; the first frame that actually goes out must still be #1.
+        Directory.CreateDirectory(CoopLayout.InboxOf(_root, Peer));
+        Assert.True(outbound.Send("M6_FOUND", "y"));
+
+        var written = Directory.EnumerateFiles(CoopLayout.InboxOf(_root, Peer)).Single();
+        using var doc = System.Text.Json.JsonDocument.Parse(File.ReadAllText(written));
+        Assert.Equal(1, doc.RootElement.GetProperty("Sequence").GetInt64());
     }
 
     /// <summary>
     /// FR-013 — frame filenames stay unique after the basis change. Uniqueness is the GUID's job,
-    /// not the sequence's; assert it rather than assume it, because the sequence is the only part
-    /// of the name this era touched and "the GUID covers it" is a claim until it is measured.
+    /// not the sequence's; assert it rather than assume it.
     /// </summary>
     [Fact]
     public void Frame_filenames_stay_unique_across_a_burst_of_sends()

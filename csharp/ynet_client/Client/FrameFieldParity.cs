@@ -31,11 +31,17 @@ public enum FrameFieldOutcome
 /// field simply carries the caller's input verbatim and needs no ruling to agree.</param>
 /// <param name="Rationale">Why the divergence is legitimate. Required for
 /// <see cref="FrameFieldOutcome.MayDiverge"/>.</param>
+/// <param name="FilePlaneSource">Where the file carrier populates this field, as file:line.
+/// FR-008: the provenance is DATA the report can print, not prose in a comment that no reader of
+/// the output ever sees.</param>
+/// <param name="WirePlaneSource">Where the wire carrier populates this field, as file:line.</param>
 public sealed record FrameFieldRuling(
     string Field,
     FrameFieldOutcome Outcome,
     string RulingId,
-    string Rationale);
+    string Rationale,
+    string FilePlaneSource,
+    string WirePlaneSource);
 
 /// <summary>The verdict for one field of one constructed-frame pair.</summary>
 public enum FrameFieldVerdict
@@ -111,23 +117,35 @@ public static class FrameFieldParity
     [
         new("Origin", FrameFieldOutcome.MayDiverge, "Q-110-03",
             "the wire has a handshake-proven Ed25519 NodeId the file plane cannot have; "
-            + "the file plane uses node/actor identity"),
+            + "the file plane uses node/actor identity",
+            "CoopFileCarrier.cs BuildFrame: _self.Identity",
+            "QuicCarrier.cs BuildFrame: _self.NodeId.ToString()"),
 
         new("SenderNode", FrameFieldOutcome.MayDiverge, "Q-110-03",
-            "as Origin: Ed25519 NodeId on the wire, node name on the file plane"),
+            "as Origin: Ed25519 NodeId on the wire, node name on the file plane",
+            "CoopFileCarrier.cs BuildFrame: _self.Node",
+            "QuicCarrier.cs BuildFrame: _self.NodeId.ToString()"),
 
         new("SenderActor", FrameFieldOutcome.MayDiverge, "Q-110-01",
             "the two planes have different addressing models: the file plane carries the SENDER's "
             + "actor, the wire carries the DESTINATION's actor. Ruled legitimate, and the residual "
             + "risk is named not closed: a field whose meaning depends on the carrier is what makes "
-            + "a cross-plane defect hard to reproduce, which is why this comparison reports it every run"),
+            + "a cross-plane defect hard to reproduce, which is why this comparison reports it every run",
+            "CoopFileCarrier.cs BuildFrame: _self.Actor (the SENDER)",
+            "QuicCarrier.cs BuildFrame: _peer.Actor (the DESTINATION)"),
 
         new("Sequence", FrameFieldOutcome.MustAgree, "Q-110-02",
-            "standardised 1-based on both planes; the first message is #1"),
+            "standardised 1-based on both planes; the first message is #1",
+            "CoopFileCarrier.cs BuildFrame: Interlocked.Increment(ref _sequence)",
+            "QuicCarrier.cs BuildFrame: Interlocked.Increment(ref _sequence)"),
 
-        new("Signal", FrameFieldOutcome.MustAgree, "", "carries the caller's summary verbatim"),
+        new("Signal", FrameFieldOutcome.MustAgree, "", "carries the caller's summary verbatim",
+            "CoopFileCarrier.cs BuildFrame: signal",
+            "QuicCarrier.cs BuildFrame: message.Summary"),
 
-        new("Body", FrameFieldOutcome.MustAgree, "", "carries the caller's body verbatim"),
+        new("Body", FrameFieldOutcome.MustAgree, "", "carries the caller's body verbatim",
+            "CoopFileCarrier.cs BuildFrame: body",
+            "QuicCarrier.cs BuildFrame: Encoding.UTF8.GetString(message.Body.Span)"),
     ];
 
     /// <summary>
@@ -147,12 +165,30 @@ public static class FrameFieldParity
     /// FAILS and names itself, rather than being quietly outside the check (FR-007).
     /// </para>
     /// </summary>
-    public static IReadOnlyList<FrameFieldComparison> Compare(YnetFrame filePlane, YnetFrame wirePlane)
+    public static IReadOnlyList<FrameFieldComparison> Compare(YnetFrame filePlane, YnetFrame wirePlane) =>
+        Compare(filePlane, wirePlane, Rulings);
+
+    /// <summary>
+    /// As <see cref="Compare(YnetFrame, YnetFrame)"/>, but against a caller-supplied ruling table.
+    ///
+    /// <para>
+    /// 🔴 This overload exists so SC-004 can be DEMONSTRATED rather than assumed. With the
+    /// production table every envelope field happens to be ruled, so a test using it can only ever
+    /// assert "there are currently no unruled fields" — which would pass even if this method
+    /// silently treated an unknown differing field as agreeing. A test must be able to hand in a
+    /// table with a field REMOVED and watch the field come back <see cref="FrameFieldVerdict.DivergesUnruled"/>.
+    /// A reviewer caught the original test proving the opposite of its own name; this is the seam
+    /// that fixes it.
+    /// </para>
+    /// </summary>
+    public static IReadOnlyList<FrameFieldComparison> Compare(
+        YnetFrame filePlane, YnetFrame wirePlane, IReadOnlyList<FrameFieldRuling> rulings)
     {
         ArgumentNullException.ThrowIfNull(filePlane);
         ArgumentNullException.ThrowIfNull(wirePlane);
+        ArgumentNullException.ThrowIfNull(rulings);
 
-        var byField = Rulings.ToDictionary(r => r.Field, StringComparer.Ordinal);
+        var byField = rulings.ToDictionary(r => r.Field, StringComparer.Ordinal);
         var results = new List<FrameFieldComparison>();
 
         foreach (var property in typeof(YnetFrame)
@@ -179,8 +215,34 @@ public static class FrameFieldParity
     private static string Render(object? value) =>
         value is null ? "<null>" : Convert.ToString(value, System.Globalization.CultureInfo.InvariantCulture) ?? "<null>";
 
-    /// <summary>A report a failing test can print whole. Every field, never only the failures —
-    /// a report that shows only what broke hides what is silently permitted.</summary>
-    public static string Report(IReadOnlyList<FrameFieldComparison> comparisons) =>
-        string.Join(Environment.NewLine, comparisons.Select(c => "  " + c));
+    /// <summary>
+    /// THE ACCEPTANCE GATE, as one expression.
+    ///
+    /// <para>
+    /// 🔴 Both the passing parity test and the negative control call THIS method. That is the
+    /// point: a control that asserts something adjacent to the gate proves nothing about the gate.
+    /// A reviewer found the first version of the control asserting a classifier verdict while the
+    /// real acceptance assertion was written out longhand somewhere else — so the control could
+    /// have passed with the gate broken.
+    /// </para>
+    /// </summary>
+    public static bool Accepts(IReadOnlyList<FrameFieldComparison> comparisons)
+    {
+        ArgumentNullException.ThrowIfNull(comparisons);
+        return comparisons.Count > 0
+               && comparisons.All(c => c.Verdict != FrameFieldVerdict.DivergesUnruled);
+    }
+
+    /// <summary>A report a failing test can print whole — and a PASSING one should print too.
+    /// Every field, never only the failures: a report that shows only what broke hides what is
+    /// silently permitted, which is how a ruled divergence quietly becomes a suppression (FR-006).
+    /// Ruled divergences carry their source provenance so a reader never opens a carrier.</summary>
+    public static string Report(IReadOnlyList<FrameFieldComparison> comparisons)
+    {
+        ArgumentNullException.ThrowIfNull(comparisons);
+        return string.Join(Environment.NewLine, comparisons.Select(c =>
+            c.Verdict == FrameFieldVerdict.DivergesRuled
+                ? $"  {c}{Environment.NewLine}      file <- {c.Ruling!.FilePlaneSource}{Environment.NewLine}      wire <- {c.Ruling.WirePlaneSource}"
+                : "  " + c));
+    }
 }
