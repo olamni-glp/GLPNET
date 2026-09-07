@@ -6,6 +6,48 @@ SPDX-License-Identifier: MIT
 
 # Restart pointer — **THIN POINTER ONLY, NOT A WORK LEDGER**
 
+> Last verified **2026-09-07T21:36Z** on **SHIRAS** by the `shiras-glpnet` lane, against durable rows
+> and a live `buildkit-marathon status` — not from a summary.
+>
+> **LIVE RUN: `mrun-f77f62158255`** · feature `glpnet-shiras-tidyup-and-scheduler-rootcause` ·
+> seq 150 · steps **9/9 complete** · **62 outstanding backlog items**.
+> `resume marathon` resumes THIS run. Next item it names: *S3 durable remedy — transition writers
+> for claim-ready-dispatch-inprogress* (saga, parked).
+>
+> **What this session changed, so a restart does not redo it** (HEAD `26e48979`, pushed, tree clean):
+> feature **108** T012 + T013 landed — the 40-iteration contention conformance check for
+> `HookNotifier.WaitForIdle` (**40/40 measured**) and a negative control that **fires** against the
+> pre-fix ordering. Two real product defects found by the full run and fixed at source:
+> `QuicCarrier.Open` captured the `_cts` FIELD in its accept-thread lambda, so an Open/Close race
+> threw an unhandled `NullReferenceException` on a background thread and **killed the test host**
+> (that abort is why one run reported 179 tests and the next 118); and `CoopFileInbound`'s
+> confinement guard was **host-local** — `..\victim` is a legal filename on Linux, and the coop root
+> is one shared volume also mounted on Windows, where the same name traverses out.
+>
+> 🔴 **STILL OPEN, MEASURED NOT ASSUMED.** `SupervisedLivenessTests` is **intermittently** red:
+> 3 consecutive full runs gave 1 / 0 / 0 failures and **the failing test changed between runs**.
+> Root cause named: `FreePort()` binds port 0, reads the port, releases it, and returns the number —
+> which every caller reads as evidence the port is free when it is only evidence it *was*.
+> Captured as `mitem-01a07dca3cec`; on the board as
+> `liveness-binds-its-own-port-and-reports-it-retiring-the-freeport-toctou` (WSJF 5.0, promoted).
+> A thread-pool-starvation hypothesis was tried, **measured not to work**, and reverted.
+>
+> 🔴 **IROH, MEASURED ON SHIRAS 2026-09-07T22:1xZ — pass, refuse and unverifiable kept apart.**
+> The distributable EXISTS: `/mnt/gavri/d/yngenios/_dist-cache/ynet-iroh/` (INSTALL.md, Windows
+> `.exe`/`.msi` quad, Linux cargo source), published 11:55Z by `@gavriella.ospark`. Built here:
+> 9m24s, 24,142,480 bytes. SHIRAS EndpointId `69b23a3ec86b3049f53109f770f2b43f86c6461b82cc28b058747825fce4d6d6`
+> (persistent). A sidecar is **already running** (pid 271775, `127.0.0.1:47899`) and answers
+> `YNET-SIDECAR/1 CAPS quic-link` — tier 0's data plane is **bound and advertising**.
+> **But the flip is NOT a C# task.** The sidecar's control plane implements only `HELLO` and
+> `NODEID` and REFUSEs every other verb, so a consumer has no way to ask it to carry a link;
+> its data plane is an accept-and-echo self-test. Setting `IrohSidecarProvider._carriesLinks = true`
+> today would manufacture feature 108's own measured instance 2 inside the adapter written to
+> prevent it. Asked of `@gavriella.ospark` on the board as `shiras-glpnet@shiras:000004`.
+> **`ynet-client` still has no iroh code path — its only transport flag is `--coop`. F-2 is NOT
+> discharged. Keep M6 mailboxes mounted.**
+
+> ---
+>
 > Last verified **2026-09-04T16:40Z** by the `gavriella` lane, against durable rows — not from a
 > summary. **ACTIVE ERA: `102-quic-federation-transport`** (engineer ruling `Q-GLPNETG27-01`;
 > `specify` COMPLETE, slot HELD since 10:09Z). Full handoff:
