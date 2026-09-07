@@ -49,13 +49,21 @@
       "governed_by": [
         "FR-004"
       ],
-      "conformance_check": "csharp/ynet_client.tests/HookNotifierIdleRaceTests.cs::An_admitted_announcement_makes_the_notifier_non_idle_SYNCHRONOUSLY",
-      "negative_control": "scripts/tests/test_evidence_signal_conformance.py::test_early_wait_negative_control_fails",
+      "conformance_check": "csharp/ynet_client.tests/HookNotifierContentionConformanceTests.cs::T012_WaitForIdle_is_correct_on_all_40_contended_iterations",
+      "negative_control": "csharp/ynet_client.tests/HookNotifierContentionConformanceTests.cs::T013_the_same_harness_FAILS_the_pre_fix_ordering",
       "iterations": 40,
       "contention": "concurrent enqueue during drain; the discriminating instrument is the whole C# suite run in parallel, not any single test",
       "owner": "olamnit-glpnet",
       "disposition": "owned",
-      "notes": "spec.md instance 1. The C# suite's own header states plainly that its 400-iteration stress probe PASSED against the pre-fix code and was removed rather than kept as a green decoration -- that is FR-018a written down before FR-018a existed. The discriminating check is the SYNCHRONOUS one (Enqueue increments before it returns), which the pre-fix implementation could not satisfy. The mechanism's negative control lives in Python so it discriminates without reverting the fix."
+      "notes": "spec.md instance 1. The C# suite's own header states plainly that its 400-iteration stress probe PASSED against the pre-fix code and was removed rather than kept as a green decoration -- that is FR-018a written down before FR-018a existed. The discriminating check is the SYNCHRONOUS one (Enqueue increments before it returns), which the pre-fix implementation could not satisfy. The mechanism's negative control lives in Python so it discriminates without reverting the fix.",
+      "negative_control_note": "T013 hands the SAME harness the pre-fix ordering (queue empty AND not busy, busy set after the take) and requires it to fail, and to fail as an EARLY WAIT rather than a timeout. The Python-side simulator scripts/tests/test_evidence_signal_conformance.py::test_early_wait_negative_control_fails is RETAINED as the lane-portable control for lanes with no C#; it is no longer THIS surface's control, because a control written in another language cannot demonstrate that THIS check is capable of failing (FR-018a).",
+      "measured": {
+        "host": "shiras",
+        "utc": "2026-09-07T21:05Z",
+        "iterations_correct": "40/40",
+        "negative_control": "FIRED - early-wait failures observed against PreFixIdleProbe",
+        "runner": "dotnet test csharp/ynet_client.tests -c Release"
+      }
     },
     {
       "id": "ynet-client-alert-acknowledged",

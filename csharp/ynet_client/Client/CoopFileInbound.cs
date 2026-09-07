@@ -65,8 +65,23 @@ public sealed class CoopFileInbound : IYnetInbound, IDisposable
         // laneDirectory like "D:\other". Both values come from environment variables
         // (YNET_CLIENT_COOP / YNET_CLIENT_LANE), so this is reachable configuration, not a theory.
         // codexreview 2026-09-05, P1.
+        // 🔴 CONFINE UNDER *BOTH* SEPARATOR CONVENTIONS, NOT JUST THIS HOST'S.
+        // The coop root is ONE shared volume mounted on Linux (SHIRAS, ARIELLAS, OLAMNIT) and on
+        // Windows (GAVRI). On Linux a backslash is an ordinary filename character, so the lane
+        // directory "..\victim" is a single legal directory INSIDE the root and the confinement
+        // check below correctly does not fire — and then a Windows host reads the same volume, where
+        // that same name traverses out of it. A guard that is only correct on the host that happens
+        // to be running it is not a guard on a shared volume.
+        //
+        // Measured on shiras 2026-09-07: A_lane_directory_that_escapes_the_coop_root_is_refused
+        // failed for exactly this InlineData case, and the TEST was right — the check was
+        // host-local. Normalising backslashes to the local separator before confinement makes the
+        // same assertion true on every host, which is what "refused" has to mean here.
+        var normalisedLane = laneDirectory.Replace('\\', Path.DirectorySeparatorChar)
+                                          .Replace('/', Path.DirectorySeparatorChar);
+
         var root = Path.GetFullPath(coopRoot);
-        var combined = Path.GetFullPath(Path.Combine(root, laneDirectory));
+        var combined = Path.GetFullPath(Path.Combine(root, normalisedLane));
         var fence = root.EndsWith(Path.DirectorySeparatorChar) ? root : root + Path.DirectorySeparatorChar;
         if (!combined.StartsWith(fence, StringComparison.OrdinalIgnoreCase))
         {

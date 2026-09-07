@@ -132,7 +132,16 @@ public sealed class QuicInbound : IYnetInbound, IDisposable
             _cts = new CancellationTokenSource();
             _open = true;
 
-            StartThread($"quic-accept-{_config.ServiceName}", () => AcceptLoop(_cts.Token));
+            // 🔴 CAPTURE THE TOKEN, NEVER THE FIELD. `() => AcceptLoop(_cts.Token)` reads the FIELD
+            // when the thread first runs, not when Open() starts it. Close() sets `_cts = null` and
+            // then disposes it, so an Open immediately followed by a Close raced the new thread into
+            // a NullReferenceException on a BACKGROUND thread — which is unhandled, which KILLS THE
+            // PROCESS. Measured on shiras 2026-09-07: the full ynet_client suite aborted mid-run with
+            // "Test host process crashed", and the abort is why the run reported 179 tests one time
+            // and 118 the next. The receive loop at StartThread(quic-recv-…) already captures its
+            // token by value; only this one did not.
+            var acceptToken = _cts.Token;
+            StartThread($"quic-accept-{_config.ServiceName}", () => AcceptLoop(acceptToken));
         }
     }
 
