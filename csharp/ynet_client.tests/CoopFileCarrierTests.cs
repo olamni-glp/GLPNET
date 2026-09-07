@@ -146,7 +146,11 @@ public sealed class CoopFileCarrierTests : IDisposable
         Assert.Equal("gavriella.glpnet", root.GetProperty("SenderActor").GetString());
         Assert.Equal("M6_PROOF_GLPNET", root.GetProperty("Signal").GetString());
         Assert.Equal("hello", root.GetProperty("Body").GetString());
-        Assert.Equal(0, root.GetProperty("Sequence").GetInt64());
+        // Q-110-02 (engineer, 2026-09-07): the file plane is 1-BASED, matching the wire. This
+        // assertion previously pinned 0 and is the ONLY consumer a search for ".Sequence" missed —
+        // it reads the field by its SERIALIZED name, so a grep on the C# member name has a blind
+        // spot for exactly this shape. Recorded rather than quietly amended.
+        Assert.Equal(1, root.GetProperty("Sequence").GetInt64());
     }
 
     [Fact]
