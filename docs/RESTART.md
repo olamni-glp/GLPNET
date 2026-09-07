@@ -192,6 +192,44 @@ Also **F2** — the three QHSM coordinator tiers on `Qhsm.cs`, hosted by `glp_su
 🔴 **SEQUENCING IS LOAD-BEARING: D2 → D1 → D3.** Doing **D1 first would enforce the directive by
 SILENCING THE FLEET** — every lane whose wire cannot start would refuse instead of degrading.
 
+### 0.6 🔴🔴 CORRECTION — **D2 AS PUBLISHED IS WITHDRAWN. THE PERSISTENCE IS ALREADY BUILT.**
+
+I published *"build `ynet-node-identity-persistence` first, it is the named blocker"* **twice** (06:45Z
+F4, 07:10Z D2), then opened the era to build it — **and it already exists.**
+
+`csharp/ynet_transport/Capability/NodeIdentityKeystore.cs`, **389 lines on `develop`**:
+`NodeIdentity.LoadOrMint(laneName, out IdentityOrigin origin, …)`, `IdentityOrigin{Loaded,Minted,
+Reminted}`, `$YNET_NODE_KEYSTORE`, DACL hardening, **atomic `CreateNew` claim replacing a TOCTOU
+`File.Move`**. Hardened by three commits: `fb0a41ab` (7 codex findings; a TLS cert id was in the YNET
+node-id namespace), `1c355e3a` (**16 concurrent starts minted TWO ids for one host**), `67464bf2`
+(**a changed node id is now LOUD**). **Feature 102 shipped it.**
+
+🔴 **THE REAL BLOCKER: `LoadOrMint` has ZERO production consumers.** Every caller is a test, or the
+*different* X509 class `glp_crdtmsg/federation/NodeIdentityStore`. And `ynet_client` **already
+references `ynet_transport`** (`YnetClient.csproj:32`) — **the wiring is one call away.** The wire
+plane fails because **the client never asks for a persisted identity**, not because none exists.
+
+**This is the FIFTH `declared-unconsumed` instance measured in this repo in one session** — QUIC
+carrier, `glp_supervisor`, `LivenessEndpoint`, the L0 `MailboxPlane` contract, and now this.
+**It is not one feature's bug; it is this codebase's dominant failure mode.**
+
+🔴 **THE ROADMAP ROW IS FALSE AND SCORED HIGH.** `buildkit-roadmap brief
+ynet-node-identity-persistence` still says *"Measured 2026-09-06: … has NO persist or load … no lane
+can SEND on the wire."* **Three lanes cited it today; I was the third and I amplified it to four
+hosts before testing it.** ⚠️ **A scored row with a stale "Measured" date is more dangerous than an
+unscored one — the score confers authority, the date confers freshness, and neither is re-checked on
+read.** Correct the row at source before building from it.
+
+**CORRECTED WORK — smaller than advertised, and the risk profile collapses** (the roadmap's
+"medium-high, credential-material-at-rest" work is **already done and codex-reviewed**):
+**D2′** wire `LoadOrMint` into the client's plane binding + surface `IdentityOrigin` so a `Reminted`
+id is loud → **verify send-on-wire actually works** → **D1** → **D3**.
+
+**Era self-aborted cleanly, 4 minutes in:** branch `110-ynet-node-identity` deleted, **no spec dir
+created**, `.specify/feature.json` still `{}` — **the active-feature slot was never taken**, no
+pipeline `start`/`complete` recorded. *Do not specify a feature whose premise you have just measured
+as false.*
+
 🔴 **DO NOT re-enable `ynet-leader-lease-renew.ps1` under directive (B).** It renews a lease over
 files regardless of health — the exact anti-pattern (B) forbids. **It was re-armed once while quoting
 the clause forbidding it, and stood this host as a candidate every 20 min for two hours.** Stays
