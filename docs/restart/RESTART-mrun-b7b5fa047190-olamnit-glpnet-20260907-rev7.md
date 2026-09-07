@@ -301,6 +301,13 @@ missed.
 
 ---
 
+
+> 🔴 **§12 BELOW IS SUPERSEDED — read §13 first.** It records the YNET root cause as "a missing
+> credential". That was measured on the wrong tree and is no longer the live diagnosis. The chain
+> was corrected four times over 2026-09-07; §13 carries the current answer and the full lineage.
+> §12 is kept rather than rewritten, because a reader who saw the earlier broadcasts needs to be
+> able to find what changed.
+
 ## 12 · 🔴 THE YNET ROOT CAUSE — a MISSING CREDENTIAL, not a missing transport
 
 **Do not repeat the fleet's error, or mine.** On 2026-09-07 the fleet — this lane included —
@@ -356,3 +363,122 @@ both say *degraded, and why*.
 2. Provisioning it is the unblock for the engineer's 2-minute realtime liveness directive. **Make it
    durable and re-runnable** — the ruling records it destroyed four times already.
 3. Only then re-measure the carrier, and only then the coordinator actors.
+
+---
+
+## 13 · 🔴 THE YNET DIAGNOSIS AS IT NOW STANDS — and it changed FOUR times in one day
+
+Read this instead of §12. Every step below was measured, and each one corrected the step before it.
+**The lineage is kept deliberately: four confident, broadcast, wrong answers in a row is the
+finding, not an embarrassment to tidy away.**
+
+| # | claim | verdict | why it was wrong |
+|---|---|---|---|
+| 1 | "the QUIC transport has zero consumers, the wire was never wired" | **RETRACTED** | `QuicCarrier`, `PlaneCatalog`, `PlaneSelection`, `YnetListenerService` all exist; the zero-consumer defect was found **and fixed** by this repo on 2026-09-06 |
+| 2 | "`glpquick.pfx` is absent, so provision a certificate" | **RETRACTED** (`FR-21`) | **OLAMNIT has TWO GLPNET clones.** `D:\BSTDEV\glp\GLPNET\glpquick-cert\` is complete; this tree's was not. A copy, not an era |
+| 3 | "the deployed client has no wire plane, so upgrade the client" | **partly right** (`FR-26`) | true, but my evidence probed `QuicCarrier` — a **file name**. The types are `QuicInbound`/`QuicOutbound` |
+| 4 | "the fix is one line: pass `--self` into `Binding.Self`" | **RETRACTED** (`FR-32`) | `Binding.Self` is a `NodeIdentity` **signer**; `--self` is a **string**. Same name, different type |
+
+### The current answer, isolated by a discriminating run
+
+**`csharp/ynet_client/Program.cs:122` hardcodes `Self = null`**, with the comment *"supplied by
+`--identity` in a later step; absent means the wire degrades"*. **`--identity` does not exist** —
+zero hits across `csharp/`.
+
+```
+run --self olamnit/olamnit.glpnet --coop D:\coop --plane wire                        -> "needs this node's identity"
+run --self olamnit/olamnit.glpnet --coop D:\coop --plane wire --listen 0.0.0.0:47890 -> "needs this node's identity"
+```
+
+Identical error with the listener supplied, because `NewWire` checks identity **before** listener.
+**So `--listen` already parses, and identity is the sole client-side blocker.**
+`NodeIdentity.LoadOrMint(lane)` exists (`NodeIdentityKeystore.cs:60`, `$YNET_NODE_KEYSTORE`) and
+**mints on first use** — no key ceremony needed.
+
+🔴 **RAISED, NOT PATCHED.** `csharp/ynet_client/` is the canonical client's tree
+(`@ariellas-qhstate`, `Q-glpnetshiras-50`). **Do not patch it from this lane.**
+🔴 **NOT CLAIMED: that a handshake then succeeds.** Nobody has seen one. Minting lets the wire be
+*attempted*; the next error is what tells the fleet what is really next.
+
+### Also live, from the same measurements
+
+- **`--plane` / `YNET_CLIENT_PLANE` already exists** (`Program.cs:112`). Any lane can request the
+  wire today. Nobody knew.
+- **The deployed build is `ynet-client 1.0 (feature 093)`** and contains **none** of the plane types.
+  A build from this tree contains all of them and compiles clean in ~3 s. **Every YNET behavioural
+  claim must name its BUILD** (`FR-22`) — lanes reading source and lanes running old binaries
+  contradicted each other all day.
+- **Strays**: this lane's YNET inbox holds `.md` files a COOP fan-out dropped into a *mailbox*.
+  Zero are from this lane's own tool. `@olamnit-ynglin` raised (`FR-29`).
+- **The replay defect fires on every receiver start** — an acked P0 re-raised 8+ times with
+  `arrived_utc` re-stamped each time (`FR-23`). Owner `@ariellas-qhstate`.
+
+---
+
+## 14 · WHAT THE LOOP IS DOING, AND WHAT IS BLOCKED
+
+A `/loop` (cron `77aa1637`, every 10 min) runs: ack both channels → advance the liveness fix →
+codify/roadmap → commit+push → re-verify restart safety.
+
+**Feature on the board:** `ynet-coordinator-tiers-fleetwide-rollout` — created this session because
+the CRDT requirements document pointed at a feature that **did not exist**. Promoted, WSJF 3.63 /
+RICE 27000. *The WSJF understates the urgency because job size divides it; that was not gamed.*
+
+**CRDT requirements doc** (contribute here, do NOT write a rival):
+```
+docs/fleet/crdt/YNET-COORD-TIERS-FR.crdt.jsonl
+python scripts/crdt_requirements.py --log docs/fleet/crdt/YNET-COORD-TIERS-FR.crdt.jsonl
+```
+Append-only, single-writer per lane, `kind: clause|second|contest|open-question|answer`, supersede
+by id, merge by set-ops, adoption at **≥2 lanes on ≥2 distinct hosts**.
+🔴 **A `second` from a host that has not yet seconded is worth more than a new clause** — adoption
+counts distinct hosts, so corroboration converges and assertion does not.
+This lane holds `FR-15`…`FR-33` incl. **four self-supersessions**.
+
+**BLOCKED, deliberately:** iroh work. The directive says *"do not start work until a plan and clear
+non-conflicting allocations are agreed."* A plan exists (`@gavriella-glpnet`, 11:50Z; engineer
+ruling 2026-09-04 staging sidecar → FFI/L0 → C#). **This lane claims NOTHING in A/B/D**, delivered
+only item C (toolchain census: **cargo/rustc/rustup absent for `Olamnit\smbuser`** — item A must
+not be scheduled here), and offered the acceptance-evidence slice to the seated leader
+(`shiras.oracle@SHIRAS`) to allocate. **Awaiting arbitration. Start nothing until it arrives.**
+
+🔴 **The coordination paradox, unresolved:** the directive says to use the host coordinators and
+lane sub-coordinators to plan. **They do not exist** — they are the deliverable of the feature the
+coordination is about. The leader does exist, so it is the only real addressee.
+
+---
+
+## 15 · METHOD RULES THIS LANE EARNED THE HARD WAY TODAY — apply them
+
+Four wrong broadcasts in one day, each from a plausible inference. These are the rules that would
+have caught them, and they are cheap:
+
+1. **An ABSENCE claim about a binary needs a POSITIVE CONTROL** — and the control must be the
+   **same KIND of symbol** as the probe (`FR-25`, `FR-27`). A control of a different kind proves the
+   file is readable, not that the probe means anything.
+2. **Probe the TYPE a file declares, never the file's name.** `QuicCarrier.cs` declares
+   `QuicInbound`/`QuicOutbound`.
+3. **Same-name is not same-type** (`FR-33`). Cite the declared type of both sides before claiming an
+   assignment is possible.
+4. **Never `strings` an `.exe` on .NET** — it is an apphost stub with no code. Use `grep -a` on the
+   assembly.
+5. **A COOP sweep must match the timestamp ANYWHERE in the filename**, not anchored at `^`. A
+   `^2026` glob missed **315 files in one day**, including the P0 and the ERA claim that mattered
+   (`FR-20`).
+6. **`git push` fails transiently with `getaddrinfo() thread failed to start`** — it has succeeded
+   on retry every single time today. **Retry before escalating.**
+7. 🔴 **NEVER PIPE A COMMAND WHOSE EXIT CODE YOU ARE ABOUT TO BELIEVE.** `cmd | tail` makes `$?`
+   **tail's** exit — it converts a refusal into a success. The ynet client's own banner warns of this
+   for `scan`; it generalises to every verb and to every tool. **Redirect to a file, then read `$?`.**
+   This nearly made this lane publish the inverse of the truth twice inside one hour.
+8. 🔴 **YNET SENDING, THE PART THAT ACTUALLY MATTERS.** Peer inboxes are **URL-encoded peer-id dirs
+   at the COOP ROOT** — `<HOST>%2F<host>%2E<lane>~<hash>/inbox` — **not** under `D:\coop\_ynet\`.
+   A peer with no announced inbox is **unreachable by every lane**, and the client correctly refuses
+   with exit 1 rather than inventing one. Check your own with
+   `ls -1d '<HOST>%2F<host>%2E<lane>~'*` at the coop root.
+   This lane's own durable state is **repo-relative**: `.specify/ynet/<lane>/wal|alerts`, and the
+   WAL is **two-phase and self-auditing** — `grep -c '^STAMP'` (spooled) vs `grep -c '^SENT'`
+   (delivered). If they differ, every "sent N/N" you published overstated delivery by the difference.
+   🔴 **Beware five live spellings of this lane's id** (`olamnit.glpnet`, `olamnit-glpnet`,
+   `glpnet`, plus two probe ids) — they are **separate WALs**. The 122-message history is under
+   `olamnit.glpnet`; `--lane glpnet --node olamnit` writes to `glpnet`.
