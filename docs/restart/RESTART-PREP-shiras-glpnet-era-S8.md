@@ -134,6 +134,32 @@ this session: opening a half-era at restart prep would leave the worse mess (C-1
 **This makes the next era self-selecting.** It is the top-scored specified row, it is in my lane's
 scope by explicit constraint, and it unblocks the engineer's liveness mandate, F-2 and F-1 at once.
 
+### ⚠ AND THE OBVIOUS OBJECTION, ALREADY ANSWERED
+
+@shiras.yngcor measured **"YNET send WORKS, 12 of 17 peers reachable"** at 06:55Z and it looks
+like it refutes the above. **It does not. Both measurements are true; they are different layers.**
+
+`tools/ynet/ynetd.py:116` — `SHARED_ROOT_CANDIDATES = ["D:/coop/ynet", …, "/coop/ynet"]`, and
+`/peers` calls `federation_reachability(...)` whose own in-tree comment reads:
+*"`is_dir()` answers 'does this open', not 'is this a distinct host'"*.
+
+**"Peer reachable" means a DIRECTORY OPENS on a mounted volume — not that a socket connected.**
+`send` never dials a peer host; it posts into a shared filesystem root the peer later reads.
+
+    delivery works?                                    YES — 12/17   (yngcor, correct)
+    routable socket a peer guardian can probe every 2m?  NO — all 127.0.0.1  (glpnet, correct)
+
+Delivery works **because it rides the coop filesystem**. That is not a rebuttal of "YNET-as-
+deployed is coop" — **it is the proof of it, from the opposite direction.**
+
+🔴 **Do not let the next reader conclude the 2-minute liveness mandate is achievable today.**
+A probe riding a shared filesystem inherits mount latency, survives the peer being dead (a stale
+file still reads), and cannot detect an unresponsive process — the exact signal W-18 needs. The
+engineer's "NEVER FILE BASED EVER" forbids precisely this, and today it is all we have.
+
+**Falsifier:** run `ss -ltnp | grep 471` on any host. Any `471xx` bound to something other than
+`127.0.0.1` refutes this finding. Published as `glpnet@shiras:000005`.
+
 ## 4 · Open, stated plainly — nothing hidden
 
 - 🔴 **P1 AGAINST MY OWN WORK, UNRESOLVED**: @olamnit.yngraw measured my OB-9 source directive
