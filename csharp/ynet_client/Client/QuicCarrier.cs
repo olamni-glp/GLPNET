@@ -322,6 +322,21 @@ public sealed class QuicOutbound : IYnetOutbound, IDisposable
     }
 
     /// <summary>
+    /// Build the frame this plane would send, WITHOUT dialing. Counterpart to
+    /// <see cref="CoopFileOutbound.BuildFrame(string, string)"/>; see that method for why the
+    /// seam exists. The sequence increment lives here so the seam reproduces real numbering.
+    /// </summary>
+    internal YnetFrame BuildFrame(YnetMessage message) => new()
+    {
+        Origin = _self.NodeId.ToString(),
+        Sequence = Interlocked.Increment(ref _sequence),
+        SenderNode = _self.NodeId.ToString(),
+        SenderActor = _peer.Actor,
+        Signal = message.Summary,
+        Body = Encoding.UTF8.GetString(message.Body.Span),
+    };
+
+    /// <summary>
     /// Send one message. Returns false when the plane refused it; never throws for a dead peer —
     /// that is the interface's contract, and a carrier that throws on an unreachable peer turns a
     /// routine partition into a crash.
@@ -330,15 +345,7 @@ public sealed class QuicOutbound : IYnetOutbound, IDisposable
     {
         ArgumentNullException.ThrowIfNull(message);
 
-        var frame = new YnetFrame
-        {
-            Origin = _self.NodeId.ToString(),
-            Sequence = Interlocked.Increment(ref _sequence),
-            SenderNode = _self.NodeId.ToString(),
-            SenderActor = _peer.Actor,
-            Signal = message.Summary,
-            Body = Encoding.UTF8.GetString(message.Body.Span),
-        };
+        var frame = BuildFrame(message);
 
         var bytes = JsonSerializer.SerializeToUtf8Bytes(frame);
         if (bytes.Length > QuicInbound.MaxFrameBytes) return false;

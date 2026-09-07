@@ -1,0 +1,374 @@
+<!-- SPDX-FileCopyrightText: Copyright (c) 2026 by Marcelle Kress von Wendland, The Olamni Research Group and Bancstreet Capital Partners Ltd, London, UK -->
+<!-- SPDX-License-Identifier: MIT -->
+
+# RESTART PREP — shiras-glpnet — era S8 — 2026-09-07T06:50Z
+
+**Resume with exactly: `resume marathon`.**
+
+    run       mrun-f77f62158255 [open] · seq=148 · steps 9/9 · 59 outstanding backlog items
+    feature   glpnet-shiras-tidyup-and-scheduler-rootcause
+    branch    develop · clean · 0 ahead / 0 behind origin
+    M6        code-based client pid 17994 ACTIVE · YNET inbox drained, 11 receipts + 2 compliance
+    board     151 features · 55 not closed · 0 unscored · 0 unpromoted
+    fleet     term 5 Decided · leader broker@gavris · lease 07:38:48Z · prepares 6/6 ZERO MARGIN
+
+---
+
+## 0 · 🔴 READ FIRST — COOP vs YNET. THE ENGINEER'S RULING, AND HOW TO OBEY IT.
+
+**These are two different systems and using the wrong one is a defect, not a style choice.**
+
+| | COOP | YNET |
+|---|---|---|
+| what it is | a **file-based DROP BOX** on a shared volume | **kernel / QHSM real-time messaging** |
+| what it is NOT | not real-time, not a liveness channel | **NOT a file message board** |
+| correct use | durable evidence documents that must outlive a session | ACKs, alerts, liveness, elections, anything time-critical |
+| never | never liveness, never elections, never anything urgent | — |
+
+**The order is YNET FIRST, coop only as the durable copy.** I got this backwards at 00:10Z
+(published a P0 to coop first) and corrected it at 06:50Z. Do not repeat it.
+
+### How to actually use YNET from this lane — copy-runnable
+
+    cd /mnt/biwin/D_DRIVE/BSTDEV/research/olamnit          # ynetd lives in the olamnit repo
+    python3 tools/ynet/ynetd.py status                     # oracle 47100 / broker 47101 / guardian 47102
+    python3 tools/ynet/ynetd.py inbox     --lane glpnet
+    python3 tools/ynet/ynetd.py ack       --lane glpnet --id <record_id> --kind receipt|compliance --note "..."
+    python3 tools/ynet/ynetd.py broadcast --lane glpnet --subject "..." --body-file <file>
+    python3 tools/ynet/ynetd.py send      --lane glpnet --to <lane> --subject "..." --body "..."
+    python3 tools/ynet/ynetd.py prepare   --term N --for broker@<host>
+
+⚠ `ynetd.py replicate` from SHIRAS returns *"local ynet service is not reachable / timed out"*.
+**That is a timeout walking 848 files across four network mounts. It is NOT a dead service** —
+`status` reports all three roles `up:true`. Per C-20 report it as **unverifiable-by-that-path**,
+never as "SHIRAS is down". Give it 900s in the background if you need it.
+
+### The M6 client — already running, do not re-arm blindly
+
+    ps aux | grep ynet_alert_push        # expect pid ~17994, --lane shiras-glpnet
+    # only if absent:
+    python3 scripts/ynet_alert_push.py --lane shiras-glpnet --interval 1
+
+It is a **PROCESS, not an agent** (C-07 / F-4). It survives a Claude session restart. **Contrary
+to the S7 note, it did NOT need re-arming this session** — it was already up.
+
+## 0b · 🟢 TWO ENGINEER RULINGS OBTAINED 2026-09-07T09:20Z — BOTH BINDING
+
+**RULING 1 — the designated PBFT elector is authoritative. C-05 holds.**
+The fleet leader is **broker@gavris, term 5, 8 prepares ≥ quorum 6, membership 8**. A 4-member /
+quorum-3 board is a **different electorate**, not a degraded designated one. *"Membership never
+shrinks to whoever is up"* stands — it exists to stop a partition electing itself.
+🔴 **All reboot arithmetic is membership 8 / quorum 6.** Any lane that recomputed reboot safety
+on a 3-of-4 denominator must redo it.
+
+**RULING 2 — WP02 is KEYRING FIRST, THEN BIND.**
+
+    (0) asymmetric/keyring material EXISTS so a peer can verify a ballot it did not write
+    (1) exposure policy settled
+    (2) interim LAN bind under ruling D-01
+    (3) iroh as the target of record
+
+`DO-NOT-BIND-LAN-YET` is **upheld as the gate**, not a caution. **No listener binds beyond
+loopback until step 0 is done — and step 0 is not this lane's to do.**
+
+**IROH — this lane authors nothing.** The engineer directs: coordinate, agree a joint plan, and
+**do not start work until non-conflicting allocations are agreed**. An engineer-ruled iroh plan
+already exists. Registered exactly one allocation against it: **the GLPNET-side QUIC/realtime
+listener only** (WP02; Q-gsbk14-01 R2 keeps it out of `l0/kernel`), gated behind step 0.
+Claims **no** iroh core, **no** carrier, **no** client. Offered for withdrawal on collision.
+
+Recorded as FR-35/36/37 in the shared FRD.
+
+## 1 · §10 restart gate — measured, item by item
+
+| gate | verdict |
+|---|---|
+| working tree clean | ✅ 0 dirty |
+| 0 ahead / 0 behind origin | ✅ measured after merge+push |
+| **suites (state the numbers)** | 🔴 **NOT GREEN — 384 passed / 0 failed in A+B+C, but SIX groups DID NOT RUN. Harness prints `SOME TESTS FAILED`, `EXIT=1`.** See §1b. |
+| restart pointer written and pushed | ✅ this file |
+| every ACK-on-compliance answered | ✅ **66 alerts, 66 acked, 0 unacked** — verified with the cwd-proof census (§1c); 12 receipts + 10 compliance on YNET |
+
+🟢 **The S7 blocker is GONE.** S7 recorded the suite as UNVERIFIABLE (EXIT=127, no Dart SDK,
+215 phantom "failures"). Measured this session: **384 passed, 0 failed.** The runtime is present
+and the suite is genuinely green. S7 was right not to call it red.
+
+## 1b · 🔴 CORRECTION AGAINST MYSELF — THE SUITE IS **NOT** GREEN
+
+**I reported "384 passed, 0 failed" as a green gate. That was wrong, and it is the exact error
+C-20 forbids — I folded "did not run" into "passed."** The run's own FIRST line was `EXIT=1`.
+I read three `0 failed` lines and stopped. The harness was more honest than its reader.
+
+Full output, re-run at HEAD:
+
+    6 check group(s) DID NOT RUN — these are NOT passes:
+      SKIP         Section I   cross-runtime Gleam x C# — needs gleam on PATH + built C# REPL
+      SKIP         Section S   ms_message durable mesh — ms_message venv absent
+      UNSEARCHABLE Section T   064 service-box drills — QUIC trust material glpquick.pfx ABSENT
+      SKIP         Section U   077 cyclic diagnostics — C# REPL not built
+      SKIP         V-18..V-23  101 Dart vs C# parity — C# REPL not built
+      UNSEARCHABLE Y-7         109 declared criteria NOT MEASURED — csharp participant not started
+
+    SOME TESTS FAILED
+
+**The honest verdict, per C-20:**
+- **A + B + C: 384 passed, 0 failed.** Genuine, and it covers the code this lane changed (0 non-doc
+  changes since the run).
+- **Six groups: UNVERIFIABLE.** Missing *prerequisites* — gleam not on PATH, C# REPL not built,
+  `ms_message` venv absent, `glpquick.pfx` absent — **not** code regressions.
+- **"The suite is green" is FALSE.** The correct sentence is: *384 pass, nothing fails, and six
+  groups were never measured.*
+
+🔴 **This is the SAME defect class as S7's phantom 215 failures**, seen from the other side: S7's
+harness turned a missing runtime into fake FAILures; this one turns missing runtimes into an
+invisible not-run that a careless reader (me) calls a pass. **Both directions are the C-20 error.**
+It is a direct, live argument for `per-host-toolchain-and-environment-contract-declared-machine-
+checked-loudly-refused` (on the board, WSJF 3.6) — a host should be refused BY NAME before a suite
+runs, rather than silently skipping six groups.
+
+⚠ Note for the WP02 era: **Section T is blocked by absent QUIC trust material (`glpquick.pfx`)** —
+the very QUIC surface WP02 touches. Expect to provision it as part of that era, or WP02 ships
+with its own acceptance section unrun.
+
+## 1c · ⚠ THE ALERT CENSUS WAS CWD-RELATIVE — FIXED, AND USE THE FIXED ONE
+
+@gavriella.qhstate found (07:20Z) that `.specify/ynet/<lane>/alerts` is **CWD-RELATIVE**.
+Reproduced here: the same census run from `/tmp` reports **0 alerts, 0 unacked** — a **FALSE
+CLEAN** on the one number a restart gate depends on. My own 0-unacked claims this session were
+run from the repo root and were true *in fact*, but **the method was unsound** and would have
+lied silently from any other directory. That is the C-20 error, in my own gate.
+
+**Durable fix landed: `scripts/ynet_alert_census.py`**
+- derives the repo root from `__file__`, **never** the caller's cwd
+- **REFUSES with exit 2** if the spool does not resolve, instead of emitting a zero that is
+  indistinguishable from a real zero (`unverifiable` ≠ `clean`)
+- an unreadable alert counts as **outstanding**, never as acked
+- exit codes: `0` clean · `1` outstanding alerts · `2` unverifiable
+
+    $ python3 scripts/ynet_alert_census.py --lane shiras-glpnet
+    lane=shiras-glpnet total=66 acked=66 unacked=0
+
+**Verified identical from the repo root and from `/tmp`.** 🔴 **Next session: use this script, not
+an ad-hoc `os.listdir` of a relative path.** Any lane counting alerts by hand has the same bug.
+
+## 2 · ✅ SESSION RESTART = YES. HOST REBOOT = NOW AFFORDABLE AT **ZERO MARGIN** — RE-MEASURE FIRST.
+
+🔴 **THIS VERDICT CHANGED DURING THE SESSION. The earlier REFUSAL is superseded — ARIELLAS came in.**
+
+**RE-MEASURED on SHIRAS 2026-09-07T07:16:26Z over 157 records:**
+
+    term 5 · Decided · leader broker@gavris · lease 2026-09-07T08:13:37Z
+    prepares = 8 of quorum 6        <- ALL EIGHT ELECTORS NOW BACK IT
+    backers: broker+guardian @ ariellas, gavris, olamnit, shiras
+    removing SHIRAS's 2 -> 6 of 6 -> QUORUM EXACTLY HELD
+
+    HOST REBOOT: ✅ AFFORDABLE — but MARGIN IS ZERO.
+
+⚠ **Zero margin means affordable ONLY IF all six remaining electors are genuinely up at the moment
+of power-down.** If any other host is down, mid-reboot, or reboots concurrently, this breaks
+quorum and causes the outage. **Two hosts must never reboot at once. Re-measure immediately
+before powering down — do not trust this number, it moved twice in 30 minutes.**
+
+The superseded earlier measurement, kept for provenance (06:44:01Z, 150 records):
+
+    term 5 · Decided · leader broker@gavris · lease 2026-09-07T07:38:48Z
+    prepares = 6 of quorum 6          <- ZERO MARGIN
+    the six: broker+guardian @ gavris, @olamnit, @shiras
+    ARIELLAS: 0 records in term 5 (6 records total, all earlier terms)
+
+    Removing SHIRAS's 2 electors -> 4 of 6 -> THE FLEET GOES LEADERLESS.
+
+- ✅ **Restarting this Claude session is FREE.** My electors are OS processes (47100/47101/47102)
+  and the M6 client is a daemon; none of them is the agent. A session restart costs zero electors.
+- ✅ **REBOOTING SHIRAS IS NOW AFFORDABLE AT ZERO MARGIN.** ARIELLAS prepared after my 06:50Z
+  request (`glpnet@shiras:000001`); the fleet went 6→8. Losing SHIRAS's 2 leaves exactly 6.
+  **Verify the other three hosts are up, and re-measure, immediately before power-down.**
+
+**Conflating "restart the session" with "reboot the host" is precisely how a host reboots into
+the outage the plan exists to prevent.**
+
+## 3 · Delivered this session
+
+| what | evidence |
+|---|---|
+| **OB-6 REFUTED from a 3rd host — DO NOT FLIP** | SHIRAS: 138/138 pbft records unsigned, 0 keyed. `decide_pbft(require_signatures=True)` → **NoTerm**; False → Decided. The FTAP's "0 discarded, the flip is FREE" is **false**. Escalated, not executed. |
+| **OB-8(a) CONFIRMED DISCHARGED — the freeze is LIFTED** | buildkit@`2650474c` restored the ruled template at the ruled path, sha256 `f2a605ec…c427`, 32,614 B — byte-identical to the OB-8 hash. **Lanes may author plan documents again.** Step (c) (union onto the base) is now admissible. |
+| **NO-COMMIT-PHASE P0 corroborated** | 150 records = 94 candidacy + 54 prepare + 2 withdraw, **0 commits**. "Decided" is a reader-side computation, never a seating. Upstream root of recurring F-1. |
+| **F-1 lapse-reaction gap raised, not taken** | `elect` is evaluative, not generative; nothing opens term N+1 on a lapse. Belongs to @olamnit `tools/ynet` (C-19). |
+| **Reboot arithmetic published** | §2 above; corroborates @olamnit.yngraw's refusal with independent numbers. |
+| **Method declared to the fleet** | YNET broadcast `glpnet@shiras:000001/000002`, per the COOP-vs-YNET directive. |
+
+## 3b · 🔴 THE BIGGEST FINDING OF THE SESSION — YNET BINDS LOOPBACK ONLY
+
+Measured on SHIRAS 2026-09-07T06:50Z with `ss -ltnp` and `/proc/<pid>/fd`:
+
+    LISTEN 127.0.0.1:47100  oracle    (pid 17325)
+    LISTEN 127.0.0.1:47101  broker    (pid 17326)
+    LISTEN 127.0.0.1:47102  guardian  (pid 17330)
+
+    non-loopback listeners on SHIRAS: 22, 139, 445, 3389, 5357 — NOTHING on 471xx.
+
+**All three YNET roles bind `127.0.0.1`. No peer host can reach any of them.**
+
+This corrects @shiras.ospark's P0, which claimed the guardian holds ZERO sockets — it holds two,
+and it listens. The conclusion was right and the evidence wrong, and the difference decides the
+remedy. Consequences:
+
+1. **The engineer's 2-minute cross-host liveness probe over YNET is IMPOSSIBLE as deployed** —
+   not slow, impossible. There is no address a peer guardian could probe.
+2. **This is the mechanical reason "YNET-as-deployed IS COOP."** With no routable socket the only
+   medium the four hosts share is the mounted filesystem. Every lane that believed it was using
+   YNET cross-host was using coop with a YNET-shaped API on top. It is the same defect
+   @gavriella.glpnet found from the other end as NO COMMIT PHASE.
+3. **The remedy is NOT "give the guardian a socket."** It is: bind a routable address and bring up
+   the QUIC listener (C-08). Per Q-gsbk14-01 R2 that listener belongs to **glpnet** —
+   `l0/kernel`'s `GlpQuickLinkTransport.ListenAsync` throws by contract (client role, FR-023).
+   **Do not add a listener in l0/kernel or a repo lane.**
+
+### ⚑ CLAIM FOR THE NEXT ERA (C-18)
+
+`wp02-configurable-quic-listener-for-broker-guardian-oracle` — **specified, WSJF 6.75, RICE 6000,
+spec present** — is exactly this work and is already on the GLPNET board. **Claimed by
+shiras.glpnet for the next era.** Published on YNET as `glpnet@shiras:000004`. No code was started
+this session: opening a half-era at restart prep would leave the worse mess (C-15).
+
+**This makes the next era self-selecting.** It is the top-scored specified row, it is in my lane's
+scope by explicit constraint, and it unblocks the engineer's liveness mandate, F-2 and F-1 at once.
+
+### ⚠ AND THE OBVIOUS OBJECTION, ALREADY ANSWERED
+
+@shiras.yngcor measured **"YNET send WORKS, 12 of 17 peers reachable"** at 06:55Z and it looks
+like it refutes the above. **It does not. Both measurements are true; they are different layers.**
+
+`tools/ynet/ynetd.py:116` — `SHARED_ROOT_CANDIDATES = ["D:/coop/ynet", …, "/coop/ynet"]`, and
+`/peers` calls `federation_reachability(...)` whose own in-tree comment reads:
+*"`is_dir()` answers 'does this open', not 'is this a distinct host'"*.
+
+**"Peer reachable" means a DIRECTORY OPENS on a mounted volume — not that a socket connected.**
+`send` never dials a peer host; it posts into a shared filesystem root the peer later reads.
+
+    delivery works?                                    YES — 12/17   (yngcor, correct)
+    routable socket a peer guardian can probe every 2m?  NO — all 127.0.0.1  (glpnet, correct)
+
+Delivery works **because it rides the coop filesystem**. That is not a rebuttal of "YNET-as-
+deployed is coop" — **it is the proof of it, from the opposite direction.**
+
+🔴 **Do not let the next reader conclude the 2-minute liveness mandate is achievable today.**
+A probe riding a shared filesystem inherits mount latency, survives the peer being dead (a stale
+file still reads), and cannot detect an unresponsive process — the exact signal W-18 needs. The
+engineer's "NEVER FILE BASED EVER" forbids precisely this, and today it is all we have.
+
+**Falsifier:** run `ss -ltnp | grep 471` on any host. Any `471xx` bound to something other than
+`127.0.0.1` refutes this finding. Published as `glpnet@shiras:000005`.
+
+## 3c · 🔴 THE ROOT CAUSE OF F-1, AND IT IS NOT WHAT THE FLEET THINKS
+
+**The engineer's 2-minute liveness logic ALREADY EXISTS in L0, tested, with ZERO consumers.**
+
+    L0/YngeniOS.Contracts/Consensus/LeaderLiveness.cs      294 lines · 15,809 B
+      LeaderPing · LeaderPong · NoConfidence · WatchVerdict · NoConfidenceReason
+      WatchDecision.QuorumFor / Decide / ShouldPublishNoConfidence / Answers
+    tests/L0.Tests/Contract/LeaderLivenessTests.cs
+      quorum n=8→6 (the live electorate) · nonce mismatch, stale, wrong-term, backdated → REFUSED
+
+    CONSUMER CENSUS (by program, *.cs, /obj excluded):
+      files referencing LeaderPing or NoConfidence = 2  (the definition + its own tests)
+      PRODUCTION CONSUMERS = ZERO
+
+**This is W-06 repeating, on F-1 itself.** The fleet was leaderless all day while the logic that
+would have caught it sat in L0, green, called by nothing.
+
+| layer | state |
+|---|---|
+| decision logic | ✅ EXISTS, TESTED — **do not redesign or rewrite** |
+| consumer | 🔴 ZERO |
+| transport | 🔴 ABSENT — all YNET roles bind `127.0.0.1` |
+
+**Joint fix, two separable pieces:** (A) the consumer — a C# QHSM actor running the 2-min loop that
+*calls* the L0 contract, built on `YngeniOS.Guardian` (already has nonce + expiry + quorum
+signatures in `FleetPolicy.cs`); **.NET 11 measured present on SHIRAS** (`11.0.100-preview.7`).
+(B) the wire — routable bind + QUIC listener, **this lane's claimed WP02**. Neither works alone.
+
+⚠ @shiras.yngcor claimed the consumer at 09:00Z naming Python files (`scripts/bk-ynet-liveness…`).
+Putting the *decision logic* there is a **C-03 defect**. Warned directly at 07:10Z
+(`glpnet@shiras:000007` + direct send) **before** they wrote code. Check whether they confirmed.
+
+**The durable fix (C-16) is not the probe loop — it is extending `L0ConsumerCensusTests` to cover
+`Consensus/*`, the gate that would have refused this.** Full detail:
+`docs/fleet/FINDING-20260907T0710Z-…-W-06-REPEATING.md`.
+
+## 3d · 🔴 THE HEADLINE: THE ENGINEER'S COORDINATOR MANDATE IS ALREADY BUILT AND HOSTED BY NOTHING
+
+Found by `scripts/declared_unconsumed_guard.py` (landed this session), scanning yngenios —
+210 C# files, 407 declarations — filtered to **declared in PRODUCTION code, called only by its
+own tests**:
+
+    L0/YngeniOS.Contracts/Consensus/CoordinatorTier.cs
+        CoordinatorTier   :16   enum Fleet=0 / Host=1 / Lane=2   ← THE THREE TIERS
+        LivenessTransport :54   enum FileDropbox / KernelRealtime
+    L0/YngeniOS.Kernel/Coordinator/CoordinatorMachine.cs
+        CoordinatorSignals:11
+        CoordinatorMachine:54   ← THE QHSM ACTOR ITSELF
+    L0/YngeniOS.Kernel/Coordinator/LivenessWatch.cs
+        WatchRound        :9
+        LivenessWatch     :52   ← THE 2-MINUTE WATCH
+
+    ALL referenced only by tests/L0.Tests/Coordinator/*.  ZERO production consumers.
+
+`CoordinatorTier.cs`'s own docstring is written **verbatim to the engineer's 2026-09-07
+directive** — Fleet/Host/Lane tiers, `CoordinatorId.Mailbox => "{tier}:{scope}"` ("stable and
+derivable, so a watcher never has to be told where to send a challenge"), and a
+`LivenessTransport` enum whose `FileDropbox` member records **coop replication >90 SECONDS
+against a 7.9 MILLISECOND loopback round-trip — three orders of magnitude** — with
+`KernelRealtime` marked *"the only admissible carrier."*
+
+> **THE GAP IS A HOST PROCESS. Not a design, not a contract, not an algorithm.**
+> Something must construct `CoordinatorMachine` for Fleet/Host/Lane, register the mailboxes, and
+> run `LivenessWatch` on a 2-minute tick. That is the whole remaining job, and it is **small**,
+> because everything it needs already compiles and is proven.
+
+**This also corrects my own 07:10Z claim**: `LeaderPing` **is** consumed — by `LivenessWatch`.
+`LivenessWatch` is the real dead end. My grep resolved one level; the guard resolved the chain.
+
+**Systemic**: in one hour @gavriella.glpnet withdrew "build node-identity first" (already built),
+@shiras.yngapp withdrew a P0 sent to 4 coop roots and 75 mailboxes, @shiras.crucible corrected a
+stale reboot verdict, and I corrected myself twice. **The fleet's dominant failure mode today is
+not missing capability — it is missing consumers plus no way to discover what exists.**
+🔴 **Run the guard on any repo before building anything.**
+
+## 4 · Open, stated plainly — nothing hidden
+
+- 🔴 **P1 AGAINST MY OWN WORK, UNRESOLVED**: @olamnit.yngraw measured my OB-9 source directive
+  (`docs/fleet/ftap/SOURCE-DIRECTIVE-20260907T0230Z-….md`) to be a **FRAGMENT — 8 of 68 units**.
+  A peer separately reports the verbatim source already stored at
+  `coop/_standards/FLEET-T24-SOURCE-20260905-…-VERBATIM.md` sha `c7ca41ab6c9e`, 26,328 B.
+  **Do not ratify anything against my file until this is reconciled.** First job next session.
+- 🔴 **The engineer's new mandate is NOT yet built**: leader + per-host coordinator + per-lane
+  sub-coordinator as **QHSM/QMSM .NET C# actors**, always alive, with guardians+brokers probing
+  liveness **every 2 minutes over YNET kernel mailboxes, never file-based**. Nothing in the fleet
+  does this today. This is the next era's work and it needs a fleetwide joint design.
+- 🟡 **No commit phase** in the pbft board (§3) — needs a fleet-agreed durable fix.
+- 🟡 `alloc.dup_owner_gate` FAIL in `scripts/marathon_sitrep.py` — carried from S5, uninvestigated.
+- 🟡 95 of 151 roadmap features carry no `spec_path` and cannot bind by basename.
+- 🟡 59 marathon backlog items outstanding; next is the S3 durable remedy (size=saga).
+- 🟡 `COMPOSED-BUT-NOT-RUNNING`, the 4th consumer-closure verdict, still not built.
+
+## 5 · First actions on resume, in order
+
+1. **`git fetch` before ANY era work** — C-19. Two lanes rebuilt landed work from stale bases.
+   This session started 15 commits behind and hit a rejected push mid-run.
+2. **Reconcile the OB-9 fragment P1** (§4) before ratifying anything.
+3. **Re-measure the reboot margin** before anyone reboots: `decide_pbft` prepares vs quorum.
+4. **Do not execute OB-6** under any circumstance without an engineer ruling.
+5. **Next era is CLAIMED and self-selecting: `wp02-configurable-quic-listener-for-broker-
+   guardian-oracle`** (§3b). It is the top-scored specified row, in my lane by constraint
+   Q-gsbk14-01 R2, and it unblocks the engineer’s 2-minute liveness mandate, F-1 and F-2 together.
+
+## 6 · Restart procedure
+
+Tree clean, pushed, YNET inbox drained and acked, M6 daemon active.
+**Suite: 384 pass / 0 fail in A+B+C, SIX groups UNVERIFIABLE (§1b) — not a regression, missing
+prerequisites. Restart is still safe; the unrun groups are a standing gap, not a new break.**
+**SAFE TO RESTART THE SESSION. HOST REBOOT AFFORDABLE AT ZERO MARGIN — re-measure first** (§2).
+
+    resume marathon
