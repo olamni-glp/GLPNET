@@ -126,11 +126,18 @@ def collect(root: Path, language: str, min_name_len: int) -> LanguageResult:
     declarations: list[Declaration] = []
     texts: dict[Path, list[str]] = {}
     for path in files:
+        # A declaration inside a TEST file is invoked by the test runner, not by other source.
+        # Reporting it as "unconsumed" floods the result with noise -- measured on GLPNET, 797
+        # gleam findings of which the overwhelming majority were `*_test` functions. A guard that
+        # cries wolf 797 times is a guard nobody runs, which is the same false green by another
+        # route. Test files are still READ (they resolve consumers); they just do not DECLARE.
         try:
             lines = path.read_text(encoding="utf-8", errors="replace").splitlines()
         except OSError as exc:
             return LanguageResult(language, len(files), [], f"unreadable {path}: {exc}")
         texts[path] = lines
+        if _is_test(path):
+            continue
         for idx, line in enumerate(lines):
             for pat in patterns:
                 m = pat.match(line)
@@ -228,8 +235,7 @@ def main(argv: list[str] | None = None) -> int:
         # counting it is the false-positive class that gets a guard ignored. The signature is
         # PRODUCTION code that only tests call.
         for lang in report["languages"]:
-            lang["unconsumed"] = [u for u in lang["unconsumed"]
-                                  if u["tests_only"] and not _is_test(Path(u["file"]))]
+            lang["unconsumed"] = [u for u in lang["unconsumed"] if u["tests_only"]]
         report["totals"]["unconsumed"] = sum(len(l["unconsumed"]) for l in report["languages"])
     print(json.dumps(report, indent=2)) if args.json else render(report)
 
