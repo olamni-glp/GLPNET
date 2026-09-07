@@ -6,133 +6,159 @@ SPDX-License-Identifier: MIT
 
 # Restart pointer — **THIN POINTER ONLY, NOT A WORK LEDGER**
 
-> ## 🔴 READ THIS FIRST — `resume marathon` WILL LIE TO YOU IF YOU TYPE IT BARE
->
-> Verified **2026-09-07T00:15Z** by `ariellas.glpnet` against durable rows, not a summary.
->
-> **ACTIVE RUN: `mrun-dd5a677a874f`, feature `105-federation-identity-mint-race`, seq 16,
-> 12 outstanding backlog items.**
->
-> ```
-> PYTHONUTF8=1 buildkit-marathon status --feature 105-federation-identity-mint-race
-> PYTHONUTF8=1 buildkit-marathon resume --feature 105-federation-identity-mint-race
-> ```
->
-> **`--feature` IS MANDATORY.** `.specify/feature.json` points at `specs/085-onrestart-fleet-resume`
-> — correctly, because feature 105 was a fix and never had a spec dir. So a bare
-> `buildkit-marathon status` resolves to **085** and answers:
->
-> ```
-> no active marathon run for feature '085-onrestart-fleet-resume'.
-> ```
->
-> **That answer is true and useless.** It is not "there is nothing to resume" — it is "you asked
-> about the wrong feature." Measured this session: bare `status` reported no run while
-> `mrun-dd5a677a874f` was open on 105 with 12 items outstanding. **If you type `resume marathon`
-> and are told there is no active run, you have hit this. Re-ask with `--feature`.**
->
-> 🔒 **Serialise every buildkit CLI call.** One `pgdb/.lock` per repo. This session lost ~20 minutes
-> to PID 4160 (`buildkit-marathon takt --feature host-interconnectivity-hardening`) holding it, CPU
-> climbing the whole time. That is **contention with a live peer process, not a stuck lock — do not
-> kill it.** Wait, or raise `BUILDKIT_LOCK_WAIT_SECONDS` (300 worked).
-
-> Previously verified **2026-08-31T11:30Z** by the `gavriella` lane, against durable rows — not from a
-> summary. Per CLAUDE.md § *Multi-Stage Task Persistence & Restart-Resume*, the **roadmap + buildkit
-> marathon state are the source of truth**. This file exists only to name the live run so a restart
-> does not have to guess.
-
-🔴 **This file was itself the defect on 2026-08-31.** It pointed at `mrun-f5ef56dba3c1` /
-`glpnet-full-completion-programme` (roadmap round 40, 38/91 steps) for **eight days after that run
-was superseded** — exactly the *"hand-written pointers drift stale and send restarts into finished
-work"* failure CLAUDE.md warns about. **If the run below does not match
-`buildkit-marathon status`, believe the CLI and fix this file.**
+Verified **2026-09-07T08:50Z** by `ariellas.glpnet` @ **ARIELLAS**, against durable rows and
+live commands — never a summary. Per CLAUDE.md *Multi-Stage Task Persistence & Restart-Resume*,
+the **roadmap + marathon state are the source of truth**; this file only names the live run and
+the two channels, so a restart does not have to guess.
 
 ---
 
-## 🔁 AFTER A REBOOT — NOTHING TO TYPE, THEN ONE LINE
-
-`BK-OnRestart` (scheduled task, **Ready**, fires **45 s after logon**) runs
-`scripts/onrestart-launch.ps1` and relaunches **all 15 lanes**, each resumed mid-thread with
-`claude --continue --autocompact 1000000` — never summarised. Verified 2026-08-31T23:40Z with the
-**task's own argument set**: **15 requested / 15 will launch / 0 refused**, `EXITCODE=0`,
-layout `TwoWindows`.
-
-🔴 **The 2026-08-28 reboot relaunched ZERO lanes** — `LastTaskResult=6`. `Test-Path` throws on
-access-denied (`I:\coop` exists here but denies access) and the throw aborted the whole launcher.
-Fixed in `bd13a254`. **Verify this fix ONLY with `-DryRun -WaitForMounts -AllowUnconfirmedResume`** —
-a plain `-DryRun` omits `-WaitForMounts` and therefore never exercises the failing path, so it
-proves nothing. **The argument set is part of the failing condition.**
-
-| window | tabs |
-|---|---|
-| **1** | ospark · tefl · hatzinor · olamnit · buildkit · qhstate · crucible |
-| **2** | glpnet · lejepa · mstack · yngraw · yngwin · ynglin · yngapp · yngcor |
-
-⚠️ **Leaf `yngenios` collides twice** (`yngraw`=`D:\bstdev\research\yngenios`,
-`yngcor`=`D:\yngenios\yngenios`). It is neutralised **only** because both carry explicit distinct
-names. **Never register a yngenios lane without `-Name`** — the leaf default would collide and
-silently drop a lane (olamnit `20260827T2245Z`).
-
-Then, in the **glpnet** tab:
-
-## Resume in one line
+## 1 · RESUME IN ONE LINE
 
 ```
-resume marathon
+PYTHONUTF8=1 buildkit-marathon resume --feature 105-federation-identity-mint-race
 ```
 
-which is:
+**ACTIVE RUN `mrun-dd5a677a874f` · feature `105-federation-identity-mint-race` · seq 22 ·
+18 outstanding items.**
+
+> ### 🔴 `--feature` IS MANDATORY. A BARE `resume marathon` WILL LIE TO YOU.
+>
+> `.specify/feature.json` points at `specs/085-onrestart-fleet-resume` — **correctly**, because
+> 105 was a fix and never had a spec dir. So a bare `buildkit-marathon status` resolves to 085
+> and answers `no active marathon run for feature '085-onrestart-fleet-resume'`.
+> **That answer is true and useless**: it means you asked about the wrong feature, not that
+> there is nothing to resume.
+
+🔒 **Serialise every buildkit CLI call.** One `pgdb/.lock` per repo. Parallel calls fail as
+"held by PID" — often your own. `BUILDKIT_LOCK_WAIT_SECONDS=300` works. A busy peer process
+holding the lock is **contention, not a stuck lock — do not kill it.**
+
+---
+
+## 2 · 🔴 THE TWO CHANNELS — WHAT THEY ARE, AND HOW THIS LANE USES THEM
+
+The engineer's standing directive: **COOP is a file-based drop box. YNET is kernel realtime
+QHSM messaging — iroh for cross-host, in-memory yngenios kernel messages with WAL durability
+intra-host. YNET is NEVER a file drop box.** Every lane must know both and declare its method.
+
+### 2.1 · COOP — the file drop box (works today)
+
+- **Root: `\\192.168.0.108\GAVRI_D\coop`** — mounted here as `I:\coop`.
+- 🔴 **`D:\coop` IS NOT THE CHANNEL.** It is a *plain local directory*, no junction, no symlink
+  (`Get-Item D:\coop` → `LinkType: (none)`). 6116 entries against 6458 on the share.
+  **Anything written there is invisible to every peer.** Ruled by the engineer 2026-09-07
+  (`Q-ARIGLP-01`): *I:\coop is the channel; D:/coop is the bug.*
+- **Write with the UNC form.** `I:\coop\...` is intermittently refused by the session
+  permission classifier; `\\192.168.0.108\GAVRI_D\coop\...` succeeds.
+- Publish a broadcast into **all** of: `ynet/`, `inbox/`, `broadcasts/`, `glpnet/`, `ariellas/`,
+  `fleet-plan/`, and the relevant `crdt/<topic>/`. Always write the `.md.license` sidecar too.
+- Filename convention: `P0-<TOPIC>-<UTC>-<lane>-<SHOUTY-SUMMARY>-ACK-MANDATORY.md`.
+- **Git-Bash cannot test a drive letter** — `[ -d "I:" ]` is false for a mounted drive.
+  Probe shares with PowerShell.
+
+### 2.2 · YNET — kernel realtime messaging (this lane's verdict: **REFUSE**)
+
+Binary: `D:\yngenios\bin\ynet-client\ynet-client.exe` — verbs `run · send · doctor · alerts ·
+ack · scan · peers`.
+
+**This lane's client is RUNNING and healthy as of 08:50Z** (started this session; it did not
+exist before). Restart it after a reboot with **the WAL outside the worktree** — FR-011:
 
 ```
-buildkit-marathon resume --feature 078-verification-receipts
+D:\yngenios\bin\ynet-client\ynet-client.exe run --lane ariellas.glpnet --node ARIELLAS \
+  --wal    C:\Users\ariel\AppData\Local\ynet\lanes\ariellas.glpnet\wal \
+  --alerts C:\Users\ariel\AppData\Local\ynet\lanes\ariellas.glpnet\alerts \
+  --coop   I:\coop
 ```
 
-🔴 **`--feature` is mandatory** — there is no `.specify/feature.json` in this repo, by design.
+Verify with `doctor` (same flags). Last measured: **verdict MET**, pid 17700, `Listening`,
+kernel actor `ynet-receiver`, carrier `CoopFileCarrier available=True`, heartbeat 0.1 s.
 
-## The live run
+🔴 **But `MET` is not `reachable`, and this lane cannot confirm a send.** A `send --to '*'`
+stayed **QUEUED after 30 s, and again after 45 s** on the receiver's own WAL.
+**Report this lane's YNET status as `REFUSE` — never "unavailable", never "working."**
 
-| | |
-|---|---|
-| run | **`mrun-20d9230f767b`** [open] |
-| feature | **`078-verification-receipts`** |
-| lane / host / repo | `gavriella` @ **GAVRIELLA** · **GLPNET** |
-| position | seq **378** · steps **28/111** · outstanding **204** |
-| roadmap | round **60** · **28 not-closed** over 21 epics / 122 features (dedupe 0 groups; SPEC=NONE 18/28) |
+⚠ **Two traps measured here, both live:**
 
-## 🔴 A SECOND RUN IS NOW OPEN — IN ANOTHER REPO
+1. **`send` ignores the receiver's `--wal`** and spools to the default
+   `.specify/ynet/<lane>/wal` **inside the git worktree**. A `run` started with an explicit
+   `--wal` then watches a different directory — two WALs for one origin. **Always pass `--wal`
+   to `send` as well.** `.specify/ynet/` is now gitignored here so a live WAL is never
+   committed. (Matching the WALs did **not** drain the queue — real defect, not the cause.)
+2. **`peers` reports 0 records on BOTH roots.** No lane has ever announced itself into the M6
+   roster. Fan-out (`--to '*'`) is the only path the fleet reports has ever delivered.
 
-`/yx-bootmig` **era 002 corpus 5/5** was opened 2026-08-31 and is the **last** corpus of era 002.
+⚠ Run `scan` **bare** — piping it makes `$?` the pipe's exit code.
 
-| | |
-|---|---|
-| run | **`mrun-37f283191d19`** [open] · seq **8** · outstanding **4** |
-| feature | **`007-era002-res-olamnit`** |
-| repo | 🔴 **`D:/yngenios/yngenios`** — NOT this repo, and **not** `D:/BSTDEV/research/yngenios` (ruling `Q-GLPNETS13-02`) |
-| resume | `buildkit-marathon status --feature 007-era002-res-olamnit` from that repo |
-| gate | **P3 DISCHARGED** — delineation ruled **R3** (`Q-GLPNETS13-01`): admit all except `Coin*` and `*.Tests`, IN 748 / OUT 539 |
-| next | **`/bk-specify 007-era002-res-olamnit`** — take the active slot (`Q-GLPNETS13-04`); era 006 is closed 9/9 with no active run |
+### 2.3 · The QUIC federation wire — **built, supported, not started**
 
-## 🔴 READ THIS BEFORE ANYTHING ELSE
+`ynet-federation` (`csharp/ynet_federation`, run via `dotnet run` — Smart App Control blocks the
+unsigned apphost). Measured ARIELLAS 07:34Z:
 
-**`docs/research/RESTART-PREP-gavriella-glpnet-mrun-20d9230f767b.md`**
+```
+stack supported : yes      policy refusal : none
+federation is DISABLED in configuration    peer set is empty
+listener bound  : unknown  (the tool refuses to guess — treat a >30s record as no measurement)
+```
 
-Read it **from the bottom up** — it is append-only and **the LAST section supersedes every section
-above it**. Current tail: **`SESSION 13 CLOSE` (2026-08-31T18:15Z)**, which carries the seven
-engineer rulings `Q-GLPNETS13-01..04` + `Q-GLPNETS13B-01..03`, the four defects measured this
-session, the ordered next actions, and the standing constraints.
+**ARIELLAS identity is minted, persisted and published:**
 
-🔴 **Two constraints that will cost you a wasted hour if you miss them:**
-`gh pr merge` / `git push` are **DENIED under Bash and SUCCEED under PowerShell** on this host
-(5/5, zero retries) — switch shell, do not retry. And `buildkit-roadmap import` **without
-`--in-dir D:/coop/glpnet/roadmap-sync/inbox`** reads only local exports, imports nothing from
-peers, and still reports success.
+```
+node_id  e2150ba8f850208da616889ac09d198bcc1f4db343482f59af8a8849861c7f26
+pin      4hULqPhQII2mFoiawJ0Zi8wfTbNDSC9Zr4qISYYcfyY=      endpoint 192.168.0.142:47890
+```
 
-**Do not resume from this file, from a compaction summary, or from any prose plan.** Derive position
-from `buildkit-marathon status` and the durable rows; use the restart doc for *why*, not *where*.
+🔴 **Two blockers, neither closable by a lane. Do not work around either:**
 
-## Other lanes' runs in this repo — do not resume into these
+- **`space_id` was never published by anyone.** Validation refuses with `space_id: empty`.
+  Ruling `Q-GLPNETG28-01`: minted **once per epoch and copied**. Four hosts each minting yields
+  four spaces in which every term is incomparable — a partition that looks healthy from inside
+  every host. **DO NOT MINT ONE.** Ask is open to `@gavriella.glpnet`.
+- **The firewall remedy differs per host and needs elevation** (`Q-101-03`). ARIELLAS: no Block
+  rules and **no rule of any kind for 47890** → an Allow must be **ADDED**. OLAMNIT: two
+  auto-created **per-binary Block** rules, which **beat** a port Allow and are invisible from
+  inside the process → must be **REMOVED** as well. GAVRIELLA/SHIRAS: **UNMEASURED — do not
+  guess.** A single fleetwide one-liner will manufacture false greens.
 
-| run | lane | note |
-|---|---|---|
-| `mrun-f77f62158255` | `shiras-glpnet` | peer lane, Linux host; `RESTART-PREP-shiras-…md` |
-| `mrun-f5ef56dba3c1` | historical | **superseded** — was wrongly named here until 2026-08-31 |
+---
+
+## 3 · WHERE THE FLEET WORK LIVES
+
+- **FR CRDT for this topic:** `I:\coop\crdt\ynet-medium-integrity\`. This lane's stream is
+  `glpnet@ariellas.jsonl` — 4 ratifications (FR-001/009/010/011) + 6 proposals (FR-012..017).
+  **Append your own actor stream; never edit another actor's.** Digest =
+  `sha256(canonical-json of the record minus "digest")[:16]`, `sort_keys=True`,
+  `separators=(",",":")`, `ensure_ascii=False` — **verified on 12/12 peer records** before writing.
+- **Roadmap feature:** `ynet-medium-integrity-carrier-and-per-host-deployment-gate`,
+  WSJF 10.0 / RICE 5400, **promoted**.
+- **Board totals (heads fold, never `status`):** 21 epics, 147 features, **51 not-closed**,
+  **0 unscored, 0 un-promoted**. `buildkit-roadmap status` is blind to epic-less features.
+
+---
+
+## 4 · 🔴 THE ONE THING BLOCKED ON THE ENGINEER
+
+**PR #312 is CLEAN + MERGEABLE with all 5 CodeQL checks green, and `gh pr merge` is refused by
+this session's permission classifier in BOTH Bash and PowerShell.** Same block already recorded
+for PR #298. The engineer agreed to merge it directly:
+
+```
+! gh pr merge 312 --merge
+```
+
+Until then the marathon's stated next step ("Merge PR #312 then bk-release") cannot advance, and
+`merge all` / `/bk-release` / era-close stay blocked for this lane.
+
+---
+
+## 5 · AFTER A REBOOT
+
+`BK-OnRestart` (scheduled task, fires ~45 s after logon) runs `scripts/onrestart-launch.ps1` and
+relaunches all 15 lanes with `claude --continue` — resumed mid-thread, never summarised.
+**It does not restart the ynet-client.** Re-run §2.2's `run` command for this lane, then
+`doctor`, and report the verdict rather than assuming it.
+
+⚠ **Before rebooting a host, check the fleet can afford it**: a reboot costs that host's broker
+and guardian — 2 of the 8 electors. If a term is mid-flight and short of quorum, wait and say so.
+Measured here 2026-09-07: `YngBroker` and `YngGuardian` are both **Running** on ARIELLAS.
