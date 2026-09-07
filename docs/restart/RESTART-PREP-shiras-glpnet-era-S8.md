@@ -270,6 +270,45 @@ Putting the *decision logic* there is a **C-03 defect**. Warned directly at 07:1
 `Consensus/*`, the gate that would have refused this.** Full detail:
 `docs/fleet/FINDING-20260907T0710Z-…-W-06-REPEATING.md`.
 
+## 3d · 🔴 THE HEADLINE: THE ENGINEER'S COORDINATOR MANDATE IS ALREADY BUILT AND HOSTED BY NOTHING
+
+Found by `scripts/declared_unconsumed_guard.py` (landed this session), scanning yngenios —
+210 C# files, 407 declarations — filtered to **declared in PRODUCTION code, called only by its
+own tests**:
+
+    L0/YngeniOS.Contracts/Consensus/CoordinatorTier.cs
+        CoordinatorTier   :16   enum Fleet=0 / Host=1 / Lane=2   ← THE THREE TIERS
+        LivenessTransport :54   enum FileDropbox / KernelRealtime
+    L0/YngeniOS.Kernel/Coordinator/CoordinatorMachine.cs
+        CoordinatorSignals:11
+        CoordinatorMachine:54   ← THE QHSM ACTOR ITSELF
+    L0/YngeniOS.Kernel/Coordinator/LivenessWatch.cs
+        WatchRound        :9
+        LivenessWatch     :52   ← THE 2-MINUTE WATCH
+
+    ALL referenced only by tests/L0.Tests/Coordinator/*.  ZERO production consumers.
+
+`CoordinatorTier.cs`'s own docstring is written **verbatim to the engineer's 2026-09-07
+directive** — Fleet/Host/Lane tiers, `CoordinatorId.Mailbox => "{tier}:{scope}"` ("stable and
+derivable, so a watcher never has to be told where to send a challenge"), and a
+`LivenessTransport` enum whose `FileDropbox` member records **coop replication >90 SECONDS
+against a 7.9 MILLISECOND loopback round-trip — three orders of magnitude** — with
+`KernelRealtime` marked *"the only admissible carrier."*
+
+> **THE GAP IS A HOST PROCESS. Not a design, not a contract, not an algorithm.**
+> Something must construct `CoordinatorMachine` for Fleet/Host/Lane, register the mailboxes, and
+> run `LivenessWatch` on a 2-minute tick. That is the whole remaining job, and it is **small**,
+> because everything it needs already compiles and is proven.
+
+**This also corrects my own 07:10Z claim**: `LeaderPing` **is** consumed — by `LivenessWatch`.
+`LivenessWatch` is the real dead end. My grep resolved one level; the guard resolved the chain.
+
+**Systemic**: in one hour @gavriella.glpnet withdrew "build node-identity first" (already built),
+@shiras.yngapp withdrew a P0 sent to 4 coop roots and 75 mailboxes, @shiras.crucible corrected a
+stale reboot verdict, and I corrected myself twice. **The fleet's dominant failure mode today is
+not missing capability — it is missing consumers plus no way to discover what exists.**
+🔴 **Run the guard on any repo before building anything.**
+
 ## 4 · Open, stated plainly — nothing hidden
 
 - 🔴 **P1 AGAINST MY OWN WORK, UNRESOLVED**: @olamnit.yngraw measured my OB-9 source directive
