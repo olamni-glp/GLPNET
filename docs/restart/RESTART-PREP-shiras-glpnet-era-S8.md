@@ -97,6 +97,43 @@ the outage the plan exists to prevent.**
 | **Reboot arithmetic published** | §2 above; corroborates @olamnit.yngraw's refusal with independent numbers. |
 | **Method declared to the fleet** | YNET broadcast `glpnet@shiras:000001/000002`, per the COOP-vs-YNET directive. |
 
+## 3b · 🔴 THE BIGGEST FINDING OF THE SESSION — YNET BINDS LOOPBACK ONLY
+
+Measured on SHIRAS 2026-09-07T06:50Z with `ss -ltnp` and `/proc/<pid>/fd`:
+
+    LISTEN 127.0.0.1:47100  oracle    (pid 17325)
+    LISTEN 127.0.0.1:47101  broker    (pid 17326)
+    LISTEN 127.0.0.1:47102  guardian  (pid 17330)
+
+    non-loopback listeners on SHIRAS: 22, 139, 445, 3389, 5357 — NOTHING on 471xx.
+
+**All three YNET roles bind `127.0.0.1`. No peer host can reach any of them.**
+
+This corrects @shiras.ospark's P0, which claimed the guardian holds ZERO sockets — it holds two,
+and it listens. The conclusion was right and the evidence wrong, and the difference decides the
+remedy. Consequences:
+
+1. **The engineer's 2-minute cross-host liveness probe over YNET is IMPOSSIBLE as deployed** —
+   not slow, impossible. There is no address a peer guardian could probe.
+2. **This is the mechanical reason "YNET-as-deployed IS COOP."** With no routable socket the only
+   medium the four hosts share is the mounted filesystem. Every lane that believed it was using
+   YNET cross-host was using coop with a YNET-shaped API on top. It is the same defect
+   @gavriella.glpnet found from the other end as NO COMMIT PHASE.
+3. **The remedy is NOT "give the guardian a socket."** It is: bind a routable address and bring up
+   the QUIC listener (C-08). Per Q-gsbk14-01 R2 that listener belongs to **glpnet** —
+   `l0/kernel`'s `GlpQuickLinkTransport.ListenAsync` throws by contract (client role, FR-023).
+   **Do not add a listener in l0/kernel or a repo lane.**
+
+### ⚑ CLAIM FOR THE NEXT ERA (C-18)
+
+`wp02-configurable-quic-listener-for-broker-guardian-oracle` — **specified, WSJF 6.75, RICE 6000,
+spec present** — is exactly this work and is already on the GLPNET board. **Claimed by
+shiras.glpnet for the next era.** Published on YNET as `glpnet@shiras:000004`. No code was started
+this session: opening a half-era at restart prep would leave the worse mess (C-15).
+
+**This makes the next era self-selecting.** It is the top-scored specified row, it is in my lane's
+scope by explicit constraint, and it unblocks the engineer's liveness mandate, F-2 and F-1 at once.
+
 ## 4 · Open, stated plainly — nothing hidden
 
 - 🔴 **P1 AGAINST MY OWN WORK, UNRESOLVED**: @olamnit.yngraw measured my OB-9 source directive
@@ -121,8 +158,9 @@ the outage the plan exists to prevent.**
 2. **Reconcile the OB-9 fragment P1** (§4) before ratifying anything.
 3. **Re-measure the reboot margin** before anyone reboots: `decide_pbft` prepares vs quorum.
 4. **Do not execute OB-6** under any circumstance without an engineer ruling.
-5. Next era candidate: the engineer's QHSM/QMSM C# leader/coordinator liveness mandate (§4),
-   or `roadmap next` → per-host toolchain contract (which is exactly the S7 phantom-suite defect).
+5. **Next era is CLAIMED and self-selecting: `wp02-configurable-quic-listener-for-broker-
+   guardian-oracle`** (§3b). It is the top-scored specified row, in my lane by constraint
+   Q-gsbk14-01 R2, and it unblocks the engineer’s 2-minute liveness mandate, F-1 and F-2 together.
 
 ## 6 · Restart procedure
 
