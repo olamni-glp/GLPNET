@@ -134,12 +134,29 @@ in its **output directory**.
 1. **`git fetch origin` FIRST** (`C-19`). Several lanes push this repo; two peer tags landed
    mid-session and a second `specs/109-*` directory arrived on develop.
 2. **`/bk-close` feature 109** — the one pipeline stage that did not run.
-3. **Next single-feature era, board candidate:**
-   **`cross-runtime-link-parity-intermittent-empty-list`** (WSJF 5.00, RICE 28800) — a C# consumer
+3. **Next single-feature era — RUN `buildkit-roadmap next` AND TAKE WHAT IT SAYS.**
+
+   🔴 **Corrected 2026-09-07T07:1xZ, and the correction is against THIS FILE.** An earlier revision
+   of §6 named `cross-runtime-link-parity-intermittent-empty-list` as "next" **on raw WSJF**. That
+   is the score column, not the recommendation, and `@gavriella-glpnet` published exactly this
+   correction at 01:15Z (`2e60c9ec`) after making the same mistake. Re-deriving "next" from the
+   score column is what produces the discrepancy.
+
+   **Measured here 2026-09-07T07:1xZ:**
+   `buildkit-roadmap next` → **`per-host-toolchain-and-environment-contract-declared-machine-checked-loudly-refused`** (rank 24).
+   It applies dependency and build-order, not raw WSJF. **That is the authoritative recommendation.**
+
+   The raw-WSJF-top unbuilt row is a *different* feature —
+   `ynet-frame-field-parity-across-planes` (WSJF 10.50 / RICE 80750) — and the two disagreeing is
+   the normal case, not a fault.
+
+   **Carried as a CANDIDATE, not a recommendation:**
+   `cross-runtime-link-parity-intermittent-empty-list` (WSJF 5.00, RICE 28800) — a C# consumer
    returns `Got = []` and prints `succeeds`, green in 2 runs of 3. **It is 109's vacuous-agreement
    defect at link level**, so this lane's proven method transfers directly, and its regression bar
-   is an **ITERATED** run (≥20), never a single green. Alternative: `sc003-live-refusal-in-an-
-   adopted-area` (WSJF 5.33), which closes 109's own disclosed gap.
+   is an **ITERATED** run (≥20), never a single green. Offer it to the engineer if the tool's pick
+   is reallocated elsewhere; do not substitute it silently.
+   Also open: `sc003-live-refusal-in-an-adopted-area` (WSJF 5.33), 109's own disclosed gap.
 4. **Ask the engineer for the two administrator actions** if 110 `[03]` is wanted: add
    `Olamnit\smbuser` to `docker-users`, and start `com.docker.service`.
 5. **Re-ask `@gavriella-glpnet` for the literal `space_id`** (`Q-olg15-04`: do not mint one).
@@ -194,3 +211,26 @@ in its **output directory**.
 | differential gate | did not exist | **1 criterion MEASURED-AGREE**, exit 0, control executed |
 | board (not closed) | 55 | **67 · 0 captured · 0 refined** |
 | git | 3 unpushed commits | **clean, 0 ahead, 0 behind** |
+
+---
+
+## 10 · THREE THINGS THE FINAL PRE-RESTART CHECK FOUND (2026-09-07T07:1xZ)
+
+Recorded because each would have cost the next session time, and none was visible from the summary.
+
+1. 🔴 **`.specify/feature.json` on THIS HOST pointed at a FINISHED feature.** It read
+   `specs/108-evidence-signal-ordering`, stage `implemented`, while the roadmap has 108
+   **`released`**. The CLAUDE.md Restart-Resume order consults that pointer at step 2, so the next
+   session would have been sent into a completed era.
+   **The file is GITIGNORED — it is PER-MACHINE state.** `@gavriella-glpnet` cleared their copy at
+   01:12Z and that clear cannot reach OLAMNIT, by construction. **Cleared here to `{}`; verified
+   `buildkit-roadmap next` now answers.** Every host must clear its own; a peer's fix is not yours.
+
+2. ⚠ **There are TWO restart pointers in this repo, for two different lanes.**
+   `docs/RESTART.md` is **`gavriella.glpnet` @ GAVRIELLA**. **This** file is `olamnit.glpnet` @
+   OLAMNIT. Neither is wrong; a session that reads the other one is. **On OLAMNIT, this file is
+   the pointer** — check the host name in the header before trusting either.
+
+3. ⚠ **`develop` moved during the final verification** (`behind=1`, `2e60c9ec`). Fast-forwarded
+   before signalling. This is why `C-19` says fetch at the START of era work: two lanes push this
+   repo and a "clean, 0/0" measured five minutes ago is not a fact about now.
