@@ -379,6 +379,17 @@ finding, not an embarrassment to tidy away.**
 | 3 | "the deployed client has no wire plane, so upgrade the client" | **partly right** (`FR-26`) | true, but my evidence probed `QuicCarrier` — a **file name**. The types are `QuicInbound`/`QuicOutbound` |
 | 4 | "the fix is one line: pass `--self` into `Binding.Self`" | **RETRACTED** (`FR-32`) | `Binding.Self` is a `NodeIdentity` **signer**; `--self` is a **string**. Same name, different type |
 
+> 🔴 **AMENDED 14:15Z — THE SECTION BELOW IS A *SOURCE-TREE / LOCAL-BUILD* FINDING.**
+> The `Self = null` diagnosis is true of **this tree**, measured against a **locally built** client.
+> **The DEPLOYED client (`eea87e02`) never gets that far:** it accepts `--plane wire`, **silently
+> runs `carrier=CoopFileCarrier`, exits 0, and prints no notice at all**; `--self` is not even a
+> flag there (`rc=2: --lane is required`).
+> **So the deployable unblock is A CURRENT BUILD, not a certificate and not this one line.**
+> And the certificate story is dead twice over: `QuicWireChannel.cs:66` **mints its own** ephemeral
+> self-signed cert, and `glpquick` appears in **0 files** across `ynet_client` and `ynet_transport`
+> (positive control: `Certificate` matches 1 file). Two lanes reached "provision the cert"; both
+> were wrong.
+
 ### The current answer, isolated by a discriminating run
 
 **`csharp/ynet_client/Program.cs:122` hardcodes `Self = null`**, with the comment *"supplied by
