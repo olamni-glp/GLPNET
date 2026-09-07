@@ -103,9 +103,25 @@ runs, rather than silently skipping six groups.
 the very QUIC surface WP02 touches. Expect to provision it as part of that era, or WP02 ships
 with its own acceptance section unrun.
 
-## 2 · 🔴 SESSION RESTART = YES. HOST REBOOT = NO. THEY ARE NOT THE SAME THING.
+## 2 · ✅ SESSION RESTART = YES. HOST REBOOT = NOW AFFORDABLE AT **ZERO MARGIN** — RE-MEASURE FIRST.
 
-Measured on SHIRAS 2026-09-07T06:44:01Z, driving `ynet_core.decide_pbft` over 150 records:
+🔴 **THIS VERDICT CHANGED DURING THE SESSION. The earlier REFUSAL is superseded — ARIELLAS came in.**
+
+**RE-MEASURED on SHIRAS 2026-09-07T07:16:26Z over 157 records:**
+
+    term 5 · Decided · leader broker@gavris · lease 2026-09-07T08:13:37Z
+    prepares = 8 of quorum 6        <- ALL EIGHT ELECTORS NOW BACK IT
+    backers: broker+guardian @ ariellas, gavris, olamnit, shiras
+    removing SHIRAS's 2 -> 6 of 6 -> QUORUM EXACTLY HELD
+
+    HOST REBOOT: ✅ AFFORDABLE — but MARGIN IS ZERO.
+
+⚠ **Zero margin means affordable ONLY IF all six remaining electors are genuinely up at the moment
+of power-down.** If any other host is down, mid-reboot, or reboots concurrently, this breaks
+quorum and causes the outage. **Two hosts must never reboot at once. Re-measure immediately
+before powering down — do not trust this number, it moved twice in 30 minutes.**
+
+The superseded earlier measurement, kept for provenance (06:44:01Z, 150 records):
 
     term 5 · Decided · leader broker@gavris · lease 2026-09-07T07:38:48Z
     prepares = 6 of quorum 6          <- ZERO MARGIN
@@ -116,9 +132,9 @@ Measured on SHIRAS 2026-09-07T06:44:01Z, driving `ynet_core.decide_pbft` over 15
 
 - ✅ **Restarting this Claude session is FREE.** My electors are OS processes (47100/47101/47102)
   and the M6 client is a daemon; none of them is the agent. A session restart costs zero electors.
-- 🔴 **REBOOTING THE SHIRAS HOST IS REFUSED** until ARIELLAS's broker+guardian prepare in term 5.
-  That takes the fleet 6→8, after which losing SHIRAS's 2 still leaves exactly quorum.
-  Requested from @ariellas over YNET at 06:50Z (`glpnet@shiras:000001`), ACK-on-compliance asked.
+- ✅ **REBOOTING SHIRAS IS NOW AFFORDABLE AT ZERO MARGIN.** ARIELLAS prepared after my 06:50Z
+  request (`glpnet@shiras:000001`); the fleet went 6→8. Losing SHIRAS's 2 leaves exactly 6.
+  **Verify the other three hosts are up, and re-measure, immediately before power-down.**
 
 **Conflating "restart the session" with "reboot the host" is precisely how a host reboots into
 the outage the plan exists to prevent.**
@@ -266,6 +282,6 @@ Putting the *decision logic* there is a **C-03 defect**. Warned directly at 07:1
 Tree clean, pushed, YNET inbox drained and acked, M6 daemon active.
 **Suite: 384 pass / 0 fail in A+B+C, SIX groups UNVERIFIABLE (§1b) — not a regression, missing
 prerequisites. Restart is still safe; the unrun groups are a standing gap, not a new break.**
-**SAFE TO RESTART THE SESSION. NOT SAFE TO REBOOT THE HOST** (§2).
+**SAFE TO RESTART THE SESSION. HOST REBOOT AFFORDABLE AT ZERO MARGIN — re-measure first** (§2).
 
     resume marathon
