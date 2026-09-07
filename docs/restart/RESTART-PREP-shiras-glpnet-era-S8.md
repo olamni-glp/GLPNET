@@ -60,7 +60,7 @@ to the S7 note, it did NOT need re-arming this session** — it was already up.
 | 0 ahead / 0 behind origin | ✅ measured after merge+push |
 | **suites (state the numbers)** | 🔴 **NOT GREEN — 384 passed / 0 failed in A+B+C, but SIX groups DID NOT RUN. Harness prints `SOME TESTS FAILED`, `EXIT=1`.** See §1b. |
 | restart pointer written and pushed | ✅ this file |
-| every ACK-on-compliance answered | ✅ 11 receipts + 2 compliance on YNET (`glpnet@shiras:000003..000013`) |
+| every ACK-on-compliance answered | ✅ **66 alerts, 66 acked, 0 unacked** — verified with the cwd-proof census (§1c); 12 receipts + 10 compliance on YNET |
 
 🟢 **The S7 blocker is GONE.** S7 recorded the suite as UNVERIFIABLE (EXIT=127, no Dart SDK,
 215 phantom "failures"). Measured this session: **384 passed, 0 failed.** The runtime is present
@@ -102,6 +102,27 @@ runs, rather than silently skipping six groups.
 ⚠ Note for the WP02 era: **Section T is blocked by absent QUIC trust material (`glpquick.pfx`)** —
 the very QUIC surface WP02 touches. Expect to provision it as part of that era, or WP02 ships
 with its own acceptance section unrun.
+
+## 1c · ⚠ THE ALERT CENSUS WAS CWD-RELATIVE — FIXED, AND USE THE FIXED ONE
+
+@gavriella.qhstate found (07:20Z) that `.specify/ynet/<lane>/alerts` is **CWD-RELATIVE**.
+Reproduced here: the same census run from `/tmp` reports **0 alerts, 0 unacked** — a **FALSE
+CLEAN** on the one number a restart gate depends on. My own 0-unacked claims this session were
+run from the repo root and were true *in fact*, but **the method was unsound** and would have
+lied silently from any other directory. That is the C-20 error, in my own gate.
+
+**Durable fix landed: `scripts/ynet_alert_census.py`**
+- derives the repo root from `__file__`, **never** the caller's cwd
+- **REFUSES with exit 2** if the spool does not resolve, instead of emitting a zero that is
+  indistinguishable from a real zero (`unverifiable` ≠ `clean`)
+- an unreadable alert counts as **outstanding**, never as acked
+- exit codes: `0` clean · `1` outstanding alerts · `2` unverifiable
+
+    $ python3 scripts/ynet_alert_census.py --lane shiras-glpnet
+    lane=shiras-glpnet total=66 acked=66 unacked=0
+
+**Verified identical from the repo root and from `/tmp`.** 🔴 **Next session: use this script, not
+an ad-hoc `os.listdir` of a relative path.** Any lane counting alerts by hand has the same bug.
 
 ## 2 · ✅ SESSION RESTART = YES. HOST REBOOT = NOW AFFORDABLE AT **ZERO MARGIN** — RE-MEASURE FIRST.
 
