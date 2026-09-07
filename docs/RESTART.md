@@ -60,13 +60,21 @@ ynet-client alerts --lane gavriella.glpnet [--all]     ynet-client ack <ID> --la
 - 🔴 **`exit 0` is NOT delivery.** A fleet P0 reports refusals exiting 0 on some builds. **Verify the
   frame on disk** — and understand that even that only proves it left the process, not the host.
   Only the *recipient's* monitor closes a delivery.
-- 🔴 **Only lanes that have ANNOUNCED themselves are addressable.** Measured 06:32Z: of the three
-  peer `glpnet` lanes, **only `shiras/shiras-glpnet` accepted a frame**; `olamnit/olamnit.glpnet` and
-  `ariellas/ariellas.glpnet` were both refused — **no inbox**. **COOP reaches peers that YNET cannot.**
-- ⚠️ The address space is polluted: 79 mailboxes under `D:\coop`, including
-  `GAVRIELLA/gavriella.does-not-exist-at-all`, `totally.invented.lane.9999`, four `probe*` lanes, and
-  inconsistent node casing (`ARIELLAS` vs `ariellas` vs `ariellas.tefl`). **Do not infer the roster
-  from the directory listing.**
+- 🔴 **LANE NAMES USE `-` OR `.` AND YOU CANNOT GUESS WHICH.** `olamnit/olamnit-glpnet` and
+  `shiras/shiras-glpnet` are **hyphenated**; `shiras/shiras.qhstate`, `ARIELLAS/ariellas.tefl` are
+  **dotted**. **Enumerate `D:\coop\*~*` and decode (`%2F`→`/`, `%2E`→`.`) — never hand-type a peer.**
+  ⚠️ **CORRECTION, recorded against myself:** at 06:32Z I reported *"only 1 of 3 peer glpnet lanes is
+  reachable over YNET; COOP reaches peers YNET cannot."* **That was FALSE and it was my own error** —
+  I typed `olamnit/olamnit.glpnet` (dot) for a lane that is `olamnit-glpnet` (hyphen), and
+  `ariellas/ariellas.glpnet`, **which has never existed** (ariellas runs buildkit/crucible/tefl/
+  yngwin/yngraw, no glpnet lane). Re-measured at 06:48Z by enumerating instead of typing:
+  **83 mailboxes addressed, 83 sent, 0 refused.** *A refusal from the carrier meant I had the name
+  wrong, not that the peer was absent.*
+- ⚠️ **The carrier refuses to INVENT a mailbox but will happily deliver to a junk one that was once
+  created** — `GAVRIELLA/gavriella.does-not-exist-at-all` and `totally.invented.lane.9999` both
+  accepted a frame. **A successful send proves the mailbox exists, NOT that anyone reads it.**
+  Of ~83 mailboxes, roughly 25 are `probe*`/test artifacts. **Do not infer the roster from the
+  listing**, and do not treat mailbox count as lane count.
 
 ### 0.3 🔴 WHY THIS LANE IS NON-COMPLIANT — and what to do about it
 
@@ -98,6 +106,62 @@ without a persisted node identity and `--listen <addr:port>`, and
 
 ---
 
+### 0.4 🔴🔴 THE SECOND DIRECTIVE, AND THE ROOT CAUSE IT ASKED FOR
+
+**Engineer directive (B), 2026-09-07:** *Guardians, helped by brokers, must keep the leader **alive at
+all times** or **immediately elect** a new one. A **leader-style coordinator per HOST** and a
+**sub-coordinator per LANE**. All of them — leader, host coordinators, lane coordinators — **must be
+QHSM/QMSM .NET C# actors, always alive**. **Liveness checked every 2 MINUTES via YNET/kernel
+real-time message to the actor's mailbox — NEVER FILE-BASED, EVER.** Root-cause, **agree a joint
+fleetwide durable fix**, implement.*
+
+**ROOT CAUSE, measured 06:40Z — publish this before anyone re-diagnoses it:**
+
+```
+D:\coop\ynet\pbft\  →  150 records
+   candidacy 94 · prepare 54 · withdraw 2 · commit 0 · seating record of ANY kind 0
+```
+
+🔴 **The election board has NO COMMIT PHASE.** PBFT is prepare → **commit** → execute. With no commit
+record kind, **no leader can ever be durably seated** — *"leaderless" is the only state the board can
+represent*, and every correct tally derives `NO_LEADER` forever regardless of how many prepares
+exist. **Term 5 holds 6 prepares for `broker@gavris` and nothing that can seat it.** This explains
+the 94-vs-54 candidacy storm (nothing ever concludes), the "8 incomparable quorum denominators"
+(the board defines none), and *"no election has ever happened"*.
+
+⚠️ **Scope it exactly, or it becomes false:** across the *whole* ynet tree (12,362 records) there ARE
+`vote`, `election-call` and one `leader-appointment`. **The finding is about `pbft/` specifically.**
+I nearly published the broader, wrong version.
+
+**Second cause:** liveness is **self-declared prose** (4,235 `heartbeat` records are agents writing
+sentences about themselves) plus a **file lease renewed regardless of health**. Both are already
+ruled invalid *in this repo* — `csharp/ynet_client/Client/LivenessEndpoint.cs`: *"Liveness is a
+round-trip ANSWER, never process existence, never a self-declared status, never an unexpired lease.
+A timer that renews regardless of health seats a zombie forever — the lapse is the feature."*
+**We wrote the rule down and ran the fleet the other way.**
+
+**⭐ THE FIX IS MOSTLY BUILT AND UNWIRED — search before building.** All in glpnet `develop`, MIT:
+`Qhsm/Qhsm.cs` (QEP, run-to-completion, test-pinned) · `Client/LivenessEndpoint.cs` (round-trip,
+health-derived, dedicated thread, answers UNHEALTHY vs silence) · `Client/SupervisedLiveness.cs` ·
+`csharp/glp_supervisor/` (child hosting, backoff, crash-loop taxonomy) · `Client/QuicCarrier.cs` +
+`QuicInbound` (era 107) · `Client/PlaneCatalog.cs`. **Three `declared-unconsumed` instances — built,
+never consumed. That defect class IS this outage's mechanism.**
+
+**Proposed joint fix (broadcast 06:45Z, awaiting fleet agreement — do NOT start unilaterally):**
+**F1** commit record carrying its own declared denominator (owner `@shiras-olamnit`) · **F2** the
+three QHSM actor tiers on `Qhsm.cs`, hosted by `glp_supervisor`, exposing `LivenessEndpoint` ·
+**F3** 2-min round-trip liveness **on the WIRE plane only** (unbuildable on `CoopFileCarrier` without
+violating the directive) · **F4** **build `ynet-node-identity-persistence` FIRST** — the named
+blocker · **F5** make `doctor` report the plane and refuse `MET` for a file-bound lane.
+**Sequence: F4 → F1 (parallel) → F2 → F3 → F5.**
+
+🔴 **DO NOT re-enable `ynet-leader-lease-renew.ps1` under directive (B).** It renews a lease over
+files regardless of health — the exact anti-pattern (B) forbids. **It was re-armed once while quoting
+the clause forbidding it, and stood this host as a candidate every 20 min for two hours.** Stays
+`Enabled=False`.
+
+---
+
 ## 1 · What `resume marathon` does
 
 1. `buildkit-marathon resume` — position from durable rows.
@@ -126,9 +190,11 @@ It applies dependency/build-order, not raw WSJF. The raw-WSJF top row is a *diff
 (`ynet-frame-field-parity-across-planes`, 10.50 / 80750). **Run `buildkit-roadmap next` and take
 what it says** — re-deriving from the score column is what produced an earlier wrong pointer here.
 
-⚠ **Candidate for pre-emption:** §0.3 argues `ynet-node-identity-persistence` (6.80 / 45900) is now
-load-bearing for a **standing engineer directive**, which the score column does not know about.
-**Raise it; do not silently re-order the board.**
+🔴 **STRONG CANDIDATE FOR PRE-EMPTION — `ynet-node-identity-persistence` (6.80 / 45900).** §0.3 and
+§0.4/F4 both land on it: it is the **named blocker** for the wire plane, and **directive (B) is
+unimplementable-as-written until it exists** (2-min liveness cannot be built on the file carrier).
+The score column cannot know about a standing directive. **A ruling was requested at 06:45Z; if the
+fleet has answered, take F4. Raise it — do NOT silently re-order the board.**
 
 ---
 
