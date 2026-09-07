@@ -234,3 +234,67 @@ Recorded because each would have cost the next session time, and none was visibl
 3. ⚠ **`develop` moved during the final verification** (`behind=1`, `2e60c9ec`). Fast-forwarded
    before signalling. This is why `C-19` says fetch at the START of era work: two lanes push this
    repo and a "clean, 0/0" measured five minutes ago is not a fact about now.
+
+---
+
+## 11 · 🔴 THE TWO CHANNELS — COOP IS NOT YNET. READ THIS BEFORE SENDING ANYTHING.
+
+**Engineer directive, 2026-09-07:** *"COOP is a file-based DROP BOX. YNET is kernel realtime
+QHSM/QMSM messaging. They are NOT the same channel."*
+
+🔴 **This lane conflated them for a full day.** Every broadcast before 08:30Z went out **only over
+COOP** while being described as reaching "the fleet". Corrected and disclosed, not quietly fixed.
+
+### COOP — the file-based drop box
+
+```
+python scripts/coop_broadcast.py <file.md> --root 'D:\coop' --also-root
+```
+
+Refuses to overwrite an existing destination and refuses an over-long path, **writing nothing on
+refusal**. Emits a REUSE `.license` sidecar (the fleet licence gate rejects a bare `.md`). Channels
+are enumerated, never hand-listed. Filename convention `<UTC>-<host>-<lane>-<SUBJECT>.md`.
+Measured 2026-09-07: **47 channels written, 0 refused.**
+
+🔴 **Heredocs break these files.** Write the message with the Write tool, then fan it out.
+
+### YNET — kernel realtime QHSM/QMSM messaging
+
+Canonical client (`Q-glpnetshiras-50` — **this lane authors none**):
+`%LOCALAPPDATA%\yngenios\ynet-client\eea87e02\ynet-client.exe`
+
+```
+ynet-client run    --lane olamnit.glpnet --node olamnit --coop 'D:\coop' [--seconds S]
+ynet-client send   --lane olamnit.glpnet --node olamnit --coop 'D:\coop' \
+                   --to <node>/<lane> --signal <SIGNAL> --body "<text>"
+ynet-client doctor --lane olamnit.glpnet --node olamnit --coop 'D:\coop' --json
+ynet-client alerts --lane olamnit.glpnet     # then: ynet-client ack <ID> --lane olamnit.glpnet
+ynet-client peers  --coop 'D:\coop'          # run BARE - piping makes $? the PIPE's status
+```
+
+- **`--to` needs the FULL origin `<node>/<lane>`.** A bare lane name is refused, exit 1.
+- **`--node` is required** on `run`/`send`/`doctor`; omitting it exits 2.
+- Measured 2026-09-07: **8 sends, 8 accepted, 0 refused.**
+
+### 🔴 Three measured facts that will mislead you if you do not know them
+
+1. **`doctor` reports `carrier: "(none)"` when NO RECEIVER IS RUNNING.** The field describes the
+   *running receiver*, not the configured transport. `run` on the same host, same build, minutes
+   later prints `carrier=CoopFileCarrier`. **Do not conclude "this host has no carrier" from
+   `doctor` alone** — start a receiver and read its banner. Raised to `@ariellas-qhstate`.
+2. **The two channels share ONE physical carrier today.** `CoopFileCarrier`, rooted at `D:\coop`.
+   The client's whole surface has **no `--quic`, `--host`, `--port` or `--peer-addr`**, so no lane
+   can address `yng-broker`'s live QUIC socket on `*:24601`. **A YNET send is NOT realtime today.**
+   Corroborated on OLAMNIT after `@shiras-crucible` (08:00Z) and `@shiras-yngwin` (06:50Z).
+   Consequence: the engineer's **2-minute mailbox liveness check is a BUILD, not a config** — it
+   would be a file poll described as realtime until a QUIC carrier exists.
+3. **NEVER count peers from the channel directory.** It decodes to **87 distinct origins**
+   including probes and deliberately invented lanes (`totally.invented.lane.9999`). It is not a
+   roster, and any quorum or reachability figure derived from it is wrong.
+
+### One live defect in this lane's own addressing
+
+**Two inboxes exist for this lane, under two spellings:** `olamnit/olamnit.glpnet` (dot — what the
+client listens on) and `olamnit/olamnit-glpnet` (hyphen — **6 files sitting unread in it**). ERA
+096's `--legacy-id` is the intended remedy. Drain the hyphen inbox before assuming nothing was
+missed.
