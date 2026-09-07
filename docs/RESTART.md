@@ -39,16 +39,44 @@ deploy-home exes are the ones with the current flags.)
 ⚠ **One worktree is NOT mine** — `…/D--bstdev-research-yngenios/…/glpnet-wt` belongs to another
 lane's session. **Left alone deliberately** (C-19: leave it, raise it).
 
-## Next feature on the board
+## Next feature — the tool and the raw score DISAGREE; take the tool
 
-`ynet-frame-field-parity-across-planes` — WSJF **10.50**, RICE **80750**, promoted, rank #1 of the
-unbuilt rows. The two planes populate `Origin`, `SenderActor` and `Sequence` differently; era 107
-recorded the divergence as a measurement rather than arguing it in a comment. **Deciding which
-carrier is right is a protocol question for the fleet, not a test question for this lane** — expect
-to raise it before implementing.
+⚠ **Corrected 01:15Z.** An earlier revision of this file named the WSJF-top row as "next". That was
+the raw score, not the recommendation.
 
-Runners-up: `declared-unconsumed-guard` (8.00 / 18000) · `ynet-federation-config-and-firewall-correctness`
-(8.00 / 10500) · `ynet-node-identity-persistence` (6.80 / 45900 — unblocks send-on-wire for M6).
+- **`buildkit-roadmap next` says: `per-host-toolchain-and-environment-contract-declared-machine-checked-loudly-refused` (rank 24).**
+  It applies dependency/build-order, not raw WSJF. **This is the authoritative recommendation.**
+- **Raw WSJF-top unbuilt row is a different feature:** `ynet-frame-field-parity-across-planes`
+  (WSJF 10.50 / RICE 80750). The two planes populate `Origin`, `SenderActor` and `Sequence`
+  differently; era 107 recorded the divergence as a measurement rather than arguing it in a comment.
+  **Which carrier is right is a protocol question for the fleet, not a test question for this lane.**
+
+**Run `buildkit-roadmap next` on resume and take what it says** — do not re-derive from the score
+column, which is what produced this discrepancy.
+
+Other high rows: `declared-unconsumed-guard` (8.00 / 18000) ·
+`ynet-federation-config-and-firewall-correctness` (8.00 / 10500) ·
+`ynet-node-identity-persistence` (6.80 / 45900 — unblocks send-on-wire for M6).
+
+## Not mine — do not touch without checking (C-19)
+
+- **2 stashes, both pre-existing and NOT from this session.** Stashes live in `.git` and **survive a
+  restart**, so nothing is lost — but they are invisible unless looked for:
+  - `stash@{0}` *On 050-full-gleam-combined: T017 accidental WSL gleam-format drift on out-of-scope
+    files (recoverable)* — 31 files, glp_gleam tests.
+  - `stash@{1}` *On main: session-fixes-pre-pull* — 11 files incl. `glp_repl.dart`,
+    `repl_play_runner.dart`, and a stray `glp_runtime/:trace`.
+- **A second worktree belongs to another lane's yngenios session**
+  (`…/D--bstdev-research-yngenios/…/glpnet-wt`, detached `b2676c7c`). Left alone deliberately.
+- **Branch `083-glptutorial-corpus-goldens`** is unmerged WIP — kept; `git branch -d` refuses it, and
+  that refusal is the proof it is not safely deletable (C-20).
+
+## Active-feature pointer
+
+`.specify/feature.json` was left pointing at the closed `109-revoked-trust-refusal` after the slot
+was released, which made `marathon resume` report a **DIVERGENCE** against the catalog. **Cleared to
+`{}` at 01:12Z** — `resume marathon` now correctly reports no active era and falls through to
+`buildkit-roadmap next`, which is the intended Restart-Resume order.
 
 ## Owed to this lane — chase on resume
 
