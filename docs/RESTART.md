@@ -116,7 +116,7 @@ without a persisted node identity and `--listen <addr:port>`, and
 | branch | `develop`, working tree **clean** |
 | origin | **0 ahead / 0 behind** at `a6eebda9` (fast-forwarded this session; a peer had landed rev7) |
 | active-feature slot | **FREE** — `marathon resume` → *"no feature resolved"*, exit 1 (expected, not an error) |
-| YNET lane | **file plane** · 0 pending alerts · 0 unconfirmed sends · 0 queue depth · 0 receive refusals |
+| YNET lane | **file plane** · 0 pending alerts · 0 queue depth · 0 receive refusals · **2 unconfirmed sends** (both mine to `shiras/shiras-glpnet` — the probe and the directive relay; unconfirmed because *they* have not acked, **not** a fault) |
 | eras last shipped | **107** → `v2026.09.06.3` · **109** → `v2026.09.06.4` |
 | in-flight work | **none** — nothing half-written, nothing unpushed |
 
