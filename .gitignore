@@ -214,3 +214,8 @@ config.local.json
 
 # feature 101 — per-run ring conformance output (regenerate with test/ring/*.sh)
 test/ring/reports/
+
+# FR-011 (ynet-medium-integrity CRDT): the durable store of an always-on YNET process
+# MUST live outside every git worktree. `ynet-client send` spools to this default path
+# when --wal is omitted; measured on ARIELLAS 2026-09-07. Never commit a live WAL.
+.specify/ynet/
