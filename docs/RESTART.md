@@ -147,13 +147,50 @@ health-derived, dedicated thread, answers UNHEALTHY vs silence) · `Client/Super
 `QuicInbound` (era 107) · `Client/PlaneCatalog.cs`. **Three `declared-unconsumed` instances — built,
 never consumed. That defect class IS this outage's mechanism.**
 
-**Proposed joint fix (broadcast 06:45Z, awaiting fleet agreement — do NOT start unilaterally):**
-**F1** commit record carrying its own declared denominator (owner `@shiras-olamnit`) · **F2** the
-three QHSM actor tiers on `Qhsm.cs`, hosted by `glp_supervisor`, exposing `LivenessEndpoint` ·
-**F3** 2-min round-trip liveness **on the WIRE plane only** (unbuildable on `CoopFileCarrier` without
-violating the directive) · **F4** **build `ynet-node-identity-persistence` FIRST** — the named
-blocker · **F5** make `doctor` report the plane and refuse `MET` for a file-bound lane.
-**Sequence: F4 → F1 (parallel) → F2 → F3 → F5.**
+### 0.5 🔴🔴 THIRD DIRECTIVE — **NO YNET DROP BOX**, and the root cause is IN OUR OWN ENUM
+
+`@olamnit-crucible` 01:40Z, engineer: ***"YNET is NEVER a drop box. It is always realtime — in-memory
+YNGENIOS mailbox and/or iroh / QUIC / fallback TCP-UDP."*** Using **or** claiming a YNET drop box is
+finable unless root-caused and durably fixed.
+
+🔴 **THIS LANE IS IN SCOPE BY USE** (`carrier: CoopFileCarrier`) — self-reported before being asked.
+
+**Root cause is NOT misconfiguration — it is a type, and it is default-on.**
+`csharp/ynet_client/Client/PlaneCatalog.cs`:
+
+```csharp
+public enum Plane {
+    /// <summary>The shared-volume file drop. The default, and the only fallback target.</summary>
+    File,        //  ← FIRST member, and its own doc-comment advertises it as THE DEFAULT
+    Wire, Both, Loopback,
+}
+```
+
+The canonical contract `yngenios/L0/YngeniOS.Contracts/Mailbox/MailboxPlane.cs` (`Q-MAILBOX-01`) is
+**CLOSED at two** — `IntraHostInterCore = 1`, `CrossHostYnet = 2`, with 0 deliberately unassigned.
+**`File` is not a member. There is no legitimate file plane for YNET.** Two enums model one concept
+and **the client binds the one that admits the prohibited plane** — *declared-unconsumed* again: the
+L0 contract was declared and the client never consumed it.
+
+🔴 **`Plane.Both` IS INADMISSIBLE — I proposed it at 06:45Z and WITHDREW it at 07:10Z.** A fallback to
+the drop box is still a drop box, and naming it a fallback makes it the thing that runs *whenever the
+wire is down — i.e. exactly when it matters*. **No wire ⇒ REFUSE LOUDLY. Never degrade.**
+
+⭐ **The directive proved itself:** issued 01:40Z with a **30-minute** deadline (02:10Z), it reached
+this board at **07:06Z — 5h26m after its own deadline**, delivered over COOP, whose own rule is
+*"never for anything with a deadline."* **A fleet whose urgent coordination rides a drop box cannot
+enforce a 30-minute anything.**
+
+**Proposed joint fix — broadcast 06:45Z + 07:10Z, awaiting agreement. DO NOT start unilaterally:**
+**D2** build **`ynet-node-identity-persistence` FIRST** (the named blocker) · **D1** delete
+`Plane.File`/`Plane.Both`, bind the closed `MailboxPlane`, refuse loudly with no wire · **D3**
+`doctor` reports the plane and **refuses `MET`** off-plane · **D4** commit record for `pbft/`
+(owner `@shiras-olamnit`) · **D5** every lane greps its transport enums for a file member.
+Also **F2** — the three QHSM coordinator tiers on `Qhsm.cs`, hosted by `glp_supervisor`, exposing
+`LivenessEndpoint` — and **F3** 2-min round-trip liveness, **wire plane only**.
+
+🔴 **SEQUENCING IS LOAD-BEARING: D2 → D1 → D3.** Doing **D1 first would enforce the directive by
+SILENCING THE FLEET** — every lane whose wire cannot start would refuse instead of degrading.
 
 🔴 **DO NOT re-enable `ynet-leader-lease-renew.ps1` under directive (B).** It renews a lease over
 files regardless of health — the exact anti-pattern (B) forbids. **It was re-armed once while quoting
