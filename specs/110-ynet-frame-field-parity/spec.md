@@ -178,12 +178,19 @@ this must not block them.
   `SenderNode`, `SenderActor`) as data with their file-and-line provenance, not as prose in a
   comment.
 - **FR-009**: `Sequence` MUST be compared by **basis** (0-based vs 1-based), not by absolute
-  value, since the counters are independent per carrier.
+  value, since the counters are independent per carrier. **Per the Q-110-02 ruling both planes
+  are 1-based**, so the expected outcome for `Sequence` is **AGREES**, not `DIVERGES-RULED`.
 - **FR-010**: The check MUST be proven to fail: a deliberate divergence introduced into one
   carrier MUST make it fail, and that proof MUST be executed and recorded, not asserted.
-- **FR-011**: The system MUST NOT change the *value* any carrier writes into any field until
-  the protocol question in **Open Questions** is ruled. This feature delivers the harness and
-  the recorded measurement; the value change is a separate, ruled change.
+- **FR-011**: The system MUST NOT change the *value* any carrier writes into any field
+  **except where an engineer ruling authorises it**. **Satisfied for `Sequence` by Q-110-02**
+  (file plane 0-based → 1-based). `Origin`, `SenderNode` and `SenderActor` are ruled
+  `may-diverge` and MUST NOT have their values changed by this era.
+- **FR-013**: The file plane's `Sequence` MUST become 1-based, matching the wire
+  (`CoopFileCarrier.cs:186`). The frame filename `{epochMs}.{seq}.{guidN}.frame` MUST remain
+  unique — uniqueness is carried by the GUID, and this MUST be asserted rather than assumed.
+- **FR-014**: Each `may-diverge` ruling MUST carry its rationale as **data the check reads**,
+  not as a source comment, so that revoking a ruling re-fires the check without a code change.
 - **FR-012**: The existing era-107 `FrameParityTests` serializer-agreement cases MUST be
   retained, not replaced — they test a real and different property (the two *encoders* agree).
   Their scope MUST be corrected in their own documentation so no future reader mistakes them
@@ -221,24 +228,41 @@ this must not block them.
 
 ---
 
-## Open Questions — for the fleet, not for this lane
+## Clarifications
 
-🔴 **This lane does not have standing to rule these and will not.** Recorded here so the era
-cannot silently answer them by implementation choice.
+### Session 2026-09-07 — engineer rulings
 
-- **Q-110-01 — What does `SenderActor` mean?** The wire plane writes `_peer.Actor`, the
-  **destination**. Either (a) `SenderActor` means *who sent it*, the file plane is right, and
-  the wire plane is a one-line defect; or (b) the wire field is a **routing** field that was
-  never the sender, in which case it is **misnamed** and the fix is a rename plus a separate
-  field — which changes the envelope's meaning for every consumer. Blast radius differs by an
-  order of magnitude. **Standing**: `@gavriella.qhstate` (iroh carrier), `@shiras.glpnet`
-  (listener), `@shiras.ospark` (holds the tested code).
-- **Q-110-02 — Is `Sequence`'s basis ruled, or is one plane wrong?** 0-based vs 1-based is
-  defensible either way but must be *declared*; today it is neither declared nor equal.
-- **Q-110-03 — Is `Origin`/`SenderNode` divergence permanently intentional?** The wire has a
-  handshake-proven Ed25519 identity the file plane cannot have, so this is the most likely
-  `may-diverge` ruling of the four — but "most likely" is not a ruling, and the check needs
-  one to classify it as RULED rather than fail.
+- **Q-110-01 — What does `SenderActor` mean? → RULED: `may-diverge`, declared per-plane.**
+  Both populations are legitimate. The file plane's `SenderActor` is the **sender's** actor;
+  the wire plane's is the **destination's**, because the two planes have different addressing
+  models. **No value changes on either carrier.** The divergence is recorded as an explicit
+  `may-diverge` ruling with its rationale, and the parity check reports it as
+  **DIVERGES-RULED** — visible in every run, never suppressed and never absent.
+  🔴 **The residual risk is named rather than closed:** a field whose meaning depends on the
+  carrier is exactly the condition that makes a cross-plane defect unreproducible. The ruling
+  accepts that cost; SC-001 is what keeps it survivable, because a reader can now learn the
+  per-plane meaning from the check's output without opening either carrier.
+
+- **Q-110-02 — Is `Sequence`'s basis a ruling or a defect? → RULED: standardise on 1-based.**
+  The **file plane changes** from `Increment(ref _sequence) - 1` (0-based) to
+  `Increment(ref _sequence)` (1-based), matching the wire. First message is #1.
+  **Blast radius, re-measured at 18:20Z after the ruling rather than assumed when asking:**
+  the file-plane `Sequence` has exactly **one** consumer — a component of the frame filename
+  `{epochMs}.{seq}.{guidN}.frame` (`CoopFileCarrier.cs:194`), whose uniqueness is carried by
+  the GUID, not the sequence. Nothing parses the sequence back out of a filename. The wire
+  plane's dedup key `{authenticatedPeer}#{frame.Sequence}` (`QuicCarrier.cs:275`) is on the
+  **other** carrier and is untouched. When this question was put, this lane rated changing the
+  load-bearing file plane the riskier of the two directions; **the measurement says otherwise
+  and the correction is recorded here rather than left standing.**
+
+- **Q-110-03 — Is `Origin`/`SenderNode` divergence intentional? → RULED by extension of
+  Q-110-01: `may-diverge`.** The wire has a handshake-proven Ed25519 identity the file plane
+  cannot have. Recorded with that rationale; reported as **DIVERGES-RULED**.
+
+**Net effect on scope:** three of the four divergences become declared `may-diverge` rulings
+with **zero** code change; one (`Sequence`) becomes a **one-line change on the file plane**.
+FR-011's precondition — "not until ruled" — is now **satisfied**, so the `Sequence` change is
+in scope for this era.
 
 ---
 
