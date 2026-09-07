@@ -8,7 +8,19 @@ using Ynet.Client;
 namespace Ynet.Client.Tests;
 
 /// <summary>
-/// FR-010 / SC-003 — <b>one protocol, two planes</b>.
+/// FR-010 / SC-003 — <b>SERIALIZER agreement across the two planes.</b>
+///
+/// <para>
+/// 🔴 <b>SCOPE, CORRECTED BY FEATURE 110 (2026-09-07). Read this before citing this class.</b>
+/// Every test here builds ONE frame with <see cref="Sample"/> and hands THE SAME OBJECT to both
+/// encoders. So this class proves the two <b>encoders</b> agree — a real and useful property — and
+/// proves <b>nothing whatever</b> about what the two <b>carriers</b> put into a frame. It was
+/// written when neither carrier offered a seam to observe construction without I/O, so the
+/// serializer was the only thing a test could reach. The paragraph below states the property the
+/// fleet actually needs; <b>this class does not test it</b>.
+/// <see cref="FrameFieldParityTests"/> does, by driving the carriers through the
+/// <c>BuildFrame</c> seam feature 110 added. Both classes are kept deliberately.
+/// </para>
 ///
 /// <para>
 /// A message must not change shape depending on which plane carried it. If it does, the two planes

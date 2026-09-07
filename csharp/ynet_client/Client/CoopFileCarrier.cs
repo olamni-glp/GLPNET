@@ -175,20 +175,44 @@ public sealed class CoopFileOutbound : IYnetOutbound
         return Send(message.Summary, Encoding.UTF8.GetString(message.Body.Span));
     }
 
+    /// <summary>
+    /// Build the frame this plane would send, WITHOUT performing any I/O.
+    ///
+    /// <para>
+    /// 🔴 This seam exists because era 107's parity test could not reach the carriers. Both
+    /// planes constructed their frame inline inside <c>Send</c>, so the only thing a test could
+    /// observe was the serializer — and the resulting test compared two serializations of ONE
+    /// hand-built frame, proving the encoders agree and nothing whatever about what the carriers
+    /// put in the frame. That was a mis-scoped test caused by a MISSING SEAM, not by a careless
+    /// author. Feature 110 supplies the seam rather than working around its absence.
+    /// </para>
+    ///
+    /// <para>
+    /// The sequence increment lives HERE, not in <c>Send</c>, so the seam reproduces real
+    /// numbering. A seam that hands back a sanitised frame measures a fiction.
+    /// </para>
+    /// </summary>
+    internal YnetFrame BuildFrame(string signal, string body) => new()
+    {
+        Origin = _self.Identity,
+        // Q-110-02 (engineer, 2026-09-07): standardised 1-BASED to match the wire plane. Was
+        // "- 1" (0-based). Re-measured before changing: the only file-plane consumer of Sequence
+        // is the frame filename "{epochMs}.{seq}.{guidN}.frame", whose uniqueness is carried by
+        // the GUID; nothing parses the sequence back out. The wire's dedup key
+        // "{authenticatedPeer}#{Sequence}" is on the other carrier and is untouched.
+        Sequence = Interlocked.Increment(ref _sequence),
+        SenderNode = _self.Node,
+        SenderActor = _self.Actor,
+        Signal = signal,
+        Body = body,
+    };
+
     /// <summary>Send a signal and body. Returns false when the peer has no registered mailbox.</summary>
     public bool Send(string signal, string body)
     {
         if (!PeerIsReachable) return false;
 
-        var frame = new YnetFrame
-        {
-            Origin = _self.Identity,
-            Sequence = Interlocked.Increment(ref _sequence) - 1,
-            SenderNode = _self.Node,
-            SenderActor = _self.Actor,
-            Signal = signal,
-            Body = body,
-        };
+        var frame = BuildFrame(signal, body);
 
         var name = FormattableString.Invariant(
             $"{DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()}.{frame.Sequence}.{Guid.NewGuid():N}.frame");
