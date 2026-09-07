@@ -1,5 +1,107 @@
 ## [Unreleased]
 
+## [v2026.09.07.1] - 2026-09-07
+
+### Added
+- a board-divergence checker, and I withdraw my own 'batch atomicity' mechanism
+- contribute to the fleet requirements CRDT instead of seeding a seventh rival
+- CRDT Feature Requirements for the YNET realtime plane hardening era, seeded with 25 evidenced clauses and 4 escalated conflicts
+- cross-language declared-but-unconsumed guard, and it found the engineer's coordinator tiers already built
+
+### Fixed
+- test-file declarations flooded the report, and I never demonstrated UNVERIFIABLE
+- the alert census was cwd-relative and would report a false clean
+- reboot verdict CHANGED - ARIELLAS prepared, term 5 now 8 of 6, reboot affordable at zero margin
+- correct my own gate - the suite is NOT green, six groups never ran
+
+### Changed
+- Merge pull request #325 from olamni-glp/110-ynet-frame-field-parity
+- codexreview(110): 6 findings, 3 HIGH - my negative control tampered a record not a carrier, and the evidence credited the wrong cause
+- impl(110): carrier frame-field parity - the check independently found FOUR divergent fields where the brief said three
+- plan+tasks(110): the mis-scoped era-107 test is a symptom of a missing seam, not a careless author
+- clarify(110): three of four divergences ruled may-diverge, Sequence standardises 1-based; I over-rated the file-plane risk and corrected it by measurement
+- spec(110): YNET frame field parity - the brief says 3 divergent fields, source says 4; SenderNode was missing
+- fleet(frd): my sidecar withdrawal sat unreadable for 5h50m and a peer ACKed the claim I disowned; MALFORMED-11 is two defects with different owners
+- fleet(iter9): I withdraw a rule from my own restart prep - broadcast IS inbox-visible, 496 of 731 measured. Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
+- roadmap(sync): round 85 - imported 29 lines from 15 peer files, exported and published; plus the term-10 renewal-window alert. Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
+- Merge remote-tracking branch 'origin/develop' into develop
+- crdt(ynet): an inbox-only delivery audit MANUFACTURES a defect - 13/13 delivered once processed/ is counted; addressing is case-sensitive, enumerate never hand-type
+- fleet(ynet): COOP retirement acked, YNET method published for approval, 476 acks 0 fail, firewall owed - and no iroh port exists to authorise yet. Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
+- fleet(iter8): restart prep - how to use COOP vs YNET, and the safe split that keeps YNET alive past the 1200Z quarantine. Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
+- fleet(ynet): leader seated, term 9 pre-positioned 4 of 6 before the 1151Z lapse; I retract my own delivery-failure claim - the probe had no positive control. Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
+- Merge remote-tracking branch 'origin/develop' into develop
+- crdt(ynet): doctor FAILS OPEN so I withdraw my own doctor citation; atomic-publish adopted; I refuse to quote a term across two boards
+- fleet(iter8): COOP carries YNET - retiring it at 12:00Z mutes the fleet; and I withdraw my own iroh-is-built second, tier 0 throws unconditionally. Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
+- Merge remote-tracking branch 'origin/develop' into develop
+- BK-STD-1 not-closed table + export; iroh-quic-transport ranks 46/51 at WSJF 1.62 while being the top directive
+- fleet(ynet): term 8 is one vote from a leader and term 9 would strand it; the FRD was four documents on four volumes, now converged 13 of 13. Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
+- Merge remote-tracking branch 'origin/develop' into develop
+- crdt(ynet): the Rust iroh data plane DID build - caps=quic-link twice, 25min before the does-not-build claim; gate 5 is the only gate
+- frd(iter7): adopt FR-23 with 135 destroyed acks, and FR-42 on inflected duplicate paths
+- codify(ynet): the oracle process is the deployment boundary, and broadcast delivers where send does not. Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
+- fleet(ynet): P0 remedy - the oracle serves a stale build; restart deploys it. Term 7 needs any 4 of 5, and one gavris vote is already burned. Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
+- fleet(ynet): FR-38 cert conclusion refuted by code (wire mints its own; glpquick in 0 files), FR-39 deployed client silently ignores --plane wire; brief §13 qualified as a local-build finding
+- Merge branch 'develop' of https://github.com/olamni-glp/GLPNET into develop
+- frd(iter6): host identity is uncanonicalised in two subsystems, with opposite symptoms
+- fleet(ynet): FR-34..FR-37 - 17 undelivered sends measured, then BOTH my interpretations superseded; client is honest (exit 1 + exact reason), cause is unannounced peer inboxes; restart brief +pipe-trap +ynet addressing
+- rootcause(f1): the elector reads a per-user replica short one prepare, and that record inverts leader status
+- codify(iroh): claim nothing, ACK the existing split, deliver only the one-command census
+- Merge branch 'develop' of https://github.com/olamni-glp/GLPNET into develop
+- restart(glpnet): record the two engineer rulings in the pointer
+- crdt(ynet-coord-tiers): FR-32 supersedes FR-30 - Self is a SIGNER, not the --self string; I broadcast the wrong mechanism
+- frd(iter4): record two engineer rulings, and author no iroh plan
+- publish the consolidated fold - 84 rows 0 contested, but one host and zero corroboration; round-80 table
+- crdt(ynet-coord-tiers): ROOT CAUSE - one line. Program.cs:122 hardcodes Self=null and the value is parsed 43 lines above
+- round-79 table + export; codify the guardian-runs-and-answers-nothing finding and the iroh allocation check
+- crdt(ynet-coord-tiers): FR-28 negative result - a current build WITH the cert still picks the file plane
+- crdt(ynet-coord-tiers): FR-26 - the wire-capable client is ONE BUILD away, and my FR-24 evidence probed a filename
+- round-78 table + export; codify the firewall Block-beats-Allow false-negative class
+- crdt(ynet-coord-tiers): FR-24 supersedes FR-22 - the deployed client has NO wire plane, so the cert is not the next step here
+- round-77 table + export; codify the era-scoping measurement - the listener was already built and consumed
+- roadmap+codify(ynet): the rollout feature the CRDT doc points at did not exist - created, scored, promoted
+- Merge branch 'develop' of https://github.com/olamni-glp/GLPNET into develop
+- frd(iter3): adopt nine unread requirements, and positive-control FR-28 instead of arguing it
+- round-76 table + export; codify the unadmitted-voter silent-exclusion defect
+- crdt(ynet-coord-tiers): I retract my own FR-15 - two GLPNET clones on OLAMNIT, and loud-vs-silent is a BUILD SKEW
+- Merge branch 'develop' of https://github.com/olamni-glp/GLPNET into develop
+- sync(round 64): completed, and its barrier counts one host twice
+- round-75 table + export; codify the withheld-op near-miss
+- Merge branch 'develop' of https://github.com/olamni-glp/GLPNET into develop
+- frd(iter2): contribute a per-actor file to the shared FRD, and discard my own rival CRDT
+- roadmap(sync): round 2 export + publish; board 68 not-closed, 0 captured, 0 refined
+- Merge branch 'develop' of https://github.com/olamni-glp/GLPNET into develop
+- roadmap(iter1): codified + scored + promoted the hardening feature; contributed to the shared CRDT; board table refreshed
+- crdt(ynet-coord-tiers): olamnit.glpnet contributes 4 seconds and 6 evidenced clauses; FR-01 and FR-05 reach AGREED
+- rev13 - doctor is a green check that cannot fail (R-040 confirmed); the fleet CRDT substrate is yngcor's and mine is withdrawn
+- round-74 standardized open table + export; withdraw my rival CRDT head in favour of the yngcor substrate
+- Merge branch 'develop' of https://github.com/olamni-glp/GLPNET into develop
+- rev12 - glpnet owns the QUIC listener era (Q-OSP0907F-02); CRDT requirements seeded; reuse-not-rebuild inventory
+- Merge branch 'develop' of https://github.com/olamni-glp/GLPNET into develop
+- restart(glpnet): the coordinator mandate is already built in L0 and hosted by nothing
+- rev7 S12 - the YNET root cause is a MISSING CREDENTIAL, not a missing transport
+- Merge branch 'develop' of https://github.com/olamni-glp/GLPNET into develop
+- rev11 - withdraw D2, node identity persistence is already built with zero consumers; the roadmap row is stale and scored
+- Merge branch 'develop' of https://github.com/olamni-glp/GLPNET into develop
+- finding(f1): the 2-min liveness logic already exists in L0, tested, with zero consumers - W-06 repeating on F-1
+- rev10 - no-YNET-dropbox directive; root cause is Plane.File enum member documented as the default; Plane.Both withdrawn; D2 before D1
+- Merge branch 'develop' of https://github.com/olamni-glp/GLPNET into develop
+- rev7 + the COOP-vs-YNET channel section, because this lane conflated them for a day
+- restart(glpnet): reconcile 'send works 12/17' with 'all roles bind loopback' - both true, different layers
+- restart(glpnet): S8 - YNET binds loopback only, so cross-host 2-min liveness is impossible as deployed
+- Merge branch 'develop' of https://github.com/olamni-glp/GLPNET into develop
+- restart(glpnet): era S8 prep - COOP vs YNET operating guide, suite green 384/0, and a reboot refusal with the arithmetic
+- rev9 - directive B, election-board-has-no-commit-phase RCA, joint fix F1-F5, and a self-correction on YNET lane naming
+- Merge branch 'develop' of https://github.com/olamni-glp/GLPNET into develop
+- correct the YNET line - 2 unconfirmed sends are my own, not zero
+- rev8 - engineer directive COOP-vs-YNET; this lane declared NON-COMPLIANT on the file plane; wrong-emitter finding; do-not-reboot
+- rev7 amended - take the tool's next-feature pick, not the score column
+- correct the next-feature pointer - roadmap next and raw WSJF disagree; take the tool
+- Merge branch 'develop' of https://github.com/olamni-glp/GLPNET into develop
+- p0(ob-6): refuted from a second host - 138 of 138 records unsigned, the flip yields NoTerm
+- rev7 - 109 shipped and released, and what this lane got wrong
+- roadmap(109): released v2026.09.06.5; both disclosed gaps captured, scored and promoted; a peer's captured row completed and promoted
+- Merge pull request #324 from olamni-glp/main
+
 ## [v2026.09.06.5] - 2026-09-06
 
 ### Changed
