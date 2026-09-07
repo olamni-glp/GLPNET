@@ -52,6 +52,33 @@ never as "SHIRAS is down". Give it 900s in the background if you need it.
 It is a **PROCESS, not an agent** (C-07 / F-4). It survives a Claude session restart. **Contrary
 to the S7 note, it did NOT need re-arming this session** — it was already up.
 
+## 0b · 🟢 TWO ENGINEER RULINGS OBTAINED 2026-09-07T09:20Z — BOTH BINDING
+
+**RULING 1 — the designated PBFT elector is authoritative. C-05 holds.**
+The fleet leader is **broker@gavris, term 5, 8 prepares ≥ quorum 6, membership 8**. A 4-member /
+quorum-3 board is a **different electorate**, not a degraded designated one. *"Membership never
+shrinks to whoever is up"* stands — it exists to stop a partition electing itself.
+🔴 **All reboot arithmetic is membership 8 / quorum 6.** Any lane that recomputed reboot safety
+on a 3-of-4 denominator must redo it.
+
+**RULING 2 — WP02 is KEYRING FIRST, THEN BIND.**
+
+    (0) asymmetric/keyring material EXISTS so a peer can verify a ballot it did not write
+    (1) exposure policy settled
+    (2) interim LAN bind under ruling D-01
+    (3) iroh as the target of record
+
+`DO-NOT-BIND-LAN-YET` is **upheld as the gate**, not a caution. **No listener binds beyond
+loopback until step 0 is done — and step 0 is not this lane's to do.**
+
+**IROH — this lane authors nothing.** The engineer directs: coordinate, agree a joint plan, and
+**do not start work until non-conflicting allocations are agreed**. An engineer-ruled iroh plan
+already exists. Registered exactly one allocation against it: **the GLPNET-side QUIC/realtime
+listener only** (WP02; Q-gsbk14-01 R2 keeps it out of `l0/kernel`), gated behind step 0.
+Claims **no** iroh core, **no** carrier, **no** client. Offered for withdrawal on collision.
+
+Recorded as FR-35/36/37 in the shared FRD.
+
 ## 1 · §10 restart gate — measured, item by item
 
 | gate | verdict |
