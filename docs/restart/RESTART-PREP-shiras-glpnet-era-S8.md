@@ -58,13 +58,50 @@ to the S7 note, it did NOT need re-arming this session** — it was already up.
 |---|---|
 | working tree clean | ✅ 0 dirty |
 | 0 ahead / 0 behind origin | ✅ measured after merge+push |
-| **suites green (state the numbers)** | ✅ **384 passed, 0 failed** — A 221/0, B 112/0, C 51/0 |
+| **suites (state the numbers)** | 🔴 **NOT GREEN — 384 passed / 0 failed in A+B+C, but SIX groups DID NOT RUN. Harness prints `SOME TESTS FAILED`, `EXIT=1`.** See §1b. |
 | restart pointer written and pushed | ✅ this file |
 | every ACK-on-compliance answered | ✅ 11 receipts + 2 compliance on YNET (`glpnet@shiras:000003..000013`) |
 
 🟢 **The S7 blocker is GONE.** S7 recorded the suite as UNVERIFIABLE (EXIT=127, no Dart SDK,
 215 phantom "failures"). Measured this session: **384 passed, 0 failed.** The runtime is present
 and the suite is genuinely green. S7 was right not to call it red.
+
+## 1b · 🔴 CORRECTION AGAINST MYSELF — THE SUITE IS **NOT** GREEN
+
+**I reported "384 passed, 0 failed" as a green gate. That was wrong, and it is the exact error
+C-20 forbids — I folded "did not run" into "passed."** The run's own FIRST line was `EXIT=1`.
+I read three `0 failed` lines and stopped. The harness was more honest than its reader.
+
+Full output, re-run at HEAD:
+
+    6 check group(s) DID NOT RUN — these are NOT passes:
+      SKIP         Section I   cross-runtime Gleam x C# — needs gleam on PATH + built C# REPL
+      SKIP         Section S   ms_message durable mesh — ms_message venv absent
+      UNSEARCHABLE Section T   064 service-box drills — QUIC trust material glpquick.pfx ABSENT
+      SKIP         Section U   077 cyclic diagnostics — C# REPL not built
+      SKIP         V-18..V-23  101 Dart vs C# parity — C# REPL not built
+      UNSEARCHABLE Y-7         109 declared criteria NOT MEASURED — csharp participant not started
+
+    SOME TESTS FAILED
+
+**The honest verdict, per C-20:**
+- **A + B + C: 384 passed, 0 failed.** Genuine, and it covers the code this lane changed (0 non-doc
+  changes since the run).
+- **Six groups: UNVERIFIABLE.** Missing *prerequisites* — gleam not on PATH, C# REPL not built,
+  `ms_message` venv absent, `glpquick.pfx` absent — **not** code regressions.
+- **"The suite is green" is FALSE.** The correct sentence is: *384 pass, nothing fails, and six
+  groups were never measured.*
+
+🔴 **This is the SAME defect class as S7's phantom 215 failures**, seen from the other side: S7's
+harness turned a missing runtime into fake FAILures; this one turns missing runtimes into an
+invisible not-run that a careless reader (me) calls a pass. **Both directions are the C-20 error.**
+It is a direct, live argument for `per-host-toolchain-and-environment-contract-declared-machine-
+checked-loudly-refused` (on the board, WSJF 3.6) — a host should be refused BY NAME before a suite
+runs, rather than silently skipping six groups.
+
+⚠ Note for the WP02 era: **Section T is blocked by absent QUIC trust material (`glpquick.pfx`)** —
+the very QUIC surface WP02 touches. Expect to provision it as part of that era, or WP02 ships
+with its own acceptance section unrun.
 
 ## 2 · 🔴 SESSION RESTART = YES. HOST REBOOT = NO. THEY ARE NOT THE SAME THING.
 
@@ -190,7 +227,9 @@ engineer's "NEVER FILE BASED EVER" forbids precisely this, and today it is all w
 
 ## 6 · Restart procedure
 
-Tree clean, pushed, suite green 384/0, YNET inbox drained and acked, M6 daemon active.
+Tree clean, pushed, YNET inbox drained and acked, M6 daemon active.
+**Suite: 384 pass / 0 fail in A+B+C, SIX groups UNVERIFIABLE (§1b) — not a regression, missing
+prerequisites. Restart is still safe; the unrun groups are a standing gap, not a new break.**
 **SAFE TO RESTART THE SESSION. NOT SAFE TO REBOOT THE HOST** (§2).
 
     resume marathon
