@@ -237,6 +237,53 @@ the clause forbidding it, and stood this host as a candidate every 20 min for tw
 
 ---
 
+### 0.7 🔴 THE NEXT ERA IS ASSIGNED — **@glpnet OWNS THE QUIC/REALTIME LISTENER** (`Q-OSP0907F-02`)
+
+**This overrides the rank-24 roadmap pick.** Engineer ruling via `@shiras-ospark` 08:30Z:
+*"`@glpnet` OWNS the QUIC / realtime listener. MANDATORY single-feature era on that lane (C-15),
+**starting its next era**. ACK on receipt AND on compliance."* **Receipt ACKed 07:50Z; the compliance
+ACK is still owed and must carry measurements.**
+
+- Roadmap row `ynet-quic-transport-and-reachable-listener-config` (WSJF 4.88 · RICE 15300) was
+  **promoted and never started** — *"a promoted row has not moved this work; a mandatory era with a
+  compliance ACK is the only device in this estate that has."*
+- 🔴 It must **NOT** land in `l0/kernel` or a repo lane. `GlpQuickLinkTransport.ListenAsync`
+  **throws by contract** (FR-023, client role only).
+- Companion ruling `Q-OSP0907F-01`: build the **2-minute probe against `yng-broker` UDP `24601`** —
+  the wire that already runs on all four hosts. Transport-agnostic round-trip, so **nothing is thrown
+  away when iroh/QUIC lands**. **UDP unreliable ⇒ a non-answer is `UNKNOWN`, never `dead`.**
+
+**YNET, per the engineer, is: iroh cross-host + in-memory YNGENIOS kernel messages intra-host, with
+WAL for durability.** 🔴 **WAL is a durability mechanism, NOT a transport** — a file in a WAL is not a
+delivered message, and a file on a share is not a message at all.
+
+**New feature (captured → scored → PROMOTED this session):**
+`ynet-realtime-plane-hardening-and-evidenced-fleetwide-rollout` — WSJF 4.875 · RICE 2137.5.
+Codify note `cn-20260907T074257-7c36ac66`.
+
+📄 **CRDT FEATURE REQUIREMENTS — `docs/ynet-realtime-plane-CRDT-FEATURE-REQUIREMENTS.md`** (pushed,
+`4ca56622`). 25 evidenced clauses, 4 escalated conflicts, open to every lane. **Add-only; immutable
+`R-<lane>-nnn` ids; supersede-by-id, never edit in place; merge = union minus superseded (set-ops,
+never judgment); conflicts ESCALATED, never silently resolved; adoption bar declared IN the document
+(≥2 lanes on ≥2 hosts).** **Merge peer clauses verbatim with attribution — do not rewrite them.**
+
+⭐ **REUSE, DO NOT REBUILD — measured this session:** `@gavriella-qhstate` has **already shipped a
+three-valued YNET plane gate** (that is `R-glpnet-004`/D3 — adopt it); **four lanes have already built
+a coordinator** (`R-glpnet-015` is a CONSOLIDATION, not a fifth build); and `Qhsm.cs`,
+`LivenessEndpoint.cs`, `SupervisedLiveness.cs`, `glp_supervisor`, `QuicCarrier`,
+`NodeIdentity.LoadOrMint` all already exist.
+
+⚠️ **Two traps that cost other lanes real time:** `send` from `<lane>` is **refused while that lane's
+receiver runs** (FR-015 origin lock — use `<node>.<lane>.send`); and **never key a positive on a
+substring** — `@shiras-ospark` counted **7 "successful" sends that were all refusals**, because the
+refusal text contains the word *"sent"*. **Use the exit code.**
+
+⚠️ **`PYTHONUTF8=1` for every buildkit CLI call.** A `UnicodeEncodeError` on the CLI's own `✓` success
+message made an already-successful `codify capture` look like a failure; I retried and created a
+duplicate note (withdrawn). **A crash in the report is not a crash in the work.**
+
+---
+
 ## 1 · What `resume marathon` does
 
 1. `buildkit-marathon resume` — position from durable rows.
