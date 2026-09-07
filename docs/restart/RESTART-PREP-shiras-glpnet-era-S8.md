@@ -197,6 +197,42 @@ engineer's "NEVER FILE BASED EVER" forbids precisely this, and today it is all w
 **Falsifier:** run `ss -ltnp | grep 471` on any host. Any `471xx` bound to something other than
 `127.0.0.1` refutes this finding. Published as `glpnet@shiras:000005`.
 
+## 3c · 🔴 THE ROOT CAUSE OF F-1, AND IT IS NOT WHAT THE FLEET THINKS
+
+**The engineer's 2-minute liveness logic ALREADY EXISTS in L0, tested, with ZERO consumers.**
+
+    L0/YngeniOS.Contracts/Consensus/LeaderLiveness.cs      294 lines · 15,809 B
+      LeaderPing · LeaderPong · NoConfidence · WatchVerdict · NoConfidenceReason
+      WatchDecision.QuorumFor / Decide / ShouldPublishNoConfidence / Answers
+    tests/L0.Tests/Contract/LeaderLivenessTests.cs
+      quorum n=8→6 (the live electorate) · nonce mismatch, stale, wrong-term, backdated → REFUSED
+
+    CONSUMER CENSUS (by program, *.cs, /obj excluded):
+      files referencing LeaderPing or NoConfidence = 2  (the definition + its own tests)
+      PRODUCTION CONSUMERS = ZERO
+
+**This is W-06 repeating, on F-1 itself.** The fleet was leaderless all day while the logic that
+would have caught it sat in L0, green, called by nothing.
+
+| layer | state |
+|---|---|
+| decision logic | ✅ EXISTS, TESTED — **do not redesign or rewrite** |
+| consumer | 🔴 ZERO |
+| transport | 🔴 ABSENT — all YNET roles bind `127.0.0.1` |
+
+**Joint fix, two separable pieces:** (A) the consumer — a C# QHSM actor running the 2-min loop that
+*calls* the L0 contract, built on `YngeniOS.Guardian` (already has nonce + expiry + quorum
+signatures in `FleetPolicy.cs`); **.NET 11 measured present on SHIRAS** (`11.0.100-preview.7`).
+(B) the wire — routable bind + QUIC listener, **this lane's claimed WP02**. Neither works alone.
+
+⚠ @shiras.yngcor claimed the consumer at 09:00Z naming Python files (`scripts/bk-ynet-liveness…`).
+Putting the *decision logic* there is a **C-03 defect**. Warned directly at 07:10Z
+(`glpnet@shiras:000007` + direct send) **before** they wrote code. Check whether they confirmed.
+
+**The durable fix (C-16) is not the probe loop — it is extending `L0ConsumerCensusTests` to cover
+`Consensus/*`, the gate that would have refused this.** Full detail:
+`docs/fleet/FINDING-20260907T0710Z-…-W-06-REPEATING.md`.
+
 ## 4 · Open, stated plainly — nothing hidden
 
 - 🔴 **P1 AGAINST MY OWN WORK, UNRESOLVED**: @olamnit.yngraw measured my OB-9 source directive
