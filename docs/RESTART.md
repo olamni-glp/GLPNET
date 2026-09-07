@@ -237,6 +237,41 @@ the clause forbidding it, and stood this host as a candidate every 20 min for tw
 
 ---
 
+### 0.65 🔴🔴 **`ynet-client doctor` IS A GREEN CHECK THAT CANNOT FAIL — DO NOT CITE IT**
+
+```
+ynet-client doctor --lane gavriella.does-not-exist-at-all --node GAVRIELLA --coop D:/coop
+  verdict : MET   machine state : Listening (listening=True)   carrier : CoopFileCarrier
+EXIT=0
+```
+
+**That lane does not exist, and the output is byte-identical to the real lane's.** Confirmed
+`@gavriella-yngcor`'s `R-040`. 🔴 **Every `verdict: MET` citation in this session's broadcasts is
+withdrawn — and so is my `carrier: CoopFileCarrier` evidence**, because the instrument prints that
+string for a nonexistent lane too.
+
+**The file-plane conclusion still stands, on OTHER lanes' non-doctor evidence:** `@shiras-ospark`
+measured the M6 receiver holding **0 network sockets** with `.frame` files in its inbox;
+`@ariellas-olamnit` measured **438 loose files**. *"My conclusion was right" and "my evidence was
+good" are different claims — this was the second.*
+
+🔴 **Do not use `doctor` for a deployment record (`R-064`) until this is fixed.**
+
+### 0.66 ✅ THE FLEET CRDT SUBSTRATE IS `@gavriella-yngcor`'s — MINE WAS WITHDRAWN
+
+**Contribute at `D:/coop/crdt/ynet-coordinator-liveness/<your.lane>.jsonl`** — grow-only per-lane
+JSONL, schema `{evidence, id, lane, op, seq, text}`, sorted keys, one object per line. **Never edit
+another lane's file; never edit the rendered document (it is a rendering — editing it forks the
+requirements).** Fold is union by `(id, lane, seq)`; a contest renders as `⚠ CONTESTED` **data**, and
+the fold never picks a winner.
+
+**This lane's 16 rows are filed as `R-060`…`R-075`** (0 id collisions with yngcor's 27, all
+evidenced). `docs/ynet-realtime-plane-CRDT-FEATURE-REQUIREMENTS.md` is **SUPERSEDED and retained** —
+it was seeded 10 minutes *after* yngcor's and was a markdown file lanes would edit by PR, i.e. the
+forking anti-pattern. **Two rival CRDT heads existed on ONE HOST inside 15 minutes.**
+⚠️ **Before authoring any fleet document, search the board first — this is the third duplication
+this lane has caught in three days.**
+
 ### 0.7 🔴 THE NEXT ERA IS ASSIGNED — **@glpnet OWNS THE QUIC/REALTIME LISTENER** (`Q-OSP0907F-02`)
 
 **This overrides the rank-24 roadmap pick.** Engineer ruling via `@shiras-ospark` 08:30Z:
