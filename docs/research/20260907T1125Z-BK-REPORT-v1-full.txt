@@ -1,0 +1,103 @@
+scripts/BK-REPORT-v1-generator-20260823.py
+BK-REPORT-v1 :: FULL
+host=Gavriella  repo=GLPNET  project_id=glpnet
+branch=develop  commit=33f6256b  ahead=? behind=?
+generated_utc=2026-09-07T11:25:43Z
+section_order=ROADMAP -> PROGRESS -> STATUS -> SITREP -> TAKT -> NEXT
+
+1. ROADMAP — ALL EPICS AND FEATURES NOT CLOSED
+
+| STATE       | RANK | FEATURE                                          | WSJF  | RICE      | SPEC | PAR | BLKD | EPIC                           |
+|-------------|------|--------------------------------------------------|-------|-----------|------|-----|------|--------------------------------|
+| released    |      | revoked-trust-material-refused-at-load           | 19.50 | 242250.00 | -    | -   | -    | (standalone)                   |
+| released    |      | m6-quic-mailbox-adapter                          | 6.25  | 57375.00  | Y    | -   | -    | (standalone)                   |
+| implemented | 1    | verification-receipts-and-loud-failure-no-check- | 7.80  | 1173.00   | Y    | -   | -    | (standalone)                   |
+| implemented | 7    | madglp-writer-reader-address-discipline-closure- | 5.33  | 2666.67   | Y    | Y   | -    | Issue-backlog root-cause closu |
+| implemented | 17   | qr-link-provisioning                             | 4.00  | 252.00    | Y    | Y   | -    | (standalone)                   |
+| analyzed    | 43   | full-scope-gleam-glp-implementation              | 2.00  | 738.46    | Y    | Y   | Y    | Full Gleam implementation      |
+| analyzed    | 49   | wave6-consolidation                              | 0.85  | 62.31     | Y    | Y   | -    | Roadmap sweep 2026-07 consolid |
+| specified   |      | bk-onrestart-per-host-configurable-auto-installa | 7.00  | 5400.00   | Y    | Y   | -    | (standalone)                   |
+| specified   | 3    | glptutorial-corpus-golden-reconciliation-stale-g | 6.50  | 1700.00   | Y    | Y   | -    | Issue-backlog root-cause closu |
+| specified   | 4    | occurs-checked-substitution-pipeline-compiler-bi | 6.00  | 2000.00   | Y    | Y   | Y    | GLP compiler robustness (occur |
+| specified   | 13   | coordination-feature-stream-durable-superset-fix | 4.25  | 2625.00   | Y    | Y   | -    | Issue-backlog root-cause closu |
+| specified   | 32   | ynet-consolidation                               | 2.62  | 900.00    | Y    | Y   | -    | (standalone)                   |
+| promoted    |      | ynet-frame-field-parity-across-planes            | 10.50 | 80750.00  | -    | Y   | -    | (standalone)                   |
+| promoted    |      | declared-unconsumed-guard                        | 8.00  | 18000.00  | -    | Y   | -    | (standalone)                   |
+| promoted    |      | ynet-federation-config-and-firewall-correctness  | 8.00  | 10500.00  | -    | Y   | -    | (standalone)                   |
+| promoted    |      | ynet-node-identity-persistence                   | 6.80  | 45900.00  | -    | Y   | -    | (standalone)                   |
+| promoted    |      | ynet-nonblocking-session-handshake               | 5.25  | 24000.00  | -    | Y   | -    | (standalone)                   |
+| promoted    |      | cross-runtime-link-parity-intermittent-empty-lis | 5.20  | 25500.00  | -    | Y   | -    | (standalone)                   |
+| promoted    |      | ynet-minted-lane-identity-resolve-address-indepe | 5.20  | 810.00    | -    | Y   | -    | (standalone)                   |
+| promoted    |      | ynet-realtime-plane-hardening-and-evidenced-flee | 4.88  | 2137.50   | -    | Y   | -    | (standalone)                   |
+| promoted    |      | m6-qhsm-qmsm-ynet-receiver-client                | 4.83  | 21000.00  | -    | Y   | -    | (standalone)                   |
+| promoted    |      | renderers-read-export-fold-not-status            | 4.80  | 3600.00   | -    | Y   | -    | Issue-backlog root-cause closu |
+| promoted    |      | fleet-t24-tactical-action-plan                   | 4.40  | 1920.00   | -    | Y   | -    | (standalone)                   |
+| promoted    |      | pbft-leader-election                             | 4.25  | 5250.00   | -    | Y   | -    | (standalone)                   |
+| promoted    |      | oracle-elastic-lane-pool-launcher-convergence    | 4.20  | 2625.00   | -    | Y   | -    | (standalone)                   |
+| promoted    |      | cpm-crdt-cross-ecosystem-package-state-history-c | 3.62  | 3937.50   | -    | Y   | -    | Fleet interconnectivity and ob |
+| promoted    | 24   | per-host-toolchain-and-environment-contract-decl | 3.60  | 960.00    | -    | -   | Y    | (standalone)                   |
+| promoted    |      | m6-ynet-carrier-binding                          | 3.50  | 393.75    | -    | Y   | -    | (standalone)                   |
+| promoted    |      | fleet-cpm-crdt-record-bk-cpm-1                   | 3.38  | 367.50    | -    | Y   | -    | (standalone)                   |
+| promoted    |      | cross-repo-cross-host-era-takt-crdt-hardened-in- | 3.00  | 3600.00   | -    | Y   | -    | Fleet interconnectivity and ob |
+| promoted    | 30   | multi-host-state-discipline-reversible-states-un | 3.00  | 680.00    | -    | -   | Y    | (standalone)                   |
+| promoted    |      | takt-and-token-persistence-to-ducklake           | 3.00  | 3200.00   | -    | Y   | -    | Issue-backlog root-cause closu |
+| promoted    |      | yq-pglite-signature-over-ynet-kernel-mailbox     | 3.00  | 4687.50   | -    | Y   | -    | (standalone)                   |
+| promoted    |      | glp-repl-fmb-split-over-ynet-for-qhsm-terminal   | 2.88  | 393.75    | -    | Y   | -    | (standalone)                   |
+| promoted    | 33   | 041-cross-runtime-and-two-host-acceptance-comple | 2.62  | 625.00    | -    | Y   | -    | Distributed GLP connectivity   |
+| promoted    |      | csharp-tree-hardening                            | 2.62  | 1750.00   | -    | Y   | -    | (standalone)                   |
+| promoted    | 34   | seam-specification-normative-contracts-at-every- | 2.62  | 577.50    | -    | -   | Y    | (standalone)                   |
+| promoted    |      | consolidated-hardening-spine                     | 2.62  | 276.92    | -    | Y   | -    | (standalone)                   |
+| promoted    |      | qhsm-virtual-terminals                           | 2.62  | 1730.77   | -    | Y   | -    | (standalone)                   |
+| promoted    |      | scheduler-feature-stream-durable-healing-and-har | 2.62  | 311.54    | -    | Y   | -    | Issue-backlog root-cause closu |
+| promoted    |      | mailbox-service-hyperv-container-10e8-mailboxes  | 2.60  | 3692.31   | -    | Y   | -    | (standalone)                   |
+| promoted    | 35   | single-source-of-truth-one-authority-per-subject | 2.60  | 540.00    | -    | -   | Y    | (standalone)                   |
+| promoted    |      | yx-ypm-yngenios-package-manager                  | 2.46  | 512.31    | -    | Y   | -    | (standalone)                   |
+| promoted    | 36   | crdtmsg-post-mvp-completion-cose-sign1-wrapper-1 | 2.40  | 420.00    | -    | Y   | -    | Issue-backlog root-cause closu |
+| promoted    | 46   | buildkit-coordination-optimisation-gepa-dspy-coo | 2.00  | 400.00    | -    | Y   | -    | (standalone)                   |
+| promoted    | 54   | distributed-unification-quiescence-protocol-two- | 1.62  | 692.31    | -    | Y   | -    | Distributed GLP connectivity   |
+| promoted    |      | iroh-quic-transport                              | 1.62  | 1230.77   | -    | Y   | -    | (standalone)                   |
+| promoted    | 57   | ynet-mobile-background-battery-budget-scheduling | 1.38  | 400.00    | -    | Y   | -    | YNET overlay — deferred BUILD- |
+| promoted    |      | glp-repl-front-middle-back-separation-yngenios-a | 1.23  | 86.15     | -    | Y   | -    | (standalone)                   |
+| promoted    | 59   | product-defect-burn-down-with-regression-proof-n | 1.23  | 240.00    | -    | -   | Y    | (standalone)                   |
+| promoted    | 60   | ynet-human-memorable-decentralized-naming-resolv | 1.23  | 184.62    | -    | Y   | -    | YNET overlay — deferred BUILD- |
+
+TOTALS: epics=21  features=148  open=51  closed=97
+BY STATE: analyzed=2  closed=97  implemented=3  promoted=39  released=2  specified=5
+RECONCILES: open + closed = 51 + 97 = 148
+
+==============================================================================
+
+2. PROGRESS REVIEW: UNAVAILABLE — exit 1 with no diagnostic on stderr (0 advisory line(s) suppressed)
+   (read failure, NOT an absence of progress)
+
+==============================================================================
+
+3. STATUS UPDATE: UNAVAILABLE — marathon: no feature resolved: pass --feature or create .specify/feature.json with an "id" or "feature_directory".
+   (read failure, NOT an idle run)
+
+==============================================================================
+
+4. SITREP: UNAVAILABLE — exit 1 with no diagnostic on stderr (0 advisory line(s) suppressed)
+
+==============================================================================
+
+5. TAKT — AN ERA IS ONE FEATURE (specify -> close, nine stages)
+
+  NORMATIVE BANDS   phase: 30m - 3h    era (whole feature): 1.5h - 6h
+  DURATION RULE     the generic band, or an experience-based estimate computed
+                    from ACTUAL recorded measurements. LLM ESTIMATES ARE NEVER
+                    PERMITTED. An unmeasured era reports 'unmeasured', never zero.
+
+  TAKT: UNAVAILABLE — marathon: no feature resolved: pass --feature or create .specify/feature.json with an "id" or "feature_directory".
+  (read failure, NOT a zero-duration era)
+
+  PER-PHASE TOKEN USE — read from the TAKT DUCKLAKE
+    | PHASE         | ROWS | MEASURED | TOKENS_IN  | TOKENS_OUT | TOTAL      | MODEL |
+    |---------------|------|----------|------------|------------|------------|-------|
+    | (unphased)    | 4872 |   0/4872 |          - |          - | unmeasured | - |
+    | 3rtask        |   32 |    29/32 |          0 |          0 | 102,864,454 | claude-opus-5 |
+    | 3rtask-builde |    1 |      1/1 |          0 |          0 |     95,545 | claude-opus-5 |
+    | 3rtask-builde |    1 |      1/1 |          0 |          0 |     87,247 | claude-opus-5 |
+    | 3rtask-builde |    1 |      1/1 |          0 |          0 |     86,932 | claude-opus-5 |
+
+[exited with code 0]
