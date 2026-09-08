@@ -51,8 +51,8 @@
 ## Phase 5 — Close out
 
 - [x] T022 `/bk-codexreview` — adversarial review; fix findings.
-- [ ] T023 `/bk-ship` — full GitFlow.
-- [ ] T024 `/bk-close` + marathon discharge + slot release + branch tidy.
+- [x] T023 `/bk-ship` — full GitFlow. **ALREADY DONE; this checkbox was stale bookkeeping, not undone work.** Measured shiras 2026-09-08: `git diff --name-only origin/main origin/develop -- specs/109-revoked-trust-refusal` returns **0 files**, i.e. the feature is fully on `main`; the carrying tag is `v2026.09.07.1` (merge #326). The roadmap already showed `released`, and the contradiction was between the board and this file, not in the work.
+- [x] T024 `/bk-close` + slot release. Closed against the T023 measurement above. **Marathon discharge and branch tidy are NOT claimed here** — the live run `mrun-f77f62158255` belongs to a different feature (`glpnet-shiras-tidyup-and-scheduler-rootcause`) and discharging it for this one would be false. Branch tidy stays gated on C-20: a ref is deletable only when a durable copy is proven elsewhere.
 
 ## Notes
 

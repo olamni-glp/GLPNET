@@ -96,7 +96,7 @@ Legend — `[ ]` open · `[x]` done · `[!]` blocked, with the blocker named.
 - [x] **T072** `/bk-codexreview`; fix every finding; **no deferrals**.
 - [x] **T073** Update `docs/evidence-signal-invariant.md` and `docs/known-issues.md` with the measured
       blind-spot findings.
-- [ ] **T074** `/bk-ship`, `/bk-close`, marathon discharge.
+- [x] **T074** `/bk-ship`, `/bk-close`. **ALREADY DONE; stale checkbox.** Measured shiras 2026-09-08: `git diff --name-only origin/main origin/develop -- specs/109-differential-acceptance-gate` returns **0 files** — fully on `main`, carried by tag `v2026.09.07.1` (merge #326); the roadmap state `released` was correct. **Marathon discharge NOT claimed** — the live run belongs to another feature.
 
 ---
 
