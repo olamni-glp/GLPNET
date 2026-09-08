@@ -658,6 +658,44 @@
       "owner": "olamnit-glpnet",
       "disposition": "owned",
       "notes": "Introduced by feature 109's OWN codexreview remediation: real-transcript normalisation runs in a child process so a catastrophic declared regex can be KILLED rather than merely timed out around, and the child's exit status is then a decision. The audit found this site undeclared and REFUSED, which is the gate binding on the auditor's own code -- the opposite of the self-exemption that is measured instance 2. The check asserts a FAILING worker becomes NOT-MEASURED naming the failure (never a silent 'nothing changed'), and the control asserts a succeeding worker still returns the normalised text, so a harness that always cried failure would not pass both."
+    },
+    {
+      "id": "hook-notifier-conformance-harness-wait",
+      "path": "csharp/ynet_client.tests/HookNotifierContentionConformanceTests.cs",
+      "symbol": "WaitForIdle",
+      "kind": "wait",
+      "consumers": [
+        "csharp/ynet_client.tests/HookNotifierContentionConformanceTests.cs"
+      ],
+      "governed_by": [
+        "FR-004"
+      ],
+      "conformance_check": "csharp/ynet_client.tests/HookNotifierContentionConformanceTests.cs::T012_WaitForIdle_is_correct_on_all_40_contended_iterations",
+      "negative_control": "csharp/ynet_client.tests/HookNotifierContentionConformanceTests.cs::T013_the_same_harness_FAILS_the_pre_fix_ordering",
+      "iterations": 40,
+      "contention": "concurrent enqueue during drain",
+      "owner": "olamnit-glpnet",
+      "disposition": "owned",
+      "notes": "The T012/T013 harness itself calls WaitForIdle and tests Count/Outstanding as a verdict, so FR-014b's scan correctly flags it. Declared rather than pattern-silenced (FR-030 in spirit: 'do not silence a hit by deleting the pattern'). It is SELF-PROVING: its conformance check and negative control are the very tests in this file, so the harness that audits the wait class is audited by the same pair it runs."
+    },
+    {
+      "id": "ack-durability-disclosure-wait",
+      "path": "csharp/ynet_client.tests/AckDurabilityDisclosureTests.cs",
+      "symbol": "WaitForExit",
+      "kind": "wait",
+      "consumers": [
+        "csharp/ynet_client.tests/AckDurabilityDisclosureTests.cs"
+      ],
+      "governed_by": [
+        "FR-004"
+      ],
+      "conformance_check": "csharp/ynet_client.tests/AckDurabilityDisclosureTests.cs::T025_CONTROL_a_replay_that_merges_by_message_id_keeps_the_ack",
+      "negative_control": "csharp/ynet_client.tests/AckDurabilityDisclosureTests.cs::T025_MODEL_the_clobbering_replay_loses_the_ack",
+      "iterations": 1,
+      "contention": "none - sequential subprocess drive",
+      "owner": "olamnit-glpnet",
+      "disposition": "owned",
+      "notes": "Process.WaitForExit in the T025 harness that drives the canonical binary. Bounded at 120s and its result is not read as a verdict - the verdict comes from re-reading the alerts file, never from the wait returning. Declared so the scan and the manifest agree in both directions (FR-014b)."
     }
   ],
   "sites_note": "`sites` declares how many scan hits of a (path, kind) an entry covers. Without it, one entry silenced every other hit of that kind in the file and the denominator shrank when you looked at it (adversarial review, 2026-09-06). The number is declared so widening coverage is visible."

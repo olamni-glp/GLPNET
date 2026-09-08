@@ -175,12 +175,38 @@ public class YnetListenerServiceTests
     [Fact]
     public void SC003d_the_production_instance_is_unavailable_here_and_says_exactly_why()
     {
-        // The honest state on OLAMNIT: no sidecar process, no Rust toolchain. The refusal must be
-        // actionable, not merely negative.
+        // 🔴 THIS TEST USED TO ENCODE A HOST FACT AS A CONSTANT, AND THE HOST CHANGED.
+        //
+        // It asserted the refusal contained "iroh sidecar not usable" and "Rust" — the wording of
+        // exactly ONE of the two ways tier 0 can decline, the handshake-failed one, which was the
+        // only one reachable on OLAMNIT 2026-09-05 because no sidecar process existed there.
+        //
+        // Measured on SHIRAS 2026-09-08: a sidecar IS running (127.0.0.1:47899, answering
+        // "YNET-SIDECAR/1 CAPS quic-link"), so the handshake SUCCEEDS and the provider declines for
+        // the OTHER declared reason — this adapter build does not implement link carriage. The test
+        // went red while both the product and the test's intent were correct. Neither had changed;
+        // the environment had.
+        //
+        // The contract SC-003d actually exists to pin is: tier 0 is unavailable in this build, AND
+        // its refusal NAMES WHICH of the two conditions failed rather than being merely negative.
+        // That is host-independent, so it is what is asserted now. If a future build implements
+        // carriage against a live sidecar, this test SHOULD fail — that is a real contract change
+        // and it must be seen, not absorbed.
         var a = IrohSidecarProvider.Instance.Probe();
         Assert.False(a.Supported);
-        Assert.Contains("iroh sidecar not usable", a.Detail);
-        Assert.Contains("Rust", a.Detail);
+
+        var handshakeFailed = a.Detail.Contains("iroh sidecar not usable");
+        var carriageMissing = a.Detail.Contains("does not implement link carriage");
+        Assert.True(handshakeFailed || carriageMissing,
+            "the tier-0 refusal must NAME which condition failed — the sidecar handshake, or this "
+          + "adapter build's lack of link carriage. Actual detail: " + a.Detail);
+
+        // Whichever branch fired, the refusal must stay ACTIONABLE: it has to tell the reader what
+        // to do next. A negative with no next step is the defect this assertion guards.
+        if (handshakeFailed)
+            Assert.Contains("Rust", a.Detail);          // how to obtain a sidecar
+        else
+            Assert.Contains("presence mistaken for capability", a.Detail);  // why it declines anyway
     }
 
     // ---- SC-004: bound but unreachable is its own outcome, never Ok ----
