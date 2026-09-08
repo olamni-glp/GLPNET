@@ -37,6 +37,7 @@
 // unavailable" look, from outside, exactly like four healthy hosts.
 
 using Ynet.Client;
+using Ynet.Transport.Capability;
 
 // 🔴 SUPERVISOR-LAUNCH DETECTION — codexreview finding P1, 2026-09-06.
 //
@@ -115,11 +116,36 @@ switch (verb)
         var laneDir = Environment.GetEnvironmentVariable("YNET_CLIENT_LANE")
                       ?? (Opt("--self") is { } s ? PeerIdentity.Parse(s).DirectoryName : null);
 
+        // The signing identity is keyed by the LANE, not by the mailbox directory: `laneDir` is an
+        // escaped-and-digested form (`<node>%2F<node>%2E<lane>~<hash>`) and feeding it to the
+        // keystore would mint a key under a name no other tool resolves. Derived only from an
+        // identity the operator actually stated — never from YNET_CLIENT_LANE, which carries the
+        // directory form and would silently produce a second, divergent node id for the same lane.
+        var laneName = (Opt("--self") ?? Environment.GetEnvironmentVariable("YNET_SELF")) is { } selfRaw
+            ? PeerIdentity.Parse(selfRaw).Actor
+            : null;
+
         var binding = new PlaneCatalog.Binding
         {
             CoopRoot = coopRoot,
             LaneDirectory = laneDir,
-            Self = null,   // supplied by --identity in a later step; absent means the wire degrades
+            // 🔴 2026-09-08 (olamnit.glpnet, engineer-authorised over Q-glpnetshiras-50; C-18 claim
+            // CLAIM-20260908T0555Z). This read `Self = null` with the comment "supplied by
+            // --identity in a later step". THAT STEP WAS NEVER WRITTEN — `--identity` has zero hits
+            // across csharp/ — so `NewWire` threw on `b.Self is null` (PlaneCatalog.cs:143) for
+            // EVERY run, and every host in the fleet degraded to the file plane and was then read as
+            // misconfigured. Two lanes found this from opposite ends of the client within one hour
+            // and both correctly deferred under the ownership rule; three lanes deferring correctly
+            // still adds up to nobody fixing it.
+            //
+            // The keystore was already built and mints on first use, so there is no key ceremony:
+            // identity is derived from the lane we were told to be, and is NEVER invented — when no
+            // lane is named we leave Self null and let the existing degrade path speak, rather than
+            // minting a key for a mailbox no peer addresses.
+            //
+            // 🔴 THIS MAKES THE WIRE ATTEMPTABLE. IT DOES NOT ASSERT THAT A HANDSHAKE SUCCEEDS.
+            // Nobody in this fleet has yet observed one. The next error is the finding.
+            Self = laneName is null ? null : NodeIdentity.LoadOrMint(laneName, out _),
             // Not Opt("--listen") when a supervisor launched us: there that flag is the PROBE
             // address, and binding the QUIC listener to it would make the two fight for one port.
             Listener = PlaneCatalog.ParseListen("ynet-client", supervisorLaunched ? null : Opt("--listen")),
@@ -369,12 +395,67 @@ switch (verb)
                     "than a refusal.");
                 return 7;
             }
-            Console.Error.WriteLine(
-                "ynet_client: wire send requires this node's signing identity, which this verb does " +
-                "not yet take (--identity). The route is reachable and covered by tests; the CLI " +
-                "argument is the remaining step. NOT SENT — and saying so rather than reporting a " +
-                "success this build cannot deliver.");
-            return 8;
+            // 🔴 2026-09-08 (olamnit.glpnet, engineer-authorised; C-18 claim CLAIM-20260908T0555Z).
+            // The message this block used to print said the signing identity "is the remaining
+            // step". MEASURED: THAT WAS AN UNDERCOUNT, and it is worth correcting rather than
+            // quietly fixing. QuicOutbound's constructor takes FOUR things, and the identity was
+            // only one of them: (NodeIdentity self, NodeId peerNode, PeerIdentity peer,
+            // IPEndPoint remote). `self` is now minted exactly as the receive path mints it, and
+            // `remote` is --peer-addr. But `peerNode` — the peer's NodeId — is resolved by NOTHING
+            // in this fleet today. That is the Resolve half of
+            // `ynet-minted-lane-identity-resolve-address-independent`, and it is unbuilt.
+            //
+            // So the honest surface is: let an operator who KNOWS the peer's node id state it, and
+            // refuse by name when they do not — rather than either inventing one or continuing to
+            // report a blanket "not supported" for a route that is otherwise complete.
+            var peerNodeText = Opt("--peer-node");
+            if (string.IsNullOrWhiteSpace(peerNodeText))
+            {
+                Console.Error.WriteLine(
+                    "ynet_client: wire send needs the peer's node id — pass --peer-node <id>. " +
+                    "Nothing in this fleet RESOLVES a lane name to a node id yet (that is the " +
+                    "Resolve half of ynet-minted-lane-identity-resolve-address-independent, and it " +
+                    "is unbuilt), so this cannot be derived and will NOT be invented: a wrong peer " +
+                    "node id authenticates a handshake against the wrong key and fails in a way " +
+                    "that looks like a network fault. NOT SENT.");
+                return 8;
+            }
+
+            if (!System.Net.IPEndPoint.TryParse(remoteText, out var remoteEp))
+            {
+                Console.Error.WriteLine(
+                    $"ynet_client: --peer-addr '{remoteText}' is not an <ip>:<port>. NOT SENT.");
+                return 7;
+            }
+
+            var selfIdentity = NodeIdentity.LoadOrMint(PeerIdentity.Parse(rawSelf).Actor, out _);
+            var wireSignal = Opt("--signal") ?? "M6_MESSAGE";
+            var wireBody = Opt("--body") ?? "";
+
+            using var wire = new QuicOutbound(
+                selfIdentity, new NodeId(peerNodeText), peer, remoteEp);
+
+            // The wire plane's contract is YnetMessage, not the file plane's (signal, body)
+            // convenience overload — that overload exists only on CoopFileOutbound. Origin is
+            // stated in the SAME <node>/<actor> form the file plane writes, so a frame arriving
+            // over either plane is attributable by the same rule.
+            var wireMessage = new YnetMessage(
+                MessageId: Guid.NewGuid().ToString("N"),
+                Origin: PeerIdentity.Parse(rawSelf).Identity,
+                Summary: wireSignal,
+                Body: System.Text.Encoding.UTF8.GetBytes(wireBody));
+
+            if (!wire.Send(wireMessage))
+            {
+                Console.Error.WriteLine(
+                    $"ynet_client: wire send to {peer.Identity} at {remoteText} FAILED. NOT SENT — " +
+                    "a real refusal, NOT a silent fall back to the file plane.");
+                return 8;
+            }
+
+            Console.WriteLine($"ynet_client: sent {wireMessage.MessageId}");
+            Console.WriteLine($"ynet_client: to={peer.Identity}   remote={remoteText}   plane=quic");
+            return 0;
         }
 
         var outbound = new CoopFileOutbound(PeerIdentity.Parse(rawSelf), peer, RequiredRoot());
