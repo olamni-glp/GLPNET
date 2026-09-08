@@ -125,8 +125,47 @@ public sealed class PendingAlertSpool
     }
 
     /// <summary>
+    /// Resolve an operator-supplied id to a pending alert id, accepting EITHER the alert id or the
+    /// message id. Returns null when neither matches anything pending.
+    ///
+    /// 🔴 WHY THIS EXISTS (measured 2026-09-08T06:25Z on OLAMNIT, olamnit.glpnet).
+    /// The alerts hook prints <c>"Drain one with: ynet_client drain &lt;alertId&gt;"</c> and then
+    /// prints the <b>MessageId</b>. <see cref="PathFor"/> correctly REFUSES a message id as
+    /// malformed — it is untrusted CLI input — and <see cref="Drain"/> turned that refusal into
+    /// <c>false</c>, which the CLI reported as <i>"was not pending (already drained, or never
+    /// raised)"</i> with <b>exit 0</b>. So the documented remedy no-opped while reading as success,
+    /// and the alert stayed on disk at <c>presented=1x</c>.
+    ///
+    /// Both ids are legitimately in circulation — <c>YNET_CLIENT_HOOK</c> is invoked as
+    /// <c>&lt;hook&gt; &lt;alertId&gt; &lt;messageId&gt; &lt;origin&gt;</c> — so accepting either is
+    /// the honest surface. The security property is preserved exactly: a message id is matched
+    /// against records already read from the spool, and only a validated ALERT id is ever handed to
+    /// <see cref="PathFor"/>. Nothing operator-supplied reaches a path.
+    /// </summary>
+    public string? ResolveAlertId(string idOrMessageId)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(idOrMessageId);
+        lock (_gate)
+        using (AcquireCrossProcess())
+        {
+            var all = ReadAll();
+            var byAlert = all.FirstOrDefault(a =>
+                string.Equals(a.AlertId, idOrMessageId, StringComparison.Ordinal));
+            if (byAlert is not null) return byAlert.AlertId;
+
+            var byMessage = all.FirstOrDefault(a =>
+                string.Equals(a.MessageId, idOrMessageId, StringComparison.Ordinal));
+            return byMessage?.AlertId;
+        }
+    }
+
+    /// <summary>
     /// Mark one alert handled. Returns true when this call removed it, false when there was
     /// nothing to remove — so a repeated drain is a recorded no-op rather than an error.
+    ///
+    /// 🔴 <b>false means "nothing was removed" and NOTHING MORE.</b> It does not mean the alert was
+    /// already handled. A caller that reports it as success is stating something this method never
+    /// measured — see <see cref="ResolveAlertId"/> for the defect that produced.
     /// </summary>
     public bool Drain(string alertId)
     {

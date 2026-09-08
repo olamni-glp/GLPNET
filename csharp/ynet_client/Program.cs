@@ -557,10 +557,39 @@ switch (verb)
             return 1;
         }
 
-        var removed = spool.Drain(args[1]);
-        Console.WriteLine(removed
-            ? $"ynet_client: drained {args[1]}"
-            : $"ynet_client: {args[1]} was not pending (already drained, or never raised)");
+        // 🔴 2026-09-08 (olamnit.glpnet). This block used to call Drain(args[1]) directly and
+        // `return 0` either way, printing "was not pending (already drained, or never raised)" on
+        // failure. MEASURED: given the id the ALERTS HOOK ITSELF PRINTS — the MessageId — that path
+        // fired every time, because PathFor rightly refuses a message id as malformed. The result
+        // was a no-op that reported success in BOTH the text and the exit code, so neither an
+        // operator nor a script could tell it from a real drain, while the alert sat on disk.
+        //
+        // Two changes, and the exit code is the more important one: an id is now resolved against
+        // what is actually pending (alert id OR message id), and a drain that removed nothing exits
+        // NON-ZERO. A no-op that returns success is not a diagnostic — it is a false one.
+        var resolved = spool.ResolveAlertId(args[1]);
+        if (resolved is null)
+        {
+            Console.Error.WriteLine(
+                $"ynet_client: '{args[1]}' matches no pending alert, by alert id or message id. " +
+                "NOTHING DRAINED. Run `ynet_client pending` to see what is actually waiting — and " +
+                "note that a previously-successful drain of this id would also land here, so this " +
+                "is 'no longer pending', NOT 'was already handled by you'.");
+            return 5;
+        }
+
+        if (!spool.Drain(resolved))
+        {
+            Console.Error.WriteLine(
+                $"ynet_client: {resolved} was pending a moment ago and could not be removed — " +
+                "another process almost certainly drained it between the lookup and the delete. " +
+                "NOTHING DRAINED BY THIS CALL.");
+            return 5;
+        }
+
+        Console.WriteLine(args[1] == resolved
+            ? $"ynet_client: drained {resolved}"
+            : $"ynet_client: drained {resolved} (resolved from message id {args[1]})");
         return 0;
     }
 
@@ -573,7 +602,9 @@ switch (verb)
               send --to <node>/<actor> [--signal S] [--body B]
               doctor             lane dir, mailbox paths, and non-frame strays
               pending            list alerts the agent has not yet drained
-              drain <alertId>    mark one alert handled (idempotent)
+              drain <id>         mark one alert handled; takes the ALERT id or the MESSAGE id.
+                                 Exits 5 and drains NOTHING when the id matches no pending alert —
+                                 never 0, so a script can tell a real drain from a no-op.
 
             environment:
               YNET_CLIENT_SPOOL  durable alert directory (default: %LOCALAPPDATA%/glpnet/ynet-client/alerts)
