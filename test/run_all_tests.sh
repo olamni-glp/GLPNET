@@ -2373,7 +2373,38 @@ PROBE_TFM=$(csproj_tfm "$SCRIPT_DIR/../out/csharp/term_traversal_probe/term_trav
 # Sections I (cross-runtime), T (064 service-box drills) and U (077 cyclic diagnostics) all run
 # this same binary. Gating only Section U would let the other two keep presenting the output of a
 # stale build as authoritative — which is precisely the 2026-08-13 failure mode.
-GLPREPL_EXE="$SCRIPT_DIR/../out/csharp/glp_repl/bin/Debug/${GLPREPL_TFM}/glp_repl.exe"
+# 108 close-out, SHIRAS 2026-09-09: the name was hard-coded `glp_repl.exe`, which is the WINDOWS
+# apphost. `dotnet build` on Linux emits the same apphost as `glp_repl`, with no extension — so on
+# this host the binary EXISTED and five groups (I, U, V-18..V-23, Y-7, and T's participant) still
+# reported "C# REPL not built". The suite was looking for a filename, not for the program. Resolve
+# either spelling; the freshness gate and every caller then work unchanged on both platforms.
+GLPREPL_DIR="$SCRIPT_DIR/../out/csharp/glp_repl/bin/Debug/${GLPREPL_TFM}"
+if [ -f "$GLPREPL_DIR/glp_repl.exe" ]; then
+    GLPREPL_EXE="$GLPREPL_DIR/glp_repl.exe"
+elif [ -f "$GLPREPL_DIR/glp_repl" ]; then
+    GLPREPL_EXE="$GLPREPL_DIR/glp_repl"
+else
+    GLPREPL_EXE="$GLPREPL_DIR/glp_repl.exe"      # keep a concrete path in the "not built" message
+fi
+# PRESENT IS NOT RUNNABLE. The apphost locates the runtime through DOTNET_ROOT or a default
+# install path; with neither it exits printing "You must install .NET to run this application"
+# — measured here on 2026-09-09, where `dotnet` was on PATH only via a symlink into
+# ~/.dotnet. Resolving the file and running it blindly would have turned five SKIPs into a
+# stream of FAILURES blamed on the code. So derive DOTNET_ROOT from the `dotnet` on PATH when
+# it is unset, and probe the binary once: if it still cannot start, the sections say
+# UNSEARCHABLE with the runtime as the named reason, never "not built" and never a failure.
+if [ -f "$GLPREPL_EXE" ]; then
+    if [ -z "${DOTNET_ROOT:-}" ] && _dn=$(command -v dotnet 2>/dev/null); then
+        _dnr=$(dirname "$(readlink -f "$_dn" 2>/dev/null || printf '%s' "$_dn")")
+        [ -d "$_dnr/shared" ] && export DOTNET_ROOT="$_dnr"
+    fi
+    # The probe MUST close stdin and bound itself. `glp_repl --help` opens the interactive REPL
+    # and waits — a first cut of this probe hung for two minutes before being killed. Feed it
+    # `:quit`, cap it, and treat only a start failure as unrunnable.
+    if ! printf ':quit\n' | timeout 60 "$GLPREPL_EXE" >/dev/null 2>&1; then
+        GLPREPL_UNRUNNABLE="the C# REPL binary EXISTS at $GLPREPL_EXE but will not start (DOTNET_ROOT=${DOTNET_ROOT:-unset}; the .NET apphost could not locate a runtime) — a missing runtime, not a missing build and not a code defect"
+    fi
+fi
 # 109 T058: date the build from the OUTPUT DIRECTORY, not from glp_repl.exe.
 # `glp_repl.exe` is the .NET APPHOST STUB and an incremental build does not rewrite it when only a
 # referenced library's method bodies change; `glp_repl.dll` is not rewritten either, because an
@@ -2405,8 +2436,16 @@ if [ -f "$GLPREPL_EXE" ]; then
         GLPREPL_STALE_WHY="glp_repl.exe is NOT NEWER than its source (bin $(date -d @"${_b%%.*}" '+%Y-%m-%d %H:%M' 2>/dev/null || echo "$_b") src $(date -d @"${_s%%.*}" '+%Y-%m-%d %H:%M' 2>/dev/null || echo "$_s")) — rebuild with 'dotnet build' before trusting it"
     fi
 fi
+# An UNRUNNABLE binary is routed through the same gate as a stale one: every consumer below
+# already turns `GLPREPL_STALE` into an UNSEARCHABLE naming `GLPREPL_STALE_WHY`, which is the
+# correct outcome here too — we could not look. It takes precedence over a staleness message,
+# because "it will not start" is the fact the reader needs first.
+if [ -n "${GLPREPL_UNRUNNABLE:-}" ]; then
+    GLPREPL_STALE=1
+    GLPREPL_STALE_WHY="$GLPREPL_UNRUNNABLE"
+fi
 
-CSREPL_BIN="$SCRIPT_DIR/../out/csharp/glp_repl/bin/Debug/${GLPREPL_TFM}/glp_repl.exe"
+CSREPL_BIN="$GLPREPL_EXE"
 if [ "$GLPREPL_STALE" -eq 1 ] && [ -f "$CSREPL_BIN" ]; then
     unsearchable "Section I (cross-runtime Gleam x C# link suite)" "$GLPREPL_STALE_WHY"
 elif command -v gleam >/dev/null 2>&1 && [ -f "$CSREPL_BIN" ]; then
@@ -2464,7 +2503,7 @@ section "T" "064 service-box drills (resume + history)"
 # the entire suite — killing every later section instead of recording a section FAIL. check()
 # never exits, so guarding here turns a host-specific drill failure into a normal FAIL line.
 set +e
-SBREPL_BIN="$SCRIPT_DIR/../out/csharp/glp_repl/bin/Debug/${GLPREPL_TFM}/glp_repl.exe"
+SBREPL_BIN="$GLPREPL_EXE"
 if [ "$GLPREPL_STALE" -eq 1 ] && [ -f "$SBREPL_BIN" ]; then
     unsearchable "Section T (064 service-box drills)" "$GLPREPL_STALE_WHY"
 elif [ ! -f "$SCRIPT_DIR/../glpquick-cert/glpquick.pfx" ]; then
@@ -2506,7 +2545,7 @@ section "U" "Guarded term-traversal cyclic diagnostics (077)"
 # `grep`/`grep -q` return 1 on no-match — under the script's set -e that would abort
 # the suite (same hazard the cross-runtime section guards above). check() never exits.
 set +e
-CSREPL_BIN="$SCRIPT_DIR/../out/csharp/glp_repl/bin/Debug/${GLPREPL_TFM}/glp_repl.exe"
+CSREPL_BIN="$GLPREPL_EXE"
 # GLP_DIR is already a Windows (cygpath -m) path; the C# REPL is a native exe and
 # CANNOT open MSYS-mount paths like /d/foo, so pass it the Windows form.
 CYCLIC_DIR="$GLP_DIR/programs/tests/cyclic"
@@ -2561,7 +2600,18 @@ if [ -f "$CSREPL_BIN" ] && [ "$CSREPL_STALE" -eq 0 ]; then
     # C# REPL is built (we are inside its guard); the probe ships in the SAME solution, so a
     # MISSING probe FAILS LOUD — it does NOT silently skip, which would leave the
     # cycle-detection guarantee ungated (codexreview 077).
-    PROBE="$SCRIPT_DIR/../out/csharp/term_traversal_probe/bin/Debug/${PROBE_TFM}/term_traversal_probe.exe"
+    # Same Windows-apphost-name defect as GLPREPL_EXE above: on Linux `dotnet build` emits
+    # `term_traversal_probe`, no extension, and this check failed LOUD (correctly, by its own
+    # design) for a probe that was sitting in that directory. Resolve either spelling; keep the
+    # .exe name as the fallback so the MISSING-PROBE failure still names a concrete path.
+    PROBE_DIR="$SCRIPT_DIR/../out/csharp/term_traversal_probe/bin/Debug/${PROBE_TFM}"
+    if [ -f "$PROBE_DIR/term_traversal_probe.exe" ]; then
+        PROBE="$PROBE_DIR/term_traversal_probe.exe"
+    elif [ -f "$PROBE_DIR/term_traversal_probe" ]; then
+        PROBE="$PROBE_DIR/term_traversal_probe"
+    else
+        PROBE="$PROBE_DIR/term_traversal_probe.exe"
+    fi
     if [ -f "$PROBE" ]; then
         out=$("$PROBE" 2>&1)
         check "U-4: structural + real-walker guard probe (SC-001/SC-003/SC-006)" "PROBE OK" "$out"
@@ -2954,16 +3004,46 @@ section "X" "Evidence-signal ordering (feature 108)"
 echo ""
 set +e
 PY_BIN=${PY_BIN:-$(resolve_python)}
+# `resolve_python` answers "can this run print()", which is NOT the question X-1 asks. Measured
+# on SHIRAS 2026-09-09 while closing 108: it resolved /usr/bin/python3, which has no pytest, and
+# Section X reported
+#     FAIL: X-1 ... (expected: passed)      <- a MISSING PREREQUISITE misreported as a defect
+#     PASS: X-2: no test in the harness failed
+# X-2 passed because the token `failed` does not appear in `No module named pytest` -- a check
+# that goes green precisely because nothing ran. That is measured instance 4 (FR-007), committed
+# inside the section built to catch it, and it is exactly the pair S8 recorded in the other
+# direction. So: pick an interpreter that can ACTUALLY run the harness, and if none exists say
+# UNSEARCHABLE by name. `unsearchable`, not `skip` -- we did not decline to look, we could not.
+resolve_pytest_python() {
+    for cand in "$PY_BIN" \
+                "$HOME/.local/share/bkvenv/bin/python" \
+                "$SCRIPT_DIR/../codeconv/.venv/bin/python" \
+                "$SCRIPT_DIR/../codeconv/.venv/Scripts/python.exe"; do
+        [ -n "$cand" ] && [ -x "$cand" ] || continue
+        if "$cand" -c 'import pytest' >/dev/null 2>&1; then printf '%s' "$cand"; return 0; fi
+    done
+    return 1
+}
 if [ -z "$PY_BIN" ]; then
     skip "Section X (evidence-signal ordering)" "no python interpreter on PATH"
 else
-    x1=$(cd "$SCRIPT_DIR/.." && PYTHONUTF8=1 "$PY_BIN" -m pytest scripts/tests/ -q 2>&1 | tail -3)
-    check "X-1: conformance harness + audit tests all pass" "passed" "$x1"
-    check_not "X-2: no test in the harness failed" "failed" "$x1"
+    X_PY=$(resolve_pytest_python)
+    if [ -z "$X_PY" ]; then
+        unsearchable "X-1/X-2 (108 conformance harness + audit tests)" \
+            "no interpreter on this host can import pytest (tried: $PY_BIN, \$HOME/.local/share/bkvenv/bin/python, codeconv/.venv) — the harness did not run, so it neither passed nor failed"
+    else
+        x1=$(cd "$SCRIPT_DIR/.." && PYTHONUTF8=1 "$X_PY" -m pytest scripts/tests/ -q 2>&1 | tail -3)
+        check "X-1: conformance harness + audit tests all pass" "passed" "$x1"
+        check_not "X-2: no test in the harness failed" "failed" "$x1"
+    fi
 
     xrep="$SCRIPT_DIR/../.specify/evidence-signals/report.json"
     rm -f "$xrep"
-    (cd "$SCRIPT_DIR/.." && PYTHONUTF8=1 "$PY_BIN" scripts/evidence_signal_audit.py >/dev/null 2>&1)
+    # Run the audit under the pytest-capable interpreter when there is one: the SAME audit
+    # reports `8 not-executable / 0 conforming` without pytest and `8 pass / 3 conforming` with
+    # it. Both are honest -- a check it cannot execute leaves the surface unproven, never
+    # conforming -- but the second actually measures something.
+    (cd "$SCRIPT_DIR/.." && PYTHONUTF8=1 "${X_PY:-$PY_BIN}" scripts/evidence_signal_audit.py >/dev/null 2>&1)
     xrc=$?
     if [ -f "$xrep" ]; then
         echo "  PASS: X-3: the audit produced a report"

@@ -676,7 +676,9 @@
       "contention": "concurrent enqueue during drain",
       "owner": "olamnit-glpnet",
       "disposition": "owned",
-      "notes": "The T012/T013 harness itself calls WaitForIdle and tests Count/Outstanding as a verdict, so FR-014b's scan correctly flags it. Declared rather than pattern-silenced (FR-030 in spirit: 'do not silence a hit by deleting the pattern'). It is SELF-PROVING: its conformance check and negative control are the very tests in this file, so the harness that audits the wait class is audited by the same pair it runs."
+      "notes": "The T012/T013 harness itself calls WaitForIdle and tests Count/Outstanding as a verdict, so FR-014b's scan correctly flags it. Declared rather than pattern-silenced (FR-030 in spirit: 'do not silence a hit by deleting the pattern'). It is SELF-PROVING: its conformance check and negative control are the very tests in this file, so the harness that audits the wait class is audited by the same pair it runs.",
+      "sites": 5,
+      "sites_note": "Declared COUNT, not just (path,kind) — the audit matches on both, because one entry matching a path+kind alone silenced every other hit of that kind in the file and the denominator shrank when you looked at it (adversarial review 2026-09-06). Counted from the audit's own scan output on shiras 2026-09-08, not by eye."
     },
     {
       "id": "ack-durability-disclosure-wait",
@@ -689,13 +691,68 @@
       "governed_by": [
         "FR-004"
       ],
-      "conformance_check": "csharp/ynet_client.tests/AckDurabilityDisclosureTests.cs::T025_CONTROL_a_replay_that_merges_by_message_id_keeps_the_ack",
-      "negative_control": "csharp/ynet_client.tests/AckDurabilityDisclosureTests.cs::T025_MODEL_the_clobbering_replay_loses_the_ack",
-      "iterations": 1,
-      "contention": "none - sequential subprocess drive",
       "owner": "olamnit-glpnet",
-      "disposition": "owned",
-      "notes": "Process.WaitForExit in the T025 harness that drives the canonical binary. Bounded at 120s and its result is not read as a verdict - the verdict comes from re-reading the alerts file, never from the wait returning. Declared so the scan and the manifest agree in both directions (FR-014b)."
+      "disposition": "not-a-signal",
+      "rationale": "Process.WaitForExit in the T025 harness that drives the canonical binary. Its RETURN IS NEVER READ AS A VERDICT: the harness discards the exit status and the stdout, and every assertion is made by re-reading the alerts file afterwards. So the wait carries no evidence and cannot be early-observed — there is nothing a caller could conclude from it. Declared rather than pattern-silenced (FR-014b) because the scan is right that a wait is here; 'not-a-signal' is the honest classification, and it costs a written rationale precisely so it cannot be used to wave things through. MEASURED PROVENANCE: an earlier draft of this entry claimed disposition 'owned' with iterations 1, and the audit REFUSED it (exit 2) — 'must be 40 for an FR-004 surface (FR-018a), got 1'. The refusal was correct and is recorded here rather than quietly edited away: the tool caught its own author declaring a one-shot subprocess wait as a 40-iteration contention conformance surface.",
+      "conformance_check": null,
+      "negative_control": null,
+      "sites": 2,
+      "sites_note": "Declared COUNT, not just (path,kind) — the audit matches on both, because one entry matching a path+kind alone silenced every other hit of that kind in the file and the denominator shrank when you looked at it (adversarial review 2026-09-06). Counted from the audit's own scan output on shiras 2026-09-08, not by eye."
+    },
+    {
+      "id": "hook-notifier-conformance-harness-emptiness",
+      "path": "csharp/ynet_client.tests/HookNotifierContentionConformanceTests.cs",
+      "symbol": "Outstanding == 0",
+      "kind": "emptiness",
+      "consumers": [
+        "csharp/ynet_client.tests/HookNotifierContentionConformanceTests.cs"
+      ],
+      "governed_by": [
+        "FR-007"
+      ],
+      "owner": "olamnit-glpnet",
+      "disposition": "not-a-signal",
+      "conformance_check": null,
+      "negative_control": null,
+      "rationale": "`queue.Count == 0` inside PreFixIdleProbe, and the outcome tallies in the harness. The Count test is the DEFECT BEING MODELLED, not a verdict this repo relies on — PreFixIdleProbe exists to be wrong, and T013 asserts it IS wrong. Classifying it 'owned' would demand a conformance check proving the modelled defect correct, which is incoherent. The tallies (`wrong.Count == 0`) are xUnit assertions on a completed list, not a signal any caller reads early. Declared rather than pattern-silenced (FR-014b).",
+      "sites": 4,
+      "sites_note": "Declared COUNT, not just (path,kind) — the audit matches on both, because one entry matching a path+kind alone silenced every other hit of that kind in the file and the denominator shrank when you looked at it (adversarial review 2026-09-06). Counted from the audit's own scan output on shiras 2026-09-08, not by eye."
+    },
+    {
+      "id": "supervised-hosting-killed-child-waitforexit",
+      "path": "csharp/ynet_client.tests/SupervisedHostingEndToEndTests.cs",
+      "symbol": "child.WaitForExit",
+      "kind": "wait",
+      "sites": 1,
+      "consumers": [
+        "csharp/ynet_client.tests/SupervisedHostingEndToEndTests.cs"
+      ],
+      "governed_by": [
+        "FR-004"
+      ],
+      "owner": "olamnit-glpnet",
+      "disposition": "not-a-signal",
+      "conformance_check": null,
+      "negative_control": null,
+      "rationale": "A bounded WaitForExit(10s) on a child the test has just deliberately Kill()ed. Its return value is discarded and NOTHING is concluded from it: the actual verdict comes from the WaitUntil(...) re-probe on the following lines, which asks whether the supervisor brought a NEW child back and whether that child ANSWERS. So the wait cannot be early-observed into a false completion — the assertion does not depend on it at all. PRE-EXISTING, not introduced by feature 108: it was among the 13 undeclared hits on the first audit run of 2026-09-08 and predates this era's work. Declared now rather than left to keep the audit permanently at exit 3."
+    },
+    {
+      "id": "ynet-board-divergence-daemon-root-exit-status",
+      "path": "scripts/ynet_board_divergence.py",
+      "symbol": "daemon_root",
+      "kind": "exit-status",
+      "sites": 1,
+      "consumers": [
+        "scripts/ynet_board_divergence.py"
+      ],
+      "governed_by": [
+        "FR-007"
+      ],
+      "owner": "olamnit-glpnet",
+      "disposition": "declared-unproven",
+      "conformance_check": null,
+      "negative_control": null,
+      "notes": "`if proc.returncode != 0: raise RuntimeError(...)` in daemon_root, added 2026-09-07 (fda9338c) AFTER T030 completed its manifest sweep — which is why it is undeclared: the sweep was correct when it ran and the repo moved. That is FR-014b earning its keep, so the entry is added rather than the finding waved off.\nHONESTLY UNPROVEN, NOT CONFORMING: the code is actually well-shaped — it refuses loudly on non-zero AND makes a SECOND, independent check (the parsed board must carry a 'root' field, else it raises saying it cannot tell which board answered), so it does not read exit 0 alone as success. But FR-015 is explicit that absence of a conformance_check classifies a surface UNPROVEN, never conforming — good shape is not evidence. Writing the fault-injection check for it is follow-up work, not something to claim here."
     }
   ],
   "sites_note": "`sites` declares how many scan hits of a (path, kind) an entry covers. Without it, one entry silenced every other hit of that kind in the file and the denominator shrank when you looked at it (adversarial review, 2026-09-06). The number is declared so widening coverage is visible."

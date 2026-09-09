@@ -91,9 +91,9 @@ A test-free implementation of this feature would be self-refuting.
 - [x] T033 [P] Add the 078 → 108 back-reference line to `specs/078-verification-receipts/spec.md` as documentation only; **no requirement of 078 changes** (`Q-olg15-09`)
 - [x] T034 Wire `scripts/evidence_signal_audit.py` into `test/run_all_tests.sh` as a new section, guarded with `set +e` so a failure reports rather than aborting the suite — Section T's missing guard has already aborted the full suite on this host
 - [x] T035 [P] Record the eight measured instances and their dispositions in `docs/known-issues.md`, each with its owner and whether it is fixed, disclosed, or not-reproduced-on-this-build (SC-001)
-- [ ] T036 Run the full baseline suite (`bash test/run_all_tests.sh`) and the C# transport + client suites; confirm no regression against the recorded baseline before ship
-- [ ] T039 Evaluate **every** success criterion SC-001..SC-007 and record the measured value beside it in `.specify/evidence-signals/report.json` and in the ship note — including SC-002's denominator being the manifest (FR-014a), SC-003's 40/40 with its negative control demonstrated, SC-004's fault-injection positive controls, SC-005's four reintroduced defects, SC-006's observe/restart/re-observe, and SC-007's examined-vs-unexamined split. An SC with no recorded measurement is reported **unmeasured**, never assumed met
-- [ ] T040 [P] Time the audit and the conformance harness and record both against the plan's stated budgets (60 s audit, 120 s harness); a budget with no measurement is the same defect this feature governs
+- [x] T036 Run the full baseline suite (`bash test/run_all_tests.sh`) and the C# transport + client suites; confirm no regression against the recorded baseline before ship
+- [x] T039 Evaluate **every** success criterion SC-001..SC-007 and record the measured value beside it in `.specify/evidence-signals/report.json` and in the ship note — including SC-002's denominator being the manifest (FR-014a), SC-003's 40/40 with its negative control demonstrated, SC-004's fault-injection positive controls, SC-005's four reintroduced defects, SC-006's observe/restart/re-observe, and SC-007's examined-vs-unexamined split. An SC with no recorded measurement is reported **unmeasured**, never assumed met
+- [x] T040 [P] Time the audit and the conformance harness and record both against the plan's stated budgets (60 s audit, 120 s harness); a budget with no measurement is the same defect this feature governs
 
 ---
 

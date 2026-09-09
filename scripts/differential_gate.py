@@ -152,8 +152,16 @@ def build_environment(repo: str) -> dict[str, str]:
     tfm = _csproj_tfm(os.path.join(repo, "out", "csharp", "glp_repl", "glp_repl.csproj"))
     if tfm:
         env["CSREPL_TFM"] = tfm
-        env["CSREPL"] = os.path.join(
-            repo, "out", "csharp", "glp_repl", "bin", "Debug", tfm, "glp_repl.exe")
+        # `glp_repl.exe` is the WINDOWS apphost name; `dotnet build` on Linux emits the same
+        # apphost as `glp_repl`. Hard-coding `.exe` reported the csharp participant "not
+        # started: executable not found" on a host where the program was present (measured on
+        # SHIRAS 2026-09-09). Resolve the program; fall back to the .exe name so the
+        # not-found reason still names a concrete path rather than nothing.
+        _dir = os.path.join(repo, "out", "csharp", "glp_repl", "bin", "Debug", tfm)
+        _exe = os.path.join(_dir, "glp_repl.exe")
+        _elf = os.path.join(_dir, "glp_repl")
+        env["CSREPL"] = _exe if os.path.exists(_exe) else (
+            _elf if os.path.exists(_elf) else _exe)
     return env
 
 

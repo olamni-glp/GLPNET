@@ -42,8 +42,17 @@ csproj_tfm() {
 # the csproj. Returns 1 (printing nothing) if the TFM cannot be resolved, so a
 # caller that ignores the status gets an empty path and fails loudly on use
 # rather than falling back to a stale binary from an older framework.
+# `glp_repl.exe` is the WINDOWS apphost name. `dotnet build` on Linux emits the same
+# apphost as `glp_repl`, with no extension, so hard-coding `.exe` reported "not built"
+# on a host where the program was sitting in that very directory (measured on SHIRAS,
+# 2026-09-09, while closing feature 108: five check groups skipped for a filename).
+# Resolve the program, not the spelling; fall back to the .exe name so the caller's
+# "not built" message still names a path.
 glp_repl_exe() {
-    local _root="$1" _tfm
+    local _root="$1" _tfm _dir
     _tfm=$(csproj_tfm "$_root/out/csharp/glp_repl/glp_repl.csproj") || return 1
-    printf '%s' "$_root/out/csharp/glp_repl/bin/Debug/$_tfm/glp_repl.exe"
+    _dir="$_root/out/csharp/glp_repl/bin/Debug/$_tfm"
+    if [ -f "$_dir/glp_repl.exe" ]; then printf '%s' "$_dir/glp_repl.exe"
+    elif [ -f "$_dir/glp_repl" ]; then printf '%s' "$_dir/glp_repl"
+    else printf '%s' "$_dir/glp_repl.exe"; fi
 }

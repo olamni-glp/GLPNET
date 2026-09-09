@@ -514,6 +514,39 @@ unacknowledged *records*; the disagreement is measured, that mechanism is inferr
 **Not patched here.** `YngeniOS.Ynet.Client` is canonical per `Q-glpnetshiras-50`; a fourth rival
 client is the failure this fleet has already paid for twice.
 
+#### Third measurement — SHIRAS, 2026-09-09, at FLEET SCALE and on a later build
+
+Instance 8 is not a one-alert curiosity. Measured on SHIRAS while closing feature 108:
+
+| | |
+|---|---|
+| alerts in `.specify/ynet/shiras-glpnet/alerts` | **159** |
+| `acknowledged: true` | **0** |
+| distinct `arrived_utc` values across all 159 | **1** — every record reads `2026-09-09T10:15:05` |
+
+The previous session (era S8, 2026-09-07) closed its restart gate at **66 alerts, 66 acked,
+0 unacked**, verified with `scripts/ynet_alert_census.py` from two working directories. Those
+acknowledgements are now gone. A single startup replay re-raised **the entire spool** — the
+identical arrival second across 159 records is the replay's own signature, not 159 arrivals —
+and reset every `acknowledged` flag to `false`.
+
+**Scope of what is measured here, stated exactly.** Directly measured on 2026-09-09: 159
+records, 0 acknowledged, one arrival second, and **every one of the 159 files rewritten today**
+(mtime). The spool is untracked by git, so the *prior* acknowledged state is taken from the era
+S8 restart pointer's recorded census (66/66 on 2026-09-07), not re-measured here. The
+resurrection is measured; the count that was destroyed is quoted.
+
+**What this adds to the disclosure, beyond corroboration:**
+- The clobber is **unbounded**, not per-message: the replay rewrote the whole spool in one
+  second, not one record.
+- It is **still live on 2026-09-09**, after the disclosure, on this host's build.
+- It makes the `unacked` count in any restart gate **worthless as a measure of work done**: the
+  count measures the time since the last replay, not the reader. Verify from the acks you
+  emitted, never by re-counting the spool. (This is why `ynet-client-alert-acknowledged` is the
+  one **non-conforming** surface in the 108 manifest, and it stays non-conforming.)
+
+Owner is unchanged (@ariellas-qhstate) and this lane still does not patch it.
+
 
 ### Instance 9 — `ynet-client send --to` takes `<node>/<lane>`; the refusal's exit code is BUILD-DEPENDENT
 
